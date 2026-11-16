@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>djp7 - gossip, Tree of Thought, pigeon</title>
+<meta name="description" content="Terminal tools by djp7: gossip (encrypted chat), Tree of Thought (many AI models), pigeon (files between devices) and pca, which installs them all.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky: #cdd9ec;
+    --sky-deep: #b7c7e0;
+    --grass: #74a85a;
+    --grass-dark: #5a8a45;
+    --soil: #8a6446;
+    --soil-dark: #6c4c34;
+    --paper: #f1f3f7;
+    --ink: #1a1d29;
+    --muted: #5d6478;
+    --line: #d9dde6;
+    --pixel: "Pixelify Sans", ui-monospace, monospace;
+    --sans: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--paper); color: var(--ink); font: 400 1.0625rem/1.6 var(--sans); }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+  /* the meadow where the three of them stand */
+  .meadow { background: var(--sky); position: relative; padding: 72px 20px 0; overflow: hidden; }
+  .cloud { position: absolute; image-rendering: pixelated; opacity: .9; }
+  .crew { display: flex; justify-content: center; align-items: flex-end; gap: clamp(16px, 7vw, 104px); position: relative; z-index: 1; margin-bottom: -37px; }
+  .mascot { display: flex; flex-direction: column; align-items: center; gap: 10px; text-decoration: none; border-radius: 10px; }
+  .mascot canvas { display: block; image-rendering: pixelated; width: var(--w); height: auto; }
+  .mascot .tag { font: 700 1rem/1 var(--pixel); background: var(--ink); color: #fff; padding: 6px 9px 7px; border-radius: 4px; white-space: nowrap; height: 29px; }
+  .mascot .tag i { display: inline-block; width: 9px; height: 9px; background: var(--c); margin-right: 7px; vertical-align: 0; }
+  .mascot:hover canvas, .mascot:focus-visible canvas { animation: hop .42s steps(4) 1; }
+  .ground { height: 64px; margin: 0 -20px; image-rendering: pixelated; background-size: 96px 72px; }
+  @keyframes hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-14px); } }
+  @keyframes land { from { transform: translateY(-120px); opacity: 0; } 70% { transform: translateY(4px); opacity: 1; } to { transform: translateY(0); } }
+  .crew .mascot { animation: land .6s cubic-bezier(.3, 1.4, .6, 1) both; }
+  .crew .mascot:nth-child(2) { animation-delay: .12s; }
+  .crew .mascot:nth-child(3) { animation-delay: .24s; }
+  @media (prefers-reduced-motion: reduce) { .crew .mascot, .mascot:hover canvas, .mascot:focus-visible canvas { animation: none; } }
+
+  main { max-width: 880px; margin: 0 auto; padding: 56px 22px 80px; }
+  h1 { font: 700 clamp(2.4rem, 7vw, 4.2rem)/1 var(--pixel); margin: 0 0 18px; letter-spacing: -.01em; }
+  .lede { font-size: 1.2rem; color: var(--muted); max-width: 36em; margin: 0 0 36px; }
+
+  .install { background: var(--ink); color: #eef0f6; border-radius: 12px; padding: 20px 22px 18px; }
+  .install h2 { font: 700 1.05rem/1.3 var(--sans); margin: 0 0 4px; }
+  .install p { margin: 0 0 14px; color: #b9bdcc; font-size: .98rem; }
+  .os { display: flex; gap: 6px; margin-bottom: 10px; }
+  .os button { font: 700 .9rem/1 var(--sans); color: #b9bdcc; background: none; border: 1px solid #3a3e4f; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
+  .os button[aria-pressed=true] { color: var(--ink); background: #eef0f6; border-color: #eef0f6; }
+  .cmd { display: flex; align-items: center; gap: 10px; background: #0f1119; border-radius: 8px; padding: 6px 6px 6px 14px; }
+  .cmd code { flex: 1; font: .95rem/1.5 var(--mono); overflow-x: auto; white-space: nowrap; padding: 6px 0; scrollbar-width: thin; }
+  .cmd code::before { content: "$ "; color: #6f7487; }
+  .cmd button { font: 700 .9rem/1 var(--sans); background: #74a85a; color: #0f1119; border: 0; border-radius: 6px; padding: 10px 14px; cursor: pointer; flex: none; }
+  .then { margin: 12px 0 0; font-size: .95rem; color: #b9bdcc; }
+  .then kbd { font: .9rem var(--mono); background: #2a2e3d; padding: 2px 7px; border-radius: 4px; color: #fff; }
+
+  .projects { margin: 56px 0 0; padding: 0; list-style: none; }
+  .project { display: grid; grid-template-columns: 72px 1fr auto; gap: 6px 22px; align-items: center; padding: 22px 0; border-top: 1px solid var(--line); }
+  .project:last-child { border-bottom: 1px solid var(--line); }
+  .project canvas { image-rendering: pixelated; width: 64px; height: auto; justify-self: center; }
+  .project h3 { font: 700 1.5rem/1.1 var(--pixel); margin: 0 0 4px; }
+  .project h3 span { color: var(--muted); font: 400 .85rem var(--sans); margin-left: 10px; }
+  .project p { margin: 0; color: var(--muted); }
+  .project .go { font: 700 .95rem/1 var(--sans); text-decoration: none; border: 2px solid var(--ink); border-radius: 8px; padding: 10px 14px; white-space: nowrap; }
+  .project .go:hover { background: var(--ink); color: #fff; }
+
+  footer { max-width: 880px; margin: 0 auto; padding: 0 22px 48px; color: var(--muted); font-size: .92rem; }
+  footer a { color: var(--ink); }
+
+  @media (max-width: 620px) {
+    .meadow { padding-top: 36px; }
+    .mascot .tag { font-size: .8rem; padding: 7px 7px; }
+    .crew { gap: 10px; }
+    .cloud { display: none; }
+    .project { grid-template-columns: 52px 1fr; }
+    .project canvas { width: 48px; }
+    .project .go { grid-column: 2; justify-self: start; margin-top: 8px; }
+  }
+</style>
+</head>
+<body>
+<header class="meadow" aria-label="The projects">
+  <div class="crew">
+    <a class="mascot" href="/gossip" data-id="gossip" style="--c:#7cc4ff"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>gossip</span></a>
+    <a class="mascot" href="/tot" data-id="tot" style="--c:#8fd16a"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>tree of thought</span></a>
+    <a class="mascot" href="/pigeon" data-id="pigeon" style="--c:#2bc4b2"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>pigeon</span></a>
+  </div>
+  <div class="ground" aria-hidden="true"></div>
+</header>
+
+<main>
+  <h1>Tools that live in your terminal</h1>
+  <p class="lede">Chat with friends, ask a whole garden of AI models at once, and move files between your laptop and your phone. Each one is a single command, and one more command installs them all.</p>
+
+  <section class="install" aria-labelledby="install-title">
+    <h2 id="install-title">Install Project CLI Access</h2>
+    <p>It's a little menu: pick a project, press Enter, and it installs and opens it.</p>
+    <div class="os" role="group" aria-label="Your computer">
+      <button type="button" data-os="sh" aria-pressed="true">Mac or Linux</button>
+      <button type="button" data-os="ps1" aria-pressed="false">Windows</button>
+    </div>
+    <div class="cmd"><code id="cmd">curl -fsSL {{origin}}/pca/install.sh | sh</code><button type="button" id="copy">Copy</button></div>
+    <p class="then">Paste it into <span id="where">Terminal</span>, then open a new window and type <kbd>pca</kbd>.</p>
+  </section>
+
+  <ul class="projects">
+    <li class="project">
+      <canvas data-id="gossip" aria-hidden="true"></canvas>
+      <div><h3>gossip <span>v{{gossip_version}}</span></h3><p>End-to-end encrypted chat in the terminal: people, servers, calls and files. Pebble keeps watch.</p></div>
+      <a class="go" href="/gossip">Open gossip</a>
+    </li>
+    <li class="project">
+      <canvas data-id="tot" aria-hidden="true"></canvas>
+      <div><h3>tree of thought <span>v{{tot_version}}</span></h3><p>Many AI models in one garden. Ask one or ask them all, and every answer becomes a branch you can go back to.</p></div>
+      <a class="go" href="/tot">Open Tree of Thought</a>
+    </li>
+    <li class="project">
+      <canvas data-id="pigeon" aria-hidden="true"></canvas>
+      <div><h3>pigeon <span>v{{pigeon_version}}</span></h3><p>Send files between your computer and your phone, locked before they leave. Coo carries them, from the terminal or the browser.</p></div>
+      <a class="go" href="/pigeon">Open pigeon</a>
+    </li>
+    <li class="project">
+      <canvas data-id="pca" aria-hidden="true"></canvas>
+      <div><h3>pca <span>v{{pca_version}}</span></h3><p>Project CLI Access: one menu that installs, opens and updates everything above.</p></div>
+      <a class="go" href="/pca">Open pca</a>
+    </li>
+  </ul>
+</main>
+
+<footer>
+  <p>Source code: <a href="https://github.com/dpatel7-dev/gossip">gossip</a>, <a href="https://github.com/dpatel7-dev/Terminal-Of-Though-ToT-">Tree of Thought</a>, <a href="https://github.com/dpatel7-dev/pigeon">pigeon</a>, <a href="https://github.com/dpatel7-dev/Project-CLI-Access">Project CLI Access</a> and <a href="https://github.com/dpatel7-dev/project-site">this website</a>.</p>
+</footer>
+
+<script>
+{{art}}
+(function () {
+  const ORIGIN = location.origin;
+  const big = () => (innerWidth < 620 ? 4 : 9);
+
+  // the pca picker's own little emblem: three coloured blocks, like its three cards
+  const PCA = { grid: ['GGG.TTT.PPP', 'GGG.TTT.PPP', 'GGG.TTT.PPP', '...........', 'KKKKKKKKKKK', 'K.........K', 'K.>.......K', 'K.........K', 'KKKKKKKKKKK'],
+    ink: { G: '#7cc4ff', T: '#8fd16a', P: '#2bc4b2', K: '#1a1d29', '>': '#1a1d29' } };
+  const art = (id) => (id === 'pca' ? PCA : ART.mascots[id]);
+
+  function drawCrew() {
+    document.querySelectorAll('.crew .mascot').forEach((a) => {
+      const m = art(a.dataset.id);
+      const c = a.querySelector('canvas');
+      drawPixels(c, trimGrid(m.grid), m.ink, big());
+      c.style.setProperty('--w', c.width + 'px');
+    });
+  }
+  document.querySelectorAll('.project canvas').forEach((c) => {
+    const m = art(c.dataset.id);
+    drawPixels(c, trimGrid(m.grid), m.ink, 4);
+  });
+  drawCrew();
+  addEventListener('resize', drawCrew);
+
+  // a strip of pixel grass and soil, drawn once and tiled
+  const tile = document.createElement('canvas');
+  const T = ['..g.....G.......g...G.....g..G..', 'gGgG.gGGgGg.GgGGgGgG.gGgGGgGgGgG', 'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG', 'gGGgGGGGgGGGgGGGGgGGGgGGGGgGGgGG'];
+  for (let i = 0; i < 20; i++) T.push([...Array(32)].map((_, x) => ((x * 7 + i * 13) % 23 === 0 ? 's' : 'S')).join(''));
+  drawPixels(tile, T, { G: '#74a85a', g: '#5a8a45', S: '#8a6446', s: '#6c4c34' }, 3);
+  document.querySelector('.ground').style.backgroundImage = 'url(' + tile.toDataURL() + ')';
+
+  // two slow pixel clouds
+  const CLOUD = ['....WWWW......', '..WWWWWWWW.WW.', '.WWWWWWWWWWWWW', 'WWWWWWWWWWWWWW', '.wwwwwwwwwwww.'];
+  [[6, 18, 5], [78, 34, 4]].forEach(([left, top, s]) => {
+    const c = drawPixels(document.createElement('canvas'), CLOUD, { W: '#eef3fb', w: '#dde6f4' }, s);
+    c.className = 'cloud'; c.style.left = left + '%'; c.style.top = top + 'px'; c.setAttribute('aria-hidden', 'true');
+    document.querySelector('.meadow').prepend(c);
+  });
+
+  // install command for this computer
+  const cmds = { sh: 'curl -fsSL ' + ORIGIN + '/pca/install.sh | sh', ps1: 'irm ' + ORIGIN + '/pca/install.ps1 | iex' };
+  const where = { sh: 'Terminal', ps1: 'PowerShell' };
+  function pick(os) {
+    document.getElementById('cmd').textContent = cmds[os];
+    document.getElementById('where').textContent = where[os];
+    document.querySelectorAll('.os button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.os === os)));
+  }
+  document.querySelectorAll('.os button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.os)));
+  pick(/Win/.test(navigator.platform || navigator.userAgent) ? 'ps1' : 'sh');
+  const copy = document.getElementById('copy');
+  copy.addEventListener('click', async () => {
+    const text = document.getElementById('cmd').textContent;
+    try { await navigator.clipboard.writeText(text); } catch (e) {
+      const r = document.createRange(); r.selectNodeContents(document.getElementById('cmd'));
+      getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy');
+    }
+    copy.textContent = 'Copied';
+    setTimeout(() => { copy.textContent = 'Copy'; }, 1600);
+  });
+})();
+</script>
+</body>
+</html>

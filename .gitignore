@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.DS_Store
+# data never lives in here, but just in case you test with --data .
+gossip-data/
+pigeon-data/

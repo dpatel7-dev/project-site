@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pca - Project CLI Access</title>
+<meta name="description" content="One command for every project: pick gossip, Tree of Thought or pigeon, press Enter, and pca installs and opens it.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #ffffff;
+    --ink: #000000;
+    --grey: #666666;
+    --rule: #e3e3e3;
+    --term: #121417;
+    --term-ink: #e4e6ea;
+    --term-dim: #8a8f99;
+    --term-faint: #4c5160;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--paper); color: var(--ink); font: 400 1rem/1.65 var(--mono); }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 22px; }
+
+  header.wrap { padding-top: 64px; padding-bottom: 36px; }
+  h1 { font: 700 clamp(3.5rem, 13vw, 8rem)/.9 var(--mono); letter-spacing: -.06em; margin: 0 0 18px; }
+  .lede { font-size: 1.15rem; max-width: 34em; margin: 0; }
+  .lede b { font-weight: 700; }
+
+  /* a live copy of the picker */
+  .term { background: var(--term); color: var(--term-ink); border-radius: 12px; padding: 30px clamp(14px, 3vw, 34px) 24px; font-size: .92rem; line-height: 1.45; user-select: none; }
+  .term:focus-visible { outline: 3px solid var(--ink); outline-offset: 4px; }
+  .term .top { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  .term .top b { font-weight: 700; }
+  .term .top span { color: var(--term-dim); }
+  .term .top i { font-style: normal; color: var(--term-faint); }
+  .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .card { border: 1px solid var(--term-faint); border-radius: 8px; padding: 14px 14px 12px; cursor: pointer; text-align: left; font: inherit; color: inherit; background: none; display: flex; flex-direction: column; }
+  .card canvas { image-rendering: pixelated; width: 100%; max-width: 156px; height: auto; align-self: center; margin-bottom: 12px; }
+  .card b { font-weight: 700; }
+  .card .about { color: var(--term-dim); }
+  .card .more { color: var(--term-faint); }
+  .card .st { color: var(--term-faint); }
+  .card .st .ok { color: var(--c); }
+  .card[aria-pressed=true] { border-color: var(--c); }
+  .card[aria-pressed=true] b { color: var(--c); }
+  .term .hint { margin-top: 18px; color: var(--term-dim); min-height: 1.45em; }
+  .term .from { margin-top: 12px; color: var(--term-faint); }
+  .try { color: var(--grey); font-size: .88rem; margin: 10px 0 0; }
+
+  section.wrap { padding-top: 64px; }
+  h2 { font: 700 1.35rem/1.2 var(--mono); margin: 0 0 16px; letter-spacing: -.02em; }
+  .os { display: flex; gap: 0; margin-bottom: -1px; }
+  .os button { font: 500 .9rem/1 var(--mono); background: none; color: var(--grey); border: 1px solid transparent; border-bottom: 0; padding: 10px 14px; cursor: pointer; border-radius: 6px 6px 0 0; }
+  .os button[aria-pressed=true] { color: var(--ink); border-color: var(--ink); background: var(--paper); position: relative; z-index: 1; }
+  .cmd { display: flex; align-items: stretch; border: 1px solid var(--ink); }
+  .cmd code { flex: 1; font: 500 1rem/1.5 var(--mono); padding: 14px 16px; white-space: nowrap; overflow-x: auto; }
+  .cmd button { font: 700 .95rem/1 var(--mono); background: var(--ink); color: var(--paper); border: 0; padding: 0 20px; cursor: pointer; }
+  .note { color: var(--grey); margin: 12px 0 0; max-width: 46em; }
+
+  table { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  td { padding: 11px 0; border-top: 1px solid var(--rule); vertical-align: top; }
+  td:first-child { white-space: nowrap; padding-right: 28px; font-weight: 500; width: 1%; }
+  td:last-child { color: var(--grey); }
+  tr:last-child td { border-bottom: 1px solid var(--rule); }
+
+  footer.wrap { padding-top: 64px; padding-bottom: 56px; color: var(--grey); font-size: .88rem; }
+
+  @media (max-width: 700px) {
+    .cards { grid-template-columns: 1fr; gap: 8px; }
+    .card { display: grid; grid-template-columns: 64px 1fr; column-gap: 14px; align-items: center; }
+    .card canvas { grid-row: 1 / span 4; margin: 0; width: 64px; }
+    .card .more, .term .top span { display: none; }
+    td:first-child { white-space: normal; width: 40%; padding-right: 14px; }
+  }
+</style>
+</head>
+<body>
+<header class="wrap">
+  <h1>pca</h1>
+  <p class="lede"><b>Project CLI Access</b> is one command for every project. Type <b>pca</b>, pick one with the arrow keys, press Enter. If it isn't installed yet, pca installs it first.</p>
+</header>
+
+<div class="wrap">
+  <div class="term" id="term" tabindex="0" aria-label="A copy of the pca picker. Use the arrow keys or click a card.">
+    <div class="top"><div><b>project cli access</b> <span>&nbsp;·&nbsp; one command, every project</span></div><i>v{{pca_version}}</i></div>
+    <div class="cards">
+      <button type="button" class="card" data-id="gossip" data-cmd="gossip" data-v="{{gossip_version}}" style="--c:#7cc4ff" aria-pressed="true"><canvas aria-hidden="true"></canvas><b>gossip</b><span class="about">end-to-end encrypted chat</span><span class="more">people, servers, calls, files</span><span class="st"></span></button>
+      <button type="button" class="card" data-id="tot" data-cmd="tot" data-v="" style="--c:#8fd16a" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>tree of thought</b><span class="about">many AI models, one garden</span><span class="more">every answer is a branch</span><span class="st"></span></button>
+      <button type="button" class="card" data-id="pigeon" data-cmd="pigeon" data-v="{{pigeon_version}}" style="--c:#2bc4b2" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>pigeon</b><span class="about">files between your devices</span><span class="more">locked on the way, phone too</span><span class="st"></span></button>
+    </div>
+    <div class="hint" id="hint" aria-live="polite"></div>
+    <div class="from">from {{host}}</div>
+  </div>
+  <p class="try">This is a copy of the real thing. Click a card, or click here and use the arrow keys.</p>
+</div>
+
+<section class="wrap" aria-labelledby="install-title">
+  <h2 id="install-title">Install</h2>
+  <div class="os" role="group" aria-label="Your computer">
+    <button type="button" data-os="sh" aria-pressed="true">Mac or Linux</button>
+    <button type="button" data-os="ps1" aria-pressed="false">Windows</button>
+  </div>
+  <div class="cmd"><code id="cmd">curl -fsSL {{origin}}/pca/install.sh | sh</code><button type="button" id="copy">Copy</button></div>
+  <p class="note">Paste it into <span id="where">Terminal</span>, open a new window, and type <b>pca</b>. You don't need anything installed first: if Node.js is missing, the installer brings a private copy that only pca uses.</p>
+</section>
+
+<section class="wrap" aria-labelledby="commands-title">
+  <h2 id="commands-title">Commands</h2>
+  <table>
+    <tr><td>pca</td><td>The picker. Enter opens a project, u updates it, U updates everything, x then x removes it.</td></tr>
+    <tr><td>pca tot</td><td>Straight into Tree of Thought. Also pca gossip and pca pigeon.</td></tr>
+    <tr><td>pca pigeon send pic.png</td><td>Anything after the project's name goes to the project.</td></tr>
+    <tr><td>pca list</td><td>What's installed, and which version.</td></tr>
+    <tr><td>pca install all</td><td>Install every project.</td></tr>
+    <tr><td>pca update</td><td>Update everything that's installed.</td></tr>
+    <tr><td>pca remove gossip</td><td>Uninstall one project.</td></tr>
+    <tr><td>pca uninstall</td><td>Remove pca itself. Your projects stay.</td></tr>
+  </table>
+  <p class="note">pca installs everything from this website, so if the site moves, the projects move with it.</p>
+</section>
+
+<footer class="wrap">
+  <p>Project CLI Access {{pca_version}}. Source code on <a href="https://github.com/dpatel7-dev/Project-CLI-Access">GitHub</a>.</p>
+</footer>
+
+<script>
+{{art}}
+(function () {
+  const ORIGIN = location.origin;
+  const cards = [...document.querySelectorAll('.card')];
+  const hint = document.getElementById('hint');
+  let sel = 0;
+  cards.forEach((c) => {
+    const m = ART.mascots[c.dataset.id];
+    drawPixels(c.querySelector('canvas'), m.grid, m.ink, 6);
+    const st = c.querySelector('.st');
+    st.innerHTML = c.dataset.v ? '<span class="ok">✓ </span>v' + c.dataset.v + ' &nbsp;·&nbsp; ' + c.dataset.cmd : 'not installed yet';
+  });
+  function show(i) {
+    sel = (i + cards.length) % cards.length;
+    cards.forEach((c, j) => c.setAttribute('aria-pressed', String(j === sel)));
+    const c = cards[sel];
+    const what = c.dataset.v ? 'enter opens ' + c.dataset.cmd : 'enter installs and opens ' + c.dataset.cmd;
+    hint.textContent = '← → choose · ' + what + ' · u update · U update all · x remove · q quit';
+  }
+  cards.forEach((c, i) => c.addEventListener('click', () => {
+    if (i === sel) {
+      hint.textContent = c.dataset.v ? 'In your terminal, ' + c.dataset.cmd + ' would open now.' : 'In your terminal, pca would install ' + c.dataset.cmd + ' and open it.';
+    } else show(i);
+  }));
+  document.getElementById('term').addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { show(sel + 1); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { show(sel - 1); e.preventDefault(); }
+    else if (/^[1-3]$/.test(e.key)) show(Number(e.key) - 1);
+  });
+  show(0);
+
+  const cmds = { sh: 'curl -fsSL ' + ORIGIN + '/pca/install.sh | sh', ps1: 'irm ' + ORIGIN + '/pca/install.ps1 | iex' };
+  const where = { sh: 'Terminal', ps1: 'PowerShell' };
+  function pick(os) {
+    document.getElementById('cmd').textContent = cmds[os];
+    document.getElementById('where').textContent = where[os];
+    document.querySelectorAll('.os button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.os === os)));
+  }
+  document.querySelectorAll('.os button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.os)));
+  pick(/Win/.test(navigator.platform || navigator.userAgent) ? 'ps1' : 'sh');
+  const copy = document.getElementById('copy');
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(document.getElementById('cmd').textContent); } catch (e) {
+      const r = document.createRange(); r.selectNodeContents(document.getElementById('cmd')); getSelection().removeAllRanges(); getSelection().addRange(r);
+    }
+    copy.textContent = 'Copied';
+    setTimeout(() => { copy.textContent = 'Copy'; }, 1600);
+  });
+})();
+</script>
+</body>
+</html>

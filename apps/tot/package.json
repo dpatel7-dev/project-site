@@ -1,0 +1,11 @@
+{
+  "name": "tree-of-thought",
+  "version": "1.0.0",
+  "description": "Many AI models in one terminal garden. Every answer is a branch.",
+  "bin": { "tot": "bin/tot.js" },
+  "scripts": { "test": "node --test", "start": "node bin/tot.js" },
+  "engines": { "node": ">=18" },
+  "license": "MIT",
+  "repository": "github:dpatel7-dev/Terminal-Of-Though-ToT-",
+  "files": ["bin", "src", "install.sh", "install.ps1", "README.md", "CHANGELOG.md"]
+}

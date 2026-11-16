@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f5f7fa">
+<title>pigeon</title>
+<link rel="icon" id="icon" href="data:,">
+<style>
+:root {
+  --bg: #f5f7fa; --paper: #ffffff; --ink: #18202c; --dim: #687284; --faint: #a6afbd; --line: #e2e6ed;
+  --teal: #0e978a; --violet: #6b4fe0; --orange: #e2701f; --ok: #12935a; --err: #cc3447;
+  --sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f131a; --paper: #161b24; --ink: #e5eaf2; --dim: #8e98aa; --faint: #545e70; --line: #252d3a; --teal: #2bc4b2; --violet: #9b82ff; --orange: #ff9a4d; --ok: #3ccf8a; --err: #ff6b7a; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--sans); -webkit-text-size-adjust: 100%; }
+body { min-height: 100vh; padding-bottom: env(safe-area-inset-bottom); }
+button, input { font: inherit; color: inherit; }
+a { color: var(--violet); }
+
+/* airmail: the striped edge of an envelope, in pigeon colours */
+.airmail { height: 6px; background: repeating-linear-gradient(-45deg, var(--teal) 0 12px, var(--paper) 12px 20px, var(--violet) 20px 32px, var(--paper) 32px 40px); }
+.wrap { max-width: 720px; margin: 0 auto; padding: 22px 18px 60px; }
+header.top { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+#coo { width: 60px; height: 48px; image-rendering: pixelated; flex: none; }
+.brand { font-weight: 750; font-size: 1.6rem; letter-spacing: -.02em; line-height: 1; }
+.brand small { display: block; font-size: .8rem; font-weight: 500; color: var(--dim); letter-spacing: 0; margin-top: 5px; }
+.who { margin-left: auto; text-align: right; font-size: .85rem; color: var(--dim); white-space: nowrap; }
+.who b { color: var(--ink); }
+.link-btn { background: none; border: 0; padding: 0; color: var(--violet); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+
+/* the envelope: where things are sent from */
+.envelope { position: relative; background: var(--paper); border-radius: 4px; padding: 26px 22px 22px; box-shadow: 0 1px 0 var(--line); border: 1px solid var(--line); overflow: hidden; }
+.envelope::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 6px; background: inherit; }
+.envelope.edge { border: 0; box-shadow: none; padding: 32px 26px 26px; background: repeating-linear-gradient(-45deg, var(--teal) 0 12px, var(--paper) 12px 20px, var(--violet) 20px 32px, var(--paper) 32px 40px); }
+.envelope.edge > .inner { background: var(--paper); margin: -26px -20px -20px; padding: 26px 22px 22px; }
+.stamp { position: absolute; top: 18px; right: 18px; width: 64px; height: 76px; border: 2px dashed var(--faint); border-radius: 3px; display: grid; place-items: center; transform: rotate(4deg); color: var(--dim); font: 600 .62rem/1.15 var(--mono); text-align: center; letter-spacing: .04em; }
+.stamp canvas { width: 40px; height: 32px; image-rendering: pixelated; display: block; margin: 0 auto 4px; }
+
+h1 { font-size: 1.35rem; margin: 0 0 4px; letter-spacing: -.01em; }
+.lede { color: var(--dim); margin: 0 0 18px; max-width: 46ch; }
+label.field { display: block; margin: 0 0 12px; }
+label.field span { display: block; font-size: .8rem; color: var(--dim); margin-bottom: 4px; }
+input[type=text], input[type=password] { width: 100%; padding: 12px 13px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg); outline: none; }
+input[type=text]:focus, input[type=password]:focus { border-color: var(--teal); }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.btn { appearance: none; border: 0; border-radius: 8px; padding: 12px 18px; font-weight: 650; cursor: pointer; background: var(--ink); color: var(--paper); }
+.btn.teal { background: var(--teal); color: #fff; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn:focus-visible, .link-btn:focus-visible, .file button:focus-visible { outline: 3px solid color-mix(in srgb, var(--teal) 45%, transparent); outline-offset: 2px; }
+.msg { min-height: 1.4em; font-size: .9rem; margin-top: 10px; }
+.msg.err { color: var(--err); }
+.msg.ok { color: var(--ok); }
+
+/* sending */
+.drop { display: grid; place-items: center; text-align: center; gap: 6px; border: 2px dashed var(--line); border-radius: 10px; padding: 28px 16px; cursor: pointer; transition: border-color .15s, background .15s; }
+.drop.over { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 8%, transparent); }
+.drop strong { font-size: 1.1rem; }
+.drop span { color: var(--dim); font-size: .9rem; }
+.space { margin-top: 14px; font: .8rem var(--mono); color: var(--dim); display: flex; align-items: center; gap: 10px; }
+.meter { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--teal); width: 0; }
+
+/* the list */
+.files { list-style: none; margin: 26px 0 0; padding: 0; }
+.files h2 { font-size: .8rem; text-transform: none; letter-spacing: 0; color: var(--dim); font-weight: 600; margin: 0 0 8px; }
+.file { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 4px; border-top: 1px solid var(--line); }
+.file:first-of-type { border-top: 0; }
+.tag { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; font: 700 .66rem var(--mono); color: #fff; background: var(--dim); overflow: hidden; }
+.tag img { width: 100%; height: 100%; object-fit: cover; }
+.tag.img { background: var(--violet); } .tag.dir { background: var(--orange); } .tag.doc { background: var(--teal); }
+.name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub { font-size: .82rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acts { display: flex; gap: 4px; }
+.acts button { border: 0; background: none; padding: 8px 9px; border-radius: 6px; cursor: pointer; color: var(--dim); font-weight: 600; font-size: .85rem; }
+.acts button:hover { background: var(--bg); color: var(--ink); }
+.acts button.del:hover { color: var(--err); }
+.bar { grid-column: 2 / -1; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--violet); transition: width .2s; }
+.empty { color: var(--dim); text-align: center; padding: 26px 0 8px; }
+
+/* share sheet */
+dialog { border: 0; border-radius: 12px; padding: 0; max-width: min(420px, 94vw); width: 100%; background: var(--paper); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+dialog::backdrop { background: rgba(10, 14, 20, .45); }
+.sheet { padding: 22px; }
+.sheet h3 { margin: 0 0 4px; font-size: 1.1rem; overflow-wrap: anywhere; }
+.qr { display: block; margin: 14px auto; width: 220px; height: 220px; image-rendering: pixelated; background: #fff; border-radius: 6px; }
+.url { font: .78rem/1.35 var(--mono); background: var(--bg); border-radius: 6px; padding: 10px; overflow-wrap: anywhere; user-select: all; }
+.preview { display: block; max-width: 100%; max-height: 60vh; margin: 12px auto 0; border-radius: 6px; }
+
+.foot { margin-top: 40px; font-size: .82rem; color: var(--dim); }
+.foot code { font-family: var(--mono); font-size: .78rem; background: var(--paper); border: 1px solid var(--line); padding: 2px 6px; border-radius: 4px; overflow-wrap: anywhere; }
+.foot details { margin-top: 8px; }
+.foot summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+[hidden] { display: none !important; }
+@media (max-width: 520px) { .stamp { display: none; } .acts button { padding: 8px 6px; } .who { font-size: .78rem; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="airmail" aria-hidden="true"></div>
+<div class="wrap">
+  <header class="top">
+    <canvas id="coo" width="20" height="16" aria-hidden="true"></canvas>
+    <div class="brand">pigeon<small>files between your devices, locked on the way</small></div>
+    <div class="who" id="who" hidden><b id="whoName"></b><br><button class="link-btn" id="logout">log out</button></div>
+  </header>
+
+  <!-- someone sent you a link -->
+  <section id="shareView" hidden>
+    <div class="envelope edge"><div class="inner">
+      <div class="stamp" aria-hidden="true"><div><canvas class="mini" width="20" height="16"></canvas>AIR<br>MAIL</div></div>
+      <h1 id="shName">A file for you</h1>
+      <p class="lede" id="shInfo">Unlocking…</p>
+      <img id="shPreview" class="preview" alt="" hidden>
+      <div class="row" style="margin-top:16px"><button class="btn teal" id="shGet" disabled>Download</button></div>
+      <div class="msg" id="shMsg"></div>
+    </div></div>
+    <p class="foot">Locked end to end: the key is in the part of the link after the #, which never reaches the website.</p>
+  </section>
+
+  <!-- log in / make a nest -->
+  <section id="loginView" hidden>
+    <div class="envelope edge"><div class="inner">
+      <div class="stamp" aria-hidden="true"><div><canvas class="mini" width="20" height="16"></canvas>AIR<br>MAIL</div></div>
+      <h1>Open your nest</h1>
+      <p class="lede">Your nest is where your files wait for your other devices. Same name and password everywhere: laptop, phone, anything.</p>
+      <form id="loginForm" autocomplete="on">
+        <label class="field"><span>Nest name</span><input type="text" id="nestName" autocomplete="username" autocapitalize="none" spellcheck="false" required pattern="[a-zA-Z0-9][a-zA-Z0-9_\-]{1,23}" maxlength="24"></label>
+        <label class="field"><span>Password</span><input type="password" id="nestPw" autocomplete="current-password" required minlength="6"></label>
+        <label class="field" id="pw2Row" hidden><span>Password again (this makes a new nest)</span><input type="password" id="nestPw2" autocomplete="new-password"></label>
+        <label class="row" style="font-size:.9rem;color:var(--dim);margin:2px 0 14px"><input type="checkbox" id="remember" checked> Remember me on this device</label>
+        <button class="btn teal" id="loginBtn" type="submit">Open</button>
+        <div class="msg" id="loginMsg" role="status"></div>
+      </form>
+    </div></div>
+  </section>
+
+  <!-- your nest -->
+  <section id="nestView" hidden>
+    <div class="envelope">
+      <input type="file" id="pick" multiple hidden>
+      <div class="drop" id="drop" role="button" tabindex="0" aria-label="Send files">
+        <strong>Send files</strong>
+        <span id="dropHint">Tap to pick photos or files. They're locked on this device before they leave it.</span>
+      </div>
+      <div class="space"><span id="spaceText">…</span><div class="meter"><i id="spaceBar"></i></div></div>
+    </div>
+    <ul class="files" id="files" aria-live="polite"></ul>
+  </section>
+
+  <div class="foot" id="foot">
+    <details><summary>Get pigeon for your laptop</summary>
+      <p>macOS / Linux:<br><code id="shCmd"></code></p>
+      <p>Windows (PowerShell):<br><code id="ps1Cmd"></code></p>
+      <p>Then: <code>pigeon send photo.jpg</code>, <code>pigeon get</code>, or just <code>pigeon</code>.</p>
+    </details>
+  </div>
+</div>
+
+<dialog id="sheet"><div class="sheet">
+  <h3 id="sheetTitle"></h3>
+  <div class="sub" id="sheetSub"></div>
+  <canvas class="qr" id="qr" width="10" height="10"></canvas>
+  <div class="url" id="sheetUrl"></div>
+  <div class="row" style="margin-top:14px"><button class="btn teal" id="sheetCopy">Copy link</button><button class="btn ghost" id="sheetClose">Done</button></div>
+</div></dialog>
+
+<dialog id="viewer"><div class="sheet">
+  <h3 id="viewerTitle"></h3>
+  <img id="viewerImg" class="preview" alt="">
+  <div class="row" style="margin-top:14px"><a class="btn teal" id="viewerSave" download>Save</a><button class="btn ghost" id="viewerClose">Close</button></div>
+</div></dialog>
+
+<script>/*PIGEON_QR*/</script>
+<script>
+(function () {
+  'use strict';
+  var C = /*PIGEON_CONFIG*/{};
+  var BASE = C.base || '';
+  var API = BASE + '/api/';
+  var CHUNK = 4 * 1024 * 1024, ITER = 310000;
+  var $ = function (id) { return document.getElementById(id); };
+  var enc = new TextEncoder(), dec = new TextDecoder();
+
+  // ── Coo, drawn from the same pixels as the terminal one ──
+  var BIRD = ['....................', '...........GGG......', '..........GGGGG.....', '..........GEKGGB....', '..........GGGGGBB...', '.........NnNGG......', '........NnNnN.......', '...GGGGGNnNnG.......', '..GGWWWWGGGGGG......', '.TGWWWWWWGGGGG......', 'TTGGWWWWWWGGGG......', 'TTTGGGGGGGGGG.......', '...TTGGGGGGG........', '.......F..F.........', '......FF.FF.........', '....................'];
+  var INK = { G: '#8f9aab', W: '#c8d0dc', N: '#22b3a2', n: '#8a5cf6', E: '#ff8a3d', K: '#151a22', B: '#4a505c', F: '#ff8a3d', T: '#56606f' };
+  function drawBird(cv, grid) {
+    var g = cv.getContext('2d');
+    g.clearRect(0, 0, cv.width, cv.height);
+    grid.forEach(function (row, y) { row.split('').forEach(function (c, x) { if (INK[c]) { g.fillStyle = INK[c]; g.fillRect(x, y, 1, 1); } }); });
+  }
+  drawBird($('coo'), BIRD);
+  document.querySelectorAll('canvas.mini').forEach(function (cv) { drawBird(cv, BIRD); });
+  (function favicon() {
+    var cv = document.createElement('canvas'); cv.width = 20; cv.height = 16; drawBird(cv, BIRD);
+    try { $('icon').href = cv.toDataURL(); } catch (e) { /* fine */ }
+  })();
+  var bob = 0;
+  setInterval(function () {
+    bob = (bob + 1) % 8;
+    drawBird($('coo'), bob === 3 ? BIRD.map(function (r, y) { return y < 7 ? '.' + r.slice(0, 19) : r; }) : BIRD);
+  }, 450);
+
+  // ── bytes ──
+  function b64(buf) { var s = '', a = new Uint8Array(buf); for (var i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); }
+  function unb64(s) { var b = atob(s), a = new Uint8Array(b.length); for (var i = 0; i < b.length; i++) a[i] = b.charCodeAt(i); return a; }
+  function b64url(buf) { return b64(buf).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+  function unb64url(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return unb64(s); }
+  function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
+  function size(n) { var u = ['B', 'KB', 'MB', 'GB']; var i = 0; while (n >= 1024 && i < 3) { n /= 1024; i++; } return (i ? n.toFixed(n < 10 ? 1 : 0) : n) + ' ' + u[i]; }
+  function ago(ts) { var s = (Date.now() - ts) / 1000; if (s < 45) return 'just now'; if (s < 3600) return Math.round(s / 60) + 'm ago'; if (s < 86400) return Math.round(s / 3600) + 'h ago'; return Math.round(s / 86400) + 'd ago'; }
+
+  // ── locking: the same steps as pigeon's src/crypto.js ──
+  var S = crypto.subtle;
+  function stretch(pw, salt) {
+    return S.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits'])
+      .then(function (k) { return S.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unb64(salt), iterations: ITER }, k, 512); })
+      .then(function (bits) { return { proof: hex(bits.slice(0, 32)), key: new Uint8Array(bits.slice(32, 64)) }; });
+  }
+  function aes(raw) { return S.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']); }
+  function seal(raw, data, aad) {
+    var iv = crypto.getRandomValues(new Uint8Array(12));
+    return aes(raw).then(function (k) { return S.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(aad) }, k, data); })
+      .then(function (ct) { var out = new Uint8Array(12 + ct.byteLength); out.set(iv); out.set(new Uint8Array(ct), 12); return out; });
+  }
+  function open(raw, box, aad) {
+    box = new Uint8Array(box);
+    return aes(raw).then(function (k) { return S.decrypt({ name: 'AES-GCM', iv: box.subarray(0, 12), additionalData: enc.encode(aad) }, k, box.subarray(12)); });
+  }
+  function openMeta(fk, m) { return open(fk, unb64(m), 'pigeon/meta').then(function (p) { return JSON.parse(dec.decode(p)); }); }
+
+  // ── talking to the site ──
+  var store = null;
+  function remembered() { try { return JSON.parse(localStorage.getItem('pigeon') || sessionStorage.getItem('pigeon') || 'null'); } catch (e) { return null; } }
+  function keep(s, forever) {
+    try { localStorage.removeItem('pigeon'); sessionStorage.removeItem('pigeon'); } catch (e) { /* private mode */ }
+    if (!s) return;
+    try { (forever ? localStorage : sessionStorage).setItem('pigeon', JSON.stringify(s)); } catch (e) { /* private mode: this tab only */ }
+  }
+  function call(what, body, opts) {
+    opts = opts || {};
+    var h = {};
+    if (store && store.token && opts.auth !== false) h.authorization = 'Bearer ' + store.token;
+    if (body !== undefined && !(body instanceof Uint8Array)) h['content-type'] = 'application/json';
+    return fetch(API + what, { method: opts.method || 'POST', headers: h, body: body === undefined ? undefined : body instanceof Uint8Array ? body : JSON.stringify(body) })
+      .catch(function () { throw new Error("Couldn't reach the site. Check your connection."); })
+      .then(function (r) {
+        if ((r.headers.get('content-type') || '').indexOf('octet-stream') >= 0 && r.ok) return r.arrayBuffer();
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (r.status === 401 && opts.auth !== false) { keep(null); store = null; show('login'); }
+          if (!r.ok) throw new Error(j.error || 'The site answered ' + r.status);
+          return j;
+        });
+      });
+  }
+
+  function show(which) {
+    $('shareView').hidden = which !== 'share';
+    $('loginView').hidden = which !== 'login';
+    $('nestView').hidden = which !== 'nest';
+    $('who').hidden = which !== 'nest';
+    if (which === 'nest') $('whoName').textContent = store.nest;
+  }
+
+  // ── a link someone sent ──
+  var share = /\/s\/([a-z2-9]{8})$/.exec(location.pathname);
+  if (share) {
+    show('share');
+    var key = location.hash.length > 30 ? unb64url(location.hash.slice(1)) : null;
+    if (!key) { $('shInfo').textContent = 'This link is missing its key (the part after the #). Ask for it again.'; }
+    else {
+      call('shared/' + share[1], undefined, { method: 'GET', auth: false }).then(function (info) {
+        return openMeta(key, info.meta).then(function (meta) {
+          $('shName').textContent = meta.name + (meta.kind === 'folder' ? ' (folder)' : '');
+          $('shInfo').textContent = size(info.size) + ' · from ' + (meta.from || 'someone') + ' · link works until ' + new Date(info.expires).toLocaleString();
+          $('shGet').disabled = false;
+          var job = null;
+          function get() { if (!job) job = download(info.chunks, meta, key, function (n) { return call('shared/' + share[1] + '/' + n, undefined, { method: 'GET', auth: false }); }, function (p) { $('shMsg').textContent = Math.round(p * 100) + '%'; }); return job; }
+          if (/^image\//.test(meta.type || '') && info.size < 25e6) get().then(function (blob) { $('shPreview').src = URL.createObjectURL(blob); $('shPreview').hidden = false; $('shMsg').textContent = ''; });
+          $('shGet').onclick = function () { get().then(function (blob) { save(blob, meta); $('shMsg').className = 'msg ok'; $('shMsg').textContent = 'Saved.'; }, fail('shMsg')); };
+        });
+      }).catch(fail('shMsg'));
+    }
+  } else {
+    store = remembered();
+    if (store && store.token) { show('nest'); refresh(); } else show('login');
+  }
+
+  function fail(where) { return function (e) { $(where).className = 'msg err'; $(where).textContent = (e && e.message) || 'Something went wrong.'; }; }
+
+  // ── logging in ──
+  var making = false;
+  $('loginForm').onsubmit = function (ev) {
+    ev.preventDefault();
+    var name = $('nestName').value.trim().toLowerCase(), pw = $('nestPw').value;
+    $('loginBtn').disabled = true;
+    $('loginMsg').className = 'msg';
+    $('loginMsg').textContent = 'Checking…';
+    var done = function () { $('loginBtn').disabled = false; };
+    call('hello', { nest: name }, { auth: false }).then(function (hi) {
+      if (hi.exists) {
+        $('loginMsg').textContent = 'Unlocking…';
+        return stretch(pw, hi.salt).then(function (k) {
+          return call('login', { nest: name, proof: k.proof, device: deviceName() }, { auth: false }).then(function (r) { enter(name, r.token, k.key); });
+        });
+      }
+      if (!hi.canMake) throw new Error('There\'s no nest called "' + name + '" here.');
+      if (!making) { making = true; $('pw2Row').hidden = false; $('nestPw2').focus(); $('loginMsg').textContent = 'No nest called "' + name + '" yet. Type the password again to make it.'; $('loginBtn').textContent = 'Make my nest'; return; }
+      if ($('nestPw2').value !== pw) throw new Error("The two passwords don't match.");
+      var salt = b64(crypto.getRandomValues(new Uint8Array(16)));
+      $('loginMsg').textContent = 'Making your nest…';
+      return stretch(pw, salt).then(function (k) {
+        return call('signup', { nest: name, salt: salt, proof: k.proof, device: deviceName() }, { auth: false }).then(function (r) { enter(name, r.token, k.key); });
+      });
+    }).then(done, function (e) { done(); fail('loginMsg')(e); });
+  };
+  function deviceName() {
+    var ua = navigator.userAgent;
+    var what = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android phone' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows PC' : 'a browser';
+    return what + ' (web)';
+  }
+  function enter(name, token, key) {
+    store = { nest: name, token: token, key: b64(key) };
+    keep(store, $('remember').checked);
+    $('nestPw').value = $('nestPw2').value = '';
+    show('nest');
+    refresh();
+  }
+  $('logout').onclick = function () { call('logout', {}).catch(function () {}); keep(null); store = null; files = []; $('files').innerHTML = ''; show('login'); };
+
+  // ── your files ──
+  var files = [], busy = {}, timer = null;
+  function myKey() { return unb64(store.key); }
+  function refresh() {
+    clearTimeout(timer);
+    if (!store) return;
+    call('list', {}).then(function (r) {
+      var mk = myKey();
+      return Promise.all(r.files.map(function (f) {
+        return open(mk, unb64(f.wrapped), 'pigeon/key').then(function (fk) {
+          fk = new Uint8Array(fk);
+          return openMeta(fk, f.meta).then(function (m) { f.fk = fk; f.m = m; return f; });
+        }).catch(function () { f.m = { name: '(locked with a different password)' }; return f; });
+      })).then(function (list) {
+        files = list;
+        thumbnails();
+        var pct = Math.min(100, (r.used / r.quota) * 100);
+        $('spaceText').textContent = size(r.used) + ' of ' + size(r.quota);
+        $('spaceBar').style.width = pct + '%';
+        render();
+      });
+    }).catch(function () { /* shown on the next try */ }).then(function () { timer = setTimeout(refresh, document.hidden ? 20000 : 5000); });
+  }
+  function kindOf(m) {
+    if (m.kind === 'folder') return ['DIR', 'dir'];
+    var t = m.type || '', ext = (m.name || '').split('.').pop().toUpperCase().slice(0, 4);
+    if (/^image\//.test(t)) return [ext || 'IMG', 'img'];
+    if (/pdf|text|json|document|csv|markdown/.test(t)) return [ext || 'DOC', 'doc'];
+    return [ext || 'FILE', ''];
+  }
+  function render() {
+    var ul = $('files');
+    var up = Object.keys(busy).filter(function (k) { return busy[k].up; }).map(function (k) { return busy[k]; });
+    if (!files.length && !up.length) { ul.innerHTML = '<li class="empty">Nothing in your nest yet. Send something from here, or from your laptop with <b>pigeon send</b>.</li>'; return; }
+    var html = up.map(function (u) { return row({ id: u.id, m: { name: u.name, from: 'this device' }, size: u.size, made: Date.now(), done: false }, u); }).join('');
+    html += '<h2 style="margin:14px 0 4px;font-size:.8rem;color:var(--dim)">' + files.length + ' in your nest</h2>';
+    html += files.map(function (f) { return row(f, busy[f.id]); }).join('');
+    ul.innerHTML = html;
+    files.forEach(function (f) { if (thumbs[f.id]) { var t = ul.querySelector('[data-thumb="' + f.id + '"]'); if (t) t.innerHTML = '<img alt="" src="' + thumbs[f.id] + '">'; } });
+  }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function row(f, job) {
+    var k = kindOf(f.m);
+    var state = !f.done ? (job && job.up ? 'sending… ' + Math.round(job.p * 100) + '%' : 'still arriving…') : size(f.size) + ' · from ' + esc(f.m.from || f.device || '?') + ' · ' + ago(f.made);
+    return '<li class="file" data-id="' + f.id + '"><div class="tag ' + k[1] + '" data-thumb="' + f.id + '">' + esc(k[0]) + '</div>' +
+      '<div style="min-width:0"><div class="name">' + esc(f.m.name) + (f.m.kind === 'folder' ? '/' : '') + '</div><div class="sub">' + state + '</div></div>' +
+      (f.done && f.fk ? '<div class="acts"><button data-act="get">Save</button><button data-act="share">Link</button><button data-act="del" class="del">Delete</button></div>' : '<div></div>') +
+      (job ? '<div class="bar"><i style="width:' + Math.round(job.p * 100) + '%"></i></div>' : '') + '</li>';
+  }
+
+  $('files').addEventListener('click', function (ev) {
+    var b = ev.target.closest('button[data-act]');
+    var li = ev.target.closest('li.file');
+    if (!li) return;
+    var f = files.filter(function (x) { return x.id === li.getAttribute('data-id'); })[0];
+    if (!f || !f.fk) return;
+    var act = b ? b.getAttribute('data-act') : (/^image\//.test(f.m.type || '') ? 'view' : null);
+    if (act === 'get' || act === 'view') {
+      if (busy[f.id]) return;
+      busy[f.id] = { p: 0 };
+      render();
+      download(f.chunks, f.m, f.fk, function (n) { return call('piece?id=' + f.id + '&n=' + n, undefined, { method: 'GET' }); }, function (p) { busy[f.id].p = p; render(); })
+        .then(function (blob) {
+          delete busy[f.id];
+          render();
+          if (act === 'view') return view(blob, f.m);
+          save(blob, f.m);
+        }, function (e) { delete busy[f.id]; render(); alert(e.message); });
+    } else if (act === 'share') {
+      call('share', { id: f.id, hours: 24 }).then(function (r) {
+        var url = location.origin + BASE + '/s/' + r.code + '#' + b64url(f.fk);
+        sheet(f.m.name, 'Anyone with this link can download it for 24 hours.', url);
+      }, function (e) { alert(e.message); });
+    } else if (act === 'del') {
+      if (b.textContent !== 'Sure?') { b.textContent = 'Sure?'; setTimeout(function () { b.textContent = 'Delete'; }, 2500); return; }
+      call('delete', { id: f.id }).then(refresh, function (e) { alert(e.message); });
+    }
+  });
+
+  // ── moving bytes ──
+  function download(chunks, meta, fk, piece, onP) {
+    var parts = [], done = 0, n = 0;
+    function next() {
+      if (n >= chunks) return Promise.resolve(new Blob(parts, { type: meta.kind === 'folder' ? 'application/gzip' : meta.type || 'application/octet-stream' }));
+      var i = n++;
+      return piece(i).then(function (box) { return open(fk, box, 'pigeon/chunk/' + i); }).then(function (plain) {
+        parts.push(plain);
+        done += plain.byteLength;
+        onP(meta.size ? done / meta.size : i / chunks);
+        return next();
+      });
+    }
+    return next().catch(function (e) { throw new Error(e && e.name === 'OperationError' ? "Couldn't unlock this file (it may have been changed)." : (e && e.message) || 'Download failed.'); });
+  }
+  function save(blob, meta) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = meta.kind === 'folder' ? meta.name + '.tar.gz' : meta.name;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+  }
+  // little previews for photos (small ones only, once each)
+  var thumbs = {}, thumbing = {};
+  function thumbnails() {
+    files.filter(function (f) { return f.fk && f.done && /^image\/(png|jpe?g|gif|webp)$/.test(f.m.type || '') && f.size < 4e6 && !thumbs[f.id] && !thumbing[f.id]; }).slice(0, 12).forEach(function (f) {
+      thumbing[f.id] = true;
+      download(f.chunks, f.m, f.fk, function (n) { return call('piece?id=' + f.id + '&n=' + n, undefined, { method: 'GET' }); }, function () {})
+        .then(function (blob) { thumbs[f.id] = URL.createObjectURL(blob); render(); }, function () {});
+    });
+  }
+  function view(blob, meta) {
+    var url = URL.createObjectURL(blob);
+    $('viewerTitle').textContent = meta.name;
+    $('viewerImg').src = url;
+    $('viewerSave').href = url;
+    $('viewerSave').download = meta.name;
+    $('viewer').showModal();
+  }
+  $('viewerClose').onclick = function () { $('viewer').close(); };
+
+  var queue = Promise.resolve();
+  function sendFiles(list) {
+    Array.prototype.forEach.call(list, function (file) {
+      var id = 'up' + Math.random().toString(36).slice(2);
+      busy[id] = { up: true, id: id, name: file.name, size: file.size, p: 0 };
+      render();
+      queue = queue.then(function () { return sendOne(file, busy[id]); }).then(function () { delete busy[id]; refresh(); }, function (e) { delete busy[id]; render(); alert(file.name + ': ' + e.message); });
+    });
+  }
+  function sendOne(file, job) {
+    var fk = crypto.getRandomValues(new Uint8Array(32));
+    var chunks = Math.max(1, Math.ceil(file.size / CHUNK));
+    var meta = { name: file.name, size: file.size, type: file.type || 'application/octet-stream', kind: 'file', from: deviceName().replace(' (web)', ''), made: file.lastModified || Date.now() };
+    return Promise.all([seal(fk, enc.encode(JSON.stringify(meta)), 'pigeon/meta'), seal(myKey(), fk, 'pigeon/key')]).then(function (x) {
+      return call('start', { size: file.size, chunks: chunks, meta: b64(x[0]), wrapped: b64(x[1]), device: deviceName() });
+    }).then(function (r) {
+      var n = 0;
+      function next() {
+        if (n >= chunks) return call('finish', { id: r.id });
+        var i = n++;
+        return file.slice(i * CHUNK, (i + 1) * CHUNK).arrayBuffer().then(function (buf) { return seal(fk, buf, 'pigeon/chunk/' + i); })
+          .then(function (box) { return call('piece?id=' + r.id + '&n=' + i, box, { method: 'PUT' }); })
+          .then(function () { job.p = Math.min(1, ((i + 1) * CHUNK) / Math.max(1, file.size)); render(); return next(); });
+      }
+      return next();
+    });
+  }
+  $('drop').onclick = function () { $('pick').click(); };
+  $('drop').onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('pick').click(); } };
+  $('pick').onchange = function () { sendFiles(this.files); this.value = ''; };
+  ['dragenter', 'dragover'].forEach(function (t) { document.addEventListener(t, function (e) { if (!store || $('nestView').hidden) return; e.preventDefault(); $('drop').classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (t) { document.addEventListener(t, function (e) { $('drop').classList.remove('over'); }); });
+  document.addEventListener('drop', function (e) { if (!store || $('nestView').hidden) return; e.preventDefault(); if (e.dataTransfer.files.length) sendFiles(e.dataTransfer.files); });
+  if (!('ontouchstart' in window)) $('dropHint').textContent = 'Drop files here, or click to pick. They\'re locked on this device before they leave it.';
+
+  // ── share sheet with a QR code to point a phone at ──
+  function sheet(title, sub, url) {
+    $('sheetTitle').textContent = title;
+    $('sheetSub').textContent = sub;
+    $('sheetUrl').textContent = url;
+    var q = window.pigeonQR.encode(url), cv = $('qr'), z = 3, n = q.size + z * 2;
+    cv.width = cv.height = n;
+    var g = cv.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, n, n);
+    g.fillStyle = '#000';
+    for (var y = 0; y < q.size; y++) for (var x = 0; x < q.size; x++) if (q.dark(x, y)) g.fillRect(x + z, y + z, 1, 1);
+    $('sheetCopy').textContent = 'Copy link';
+    $('sheetCopy').onclick = function () {
+      (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () { $('sheetCopy').textContent = 'Copied'; }, function () { $('sheetCopy').textContent = 'Select the link above'; });
+    };
+    if (navigator.share && 'ontouchstart' in window) { $('sheetCopy').textContent = 'Share'; $('sheetCopy').onclick = function () { navigator.share({ title: title, url: url }).catch(function () {}); }; }
+    $('sheet').showModal();
+  }
+  $('sheetClose').onclick = function () { $('sheet').close(); };
+
+  // install lines for the laptop
+  $('shCmd').textContent = 'curl -fsSL ' + (C.sh || location.origin + BASE + '/install.sh') + ' | sh';
+  $('ps1Cmd').textContent = 'irm ' + (C.ps1 || location.origin + BASE + '/install.ps1') + ' | iex';
+})();
+</script>
+</body>
+</html>

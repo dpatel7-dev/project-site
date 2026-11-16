@@ -1,0 +1,29 @@
+// Pixel art shared by the pages: the mascots and Tree of Thought's plants.
+// The data line is refreshed by tools/sync.py from the projects themselves.
+const ART = {"mascots":{"gossip":{"name":"Pebble","color":"#7cc4ff","grid":["..........................","...........BBBB...........",".........BBBBBBBB.........","........BBBBBBBBBB........",".......BBWWWBBWWWBB.......",".......BWWEWWWWEWWB.......",".......BWWWWOOWWWWB.......",".......BBWWWooWWWBB.......","........RRRRRRRRRR........",".......BBrRWWWWWWBB.......","......BBBRRWWWWWWBBB......",".....BBB.RWWWWWWW.BBB.....",".....BB..WWWWWWWW..BB.....",".........BWWWWWWB.........",".........BBwwwwBB.........","........OOOBBBBOOO........",".......OOOO....OOOO......."],"ink":{"B":"#567ab0","D":"#3a5480","W":"#f4f7fc","w":"#d6deeb","O":"#ffb048","o":"#e48a34","E":"#1a1e2a","R":"#ff707a","r":"#d45262"}},"tot":{"name":"Rowan","color":"#8fd16a","grid":["..........................","..........LLLL............","........LLHHLLLL..........",".......LHHLLLLLLL.........","......LLHLLLLLLLLl........",".....LLLLLLLLLLLLLl.......",".....LLLLLLLLLLLLll.......","....LLLLLLLLLLLLLLll......","....lLLLLLLLLLLLLLll......",".....lLLLLLLLLLLLll.......","......llLLTTTTLLll........","........lTTTTTTl..........",".........TETTET...........",".........TTmmTT...........",".........TTTTtT...........","........TTTttTTT..........","...GgGGTTTGGGGTTTGgG......"],"ink":{"L":"#8fd16a","l":"#618e48","H":"#b6e19e","T":"#b88a62","t":"#816145","E":"#1b1410","m":"#654c36","G":"#7ab25a","g":"#567d40"}},"pigeon":{"name":"Coo","color":"#2bc4b2","grid":["..........................","..........................","..............GGG.........",".............GGGGG........",".............GEKGGB.......",".............GGGGGBB......","............NnNGG.........","...........NnNnN..........","......GGGGGNnNnG..........",".....GGWWWWGGGGGG.........","....TGWWWWWWGGGGG.........","...TTGGWWWWWWGGGG.........","...TTTGGGGGGGGGG..........","......TTGGGGGGG...........","..........F..F............",".........FF.FF............",".........................."],"ink":{"G":"#8f9aab","W":"#c8d0dc","N":"#22b3a2","n":"#8a5cf6","E":"#ff8a3d","K":"#151a22","B":"#4a505c","F":"#ff8a3d","T":"#56606f"}}},"plants":{"maple":{"about":"maple leaf","ink":{"O":"#ee8a3c","o":"#bf5d22","s":"#7a5232"},"grid":[".O..O.","OOOOOO","OOoOOO",".OOOO.","..OO..","..s..."]},"fern":{"about":"fern","ink":{"G":"#68c07a","g":"#3e8a52"},"grid":["...G..","..GgG.",".GgGgG","GgGgG.",".GgG..","..g..."]},"tulip":{"about":"tulip","ink":{"R":"#ee5d72","r":"#b93a52","S":"#5aa354"},"grid":[".R.R.R",".RRRRR",".RRrRR","..RRR.","S..S..",".SSS.."]},"lotus":{"about":"lotus","ink":{"P":"#f4a3c8","p":"#d26a9d","W":"#5fa9c4"},"grid":["..PP..",".pPPp.","PpPPpP",".PPPP.","WWWWWW",".WWWW."]},"cactus":{"about":"cactus","ink":{"C":"#5fae74","c":"#3d7f52","F":"#f6a9c6","D":"#c58a55"},"grid":["..F...","C.CC..","CcCC.C",".CCcCC","..CC..",".DDDD."]},"mushroom":{"about":"mushroom","ink":{"M":"#e0574f","w":"#f6efe4","s":"#e6d8c2"},"grid":[".MMMM.","MwMMwM","MMMMMM","..ss..","..ss..",".ssss."]},"lavender":{"about":"lavender","ink":{"V":"#a487dd","v":"#7b5fb5","S":"#6f9a5e"},"grid":["V..V..","vV.vV.","Vv.Vv.",".S..S.",".S.S..","..S..."]},"bamboo":{"about":"bamboo","ink":{"B":"#97c95f","b":"#5f8f3a","L":"#b8e07a"},"grid":[".B..LL",".BL...","bb.B..",".B.B..",".B.bb.",".B.B.."]},"pine":{"about":"pine","ink":{"N":"#4f9a6c","n":"#2f6a4a","T":"#8a6040"},"grid":["..NN..",".NnNN.","..NN..",".NNnN.","NnNNNN","..TT.."]},"moonflower":{"about":"moonflower","ink":{"W":"#f3efff","w":"#cfc6f0","Y":"#f2d16b","S":"#6f9a5e"},"grid":[".W.W..","WwYwW.",".WwW..",".W.W..","..S...",".SS..."]},"sunflower":{"about":"sunflower","ink":{"Y":"#f6c945","y":"#d99a1e","B":"#6b4423","S":"#6f9a5e"},"grid":[".YYY..","YyByY.","YBBBY.",".YyY..","..S.S.","..SS.."]},"acorn":{"about":"acorn","ink":{"A":"#c08850","a":"#8a5a30","c":"#6b4a2e"},"grid":["...c..",".cccc.","cccccc",".AAAA.",".AaAA.","..AA.."]},"rose":{"about":"rose","ink":{"R":"#d64560","r":"#9e2a42","S":"#5aa354"},"grid":[".RRR..","RrRrR.",".RRR..","..S.S.",".SS...","..S..."]},"sprout":{"about":"sprout","ink":{"G":"#8fd16a","g":"#5c9c45","s":"#9a7350"},"grid":["......","GG..GG",".GgGg.","..g...","..g...",".ssss."]}}};
+function drawPixels(canvas, grid, ink, scale) {
+  const w = Math.max(...grid.map((r) => r.length));
+  canvas.width = w * scale;
+  canvas.height = grid.length * scale;
+  const g = canvas.getContext('2d');
+  g.clearRect(0, 0, canvas.width, canvas.height);
+  grid.forEach((row, y) => [...row].forEach((ch, x) => {
+    const c = ink[ch];
+    if (!c) return;
+    g.fillStyle = c;
+    g.fillRect(x * scale, y * scale, scale, scale);
+  }));
+  return canvas;
+}
+function trimGrid(grid) {
+  // drop empty columns on both sides so pictures centre properly
+  const filled = (x) => grid.some((r) => r[x] && r[x] !== '.' && r[x] !== ' ');
+  const w = Math.max(...grid.map((r) => r.length));
+  let a = 0, b = w - 1;
+  while (a < b && !filled(a)) a++;
+  while (b > a && !filled(b)) b--;
+  const rows = grid.map((r) => r.padEnd(w, '.').slice(a, b + 1));
+  while (rows.length && !/[^. ]/.test(rows[0])) rows.shift();
+  while (rows.length && !/[^. ]/.test(rows[rows.length - 1])) rows.pop();
+  return rows;
+}

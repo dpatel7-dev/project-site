@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tree of Thought - many AI models in one terminal garden</title>
+<meta name="description" content="A terminal chat for AI models. Ask one model or all of them at once; every answer is a branch.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..800,100,1&family=Figtree:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --soil: #0e1611;
+    --moss: #15211a;
+    --moss-2: #1c2b22;
+    --line: #2a3d30;
+    --text: #dce7d6;
+    --dim: #97ab93;
+    --leaf: #8fd16a;
+    --blossom: #f2a7c3;
+    --bark: #b88a62;
+    --sun: #f3d36b;
+    --serif: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --sans: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--soil); color: var(--text); font: 400 1.0625rem/1.65 var(--sans); }
+  a { color: var(--leaf); }
+  :focus-visible { outline: 2px solid var(--sun); outline-offset: 3px; }
+  h1, h2 { font-family: var(--serif); font-variation-settings: "SOFT" 100, "WONK" 1; font-weight: 650; letter-spacing: -.015em; }
+  h2 { font-size: clamp(1.8rem, 4vw, 2.5rem); line-height: 1.1; margin: 0 0 12px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  section { padding: 72px 0 0; }
+  section > .wrap > p.intro { color: var(--dim); max-width: 40em; margin: 0 0 32px; }
+
+  /* hero */
+  .hero > * { min-width: 0; }
+  .hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); gap: 40px; align-items: end; padding-top: 64px; }
+  h1 { font-size: clamp(2.6rem, 6.4vw, 4.8rem); line-height: 1; margin: 0 0 22px; }
+  h1 span { display: block; color: var(--leaf); }
+  .hero p { color: var(--dim); font-size: 1.18rem; max-width: 32em; margin: 0 0 28px; }
+  .rowan { margin: 0; display: flex; flex-direction: column; align-items: center; }
+  .rowan canvas { image-rendering: pixelated; width: min(100%, 340px); height: auto; }
+  .rowan figcaption { color: var(--dim); font-size: .92rem; text-align: center; margin-top: 10px; max-width: 22em; }
+
+  .get { background: var(--moss); border: 1px solid var(--line); border-radius: 14px; padding: 16px; max-width: 560px; }
+  .os { display: flex; gap: 4px; margin-bottom: 10px; }
+  .os button { font: 600 .88rem/1 var(--sans); color: var(--dim); background: none; border: 0; border-radius: 99px; padding: 8px 13px; cursor: pointer; }
+  .os button[aria-pressed=true] { background: var(--moss-2); color: var(--text); }
+  .cmd { display: flex; gap: 8px; align-items: center; background: var(--soil); border-radius: 10px; padding: 6px 6px 6px 14px; }
+  .cmd code { flex: 1; font: .92rem/1.5 var(--mono); white-space: nowrap; overflow-x: auto; padding: 6px 0; color: var(--text); }
+  .cmd button { font: 700 .88rem/1 var(--sans); background: var(--leaf); color: var(--soil); border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+  .get .then { margin: 10px 2px 0; font-size: .92rem; color: var(--dim); }
+  kbd { font: .86rem var(--mono); background: var(--moss-2); border: 1px solid var(--line); border-bottom-width: 2px; padding: 1px 6px; border-radius: 5px; color: var(--text); white-space: nowrap; }
+
+  /* the conversation tree */
+  .tree { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 64px; row-gap: 18px; align-items: center; }
+  .tree svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .tree path { fill: none; stroke: var(--line); stroke-width: 3; stroke-linecap: round; }
+  .tree path.on { stroke: var(--bark); }
+  .node { position: relative; z-index: 1; background: var(--moss); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px 13px; font-size: .97rem; line-height: 1.5; }
+  .node .who { display: flex; align-items: center; gap: 8px; font: 700 .82rem/1 var(--sans); color: var(--dim); margin-bottom: 7px; }
+  .node .who canvas { image-rendering: pixelated; width: 18px; height: 18px; }
+  .node.you { background: var(--moss-2); }
+  .node.you .who { color: var(--sun); }
+  .node.on { border-color: var(--leaf); }
+  .node.on .who { color: var(--leaf); }
+  .node .pick { margin-left: auto; font: 600 .78rem var(--mono); color: var(--dim); }
+  .n-root { grid-column: 1; grid-row: 1 / span 3; }
+  .n-a1 { grid-column: 2; grid-row: 1; }
+  .n-a2 { grid-column: 2; grid-row: 2; opacity: .78; }
+  .n-a3 { grid-column: 2; grid-row: 3; opacity: .78; }
+  .n-q2 { grid-column: 3; grid-row: 1; }
+  .n-a4 { grid-column: 3; grid-row: 2; }
+  .tree-note { color: var(--dim); font-size: .9rem; margin: 18px 0 0; }
+
+  /* the garden */
+  .plants { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .plants li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--moss); }
+  .plants canvas { image-rendering: pixelated; width: 36px; height: 36px; flex: none; }
+  .plants b { display: block; font: 600 1rem/1.2 var(--serif); font-variation-settings: "SOFT" 100; color: var(--text); text-transform: capitalize; }
+  .plants span { display: block; font-size: .84rem; line-height: 1.3; color: var(--dim); }
+
+  /* getting started */
+  .steps { list-style: none; counter-reset: step; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .steps li { counter-increment: step; border-top: 3px solid var(--bark); padding-top: 14px; color: var(--dim); }
+  .steps li::before { content: counter(step); display: block; font: 700 2.2rem/1 var(--serif); color: var(--bark); margin-bottom: 8px; }
+  .steps h3 { font: 700 1.08rem/1.3 var(--sans); color: var(--text); margin: 0 0 6px; }
+  .steps p { margin: 0 0 8px; }
+
+  .keys { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; margin: 0; }
+  .keys div { display: grid; grid-template-columns: 9.5em 1fr; gap: 14px; padding: 11px 0; border-bottom: 1px solid var(--line); align-items: baseline; }
+  .keys dt { margin: 0; }
+  .keys dd { margin: 0; color: var(--dim); }
+
+  footer.wrap { padding-top: 64px; padding-bottom: 56px; color: var(--dim); font-size: .92rem; }
+
+  @media (max-width: 820px) {
+    .hero { grid-template-columns: minmax(0, 1fr); padding-top: 40px; }
+    .rowan { order: -1; }
+    .rowan canvas { width: 200px; }
+    .tree { grid-template-columns: 1fr; column-gap: 0; }
+    .n-root, .n-a1, .n-a2, .n-a3, .n-q2, .n-a4 { grid-column: 1; grid-row: auto; }
+    .n-a1, .n-a2, .n-a3 { margin-left: 28px; }
+    .n-q2, .n-a4 { margin-left: 56px; }
+    .n-q2 { order: 1; } .n-a4 { order: 2; } .n-a2 { order: 3; } .n-a3 { order: 4; }
+    .steps { grid-template-columns: 1fr; }
+    .keys { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap hero">
+  <div>
+    <h1>Ask every model. <span>Keep every answer.</span></h1>
+    <p>Tree of Thought is a terminal chat for AI models. Plant the ones you like in your garden, ask one of them or all of them at once, and every answer grows into a branch you can come back to.</p>
+    <div class="get">
+      <div class="os" role="group" aria-label="Your computer">
+        <button type="button" data-os="sh" aria-pressed="true">Mac or Linux</button>
+        <button type="button" data-os="ps1" aria-pressed="false">Windows</button>
+      </div>
+      <div class="cmd"><code id="cmd">curl -fsSL {{origin}}/tot/install.sh | sh</code><button type="button" id="copy">Copy</button></div>
+      <p class="then">Paste it into <span id="where">Terminal</span>, then open a new window and type <kbd>tot</kbd>. Version {{tot_version}}.</p>
+    </div>
+  </div>
+  <figure class="rowan">
+    <canvas id="rowan" aria-hidden="true"></canvas>
+    <figcaption>This is Rowan. He thinks along with you, and blossoms when an answer is done.</figcaption>
+  </figure>
+</div>
+
+<section aria-labelledby="branch-title">
+  <div class="wrap">
+    <h2 id="branch-title">Every answer is a branch</h2>
+    <p class="intro"><kbd>Ctrl</kbd>+<kbd>G</kbd> sends your question to the whole garden, and <kbd>←</kbd> <kbd>→</kbd> flips between the answers. Edit a question and the old conversation stays right where it was.</p>
+    <div class="tree" id="tree">
+      <svg aria-hidden="true"></svg>
+      <div class="node you n-root" id="root"><div class="who">you</div>Explain recursion to a ten-year-old.</div>
+      <div class="node on n-a1" id="a1" data-from="root"><div class="who"><canvas data-plant="maple"></canvas>Claude<span class="pick">‹ 1 of 3 ›</span></div>Think of nesting dolls. To find the smallest one, you open a doll, and then do the very same thing to the doll inside.</div>
+      <div class="node n-a2" id="a2" data-from="root"><div class="who"><canvas data-plant="fern"></canvas>GPT</div>It's when something is defined using a smaller version of itself, like a staircase made of one step plus a smaller staircase.</div>
+      <div class="node n-a3" id="a3" data-from="root"><div class="who"><canvas data-plant="tulip"></canvas>Gemini</div>Stand between two mirrors: each reflection holds a smaller reflection, over and over.</div>
+      <div class="node you n-q2" id="q2" data-from="a1"><div class="who">you</div>Now in one sentence.</div>
+      <div class="node on n-a4" id="a4" data-from="q2"><div class="who"><canvas data-plant="maple"></canvas>Claude</div>Recursion is solving a problem by solving a smaller copy of it, until the copy is small enough to just answer.</div>
+    </div>
+    <p class="tree-note">An example of how a conversation grows. Your own garden can hold any models your keys reach.</p>
+  </div>
+</section>
+
+<section aria-labelledby="garden-title">
+  <div class="wrap">
+    <h2 id="garden-title">Every model gets a plant</h2>
+    <p class="intro">Your models line up down the left side of the screen, each with its own little pixel plant, picked by the model's name.</p>
+    <ul class="plants" id="plants"></ul>
+  </div>
+</section>
+
+<section aria-labelledby="start-title">
+  <div class="wrap">
+    <h2 id="start-title">Plant your first models</h2>
+    <p class="intro">You need a key from at least one AI service. It stays on your computer, readable only by you.</p>
+    <ol class="steps">
+      <li><h3>Install it</h3><p>Paste the command at the top of this page into your terminal. If Node.js isn't on your computer, the installer brings its own private copy.</p></li>
+      <li><h3>Get a key</h3><p>The easy one is <a href="https://openrouter.ai/keys">OpenRouter</a>: one key reaches Claude, GPT, Gemini, Grok, DeepSeek, Llama, Mistral, Qwen and hundreds more.</p><p>Free options: <a href="https://aistudio.google.com/apikey">Google AI Studio</a>, <a href="https://console.groq.com/keys">Groq</a>, or <a href="https://ollama.com/download">Ollama</a> on your own computer.</p></li>
+      <li><h3>Paste it in</h3><p>Type <kbd>tot</kbd>, press <kbd>Tab</kbd>, choose API keys, and paste. Your garden fills with the strongest recent model from each maker.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section aria-labelledby="keys-title">
+  <div class="wrap">
+    <h2 id="keys-title">Keys</h2>
+    <dl class="keys">
+      <div><dt><kbd>Enter</kbd></dt><dd>Ask. <kbd>Alt</kbd>+<kbd>Enter</kbd> for a new line.</dd></div>
+      <div><dt><kbd>Ctrl</kbd>+<kbd>G</kbd></dt><dd>Ask every model in your garden at once.</dd></div>
+      <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Flip between branches.</dd></div>
+      <div><dt><kbd>Ctrl</kbd>+<kbd>E</kbd></dt><dd>Edit your last question into a new branch.</dd></div>
+      <div><dt><kbd>Ctrl</kbd>+<kbd>R</kbd></dt><dd>Ask the current model again.</dd></div>
+      <div><dt><kbd>Ctrl</kbd>+<kbd>Y</kbd></dt><dd>Copy the last answer.</dd></div>
+      <div><dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd>Pick a model or a chat.</dd></div>
+      <div><dt><kbd>Tab</kbd></dt><dd>Models, keys, colours and chats.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<footer class="wrap">
+  <p>Tree of Thought {{tot_version}}. Source code on <a href="https://github.com/dpatel7-dev/Terminal-Of-Though-ToT-">GitHub</a>. Prefer a menu for everything? <a href="/pca">pca</a> installs this and the other projects.</p>
+</footer>
+
+<script>
+{{art}}
+(function () {
+  const ORIGIN = location.origin;
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Rowan, with blossoms opening one at a time
+  const rowan = ART.mascots.tot;
+  const grid = trimGrid(rowan.grid);
+  const canvas = document.getElementById('rowan');
+  drawPixels(canvas, grid, rowan.ink, 12);
+  const leaves = [];
+  grid.forEach((row, y) => [...row].forEach((ch, x) => { if (ch === 'L' && y < grid.length * .5) leaves.push([x, y]); }));
+  const pickN = [];
+  for (let i = 0, seed = 7; i < Math.min(9, leaves.length); i++) { seed = (seed * 31 + 17) % 997; pickN.push(leaves.splice(seed % leaves.length, 1)[0]); }
+  const g = canvas.getContext('2d');
+  pickN.forEach(([x, y], i) => setTimeout(() => {
+    g.fillStyle = i % 3 === 2 ? '#fff4f8' : '#f2a7c3';
+    g.fillRect(x * 12, y * 12, 12, 12);
+  }, still ? 0 : 500 + i * 180));
+
+  // plant emblems
+  document.querySelectorAll('canvas[data-plant]').forEach((c) => { const p = ART.plants[c.dataset.plant]; drawPixels(c, p.grid, p.ink, 3); });
+  const FAMILIES = [
+    ['maple', 'Claude'], ['fern', 'GPT'], ['tulip', 'Gemini and Gemma'], ['lotus', 'DeepSeek'], ['cactus', 'Grok'],
+    ['mushroom', 'Llama'], ['lavender', 'Mistral'], ['bamboo', 'Qwen'], ['pine', 'GLM'], ['moonflower', 'Kimi'],
+    ['sunflower', 'Nemotron'], ['rose', 'Command'], ['acorn', 'Models on your own computer'], ['sprout', 'Everyone else'],
+  ];
+  const list = document.getElementById('plants');
+  FAMILIES.forEach(([plant, who]) => {
+    const li = document.createElement('li');
+    const c = drawPixels(document.createElement('canvas'), ART.plants[plant].grid, ART.plants[plant].ink, 6);
+    c.setAttribute('aria-hidden', 'true');
+    const t = document.createElement('div');
+    t.innerHTML = '<b></b><span></span>';
+    t.querySelector('b').textContent = plant;
+    t.querySelector('span').textContent = who;
+    li.append(c, t);
+    list.append(li);
+  });
+
+  // the branches between the conversation's nodes
+  const tree = document.getElementById('tree');
+  const svg = tree.querySelector('svg');
+  function branches() {
+    const box = tree.getBoundingClientRect();
+    const paths = [];
+    tree.querySelectorAll('.node[data-from]').forEach((n) => {
+      const from = document.getElementById(n.dataset.from).getBoundingClientRect();
+      const to = n.getBoundingClientRect();
+      let d;
+      if (to.left >= from.right - 4) {
+        const x1 = from.right - box.left, y1 = from.top + from.height / 2 - box.top;
+        const x2 = to.left - box.left, y2 = to.top + to.height / 2 - box.top;
+        const mid = (x1 + x2) / 2;
+        d = `M${x1} ${y1} C${mid} ${y1} ${mid} ${y2} ${x2} ${y2}`;
+      } else {
+        const x1 = from.left - box.left + 14, y1 = from.bottom - box.top;
+        const x2 = to.left - box.left, y2 = to.top + 22 - box.top;
+        d = `M${x1} ${y1} L${x1} ${y2 - 10} Q${x1} ${y2} ${x1 + 10} ${y2} L${x2} ${y2}`;
+      }
+      const on = n.classList.contains('on') || n.id === 'q2';
+      paths.push(`<path d="${d}"${on ? ' class="on"' : ''}/>`);
+    });
+    svg.innerHTML = paths.join('');
+  }
+  branches();
+  addEventListener('resize', branches);
+  if (document.fonts) document.fonts.ready.then(branches);
+
+  // install command
+  const cmds = { sh: 'curl -fsSL ' + ORIGIN + '/tot/install.sh | sh', ps1: 'irm ' + ORIGIN + '/tot/install.ps1 | iex' };
+  const where = { sh: 'Terminal', ps1: 'PowerShell' };
+  function pick(os) {
+    document.getElementById('cmd').textContent = cmds[os];
+    document.getElementById('where').textContent = where[os];
+    document.querySelectorAll('.os button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.os === os)));
+  }
+  document.querySelectorAll('.os button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.os)));
+  pick(/Win/.test(navigator.platform || navigator.userAgent) ? 'ps1' : 'sh');
+  const copy = document.getElementById('copy');
+  copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(document.getElementById('cmd').textContent); } catch (e) { /* select it instead */
+      const r = document.createRange(); r.selectNodeContents(document.getElementById('cmd')); getSelection().removeAllRanges(); getSelection().addRange(r);
+    }
+    copy.textContent = 'Copied';
+    setTimeout(() => { copy.textContent = 'Copy'; }, 1600);
+  });
+})();
+</script>
+</body>
+</html>
