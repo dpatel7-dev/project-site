@@ -6,6 +6,6 @@
   "scripts": { "test": "node --test", "start": "node bin/tot.js" },
   "engines": { "node": ">=18" },
   "license": "MIT",
-  "repository": "github:dpatel7-dev/Terminal-Of-Though-ToT-",
+  "repository": "github:dpatel7-dev/Tree-Of-Thought",
   "files": ["bin", "src", "install.sh", "install.ps1", "README.md", "CHANGELOG.md"]
 }

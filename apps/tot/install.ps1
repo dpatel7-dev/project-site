@@ -1,6 +1,6 @@
 # Tree of Thought installer for Windows (PowerShell 5.1 or newer, Windows 10+).
 #
-#   irm https://raw.githubusercontent.com/dpatel7-dev/Terminal-Of-Though-ToT-/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/dpatel7-dev/Tree-Of-Thought/main/install.ps1 | iex
 #
 # What it does - no admin rights, nothing outside your user folder:
 #   1. downloads Tree of Thought into  %USERPROFILE%\.tot\app
@@ -15,7 +15,7 @@
   $ErrorActionPreference = 'Stop'
   $ProgressPreference = 'SilentlyContinue'   # makes downloads much faster on PowerShell 5.1
 
-  $repo     = if ($env:TOT_REPO)        { $env:TOT_REPO }        else { 'dpatel7-dev/Terminal-Of-Though-ToT-' }
+  $repo     = if ($env:TOT_REPO)        { $env:TOT_REPO }        else { 'dpatel7-dev/Tree-Of-Thought' }
   $branch   = if ($env:TOT_BRANCH)      { $env:TOT_BRANCH }      else { 'main' }
   $root     = if ($env:TOT_INSTALL_DIR) { $env:TOT_INSTALL_DIR } else { Join-Path $env:USERPROFILE '.tot' }
   $nodeDist = if ($env:TOT_NODE_DIST)   { $env:TOT_NODE_DIST }   else { 'https://nodejs.org/dist/latest-v24.x' }

@@ -7,7 +7,7 @@ projects' own repositories, cloned next to this one:
       project-site/            <- this repo
       gossip/
       pigeon/
-      Terminal-Of-Though-ToT-/  (or terminal-of-though-tot-)
+      Tree-Of-Thought/          (or tree-of-thought)
       Project-CLI-Access/       (or project-cli-access)
 
     python3 tools/sync.py            # copy what changed
@@ -30,7 +30,7 @@ PARENT = os.path.dirname(SITE)
 COPIES = {
     'gossip': (['gossip'], ['hub/gossip_hub.py', 'site/index.html', 'install.sh', 'install.ps1', 'package.json']),
     'pigeon': (['pigeon'], ['server/pigeon_server.py', 'web/index.html', 'src/qr.js', 'install.sh', 'install.ps1', 'package.json']),
-    'tot': (['Terminal-Of-Though-ToT-', 'terminal-of-though-tot-'], ['install.sh', 'install.ps1', 'package.json']),
+    'tot': (['Tree-Of-Thought', 'tree-of-thought'], ['install.sh', 'install.ps1', 'package.json']),
     'pca': (['Project-CLI-Access', 'project-cli-access'], ['install.sh', 'install.ps1', 'package.json']),
 }
 

@@ -6,7 +6,7 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 | --- | --- |
 | `/` | the front door: every project, and the one command that installs them all |
 | `/gossip` | [gossip](https://github.com/dpatel7-dev/gossip)'s page. Its chat hub keeps `/api`, `/install.sh`, `/install.ps1` and `/healthz`, so every gossip already installed keeps working |
-| `/tot` | [Tree of Thought](https://github.com/dpatel7-dev/Terminal-Of-Though-ToT-), plus `/tot/install.sh` and `/tot/install.ps1` |
+| `/tot` | [Tree of Thought](https://github.com/dpatel7-dev/Tree-Of-Thought), plus `/tot/install.sh` and `/tot/install.ps1` |
 | `/pigeon` | [pigeon](https://github.com/dpatel7-dev/pigeon)'s web app (open it on your phone), its file server and installers |
 | `/pca` | [Project CLI Access](https://github.com/dpatel7-dev/Project-CLI-Access), plus `/pca/install.sh` and `/pca/install.ps1` |
 

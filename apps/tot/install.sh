@@ -1,7 +1,7 @@
 #!/bin/sh
 # Tree of Thought installer for macOS and Linux.
 #
-#   curl -fsSL https://raw.githubusercontent.com/dpatel7-dev/Terminal-Of-Though-ToT-/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/dpatel7-dev/Tree-Of-Thought/main/install.sh | sh
 #
 # What it does - no sudo, nothing outside your home folder:
 #   1. downloads Tree of Thought into ~/.tot/app
@@ -14,7 +14,7 @@
 
 set -eu
 
-REPO="${TOT_REPO:-dpatel7-dev/Terminal-Of-Though-ToT-}"
+REPO="${TOT_REPO:-dpatel7-dev/Tree-Of-Thought}"
 BRANCH="${TOT_BRANCH:-main}"
 ROOT="${TOT_INSTALL_DIR:-$HOME/.tot}"
 BIN_DIR="${TOT_BIN_DIR:-$HOME/.local/bin}"
