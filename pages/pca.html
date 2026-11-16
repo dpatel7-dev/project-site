@@ -83,16 +83,16 @@
 <body>
 <header class="wrap">
   <h1>pca</h1>
-  <p class="lede"><b>Project CLI Access</b> is one command for every project. Type <b>pca</b>, pick one with the arrow keys, press Enter. If it isn't installed yet, pca installs it first.</p>
+  <p class="lede"><b>Project CLI Access</b> is one command for every project. Type <b>pca</b>, pick one with the arrow keys, press Enter. If it isn't installed yet, pca installs it first, and whatever is out of date, it updates by itself.</p>
 </header>
 
 <div class="wrap">
   <div class="term" id="term" tabindex="0" aria-label="A copy of the pca picker. Use the arrow keys or click a card.">
     <div class="top"><div><b>project cli access</b> <span>&nbsp;·&nbsp; one command, every project</span></div><i>v{{pca_version}}</i></div>
     <div class="cards">
-      <button type="button" class="card" data-id="gossip" data-cmd="gossip" data-v="{{gossip_version}}" style="--c:#7cc4ff" aria-pressed="true"><canvas aria-hidden="true"></canvas><b>gossip</b><span class="about">end-to-end encrypted chat</span><span class="more">people, servers, calls, files</span><span class="st"></span></button>
+      <button type="button" class="card" data-id="gossip" data-cmd="gossip" data-v="{{gossip_version}}" style="--c:#7cc4ff" aria-pressed="true"><canvas aria-hidden="true"></canvas><b>gossip</b><span class="about">end-to-end encrypted chat</span><span class="more">people, servers and calls</span><span class="st"></span></button>
       <button type="button" class="card" data-id="tot" data-cmd="tot" data-v="" style="--c:#8fd16a" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>tree of thought</b><span class="about">many AI models, one garden</span><span class="more">every answer is a branch</span><span class="st"></span></button>
-      <button type="button" class="card" data-id="pigeon" data-cmd="pigeon" data-v="{{pigeon_version}}" style="--c:#2bc4b2" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>pigeon</b><span class="about">files between your devices</span><span class="more">locked on the way, phone too</span><span class="st"></span></button>
+      <button type="button" class="card" data-id="pigeon" data-cmd="pigeon" data-v="{{pigeon_version}}" style="--c:#2bc4b2" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>pigeon</b><span class="about">your own locked drive</span><span class="more">files fly between devices</span><span class="st"></span></button>
     </div>
     <div class="hint" id="hint" aria-live="polite"></div>
     <div class="from">from {{host}}</div>
@@ -113,12 +113,13 @@
 <section class="wrap" aria-labelledby="commands-title">
   <h2 id="commands-title">Commands</h2>
   <table>
-    <tr><td>pca</td><td>The picker. Enter opens a project, u updates it, U updates everything, x then x removes it.</td></tr>
+    <tr><td>pca</td><td>The picker. Enter opens a project, u updates it, U checks for updates, x then x removes it.</td></tr>
     <tr><td>pca tot</td><td>Straight into Tree of Thought. Also pca gossip and pca pigeon.</td></tr>
     <tr><td>pca pigeon send pic.png</td><td>Anything after the project's name goes to the project.</td></tr>
     <tr><td>pca list</td><td>What's installed, and which version.</td></tr>
     <tr><td>pca install all</td><td>Install every project.</td></tr>
-    <tr><td>pca update</td><td>Update everything that's installed.</td></tr>
+    <tr><td>pca update</td><td>Check for updates now and get them all. (pca also does this by itself when it starts.)</td></tr>
+    <tr><td>pca auto daily</td><td>Also update once a day, even when pca isn't open. pca auto off stops updating by itself.</td></tr>
     <tr><td>pca remove gossip</td><td>Uninstall one project.</td></tr>
     <tr><td>pca uninstall</td><td>Remove pca itself. Your projects stay.</td></tr>
   </table>

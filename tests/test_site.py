@@ -112,6 +112,13 @@ class Site(unittest.TestCase):
         self.assertEqual(call('/pigeon/healthz')[0], 200)
         self.assertEqual(call('/pigeon/s/abcdefgh')[0], 200)  # the share page; the browser asks for the file itself
 
+    def test_versions_for_pca(self):
+        code, h, body = call('/versions.json')
+        self.assertEqual(code, 200)
+        v = json.loads(body)
+        self.assertEqual(set(v), {'gossip', 'tot', 'pigeon', 'pca'})
+        self.assertTrue(all(isinstance(x, str) and x.count('.') == 2 for x in v.values()))
+
     def test_only_get_for_our_pages(self):
         self.assertEqual(call('/tot', 'POST', b'x')[0], 405)
 

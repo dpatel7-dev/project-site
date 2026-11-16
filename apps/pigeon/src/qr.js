@@ -237,7 +237,9 @@
       for (let x = 0; x < n; x++) {
         const t = at(x, y);
         const b = y + 1 < n ? at(x, y + 1) : false;
-        if (paint) s += paint(t && b ? '█' : t ? '▀' : b ? '▄' : ' ', '#000000', '#ffffff');
+        // coloured: backgrounds and the lower-half block only, so there are no
+        // seams in terminals with line spacing (macOS Terminal)
+        if (paint) s += t === b ? paint(' ', null, t ? '#000000' : '#ffffff') : paint('▄', b ? '#000000' : '#ffffff', t ? '#000000' : '#ffffff');
         else s += t && b ? '█' : t ? '▀' : b ? '▄' : ' ';
       }
       out.push(s);

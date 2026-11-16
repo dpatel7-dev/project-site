@@ -9,6 +9,7 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 | `/tot` | [Tree of Thought](https://github.com/dpatel7-dev/Tree-Of-Thought), plus `/tot/install.sh` and `/tot/install.ps1` |
 | `/pigeon` | [pigeon](https://github.com/dpatel7-dev/pigeon)'s web app (open it on your phone), its file server and installers |
 | `/pca` | [Project CLI Access](https://github.com/dpatel7-dev/Project-CLI-Access), plus `/pca/install.sh` and `/pca/install.ps1` |
+| `/versions.json` | the newest version of each project: pca checks it to keep everything up to date |
 
 A bar across the top of every page links them together.
 
@@ -22,7 +23,9 @@ without losing anything. Don't delete those two folders unless you mean to.
 Settings go in those folders too:
 
 - `~/gossip-data/config.json`: gossip's name, signups and TURN servers for calls (see gossip's docs/HOSTING.md)
-- `~/pigeon-data/config.json`: for example `{"quota_mb": 300, "signups": "first"}`
+- `~/pigeon-data/config.json`: for example `{"quota_mb": 300, "signups": "first"}`.
+  With `"first"` (the default), the first nest made on the site is its owner, and only
+  people the owner invites (`pigeon invite`, or Invite someone in the browser) can make more.
 
 ## Put it on PythonAnywhere (step by step)
 

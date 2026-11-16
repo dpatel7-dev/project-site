@@ -1,181 +1,397 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f5f7fa">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#eaf1f8">
 <title>pigeon</title>
 <link rel="icon" id="icon" href="data:,">
 <style>
 :root {
-  --bg: #f5f7fa; --paper: #ffffff; --ink: #18202c; --dim: #687284; --faint: #a6afbd; --line: #e2e6ed;
-  --teal: #0e978a; --violet: #6b4fe0; --orange: #e2701f; --ok: #12935a; --err: #cc3447;
-  --sans: ui-sans-serif, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --bg: #e9f0f7; --ink: #162033; --dim: #5d6a80; --faint: #98a3b5;
+  --glass: rgba(255, 255, 255, .62); --glass-2: rgba(255, 255, 255, .82); --edge: rgba(255, 255, 255, .85); --line: rgba(22, 32, 51, .09);
+  --hover: rgba(22, 32, 51, .055); --sel: rgba(15, 154, 139, .14); --sel-edge: rgba(15, 154, 139, .55);
+  --teal: #0f9a8b; --teal-2: #24c2b0; --violet: #6d4fe0; --coral: #ff7a3d; --sun: #f2b33d; --rose: #e2496a; --ok: #12935a;
+  --blob-a: #7fe0d2; --blob-b: #b9a6ff; --blob-c: #ffc9a8;
+  --shadow: 0 1px 0 rgba(255, 255, 255, .7) inset, 0 12px 40px -18px rgba(22, 32, 51, .35);
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #0f131a; --paper: #161b24; --ink: #e5eaf2; --dim: #8e98aa; --faint: #545e70; --line: #252d3a; --teal: #2bc4b2; --violet: #9b82ff; --orange: #ff9a4d; --ok: #3ccf8a; --err: #ff6b7a; }
+:root[data-theme=dark] {
+  --bg: #0b1017; --ink: #e7edf6; --dim: #94a1b6; --faint: #5b6679;
+  --glass: rgba(24, 31, 43, .62); --glass-2: rgba(30, 38, 52, .9); --edge: rgba(255, 255, 255, .09); --line: rgba(255, 255, 255, .08);
+  --hover: rgba(255, 255, 255, .06); --sel: rgba(36, 194, 176, .16); --sel-edge: rgba(36, 194, 176, .6);
+  --teal: #2bc4b2; --violet: #9b82ff; --coral: #ff9a5c; --ok: #3ccf8a; --rose: #ff6b88;
+  --blob-a: #0f6e66; --blob-b: #4a3a9e; --blob-c: #7a3f2a;
+  --shadow: 0 1px 0 rgba(255, 255, 255, .06) inset, 0 16px 44px -20px rgba(0, 0, 0, .7);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--sans); -webkit-text-size-adjust: 100%; }
-body { min-height: 100vh; padding-bottom: env(safe-area-inset-bottom); }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--sans); -webkit-font-smoothing: antialiased; overflow: hidden; }
 button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
 a { color: var(--violet); }
-
-/* airmail: the striped edge of an envelope, in pigeon colours */
-.airmail { height: 6px; background: repeating-linear-gradient(-45deg, var(--teal) 0 12px, var(--paper) 12px 20px, var(--violet) 20px 32px, var(--paper) 32px 40px); }
-.wrap { max-width: 720px; margin: 0 auto; padding: 22px 18px 60px; }
-header.top { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
-#coo { width: 60px; height: 48px; image-rendering: pixelated; flex: none; }
-.brand { font-weight: 750; font-size: 1.6rem; letter-spacing: -.02em; line-height: 1; }
-.brand small { display: block; font-size: .8rem; font-weight: 500; color: var(--dim); letter-spacing: 0; margin-top: 5px; }
-.who { margin-left: auto; text-align: right; font-size: .85rem; color: var(--dim); white-space: nowrap; }
-.who b { color: var(--ink); }
-.link-btn { background: none; border: 0; padding: 0; color: var(--violet); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
-
-/* the envelope: where things are sent from */
-.envelope { position: relative; background: var(--paper); border-radius: 4px; padding: 26px 22px 22px; box-shadow: 0 1px 0 var(--line); border: 1px solid var(--line); overflow: hidden; }
-.envelope::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 6px; background: inherit; }
-.envelope.edge { border: 0; box-shadow: none; padding: 32px 26px 26px; background: repeating-linear-gradient(-45deg, var(--teal) 0 12px, var(--paper) 12px 20px, var(--violet) 20px 32px, var(--paper) 32px 40px); }
-.envelope.edge > .inner { background: var(--paper); margin: -26px -20px -20px; padding: 26px 22px 22px; }
-.stamp { position: absolute; top: 18px; right: 18px; width: 64px; height: 76px; border: 2px dashed var(--faint); border-radius: 3px; display: grid; place-items: center; transform: rotate(4deg); color: var(--dim); font: 600 .62rem/1.15 var(--mono); text-align: center; letter-spacing: .04em; }
-.stamp canvas { width: 40px; height: 32px; image-rendering: pixelated; display: block; margin: 0 auto 4px; }
-
-h1 { font-size: 1.35rem; margin: 0 0 4px; letter-spacing: -.01em; }
-.lede { color: var(--dim); margin: 0 0 18px; max-width: 46ch; }
-label.field { display: block; margin: 0 0 12px; }
-label.field span { display: block; font-size: .8rem; color: var(--dim); margin-bottom: 4px; }
-input[type=text], input[type=password] { width: 100%; padding: 12px 13px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--bg); outline: none; }
-input[type=text]:focus, input[type=password]:focus { border-color: var(--teal); }
-.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.btn { appearance: none; border: 0; border-radius: 8px; padding: 12px 18px; font-weight: 650; cursor: pointer; background: var(--ink); color: var(--paper); }
-.btn.teal { background: var(--teal); color: #fff; }
-.btn.ghost { background: transparent; color: var(--ink); border: 1.5px solid var(--line); }
-.btn:disabled { opacity: .5; cursor: default; }
-.btn:focus-visible, .link-btn:focus-visible, .file button:focus-visible { outline: 3px solid color-mix(in srgb, var(--teal) 45%, transparent); outline-offset: 2px; }
-.msg { min-height: 1.4em; font-size: .9rem; margin-top: 10px; }
-.msg.err { color: var(--err); }
-.msg.ok { color: var(--ok); }
-
-/* sending */
-.drop { display: grid; place-items: center; text-align: center; gap: 6px; border: 2px dashed var(--line); border-radius: 10px; padding: 28px 16px; cursor: pointer; transition: border-color .15s, background .15s; }
-.drop.over { border-color: var(--teal); background: color-mix(in srgb, var(--teal) 8%, transparent); }
-.drop strong { font-size: 1.1rem; }
-.drop span { color: var(--dim); font-size: .9rem; }
-.space { margin-top: 14px; font: .8rem var(--mono); color: var(--dim); display: flex; align-items: center; gap: 10px; }
-.meter { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
-.meter i { display: block; height: 100%; background: var(--teal); width: 0; }
-
-/* the list */
-.files { list-style: none; margin: 26px 0 0; padding: 0; }
-.files h2 { font-size: .8rem; text-transform: none; letter-spacing: 0; color: var(--dim); font-weight: 600; margin: 0 0 8px; }
-.file { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 4px; border-top: 1px solid var(--line); }
-.file:first-of-type { border-top: 0; }
-.tag { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; font: 700 .66rem var(--mono); color: #fff; background: var(--dim); overflow: hidden; }
-.tag img { width: 100%; height: 100%; object-fit: cover; }
-.tag.img { background: var(--violet); } .tag.dir { background: var(--orange); } .tag.doc { background: var(--teal); }
-.name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sub { font-size: .82rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.acts { display: flex; gap: 4px; }
-.acts button { border: 0; background: none; padding: 8px 9px; border-radius: 6px; cursor: pointer; color: var(--dim); font-weight: 600; font-size: .85rem; }
-.acts button:hover { background: var(--bg); color: var(--ink); }
-.acts button.del:hover { color: var(--err); }
-.bar { grid-column: 2 / -1; height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
-.bar i { display: block; height: 100%; width: 0; background: var(--violet); transition: width .2s; }
-.empty { color: var(--dim); text-align: center; padding: 26px 0 8px; }
-
-/* share sheet */
-dialog { border: 0; border-radius: 12px; padding: 0; max-width: min(420px, 94vw); width: 100%; background: var(--paper); color: var(--ink); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
-dialog::backdrop { background: rgba(10, 14, 20, .45); }
-.sheet { padding: 22px; }
-.sheet h3 { margin: 0 0 4px; font-size: 1.1rem; overflow-wrap: anywhere; }
-.qr { display: block; margin: 14px auto; width: 220px; height: 220px; image-rendering: pixelated; background: #fff; border-radius: 6px; }
-.url { font: .78rem/1.35 var(--mono); background: var(--bg); border-radius: 6px; padding: 10px; overflow-wrap: anywhere; user-select: all; }
-.preview { display: block; max-width: 100%; max-height: 60vh; margin: 12px auto 0; border-radius: 6px; }
-
-.foot { margin-top: 40px; font-size: .82rem; color: var(--dim); }
-.foot code { font-family: var(--mono); font-size: .78rem; background: var(--paper); border: 1px solid var(--line); padding: 2px 6px; border-radius: 4px; overflow-wrap: anywhere; }
-.foot details { margin-top: 8px; }
-.foot summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 [hidden] { display: none !important; }
-@media (max-width: 520px) { .stamp { display: none; } .acts button { padding: 8px 6px; } .who { font-size: .78rem; } }
-@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+svg.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* the sky behind the glass: three slow colour clouds */
+.sky { position: fixed; inset: 0; z-index: -1; overflow: hidden; }
+.sky i { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .55; }
+.sky i:nth-child(1) { width: 46vw; height: 46vw; left: -10vw; top: -14vw; background: var(--blob-a); }
+.sky i:nth-child(2) { width: 40vw; height: 40vw; right: -8vw; top: 18vh; background: var(--blob-b); }
+.sky i:nth-child(3) { width: 34vw; height: 34vw; left: 30vw; bottom: -16vw; background: var(--blob-c); opacity: .4; }
+.glass { background: var(--glass); -webkit-backdrop-filter: blur(26px) saturate(1.7); backdrop-filter: blur(26px) saturate(1.7); border: 1px solid var(--edge); box-shadow: var(--shadow); }
+
+/* ── buttons ── */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 11px; padding: 10px 16px; font-weight: 600; background: var(--hover); color: var(--ink); text-decoration: none; }
+.btn:hover { background: var(--line); }
+.btn.primary { background: linear-gradient(135deg, var(--teal), #0b8577); color: #fff; box-shadow: 0 8px 20px -10px var(--teal); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.violet { background: linear-gradient(135deg, var(--violet), #5639c9); color: #fff; }
+.btn.danger { color: var(--rose); }
+.btn:disabled { opacity: .55; cursor: default; }
+.icon-btn { display: inline-grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 10px; background: none; color: var(--dim); }
+.icon-btn:hover { background: var(--hover); color: var(--ink); }
+.icon-btn[aria-pressed=true] { background: var(--hover); color: var(--ink); }
+
+/* ── login + share ── */
+.center { display: grid; place-items: center; padding: 28px 16px; overflow: auto; height: calc(100% - var(--site-nav, 0px)); }
+.card { width: min(440px, 100%); border-radius: 24px; padding: 30px 28px 24px; position: relative; overflow: hidden; }
+.card::before { content: ""; position: absolute; inset: 0 0 auto; height: 6px; background: repeating-linear-gradient(-45deg, var(--teal) 0 10px, transparent 10px 16px, var(--violet) 16px 26px, transparent 26px 32px); opacity: .85; }
+.hello { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.hello canvas { width: 60px; height: 48px; image-rendering: pixelated; }
+.hello b { font-size: 1.6rem; letter-spacing: -.02em; display: block; line-height: 1.1; }
+.hello span { color: var(--dim); font-size: .92rem; }
+.seg { display: flex; padding: 4px; border-radius: 13px; background: var(--hover); margin-bottom: 18px; }
+.seg button { flex: 1; border: 0; background: none; padding: 9px 10px; border-radius: 10px; font-weight: 600; color: var(--dim); }
+.seg button[aria-pressed=true] { background: var(--glass-2); color: var(--ink); box-shadow: 0 2px 8px -4px rgba(0, 0, 0, .25); }
+.field { display: block; margin-bottom: 14px; }
+.field span { display: block; font-size: .82rem; font-weight: 600; color: var(--dim); margin-bottom: 6px; }
+.field small { display: block; font-size: .8rem; color: var(--faint); margin-top: 5px; }
+.field input { width: 100%; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--glass-2); outline: none; }
+.field input:focus { border-color: var(--teal); box-shadow: 0 0 0 3px var(--sel); }
+.check { display: flex; align-items: center; gap: 8px; font-size: .9rem; color: var(--dim); margin: 4px 0 16px; }
+.msg { margin-top: 12px; font-size: .92rem; min-height: 1.3em; color: var(--dim); }
+.msg.err { color: var(--rose); }
+.msg.ok { color: var(--ok); }
+.small { font-size: .85rem; color: var(--dim); }
+details.get { margin-top: 18px; font-size: .88rem; color: var(--dim); }
+details.get summary { cursor: pointer; font-weight: 600; }
+code.cmd { display: block; font: .8rem/1.45 var(--mono); background: var(--hover); padding: 9px 11px; border-radius: 9px; margin: 6px 0 10px; overflow-wrap: anywhere; user-select: all; color: var(--ink); }
+.share-preview { display: block; max-width: 100%; max-height: 50vh; border-radius: 14px; margin: 14px auto 0; }
+
+/* ── the app ── */
+.app { height: calc(100% - var(--site-nav, 0px)); display: grid; grid-template-columns: 236px minmax(0, 1fr); grid-template-rows: auto 1fr; gap: 12px; padding: 12px; }
+.topbar { grid-column: 1 / -1; min-width: 0; display: flex; align-items: center; gap: 14px; padding: 8px 10px 8px 14px; border-radius: 18px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; letter-spacing: -.01em; width: 210px; flex: none; }
+.brand canvas { width: 40px; height: 32px; image-rendering: pixelated; }
+.search { flex: 1; min-width: 0; max-width: 640px; display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 42px; border-radius: 13px; background: var(--hover); color: var(--dim); }
+.search input { flex: 1; border: 0; background: none; outline: none; height: 100%; color: var(--ink); min-width: 0; }
+.search:focus-within { background: var(--glass-2); box-shadow: 0 0 0 2px var(--sel-edge); }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+.me { display: flex; align-items: center; gap: 9px; padding: 5px 10px 5px 5px; border-radius: 12px; border: 0; background: none; }
+.me:hover { background: var(--hover); }
+.avatar { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; font-weight: 700; color: #fff; background: linear-gradient(135deg, var(--violet), var(--teal)); }
+
+.side { border-radius: 20px; padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; min-height: 0; }
+.new { display: flex; align-items: center; gap: 10px; padding: 13px 18px; margin: 0 4px 12px; border-radius: 15px; border: 0; font-weight: 700; color: #fff; background: linear-gradient(135deg, var(--teal), var(--violet)); box-shadow: 0 10px 24px -12px var(--violet); width: max-content; }
+.new:hover { filter: brightness(1.07); }
+.nav { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-radius: 12px; border: 0; background: none; color: var(--dim); font-weight: 550; text-align: left; width: 100%; }
+.nav:hover { background: var(--hover); color: var(--ink); }
+.nav[aria-current=page] { background: var(--sel); color: var(--ink); }
+.nav[aria-current=page] svg { color: var(--teal); }
+.nav .count { margin-left: auto; font-size: .75rem; font-weight: 700; color: #fff; background: var(--coral); border-radius: 99px; padding: 1px 7px; }
+.nav.drop-target { box-shadow: inset 0 0 0 2px var(--teal); }
+.space { margin-top: auto; padding: 14px 12px 4px; font-size: .82rem; color: var(--dim); }
+.meter { height: 6px; border-radius: 99px; background: var(--hover); overflow: hidden; margin-top: 8px; }
+.meter i { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--teal), var(--violet), var(--coral)); background-size: 300% 100%; }
+
+.main { border-radius: 20px; display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 16px 10px 20px; min-height: 62px; flex-wrap: wrap; }
+.crumbs { display: flex; align-items: center; gap: 2px; font-size: 1.25rem; font-weight: 650; letter-spacing: -.01em; min-width: 0; flex: 1; overflow: hidden; }
+.crumbs button { border: 0; background: none; padding: 4px 8px; border-radius: 9px; white-space: nowrap; color: var(--dim); font-weight: 650; }
+.crumbs button:last-child { color: var(--ink); }
+.crumbs button:hover { background: var(--hover); color: var(--ink); }
+.crumbs button.drop-target { box-shadow: inset 0 0 0 2px var(--teal); }
+.crumbs .sep { color: var(--faint); }
+.selbar { display: flex; align-items: center; gap: 4px; padding: 4px 6px 4px 12px; border-radius: 13px; background: var(--sel); font-size: .9rem; font-weight: 600; }
+.view-tools { display: flex; gap: 2px; }
+.sortsel { border: 0; background: var(--hover); border-radius: 10px; padding: 8px 10px; color: var(--dim); font-weight: 600; font-size: .85rem; }
+
+.content { flex: 1; overflow: auto; padding: 4px 20px 90px; position: relative; }
+.content.dragging::after { content: "Drop to upload here"; position: absolute; inset: 8px 12px; border: 2px dashed var(--teal); border-radius: 18px; display: grid; place-items: center; font-weight: 700; color: var(--teal); background: var(--sel); pointer-events: none; }
+.label { font-size: .8rem; font-weight: 700; color: var(--dim); margin: 14px 2px 10px; display: flex; align-items: center; gap: 8px; }
+.inbox { margin: 6px 0 4px; padding: 14px 16px; border-radius: 16px; background: linear-gradient(120deg, rgba(255, 122, 61, .14), rgba(109, 79, 224, .12)); border: 1px solid var(--line); }
+.inbox h3 { margin: 0 0 8px; font-size: .95rem; display: flex; align-items: center; gap: 8px; }
+.inbox .row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: .92rem; }
+.inbox .row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* folders: little airmail envelopes */
+.folders { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.folder { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--glass-2); text-align: left; position: relative; overflow: hidden; user-select: none; }
+.folder::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: repeating-linear-gradient(-45deg, var(--teal) 0 6px, transparent 6px 9px, var(--violet) 9px 15px, transparent 15px 18px); }
+.folder svg { color: var(--teal); }
+.folder .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.folder:hover { background: var(--glass); border-color: var(--sel-edge); }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+.tile { border-radius: 16px; border: 1px solid var(--line); background: var(--glass-2); overflow: hidden; text-align: left; padding: 0; display: flex; flex-direction: column; position: relative; user-select: none; }
+.tile:hover { border-color: var(--sel-edge); }
+.thumb { aspect-ratio: 4 / 3; display: grid; place-items: center; background: var(--hover); position: relative; overflow: hidden; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.stamp { width: 58px; height: 68px; border-radius: 6px; display: grid; place-items: center; font: 700 .78rem var(--mono); color: #fff; letter-spacing: .02em; position: relative; box-shadow: 0 6px 14px -8px rgba(0, 0, 0, .5); }
+.stamp::after { content: ""; position: absolute; inset: 3px; border: 1.5px dashed rgba(255, 255, 255, .55); border-radius: 4px; }
+.k-img { background: linear-gradient(140deg, #8a5cf6, #6d4fe0); }
+.k-vid { background: linear-gradient(140deg, #ff7a3d, #e2496a); }
+.k-aud { background: linear-gradient(140deg, #f2b33d, #ff7a3d); }
+.k-doc { background: linear-gradient(140deg, #24c2b0, #0f9a8b); }
+.k-code { background: linear-gradient(140deg, #3b82f6, #6d4fe0); }
+.k-zip { background: linear-gradient(140deg, #8a6a4f, #5f4836); }
+.k-file { background: linear-gradient(140deg, #8794a8, #5d6a80); }
+.meta { padding: 9px 12px 11px; min-width: 0; }
+.meta .nm, .meta .sub { display: block; }
+.meta .nm { font-weight: 600; font-size: .9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meta .sub { font-size: .78rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tick { position: absolute; top: 8px; left: 8px; width: 24px; height: 24px; border-radius: 8px; border: 2px solid rgba(255, 255, 255, .9); background: rgba(0, 0, 0, .18); display: grid; place-items: center; color: #fff; opacity: 0; transition: opacity .12s; }
+.tile:hover .tick, .tile.on .tick, .grid.picking .tick { opacity: 1; }
+.tile.on, .folder.on, .lrow.on { background: var(--sel); border-color: var(--sel-edge); }
+.tile.on .tick { background: var(--teal); border-color: var(--teal); }
+.star { position: absolute; top: 8px; right: 8px; color: var(--sun); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .35)); }
+.star svg { fill: currentColor; width: 16px; height: 16px; }
+.dropping { box-shadow: 0 0 0 2px var(--teal) inset; }
+
+/* list view */
+.list { display: flex; flex-direction: column; }
+.lhead, .lrow { display: grid; grid-template-columns: 34px minmax(0, 1fr) 150px 96px 120px 40px; align-items: center; gap: 10px; padding: 0 8px; }
+.lhead { font-size: .76rem; font-weight: 700; color: var(--dim); padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.lrow { min-height: 46px; border-radius: 11px; border: 1px solid transparent; background: none; text-align: left; user-select: none; }
+.lrow:hover { background: var(--hover); }
+.lrow .mini { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; font: 700 .52rem var(--mono); color: #fff; overflow: hidden; }
+.lrow .mini img { width: 100%; height: 100%; object-fit: cover; }
+.lrow .nm { font-weight: 550; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.lrow .nm svg { width: 14px; height: 14px; color: var(--sun); fill: currentColor; }
+.lrow .c { font-size: .85rem; color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lrow .where { font-size: .76rem; color: var(--faint); }
+
+.empty { text-align: center; padding: 64px 20px; color: var(--dim); }
+.empty canvas { width: 120px; height: 96px; image-rendering: pixelated; margin-bottom: 14px; }
+.empty b { display: block; color: var(--ink); font-size: 1.1rem; margin-bottom: 6px; }
+
+/* devices */
+.devices { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.device { padding: 16px; border-radius: 16px; border: 1px solid var(--line); background: var(--glass-2); display: flex; flex-direction: column; gap: 10px; }
+.device .top { display: flex; align-items: center; gap: 12px; }
+.device .dot { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, var(--teal), var(--violet)); flex: none; }
+.device .dot.off { background: linear-gradient(135deg, #8794a8, #5d6a80); }
+.device b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.device .sub { font-size: .8rem; color: var(--dim); }
+.badge { display: inline-block; font-size: .7rem; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--sel); color: var(--teal); vertical-align: 1px; }
+.device .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+.device .acts .btn { padding: 8px 12px; font-size: .86rem; }
+
+/* links */
+.links .lrow { grid-template-columns: 34px minmax(0, 1fr) 160px 90px auto; }
+
+/* transfers, bottom right like a mail tray */
+.transfers { position: fixed; right: 18px; bottom: 18px; width: min(380px, calc(100vw - 36px)); border-radius: 18px; overflow: hidden; z-index: 30; }
+.transfers header { display: flex; align-items: center; gap: 10px; padding: 12px 10px 10px 16px; font-weight: 700; }
+.transfers header canvas { width: 30px; height: 24px; image-rendering: pixelated; }
+.transfers header span { flex: 1; }
+.tlist { max-height: 260px; overflow: auto; padding: 0 10px 10px; }
+.tr { padding: 8px 8px; border-radius: 11px; font-size: .86rem; }
+.tr .l { display: flex; gap: 8px; align-items: center; }
+.tr .l b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.tr .l small { color: var(--dim); white-space: nowrap; }
+.tr .bar { height: 4px; border-radius: 99px; background: var(--hover); margin-top: 6px; overflow: hidden; }
+.tr .bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--teal), var(--violet)); border-radius: 99px; transition: width .2s; }
+.tr.done .bar i { background: var(--ok); }
+.tr.bad .bar i { background: var(--rose); }
+
+/* menus and dialogs */
+.menu { position: fixed; z-index: 50; min-width: 220px; padding: 6px; border-radius: 14px; background: var(--glass-2); }
+.menu button { display: flex; align-items: center; gap: 11px; width: 100%; border: 0; background: none; padding: 9px 12px; border-radius: 9px; text-align: left; font-weight: 500; }
+.menu button:hover, .menu button:focus-visible { background: var(--hover); outline: none; }
+.menu button.danger { color: var(--rose); }
+.menu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 4px; }
+.menu .head { padding: 8px 12px 6px; font-size: .8rem; color: var(--dim); }
+dialog { border: 0; padding: 0; background: none; color: inherit; max-width: calc(100vw - 24px); }
+dialog::backdrop { background: rgba(10, 14, 22, .38); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.sheet { border-radius: 22px; padding: 22px; width: min(460px, calc(100vw - 24px)); background: var(--glass-2); }
+.sheet h3 { margin: 0 0 6px; font-size: 1.15rem; overflow-wrap: anywhere; }
+.sheet .sub { color: var(--dim); font-size: .92rem; margin-bottom: 14px; }
+.sheet .acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; flex-wrap: wrap; }
+.qr { display: block; margin: 6px auto 12px; width: 220px; height: 220px; image-rendering: pixelated; border-radius: 12px; background: #fff; }
+.url { font: .78rem/1.4 var(--mono); background: var(--hover); padding: 10px; border-radius: 10px; overflow-wrap: anywhere; user-select: all; }
+.tree { max-height: 46vh; overflow: auto; margin: 4px -6px; }
+.tree button { display: flex; align-items: center; gap: 9px; width: 100%; border: 0; background: none; padding: 8px 10px; border-radius: 9px; text-align: left; }
+.tree button:hover { background: var(--hover); }
+.tree button[aria-pressed=true] { background: var(--sel); }
+.tree button svg { color: var(--teal); }
+.viewer { width: min(1100px, calc(100vw - 24px)); height: min(820px, calc(100vh - 24px)); border-radius: 22px; background: var(--glass-2); display: flex; flex-direction: column; overflow: hidden; }
+.viewer header { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 18px; border-bottom: 1px solid var(--line); }
+.viewer header b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stage { flex: 1; display: grid; place-items: center; overflow: auto; background: rgba(0, 0, 0, .04); position: relative; }
+.stage img, .stage video { max-width: 100%; max-height: 100%; }
+.stage iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+.stage pre { align-self: start; justify-self: stretch; margin: 0; padding: 18px 22px; font: .84rem/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.stage .nav-arrow { position: absolute; top: 50%; transform: translateY(-50%); }
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 60; padding: 11px 12px 11px 18px; border-radius: 14px; display: flex; align-items: center; gap: 14px; font-weight: 550; background: #172033; color: #fff; box-shadow: 0 14px 40px -14px rgba(0, 0, 0, .6); max-width: calc(100vw - 30px); }
+.toast button { border: 0; background: rgba(255, 255, 255, .12); color: #fff; font-weight: 700; padding: 6px 12px; border-radius: 9px; }
+.fab, .tabs { display: none; }
+
+@media (max-width: 860px) {
+  .app { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); padding: 8px 8px 0; gap: 8px; }
+  .search { height: 38px; padding: 0 10px; }
+  .view-tools .sortsel { display: none; }
+  .side { display: none; }
+  .brand { width: auto; }
+  .brand span { display: none; }
+  .topbar { padding: 6px 8px; gap: 8px; }
+  .me .who { display: none; }
+  .main { border-radius: 18px 18px 0 0; }
+  .content { padding: 4px 12px 120px; }
+  .toolbar { padding: 12px 12px 8px; }
+  .crumbs { font-size: 1.05rem; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 9px; }
+  .folders { grid-template-columns: 1fr 1fr; }
+  .lhead { display: none; }
+  .lrow { grid-template-columns: 30px minmax(0, 1fr) 40px; }
+  .lrow .c.hide-s { display: none; }
+  .tabs { display: flex; position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 20; border-radius: 18px; padding: 6px; justify-content: space-around; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  .tabs button { border: 0; background: none; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .68rem; font-weight: 600; color: var(--dim); padding: 6px 8px; border-radius: 11px; }
+  .tabs button[aria-current=page] { color: var(--teal); background: var(--sel); }
+  .fab { display: grid; place-items: center; position: fixed; right: 18px; bottom: 86px; z-index: 21; width: 56px; height: 56px; border-radius: 18px; border: 0; color: #fff; background: linear-gradient(135deg, var(--teal), var(--violet)); box-shadow: 0 14px 30px -12px var(--violet); }
+  .fab svg { width: 24px; height: 24px; }
+  .transfers { bottom: 150px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
-<div class="airmail" aria-hidden="true"></div>
-<div class="wrap">
-  <header class="top">
-    <canvas id="coo" width="20" height="16" aria-hidden="true"></canvas>
-    <div class="brand">pigeon<small>files between your devices, locked on the way</small></div>
-    <div class="who" id="who" hidden><b id="whoName"></b><br><button class="link-btn" id="logout">log out</button></div>
-  </header>
+<div class="sky" aria-hidden="true"><i></i><i></i><i></i></div>
 
-  <!-- someone sent you a link -->
-  <section id="shareView" hidden>
-    <div class="envelope edge"><div class="inner">
-      <div class="stamp" aria-hidden="true"><div><canvas class="mini" width="20" height="16"></canvas>AIR<br>MAIL</div></div>
-      <h1 id="shName">A file for you</h1>
-      <p class="lede" id="shInfo">Unlocking…</p>
-      <img id="shPreview" class="preview" alt="" hidden>
-      <div class="row" style="margin-top:16px"><button class="btn teal" id="shGet" disabled>Download</button></div>
-      <div class="msg" id="shMsg"></div>
-    </div></div>
-    <p class="foot">Locked end to end: the key is in the part of the link after the #, which never reaches the website.</p>
-  </section>
+<!-- someone sent you a link -->
+<section id="shareView" class="center" hidden>
+  <div class="card glass">
+    <div class="hello"><canvas class="coo" width="20" height="16" aria-hidden="true"></canvas><div><b id="shName">A file for you</b><span id="shInfo">Unlocking…</span></div></div>
+    <img id="shPreview" class="share-preview" alt="" hidden>
+    <div style="margin-top:18px;display:flex;gap:8px"><button class="btn primary" id="shGet" disabled>Download</button></div>
+    <div class="msg" id="shMsg" role="status"></div>
+    <p class="small" style="margin-top:16px">Locked end to end. The key is in the part of the link after the #, which never reaches the website.</p>
+  </div>
+</section>
 
-  <!-- log in / make a nest -->
-  <section id="loginView" hidden>
-    <div class="envelope edge"><div class="inner">
-      <div class="stamp" aria-hidden="true"><div><canvas class="mini" width="20" height="16"></canvas>AIR<br>MAIL</div></div>
-      <h1>Open your nest</h1>
-      <p class="lede">Your nest is where your files wait for your other devices. Same name and password everywhere: laptop, phone, anything.</p>
-      <form id="loginForm" autocomplete="on">
-        <label class="field"><span>Nest name</span><input type="text" id="nestName" autocomplete="username" autocapitalize="none" spellcheck="false" required pattern="[a-zA-Z0-9][a-zA-Z0-9_\-]{1,23}" maxlength="24"></label>
-        <label class="field"><span>Password</span><input type="password" id="nestPw" autocomplete="current-password" required minlength="6"></label>
-        <label class="field" id="pw2Row" hidden><span>Password again (this makes a new nest)</span><input type="password" id="nestPw2" autocomplete="new-password"></label>
-        <label class="row" style="font-size:.9rem;color:var(--dim);margin:2px 0 14px"><input type="checkbox" id="remember" checked> Remember me on this device</label>
-        <button class="btn teal" id="loginBtn" type="submit">Open</button>
-        <div class="msg" id="loginMsg" role="status"></div>
-      </form>
-    </div></div>
-  </section>
-
-  <!-- your nest -->
-  <section id="nestView" hidden>
-    <div class="envelope">
-      <input type="file" id="pick" multiple hidden>
-      <div class="drop" id="drop" role="button" tabindex="0" aria-label="Send files">
-        <strong>Send files</strong>
-        <span id="dropHint">Tap to pick photos or files. They're locked on this device before they leave it.</span>
-      </div>
-      <div class="space"><span id="spaceText">…</span><div class="meter"><i id="spaceBar"></i></div></div>
+<!-- open or make a nest -->
+<section id="loginView" class="center" hidden>
+  <div class="card glass">
+    <div class="hello"><canvas class="coo" width="20" height="16" aria-hidden="true"></canvas><div><b>pigeon</b><span>Your own locked drive. Files fly between your devices.</span></div></div>
+    <div class="seg" role="group" aria-label="What would you like to do?">
+      <button type="button" id="modeOpen" aria-pressed="true">Open my nest</button>
+      <button type="button" id="modeMake" aria-pressed="false">Make a nest</button>
     </div>
-    <ul class="files" id="files" aria-live="polite"></ul>
-  </section>
-
-  <div class="foot" id="foot">
-    <details><summary>Get pigeon for your laptop</summary>
-      <p>macOS / Linux:<br><code id="shCmd"></code></p>
-      <p>Windows (PowerShell):<br><code id="ps1Cmd"></code></p>
-      <p>Then: <code>pigeon send photo.jpg</code>, <code>pigeon get</code>, or just <code>pigeon</code>.</p>
+    <form id="loginForm" autocomplete="on" novalidate>
+      <label class="field"><span>Nest name</span><input type="text" id="nestName" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32"><small id="nameHint">Your nest is your account. Use the same name on every device.</small></label>
+      <label class="field"><span>Password</span><input type="password" id="nestPw" autocomplete="current-password"></label>
+      <label class="field" id="pw2Row" hidden><span>Password again</span><input type="password" id="nestPw2" autocomplete="new-password"><small>Your password locks your files. Nobody can reset it, so keep it somewhere safe.</small></label>
+      <label class="field" id="inviteRow" hidden><span>Invite code</span><input type="text" id="invite" autocapitalize="none" spellcheck="false" maxlength="12" placeholder="from the site's owner"></label>
+      <label class="check"><input type="checkbox" id="remember" checked> Keep me signed in on this device</label>
+      <button class="btn primary" id="loginBtn" type="submit" style="width:100%">Open my nest</button>
+      <div class="msg" id="loginMsg" role="status"></div>
+    </form>
+    <details class="get"><summary>Get pigeon for your computer</summary>
+      <div style="margin-top:8px">Mac or Linux, in Terminal:<code class="cmd sh"></code>Windows, in PowerShell:<code class="cmd ps1"></code></div>
     </details>
   </div>
+</section>
+
+<!-- your drive -->
+<div id="appView" class="app" hidden>
+  <header class="topbar glass">
+    <div class="brand"><canvas class="coo" id="cooTop" width="20" height="16" aria-hidden="true"></canvas><span>pigeon</span></div>
+    <label class="search"><svg class="i"><use href="#i-search"/></svg><input id="q" type="search" placeholder="Search your nest" aria-label="Search your nest"></label>
+    <div class="top-right">
+      <button class="icon-btn" id="themeBtn" title="Light or dark" aria-label="Light or dark"><svg class="i"><use href="#i-moon"/></svg></button>
+      <button class="me" id="meBtn" aria-haspopup="menu"><span class="avatar" id="avatar">?</span><span class="who" id="whoName"></span></button>
+    </div>
+  </header>
+
+  <aside class="side glass" aria-label="Places">
+    <button class="new" id="newBtn" aria-haspopup="menu"><svg class="i"><use href="#i-plus"/></svg>New</button>
+    <button class="nav" data-view="nest"><svg class="i"><use href="#i-nest"/></svg>My nest</button>
+    <button class="nav" data-view="recent"><svg class="i"><use href="#i-clock"/></svg>Recent</button>
+    <button class="nav" data-view="starred"><svg class="i"><use href="#i-star"/></svg>Starred</button>
+    <button class="nav" data-view="devices"><svg class="i"><use href="#i-devices"/></svg>Devices<span class="count" id="inboxCount" hidden></span></button>
+    <button class="nav" data-view="links"><svg class="i"><use href="#i-link"/></svg>Shared links</button>
+    <button class="nav" data-view="trash"><svg class="i"><use href="#i-trash"/></svg>Trash</button>
+    <div class="space"><span id="spaceText">…</span><div class="meter"><i id="spaceBar"></i></div></div>
+  </aside>
+
+  <main class="main glass">
+    <div class="toolbar">
+      <nav class="crumbs" id="crumbs" aria-label="Where you are"></nav>
+      <div class="selbar" id="selbar" hidden></div>
+      <div class="view-tools" id="viewTools">
+        <select class="sortsel" id="sort" aria-label="Sort by"><option value="name">Name</option><option value="date">Newest</option><option value="size">Biggest</option></select>
+        <button class="icon-btn" id="gridBtn" aria-label="Tiles" aria-pressed="true"><svg class="i"><use href="#i-grid"/></svg></button>
+        <button class="icon-btn" id="listBtn" aria-label="List" aria-pressed="false"><svg class="i"><use href="#i-list"/></svg></button>
+      </div>
+    </div>
+    <div class="content" id="content" tabindex="-1"></div>
+  </main>
+
+  <nav class="tabs glass" aria-label="Places">
+    <button data-view="nest"><svg class="i"><use href="#i-nest"/></svg>Nest</button>
+    <button data-view="recent"><svg class="i"><use href="#i-clock"/></svg>Recent</button>
+    <button data-view="starred"><svg class="i"><use href="#i-star"/></svg>Starred</button>
+    <button data-view="devices"><svg class="i"><use href="#i-devices"/></svg>Devices</button>
+    <button data-view="trash"><svg class="i"><use href="#i-trash"/></svg>Trash</button>
+  </nav>
+  <button class="fab" id="fab" aria-label="New"><svg class="i"><use href="#i-plus"/></svg></button>
 </div>
 
-<dialog id="sheet"><div class="sheet">
-  <h3 id="sheetTitle"></h3>
-  <div class="sub" id="sheetSub"></div>
-  <canvas class="qr" id="qr" width="10" height="10"></canvas>
-  <div class="url" id="sheetUrl"></div>
-  <div class="row" style="margin-top:14px"><button class="btn teal" id="sheetCopy">Copy link</button><button class="btn ghost" id="sheetClose">Done</button></div>
-</div></dialog>
+<div class="transfers glass" id="transfers" hidden>
+  <header><canvas class="coo" width="20" height="16" aria-hidden="true"></canvas><span id="tTitle">Flying</span><button class="icon-btn" id="tClose" aria-label="Hide"><svg class="i"><use href="#i-x"/></svg></button></header>
+  <div class="tlist" id="tlist"></div>
+</div>
 
-<dialog id="viewer"><div class="sheet">
-  <h3 id="viewerTitle"></h3>
-  <img id="viewerImg" class="preview" alt="">
-  <div class="row" style="margin-top:14px"><a class="btn teal" id="viewerSave" download>Save</a><button class="btn ghost" id="viewerClose">Close</button></div>
-</div></dialog>
+<div class="menu glass" id="menu" role="menu" hidden></div>
+<input type="file" id="pickFiles" multiple hidden>
+<input type="file" id="pickFolder" webkitdirectory multiple hidden>
+<dialog id="dlg"><div class="sheet" id="dlgBody"></div></dialog>
+<dialog id="viewerDlg"><div class="viewer"><header><b id="vTitle"></b><button class="icon-btn" id="vSave" aria-label="Save"><svg class="i"><use href="#i-down"/></svg></button><button class="icon-btn" id="vClose" aria-label="Close"><svg class="i"><use href="#i-x"/></svg></button></header><div class="stage" id="vStage"></div></div></dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-nest" viewBox="0 0 24 24"><path d="M3 13c2.5 4 5.5 6 9 6s6.5-2 9-6"/><path d="M5 13c2-1 4.5-1.5 7-1.5s5 .5 7 1.5"/><path d="M9 11.5c-.5-2 .5-5 3-6.5 2.5 1.5 3.5 4.5 3 6.5"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3.8 2.5 5.2 5.7.8-4.1 4 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4.1-4 5.7-.8z"/></symbol>
+  <symbol id="i-devices" viewBox="0 0 24 24"><rect x="2.5" y="5" width="13" height="10" rx="1.6"/><path d="M1.5 18h16"/><rect x="17" y="8" width="5.5" height="11" rx="1.4"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2h9A1.5 1.5 0 0 1 21 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="m15 5 4 4L8 20H4v-4z"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2h9A1.5 1.5 0 0 1 21 9.5v8a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><path d="M10 13.5h6M13.5 11l2.5 2.5-2.5 2.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+  <symbol id="i-restore" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.5-5.8M4 4v4h4"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H15M10 16l4-4-4-4M14 12H4"/></symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="1.5"/><path d="M3 9h18M12 9v11M12 9c-2-4-6-4-6-1.5S10 9 12 9c2 0 6-1 6-1.5S14 5 12 9"/></symbol>
+  <symbol id="i-term" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="m7 9.5 3 2.5-3 2.5M12.5 15h4"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+</svg>
 
 <script>/*PIGEON_QR*/</script>
 <script>
@@ -184,9 +400,30 @@ dialog::backdrop { background: rgba(10, 14, 20, .45); }
   var C = /*PIGEON_CONFIG*/{};
   var BASE = C.base || '';
   var API = BASE + '/api/';
-  var CHUNK = 4 * 1024 * 1024, ITER = 310000;
+  var LOCAL = C.local ? BASE.replace(/\/p$/, '') + '/local/' : null;
+  var SITE = C.site || (location.origin + BASE);
+  var CHUNK = 4 * 1024 * 1024, ITER = 310000, PAR = 3;
   var $ = function (id) { return document.getElementById(id); };
   var enc = new TextEncoder(), dec = new TextDecoder();
+  var icon = function (n) { return '<svg class="i"><use href="#i-' + n + '"/></svg>'; };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  // ── theme ──
+  var theme = (function () { try { return localStorage.getItem('pigeon-theme') || 'auto'; } catch (e) { return 'auto'; } })();
+  function paintTheme() {
+    var dark = theme === 'dark' || (theme === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    var m = document.querySelector('meta[name=theme-color]');
+    if (m) m.content = dark ? '#0b1017' : '#e9f0f7';
+    var b = $('themeBtn'); if (b) b.innerHTML = icon(dark ? 'sun' : 'moon');
+  }
+  paintTheme();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paintTheme);
+  $('themeBtn').onclick = function () {
+    theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    try { localStorage.setItem('pigeon-theme', theme); } catch (e) { /* fine */ }
+    paintTheme();
+  };
 
   // ── Coo, drawn from the same pixels as the terminal one ──
   var BIRD = ['....................', '...........GGG......', '..........GGGGG.....', '..........GEKGGB....', '..........GGGGGBB...', '.........NnNGG......', '........NnNnN.......', '...GGGGGNnNnG.......', '..GGWWWWGGGGGG......', '.TGWWWWWWGGGGG......', 'TTGGWWWWWWGGGG......', 'TTTGGGGGGGGGG.......', '...TTGGGGGGG........', '.......F..F.........', '......FF.FF.........', '....................'];
@@ -196,17 +433,14 @@ dialog::backdrop { background: rgba(10, 14, 20, .45); }
     g.clearRect(0, 0, cv.width, cv.height);
     grid.forEach(function (row, y) { row.split('').forEach(function (c, x) { if (INK[c]) { g.fillStyle = INK[c]; g.fillRect(x, y, 1, 1); } }); });
   }
-  drawBird($('coo'), BIRD);
-  document.querySelectorAll('canvas.mini').forEach(function (cv) { drawBird(cv, BIRD); });
-  (function favicon() {
-    var cv = document.createElement('canvas'); cv.width = 20; cv.height = 16; drawBird(cv, BIRD);
-    try { $('icon').href = cv.toDataURL(); } catch (e) { /* fine */ }
-  })();
-  var bob = 0;
-  setInterval(function () {
-    bob = (bob + 1) % 8;
-    drawBird($('coo'), bob === 3 ? BIRD.map(function (r, y) { return y < 7 ? '.' + r.slice(0, 19) : r; }) : BIRD);
-  }, 450);
+  var HOP = BIRD.map(function (r, y) { return y < 13 ? (y === 0 ? '....................' : BIRD[y - 1] || r) : r; });
+  document.querySelectorAll('canvas.coo').forEach(function (cv) { drawBird(cv, BIRD); });
+  (function favicon() { var cv = document.createElement('canvas'); cv.width = 20; cv.height = 16; drawBird(cv, BIRD); try { $('icon').href = cv.toDataURL(); } catch (e) { /* fine */ } })();
+  function hop() { // one small hop when something lands
+    var cvs = document.querySelectorAll('canvas.coo');
+    cvs.forEach(function (cv) { drawBird(cv, HOP); });
+    setTimeout(function () { cvs.forEach(function (cv) { drawBird(cv, BIRD); }); }, 260);
+  }
 
   // ── bytes ──
   function b64(buf) { var s = '', a = new Uint8Array(buf); for (var i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); }
@@ -215,7 +449,7 @@ dialog::backdrop { background: rgba(10, 14, 20, .45); }
   function unb64url(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return unb64(s); }
   function hex(buf) { return Array.prototype.map.call(new Uint8Array(buf), function (x) { return ('0' + x.toString(16)).slice(-2); }).join(''); }
   function size(n) { var u = ['B', 'KB', 'MB', 'GB']; var i = 0; while (n >= 1024 && i < 3) { n /= 1024; i++; } return (i ? n.toFixed(n < 10 ? 1 : 0) : n) + ' ' + u[i]; }
-  function ago(ts) { var s = (Date.now() - ts) / 1000; if (s < 45) return 'just now'; if (s < 3600) return Math.round(s / 60) + 'm ago'; if (s < 86400) return Math.round(s / 3600) + 'h ago'; return Math.round(s / 86400) + 'd ago'; }
+  function ago(ts) { if (!ts) return ''; var s = (Date.now() - ts) / 1000; if (s < 45) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; if (s < 86400 * 6) return Math.round(s / 86400) + ' d ago'; return new Date(ts).toLocaleDateString(); }
 
   // ── locking: the same steps as pigeon's src/crypto.js ──
   var S = crypto.subtle;
@@ -224,7 +458,12 @@ dialog::backdrop { background: rgba(10, 14, 20, .45); }
       .then(function (k) { return S.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: unb64(salt), iterations: ITER }, k, 512); })
       .then(function (bits) { return { proof: hex(bits.slice(0, 32)), key: new Uint8Array(bits.slice(32, 64)) }; });
   }
-  function aes(raw) { return S.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']); }
+  var keyCache = new Map();
+  function aes(raw) {
+    var id = b64(raw);
+    if (!keyCache.has(id)) { keyCache.set(id, S.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt'])); if (keyCache.size > 400) keyCache.delete(keyCache.keys().next().value); }
+    return keyCache.get(id);
+  }
   function seal(raw, data, aad) {
     var iv = crypto.getRandomValues(new Uint8Array(12));
     return aes(raw).then(function (k) { return S.encrypt({ name: 'AES-GCM', iv: iv, additionalData: enc.encode(aad) }, k, data); })
@@ -235,27 +474,33 @@ dialog::backdrop { background: rgba(10, 14, 20, .45); }
     return aes(raw).then(function (k) { return S.decrypt({ name: 'AES-GCM', iv: box.subarray(0, 12), additionalData: enc.encode(aad) }, k, box.subarray(12)); });
   }
   function openMeta(fk, m) { return open(fk, unb64(m), 'pigeon/meta').then(function (p) { return JSON.parse(dec.decode(p)); }); }
+  function sealMeta(fk, meta) { return seal(fk, enc.encode(JSON.stringify(meta)), 'pigeon/meta').then(b64); }
 
   // ── talking to the site ──
   var store = null;
   function remembered() { try { return JSON.parse(localStorage.getItem('pigeon') || sessionStorage.getItem('pigeon') || 'null'); } catch (e) { return null; } }
   function keep(s, forever) {
+    if (C.local) return;
     try { localStorage.removeItem('pigeon'); sessionStorage.removeItem('pigeon'); } catch (e) { /* private mode */ }
     if (!s) return;
     try { (forever ? localStorage : sessionStorage).setItem('pigeon', JSON.stringify(s)); } catch (e) { /* private mode: this tab only */ }
+  }
+  function myDid() {
+    if (store && store.did) return store.did;
+    try { var d = localStorage.getItem('pigeon-did'); if (/^[a-f0-9]{16}$/.test(d || '')) return d; d = hex(crypto.getRandomValues(new Uint8Array(8))); localStorage.setItem('pigeon-did', d); return d; } catch (e) { return hex(crypto.getRandomValues(new Uint8Array(8))); }
   }
   function call(what, body, opts) {
     opts = opts || {};
     var h = {};
     if (store && store.token && opts.auth !== false) h.authorization = 'Bearer ' + store.token;
     if (body !== undefined && !(body instanceof Uint8Array)) h['content-type'] = 'application/json';
-    return fetch(API + what, { method: opts.method || 'POST', headers: h, body: body === undefined ? undefined : body instanceof Uint8Array ? body : JSON.stringify(body) })
-      .catch(function () { throw new Error("Couldn't reach the site. Check your connection."); })
+    return fetch(API + what, { method: opts.method || 'POST', headers: h, body: body === undefined ? undefined : body instanceof Uint8Array ? body : JSON.stringify(body), signal: opts.signal })
+      .catch(function (e) { if (e && e.name === 'AbortError') throw e; throw new Error("Couldn't reach pigeon's website. Check your connection."); })
       .then(function (r) {
         if ((r.headers.get('content-type') || '').indexOf('octet-stream') >= 0 && r.ok) return r.arrayBuffer();
         return r.json().catch(function () { return {}; }).then(function (j) {
-          if (r.status === 401 && opts.auth !== false) { keep(null); store = null; show('login'); }
-          if (!r.ok) throw new Error(j.error || 'The site answered ' + r.status);
+          if (r.status === 401 && opts.auth !== false && !C.local) { keep(null); store = null; show('login'); }
+          if (!r.ok) throw new Error(j.error || (r.status >= 500 ? "pigeon's website had a problem (" + r.status + '). Try again in a moment.' : 'The site answered ' + r.status));
           return j;
         });
       });
@@ -264,256 +509,941 @@ dialog::backdrop { background: rgba(10, 14, 20, .45); }
   function show(which) {
     $('shareView').hidden = which !== 'share';
     $('loginView').hidden = which !== 'login';
-    $('nestView').hidden = which !== 'nest';
-    $('who').hidden = which !== 'nest';
-    if (which === 'nest') $('whoName').textContent = store.nest;
+    $('appView').hidden = which !== 'app';
+    if (which === 'app') { $('whoName').textContent = store.nest; $('avatar').textContent = (store.nest || '?').slice(0, 1).toUpperCase(); }
+  }
+  document.querySelectorAll('code.cmd.sh').forEach(function (c) { c.textContent = 'curl -fsSL ' + (C.sh || SITE + '/install.sh') + ' | sh'; });
+  document.querySelectorAll('code.cmd.ps1').forEach(function (c) { c.textContent = 'irm ' + (C.ps1 || SITE + '/install.ps1') + ' | iex'; });
+
+  // ══ a link someone sent ══
+  var shareM = /\/s\/([a-z2-9]{8})$/.exec(location.pathname);
+  if (shareM) {
+    show('share');
+    var key;
+    try { key = unb64url(location.hash.slice(1)); if (key.length !== 32) throw 0; } catch (e) { key = null; }
+    if (!key) { $('shName').textContent = 'This link is missing its key'; $('shInfo').textContent = 'Copy the whole link, including everything after the #.'; }
+    else call('shared/' + shareM[1], undefined, { method: 'GET', auth: false }).then(function (info) {
+      return openMeta(key, info.meta).then(function (meta) {
+        $('shName').textContent = meta.name + (meta.kind === 'folder' ? ' (folder)' : '');
+        $('shInfo').textContent = size(info.size) + ' · from ' + (meta.from || 'someone') + ' · this link works until ' + new Date(info.expires).toLocaleString();
+        $('shGet').disabled = false;
+        var job = null;
+        function get() { if (!job) job = download({ chunks: info.chunks, size: info.size, meta: meta, fk: key, piece: function (n) { return call('shared/' + shareM[1] + '/' + n, undefined, { method: 'GET', auth: false }); } }, function (p) { $('shMsg').textContent = Math.round(p * 100) + '%'; }); return job; }
+        if (/^image\//.test(meta.type || '') && info.size < 25e6) get().then(function (blob) { $('shPreview').src = URL.createObjectURL(blob); $('shPreview').hidden = false; $('shMsg').textContent = ''; });
+        $('shGet').onclick = function () { get().then(function (blob) { saveBlob(blob, meta); $('shMsg').className = 'msg ok'; $('shMsg').textContent = 'Saved.'; }, function (e) { $('shMsg').className = 'msg err'; $('shMsg').textContent = e.message; }); };
+      });
+    }).catch(function (e) { $('shName').textContent = "Couldn't open this link"; $('shInfo').textContent = e.message; });
+    return;
   }
 
-  // ── a link someone sent ──
-  var share = /\/s\/([a-z2-9]{8})$/.exec(location.pathname);
-  if (share) {
-    show('share');
-    var key = location.hash.length > 30 ? unb64url(location.hash.slice(1)) : null;
-    if (!key) { $('shInfo').textContent = 'This link is missing its key (the part after the #). Ask for it again.'; }
-    else {
-      call('shared/' + share[1], undefined, { method: 'GET', auth: false }).then(function (info) {
-        return openMeta(key, info.meta).then(function (meta) {
-          $('shName').textContent = meta.name + (meta.kind === 'folder' ? ' (folder)' : '');
-          $('shInfo').textContent = size(info.size) + ' · from ' + (meta.from || 'someone') + ' · link works until ' + new Date(info.expires).toLocaleString();
-          $('shGet').disabled = false;
-          var job = null;
-          function get() { if (!job) job = download(info.chunks, meta, key, function (n) { return call('shared/' + share[1] + '/' + n, undefined, { method: 'GET', auth: false }); }, function (p) { $('shMsg').textContent = Math.round(p * 100) + '%'; }); return job; }
-          if (/^image\//.test(meta.type || '') && info.size < 25e6) get().then(function (blob) { $('shPreview').src = URL.createObjectURL(blob); $('shPreview').hidden = false; $('shMsg').textContent = ''; });
-          $('shGet').onclick = function () { get().then(function (blob) { save(blob, meta); $('shMsg').className = 'msg ok'; $('shMsg').textContent = 'Saved.'; }, fail('shMsg')); };
-        });
-      }).catch(fail('shMsg'));
-    }
-  } else {
-    store = remembered();
-    if (store && store.token) { show('nest'); refresh(); } else show('login');
+  // ══ open or make a nest ══
+  var making = false;
+  function setMode(make) {
+    making = make;
+    $('modeOpen').setAttribute('aria-pressed', String(!make));
+    $('modeMake').setAttribute('aria-pressed', String(make));
+    $('pw2Row').hidden = !make;
+    $('loginBtn').textContent = make ? 'Make my nest' : 'Open my nest';
+    $('nestPw').autocomplete = make ? 'new-password' : 'current-password';
+    $('nameHint').textContent = make ? 'Pick a name: letters, numbers, dots, _ and -. You\'ll use it on every device.' : 'Your nest is your account. Use the same name on every device.';
+    $('loginMsg').textContent = ''; $('loginMsg').className = 'msg';
   }
+  $('modeOpen').onclick = function () { setMode(false); };
+  $('modeMake').onclick = function () { setMode(true); };
+  var inviteFromLink = /[#&]invite=([a-z2-9-]{8,9})/i.exec(location.hash);
+  if (inviteFromLink) { setMode(true); $('inviteRow').hidden = false; $('invite').value = inviteFromLink[1]; }
+  // what does this site allow?
+  fetch(API.replace(/\/$/, ''), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (info) {
+    if (info && info.signups === 'closed') $('modeMake').hidden = true;
+  }).catch(function () {
+    $('loginMsg').className = 'msg err';
+    $('loginMsg').textContent = "Can't reach pigeon's website right now. Check your connection, then reload.";
+  });
 
   function fail(where) { return function (e) { $(where).className = 'msg err'; $(where).textContent = (e && e.message) || 'Something went wrong.'; }; }
-
-  // ── logging in ──
-  var making = false;
   $('loginForm').onsubmit = function (ev) {
     ev.preventDefault();
     var name = $('nestName').value.trim().toLowerCase(), pw = $('nestPw').value;
+    var say = function (t, cls) { $('loginMsg').className = 'msg' + (cls ? ' ' + cls : ''); $('loginMsg').textContent = t; };
+    if (!/^[a-z0-9][a-z0-9._-]{1,31}$/.test(name)) { $('nestName').focus(); return say('A nest name is 2-32 characters: letters, numbers, dots, _ and - (no spaces).', 'err'); }
+    if (pw.length < 6) { $('nestPw').focus(); return say('Use a password of at least 6 characters.', 'err'); }
+    if (making && $('nestPw2').value !== pw) { $('nestPw2').focus(); return say("The two passwords don't match.", 'err'); }
     $('loginBtn').disabled = true;
-    $('loginMsg').className = 'msg';
-    $('loginMsg').textContent = 'Checking…';
     var done = function () { $('loginBtn').disabled = false; };
+    say(making ? 'Checking the name…' : 'Finding your nest…');
     call('hello', { nest: name }, { auth: false }).then(function (hi) {
-      if (hi.exists) {
-        $('loginMsg').textContent = 'Unlocking…';
+      if (!making) {
+        if (!hi.exists) { setMode(true); $('nestPw').value = pw; $('nestPw2').focus(); throw new Error('There\'s no nest called "' + name + '" yet. To make it, type the password again.'); }
+        say('Unlocking…');
         return stretch(pw, hi.salt).then(function (k) {
-          return call('login', { nest: name, proof: k.proof, device: deviceName() }, { auth: false }).then(function (r) { enter(name, r.token, k.key); });
+          return call('login', { nest: name, proof: k.proof, device: deviceName(), did: myDid() }, { auth: false }).then(function (r) { enter(name, r.token, k.key, r.did); });
         });
       }
-      if (!hi.canMake) throw new Error('There\'s no nest called "' + name + '" here.');
-      if (!making) { making = true; $('pw2Row').hidden = false; $('nestPw2').focus(); $('loginMsg').textContent = 'No nest called "' + name + '" yet. Type the password again to make it.'; $('loginBtn').textContent = 'Make my nest'; return; }
-      if ($('nestPw2').value !== pw) throw new Error("The two passwords don't match.");
+      if (hi.exists) { setMode(false); $('nestPw').value = pw; throw new Error('"' + name + '" already exists. If it\'s yours, press Open my nest.'); }
+      var code = $('invite').value.trim();
+      if (!hi.canMake && !code) {
+        $('inviteRow').hidden = false; $('invite').focus();
+        throw new Error(hi.invites ? 'This site only takes new nests with an invite code. Ask its owner for one, then type it here.' : 'This site isn\'t taking new nests.');
+      }
       var salt = b64(crypto.getRandomValues(new Uint8Array(16)));
-      $('loginMsg').textContent = 'Making your nest…';
+      say('Making your nest… (locking takes a second)');
       return stretch(pw, salt).then(function (k) {
-        return call('signup', { nest: name, salt: salt, proof: k.proof, device: deviceName() }, { auth: false }).then(function (r) { enter(name, r.token, k.key); });
+        return call('signup', { nest: name, salt: salt, proof: k.proof, device: deviceName(), did: myDid(), invite: code }, { auth: false }).then(function (r) { enter(name, r.token, k.key, r.did); });
       });
     }).then(done, function (e) { done(); fail('loginMsg')(e); });
   };
   function deviceName() {
+    if (C.local) return C.local.device;
     var ua = navigator.userAgent;
-    var what = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android phone' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows PC' : 'a browser';
-    return what + ' (web)';
+    var what = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) ? 'iPad' : /Android/.test(ua) ? 'Android phone' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows PC' : /CrOS/.test(ua) ? 'Chromebook' : 'Computer';
+    var br = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'browser';
+    return what + ' · ' + br;
   }
-  function enter(name, token, key) {
-    store = { nest: name, token: token, key: b64(key) };
+  function enter(name, token, key, did) {
+    store = { nest: name, token: token, key: b64(key), did: did || myDid() };
+    try { localStorage.setItem('pigeon-did', store.did); } catch (e) { /* fine */ }
     keep(store, $('remember').checked);
     $('nestPw').value = $('nestPw2').value = '';
-    show('nest');
-    refresh();
+    start();
   }
-  $('logout').onclick = function () { call('logout', {}).catch(function () {}); keep(null); store = null; files = []; $('files').innerHTML = ''; show('login'); };
 
-  // ── your files ──
-  var files = [], busy = {}, timer = null;
+  // ══ the drive ══
+  var st = { files: [], used: 0, quota: 0, me: '', owner: false, view: 'nest', path: [], sel: new Set(), layout: 'grid', sort: 'name', q: '', devices: [], links: [], inbox: [], loaded: false };
+  try { st.layout = localStorage.getItem('pigeon-layout') || 'grid'; st.sort = localStorage.getItem('pigeon-sort') || 'name'; } catch (e) { /* fine */ }
+  var timers = {};
   function myKey() { return unb64(store.key); }
-  function refresh() {
-    clearTimeout(timer);
-    if (!store) return;
-    call('list', {}).then(function (r) {
-      var mk = myKey();
-      return Promise.all(r.files.map(function (f) {
-        return open(mk, unb64(f.wrapped), 'pigeon/key').then(function (fk) {
-          fk = new Uint8Array(fk);
-          return openMeta(fk, f.meta).then(function (m) { f.fk = fk; f.m = m; return f; });
-        }).catch(function () { f.m = { name: '(locked with a different password)' }; return f; });
-      })).then(function (list) {
-        files = list;
-        thumbnails();
-        var pct = Math.min(100, (r.used / r.quota) * 100);
-        $('spaceText').textContent = size(r.used) + ' of ' + size(r.quota);
-        $('spaceBar').style.width = pct + '%';
-        render();
-      });
-    }).catch(function () { /* shown on the next try */ }).then(function () { timer = setTimeout(refresh, document.hidden ? 20000 : 5000); });
-  }
-  function kindOf(m) {
-    if (m.kind === 'folder') return ['DIR', 'dir'];
-    var t = m.type || '', ext = (m.name || '').split('.').pop().toUpperCase().slice(0, 4);
-    if (/^image\//.test(t)) return [ext || 'IMG', 'img'];
-    if (/pdf|text|json|document|csv|markdown/.test(t)) return [ext || 'DOC', 'doc'];
-    return [ext || 'FILE', ''];
-  }
-  function render() {
-    var ul = $('files');
-    var up = Object.keys(busy).filter(function (k) { return busy[k].up; }).map(function (k) { return busy[k]; });
-    if (!files.length && !up.length) { ul.innerHTML = '<li class="empty">Nothing in your nest yet. Send something from here, or from your laptop with <b>pigeon send</b>.</li>'; return; }
-    var html = up.map(function (u) { return row({ id: u.id, m: { name: u.name, from: 'this device' }, size: u.size, made: Date.now(), done: false }, u); }).join('');
-    html += '<h2 style="margin:14px 0 4px;font-size:.8rem;color:var(--dim)">' + files.length + ' in your nest</h2>';
-    html += files.map(function (f) { return row(f, busy[f.id]); }).join('');
-    ul.innerHTML = html;
-    files.forEach(function (f) { if (thumbs[f.id]) { var t = ul.querySelector('[data-thumb="' + f.id + '"]'); if (t) t.innerHTML = '<img alt="" src="' + thumbs[f.id] + '">'; } });
-  }
-  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function row(f, job) {
-    var k = kindOf(f.m);
-    var state = !f.done ? (job && job.up ? 'sending… ' + Math.round(job.p * 100) + '%' : 'still arriving…') : size(f.size) + ' · from ' + esc(f.m.from || f.device || '?') + ' · ' + ago(f.made);
-    return '<li class="file" data-id="' + f.id + '"><div class="tag ' + k[1] + '" data-thumb="' + f.id + '">' + esc(k[0]) + '</div>' +
-      '<div style="min-width:0"><div class="name">' + esc(f.m.name) + (f.m.kind === 'folder' ? '/' : '') + '</div><div class="sub">' + state + '</div></div>' +
-      (f.done && f.fk ? '<div class="acts"><button data-act="get">Save</button><button data-act="share">Link</button><button data-act="del" class="del">Delete</button></div>' : '<div></div>') +
-      (job ? '<div class="bar"><i style="width:' + Math.round(job.p * 100) + '%"></i></div>' : '') + '</li>';
+  var pk = function (p) { return (p || []).join('/'); };
+
+  function start() {
+    show('app');
+    $('sort').value = st.sort;
+    layoutButtons();
+    fromHash();
+    refresh();
+    pollInbox();
   }
 
-  $('files').addEventListener('click', function (ev) {
-    var b = ev.target.closest('button[data-act]');
-    var li = ev.target.closest('li.file');
-    if (!li) return;
-    var f = files.filter(function (x) { return x.id === li.getAttribute('data-id'); })[0];
-    if (!f || !f.fk) return;
-    var act = b ? b.getAttribute('data-act') : (/^image\//.test(f.m.type || '') ? 'view' : null);
-    if (act === 'get' || act === 'view') {
-      if (busy[f.id]) return;
-      busy[f.id] = { p: 0 };
+  function unlockAll(list) {
+    var mk = myKey();
+    return Promise.all(list.map(function (f) {
+      return open(mk, unb64(f.wrapped), 'pigeon/key').then(function (fk) {
+        fk = new Uint8Array(fk);
+        return openMeta(fk, f.meta).then(function (m) { if (!Array.isArray(m.path)) m.path = []; if (f.kind === 'bundle' && !m.kind) m.kind = 'folder'; f.fk = fk; f.m = m; return f; });
+      }).catch(function () { f.m = { name: '(locked with a different password)', path: [] }; return f; });
+    }));
+  }
+  var refreshing = null;
+  function refresh() {
+    clearTimeout(timers.refresh);
+    if (!store) return Promise.resolve();
+    if (refreshing) return refreshing;
+    var changed = true;
+    refreshing = call('list', {}).then(function (r) {
+      st.used = r.used; st.quota = r.quota; st.me = r.me; st.owner = r.owner;
+      var sig = r.used + '|' + r.files.map(function (f) { return f.id + f.meta.slice(-12) + f.trashed + f.done + f.got; }).join(',');
+      if (sig === st.sig && st.loaded) { changed = false; return; }
+      st.sig = sig;
+      return unlockAll(r.files).then(function (list) { st.files = list; st.loaded = true; });
+    }).then(function () {
+      if (!changed) return;
+      var pct = st.quota ? Math.min(100, (st.used / st.quota) * 100) : 0;
+      $('spaceText').textContent = size(st.used) + ' of ' + size(st.quota) + ' used';
+      $('spaceBar').style.width = pct + '%';
       render();
-      download(f.chunks, f.m, f.fk, function (n) { return call('piece?id=' + f.id + '&n=' + n, undefined, { method: 'GET' }); }, function (p) { busy[f.id].p = p; render(); })
-        .then(function (blob) {
-          delete busy[f.id];
-          render();
-          if (act === 'view') return view(blob, f.m);
-          save(blob, f.m);
-        }, function (e) { delete busy[f.id]; render(); alert(e.message); });
-    } else if (act === 'share') {
-      call('share', { id: f.id, hours: 24 }).then(function (r) {
-        var url = location.origin + BASE + '/s/' + r.code + '#' + b64url(f.fk);
-        sheet(f.m.name, 'Anyone with this link can download it for 24 hours.', url);
-      }, function (e) { alert(e.message); });
-    } else if (act === 'del') {
-      if (b.textContent !== 'Sure?') { b.textContent = 'Sure?'; setTimeout(function () { b.textContent = 'Delete'; }, 2500); return; }
-      call('delete', { id: f.id }).then(refresh, function (e) { alert(e.message); });
+    }).catch(function (e) { if (!st.loaded) $('content').innerHTML = '<div class="empty"><b>Couldn\'t load your nest</b>' + esc(e.message) + '</div>'; })
+      .then(function () { refreshing = null; timers.refresh = setTimeout(refresh, document.hidden ? 60000 : 15000); });
+    return refreshing;
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden && store) { refresh(); pollInbox(); } });
+
+  // what's in a folder, including folders that only exist because something is inside them
+  function inside(folder) {
+    var key = pk(folder), dirs = {}, here = [];
+    st.files.forEach(function (f) {
+      if (f.trashed || !f.done || !f.m) return;
+      var p = pk(f.m.path);
+      if (f.kind === 'dir') {
+        if (p === key) dirs[f.m.name] = dirs[f.m.name] || f;
+        else if (f.m.path.length > folder.length && pk(f.m.path.slice(0, folder.length)) === key && !(f.m.path[folder.length] in dirs)) dirs[f.m.path[folder.length]] = null;
+        return;
+      }
+      if (p === key) here.push(f);
+      else if (key === '' || p.indexOf(key + '/') === 0) { var nx = f.m.path[folder.length]; if (nx && !(nx in dirs)) dirs[nx] = null; }
+    });
+    return { dirs: Object.keys(dirs).sort(function (a, b) { return a.localeCompare(b); }).map(function (n) { return { name: n, entry: dirs[n], path: folder.concat(n) }; }), files: here };
+  }
+  function under(folder) { // everything at or below a folder
+    var key = pk(folder);
+    return st.files.filter(function (f) { if (!f.m) return false; var p = pk(f.m.path); return (f.kind === 'dir' && pk(f.m.path.concat(f.m.name)) === key) || p === key || p.indexOf(key + '/') === 0; });
+  }
+  function sorted(list) {
+    var by = st.sort;
+    return list.slice().sort(function (a, b) {
+      if (by === 'date') return b.made - a.made;
+      if (by === 'size') return b.size - a.size;
+      return (a.m.name || '').localeCompare(b.m.name || '', undefined, { numeric: true });
+    });
+  }
+  function kind(m) {
+    var t = m.type || '', ext = ((m.name || '').split('.').length > 1 ? (m.name || '').split('.').pop() : '').toLowerCase();
+    if (m.kind === 'folder') return { k: 'zip', t: 'DIR' };
+    if (/^image\//.test(t)) return { k: 'img', t: (ext || 'img').toUpperCase().slice(0, 4) };
+    if (/^video\//.test(t)) return { k: 'vid', t: (ext || 'vid').toUpperCase().slice(0, 4) };
+    if (/^audio\//.test(t)) return { k: 'aud', t: (ext || 'aud').toUpperCase().slice(0, 4) };
+    if (/^(js|ts|py|java|c|cpp|h|rs|go|rb|php|swift|kt|cs|sh|html|css|json|lua|gd)$/.test(ext)) return { k: 'code', t: ext.toUpperCase().slice(0, 4) };
+    if (/pdf|text|document|sheet|presentation|csv|markdown|rtf/.test(t) || /^(md|txt|pdf|doc|docx|csv|xlsx|pptx|key|pages)$/.test(ext)) return { k: 'doc', t: (ext || 'doc').toUpperCase().slice(0, 4) };
+    if (/zip|gzip|tar|rar|7z/.test(t) || /^(zip|gz|tgz|rar|7z)$/.test(ext)) return { k: 'zip', t: (ext || 'zip').toUpperCase().slice(0, 4) };
+    return { k: 'file', t: (ext || 'file').toUpperCase().slice(0, 4) };
+  }
+  var previewable = function (f) { return f.m && /^(image|video|audio)\/|^text\/|pdf|json|javascript|x-python/.test(f.m.type || '') || /\.(md|txt|py|js|json|csv|html|css|sh)$/i.test((f.m && f.m.name) || ''); };
+
+  // ── views ──
+  var TITLES = { recent: 'Recent', starred: 'Starred', devices: 'Devices', links: 'Shared links', trash: 'Trash', search: 'Search' };
+  function go(view, path) {
+    st.view = view; st.path = path || []; st.sel.clear();
+    if (view !== 'search') { $('q').value = ''; st.q = ''; }
+    var h = '#' + view + (view === 'nest' && st.path.length ? '/' + st.path.map(encodeURIComponent).join('/') : '');
+    if (location.hash !== h && !C.local) history.pushState(null, '', h);
+    if (view === 'devices') loadDevices();
+    if (view === 'links') loadLinks();
+    render();
+    $('content').scrollTop = 0;
+  }
+  function fromHash() {
+    var h = decodeURIComponent(location.hash.slice(1));
+    var parts = h.split('/');
+    var v = parts[0];
+    if (['nest', 'recent', 'starred', 'devices', 'links', 'trash'].indexOf(v) < 0) v = 'nest';
+    st.view = v; st.path = v === 'nest' ? parts.slice(1).filter(Boolean) : [];
+    if (v === 'devices') loadDevices();
+    if (v === 'links') loadLinks();
+  }
+  window.addEventListener('popstate', function () { fromHash(); st.sel.clear(); render(); });
+  document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { go(b.dataset.view); }); });
+
+  function render() {
+    if (!store || $('appView').hidden) return;
+    document.querySelectorAll('[data-view]').forEach(function (b) { if (b.dataset.view === st.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+    renderCrumbs();
+    renderSelbar();
+    $('viewTools').hidden = st.view === 'devices' || st.view === 'links';
+    var c = $('content'), html = '';
+    if (st.inbox.length && st.view !== 'trash') html += inboxHtml();
+    if (!st.loaded) { c.innerHTML = '<div class="empty">Opening your nest…</div>'; return; }
+    if (st.view === 'devices') html += devicesHtml();
+    else if (st.view === 'links') html += linksHtml();
+    else {
+      var dirs = [], files = [], showWhere = false, emptyMsg = '';
+      if (st.view === 'nest') { var x = inside(st.path); dirs = x.dirs; files = sorted(x.files); emptyMsg = st.path.length ? '<b>This folder is empty</b>Drop files here, or press New.' : '<b>Your nest is empty</b>Drop files anywhere on this page, press New, or send from your computer with <code>pigeon send</code>.'; }
+      else if (st.view === 'recent') { files = st.files.filter(function (f) { return !f.trashed && f.done && f.kind !== 'dir' && f.m; }).sort(function (a, b) { return b.made - a.made; }).slice(0, 60); showWhere = true; emptyMsg = '<b>Nothing yet</b>Files you send show up here first.'; }
+      else if (st.view === 'starred') { st.files.filter(function (f) { return !f.trashed && f.m && f.m.star; }).forEach(function (f) { if (f.kind === 'dir') dirs.push({ name: f.m.name, entry: f, path: f.m.path.concat(f.m.name) }); else files.push(f); }); files = sorted(files); showWhere = true; emptyMsg = '<b>No stars yet</b>Star the things you open most, and they wait here.'; }
+      else if (st.view === 'trash') {
+        st.files.forEach(function (f) { if (!f.trashed || !f.m || trashedParent(f)) return; if (f.kind === 'dir') dirs.push({ name: f.m.name, entry: f, path: f.m.path.concat(f.m.name) }); else files.push(f); });
+        files.sort(function (a, b) { return b.trashed - a.trashed; }); showWhere = true; emptyMsg = '<b>The trash is empty</b>Deleted things wait here for 30 days.'; if (files.length || dirs.length) html += '<div class="label">Things here are deleted for good after 30 days.<button class="btn danger" id="emptyTrash" style="margin-left:auto;padding:6px 12px">Empty trash</button></div>'; }
+      else if (st.view === 'search') {
+        var q = st.q.toLowerCase();
+        st.files.forEach(function (f) { if (f.trashed || !f.done || !f.m || (f.m.name || '').toLowerCase().indexOf(q) < 0) return; if (f.kind === 'dir') dirs.push({ name: f.m.name, entry: f, path: f.m.path.concat(f.m.name) }); else files.push(f); });
+        files = sorted(files); showWhere = true; emptyMsg = '<b>Nothing matches "' + esc(st.q) + '"</b>Try a shorter word.';
+      }
+      if (!dirs.length && !files.length) html += '<div class="empty"><canvas class="coo big" width="20" height="16"></canvas>' + emptyMsg + '</div>';
+      else {
+        if (dirs.length) html += (st.view === 'nest' ? '<div class="label">Folders</div>' : '') + '<div class="folders">' + dirs.map(folderHtml).join('') + '</div>';
+        if (files.length) html += '<div class="label">' + (st.view === 'nest' ? 'Files' : files.length + ' ' + (files.length === 1 ? 'item' : 'items')) + '</div>' + (st.layout === 'grid' ? '<div class="grid' + (st.sel.size ? ' picking' : '') + '">' + files.map(tileHtml).join('') + '</div>' : listHtml(files, showWhere));
+      }
     }
+    c.innerHTML = html;
+    c.querySelectorAll('canvas.coo').forEach(function (cv) { drawBird(cv, BIRD); });
+    paintThumbs();
+    var et = $('emptyTrash'); if (et) et.onclick = emptyTrash;
+    var badge = $('inboxCount'); badge.hidden = !st.inbox.length; badge.textContent = st.inbox.length;
+  }
+  function trashedParent(f) { // inside a folder that was trashed with it: show the folder only
+    for (var i = f.m.path.length; i > 0; i--) { var p = f.m.path.slice(0, i); if (st.files.some(function (d) { return d.kind === 'dir' && d.trashed && d.m && pk(d.m.path.concat(d.m.name)) === pk(p); })) return true; }
+    return false;
+  }
+  function renderCrumbs() {
+    var c = $('crumbs');
+    if (st.view === 'nest') {
+      var parts = ['<button data-crumb="0">My nest</button>'];
+      st.path.forEach(function (p, i) { parts.push('<span class="sep">›</span><button data-crumb="' + (i + 1) + '">' + esc(p) + '</button>'); });
+      c.innerHTML = parts.join('');
+      c.querySelectorAll('[data-crumb]').forEach(function (b) {
+        var path = st.path.slice(0, Number(b.dataset.crumb));
+        b.onclick = function () { go('nest', path); };
+        dropTarget(b, path);
+      });
+    } else c.innerHTML = '<button>' + esc(st.view === 'search' ? 'Results for "' + st.q + '"' : TITLES[st.view]) + '</button>';
+  }
+  function itemsSelected() { return Array.from(st.sel).map(byKey).filter(Boolean); }
+  function renderSelbar() {
+    var bar = $('selbar'), n = st.sel.size;
+    bar.hidden = !n;
+    if (!n) return;
+    var acts = st.view === 'trash'
+      ? [['restore', 'restore', 'Put back'], ['forever', 'x', 'Delete for good']]
+      : [['download', 'down', 'Save'], ['deliver', 'send', 'Send to a device'], ['move', 'move', 'Move'], ['star', 'star', 'Star'], ['trash', 'trash', 'Delete']];
+    bar.innerHTML = n + ' selected ' + acts.map(function (a) { return '<button class="icon-btn" data-sel="' + a[0] + '" title="' + a[2] + '" aria-label="' + a[2] + '">' + icon(a[1]) + '</button>'; }).join('') + '<button class="icon-btn" data-sel="none" title="Clear" aria-label="Clear selection">' + icon('x') + '</button>';
+    bar.querySelectorAll('[data-sel]').forEach(function (b) { b.onclick = function () { act(b.dataset.sel, itemsSelected()); }; });
+  }
+
+  // an item's key: "f:<id>" for files, "d:<path>" for folders
+  function byKey(k) {
+    if (k.indexOf('d:') === 0) { var p = k.slice(2).split('/'); return { dir: true, name: p[p.length - 1], path: p, entry: st.files.filter(function (f) { return f.kind === 'dir' && f.m && pk(f.m.path.concat(f.m.name)) === k.slice(2); })[0] || null }; }
+    return st.files.filter(function (f) { return f.id === k.slice(2); })[0] || null;
+  }
+  function keyOf(x) { return x.dir ? 'd:' + pk(x.path) : 'f:' + x.id; }
+  function folderHtml(d) {
+    var k = 'd:' + pk(d.path);
+    var star = d.entry && d.entry.m && d.entry.m.star;
+    return '<button class="folder' + (st.sel.has(k) ? ' on' : '') + '" data-k="' + esc(k) + '" draggable="true">' + icon('folder') + '<span class="nm">' + esc(d.name) + '</span>' + (star ? '<span class="star" style="position:static">' + icon('star') + '</span>' : '') + '</button>';
+  }
+  function tileHtml(f) {
+    var k = kind(f.m), key = 'f:' + f.id;
+    var sub = st.view === 'trash' ? 'deleted ' + ago(f.trashed) : (f.done ? size(f.size) + ' · ' + ago(f.made) : 'still arriving…');
+    return '<button class="tile' + (st.sel.has(key) ? ' on' : '') + '" data-k="' + key + '" draggable="true">' +
+      '<span class="thumb" data-thumb="' + f.id + '">' + (thumbs.get(f.id) ? '<img alt="" src="' + thumbs.get(f.id) + '">' : '<span class="stamp k-' + k.k + '">' + esc(k.t) + '</span>') + '</span>' +
+      '<span class="tick">' + icon('check') + '</span>' + (f.m.star ? '<span class="star">' + icon('star') + '</span>' : '') +
+      '<span class="meta"><span class="nm" title="' + esc(f.m.name) + '">' + esc(f.m.name) + '</span><span class="sub">' + sub + '</span></span></button>';
+  }
+  function listHtml(files, where) {
+    return '<div class="list"><div class="lhead"><span></span><span>Name</span><span>From</span><span>Size</span><span>' + (st.view === 'trash' ? 'Deleted' : 'Added') + '</span><span></span></div>' + files.map(function (f) {
+      var k = kind(f.m), key = 'f:' + f.id;
+      return '<button class="lrow' + (st.sel.has(key) ? ' on' : '') + '" data-k="' + key + '" draggable="true"><span class="mini k-' + k.k + '" data-thumb="' + f.id + '">' + (thumbs.get(f.id) ? '<img alt="" src="' + thumbs.get(f.id) + '">' : esc(k.t)) + '</span>' +
+        '<span style="min-width:0"><span class="nm">' + esc(f.m.name) + (f.m.star ? icon('star') : '') + '</span>' + (where && f.m.path.length ? '<span class="where">' + esc(f.m.path.join(' › ')) + '</span>' : '') + '</span>' +
+        '<span class="c hide-s">' + esc((f.m.from || f.device || '').replace(/ \(web\)$/, '')) + '</span><span class="c hide-s">' + size(f.size) + '</span><span class="c hide-s">' + ago(st.view === 'trash' ? f.trashed : f.made) + '</span>' +
+        '<span class="icon-btn" data-more="' + key + '" aria-label="More">⋯</span></button>';
+    }).join('') + '</div>';
+  }
+
+  // ── clicking around ──
+  var lastClick = null;
+  $('content').addEventListener('click', function (e) {
+    var more = e.target.closest('[data-more]');
+    var el = e.target.closest('[data-k]');
+    if (more) { e.stopPropagation(); var it = byKey(more.dataset.more); if (it) { if (!st.sel.has(keyOf(it))) { st.sel.clear(); st.sel.add(keyOf(it)); paintSelection(); } menuFor([it], more.getBoundingClientRect()); } return; }
+    if (e.target.closest('[data-device]')) return deviceAct(e.target.closest('[data-device]'));
+    if (e.target.closest('[data-link]')) return linkAct(e.target.closest('[data-link]'));
+    if (e.target.closest('[data-inbox]')) return inboxAct(e.target.closest('[data-inbox]'));
+    if (!el) { if (st.sel.size) { st.sel.clear(); paintSelection(); } return; }
+    var k = el.dataset.k;
+    var tick = e.target.closest('.tick');
+    if (e.shiftKey && lastClick) { // a range
+      var all = Array.from($('content').querySelectorAll('[data-k]')).map(function (x) { return x.dataset.k; });
+      var a = all.indexOf(lastClick), b = all.indexOf(k);
+      if (a >= 0 && b >= 0) all.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(function (x) { st.sel.add(x); });
+    } else if (e.metaKey || e.ctrlKey || tick || (st.sel.size && matchMedia('(pointer: coarse)').matches)) {
+      if (st.sel.has(k)) st.sel.delete(k); else st.sel.add(k);
+    } else {
+      // one click opens on touch screens; on computers it selects, double-click opens
+      if (matchMedia('(pointer: coarse)').matches) { st.sel.clear(); return openItem(byKey(k)); }
+      st.sel.clear(); st.sel.add(k);
+    }
+    lastClick = k;
+    paintSelection();
   });
+  function paintSelection() { // just the highlights (re-drawing everything would break double-clicks)
+    document.querySelectorAll('#content [data-k]').forEach(function (x) { x.classList.toggle('on', st.sel.has(x.dataset.k)); });
+    var g = document.querySelector('#content .grid'); if (g) g.classList.toggle('picking', st.sel.size > 0);
+    renderSelbar();
+  }
+  $('content').addEventListener('dblclick', function (e) { var el = e.target.closest('[data-k]'); if (el && !e.target.closest('.tick')) openItem(byKey(el.dataset.k)); });
+  $('content').addEventListener('contextmenu', function (e) {
+    var el = e.target.closest('[data-k]');
+    if (!el) return;
+    e.preventDefault();
+    if (!st.sel.has(el.dataset.k)) { st.sel.clear(); st.sel.add(el.dataset.k); paintSelection(); }
+    menuFor(itemsSelected(), { left: e.clientX, top: e.clientY, bottom: e.clientY });
+  });
+  var pressTimer = null; // long-press on phones selects
+  $('content').addEventListener('touchstart', function (e) {
+    var el = e.target.closest('[data-k]'); if (!el) return;
+    pressTimer = setTimeout(function () { pressTimer = null; st.sel.add(el.dataset.k); lastClick = el.dataset.k; paintSelection(); if (navigator.vibrate) navigator.vibrate(12); }, 480);
+  }, { passive: true });
+  ['touchend', 'touchmove', 'touchcancel'].forEach(function (t) { $('content').addEventListener(t, function () { clearTimeout(pressTimer); }, { passive: true }); });
+
+  function openItem(it) {
+    if (!it) return;
+    if (it.dir) { if (st.view === 'trash') return; return go('nest', it.path); }
+    if (st.view === 'trash') return;
+    if (!it.fk || !it.done) return;
+    if (previewable(it)) return preview(it);
+    act('download', [it]);
+  }
+
+  // ── the menu ──
+  function menu(items, at) {
+    var m = $('menu');
+    m.innerHTML = items.map(function (x) { return x === '-' ? '<hr>' : x.head ? '<div class="head">' + esc(x.head) + '</div>' : '<button role="menuitem"' + (x.danger ? ' class="danger"' : '') + '>' + icon(x.icon) + esc(x.label) + '</button>'; }).join('');
+    var btns = m.querySelectorAll('button');
+    var acts = items.filter(function (x) { return x !== '-' && !x.head; });
+    btns.forEach(function (b, i) { b.onclick = function () { hideMenu(); acts[i].run(); }; });
+    m.hidden = false;
+    var r = m.getBoundingClientRect();
+    var x = Math.min(at.left, innerWidth - r.width - 10), y = at.bottom + 6;
+    if (y + r.height > innerHeight - 10) y = Math.max(10, (at.top || at.bottom) - r.height - 6);
+    m.style.left = Math.max(10, x) + 'px'; m.style.top = y + 'px';
+    if (btns[0]) btns[0].focus();
+  }
+  function hideMenu() { $('menu').hidden = true; }
+  document.addEventListener('click', function (e) { if (!e.target.closest('#menu') && !e.target.closest('[aria-haspopup]') && !e.target.closest('[data-more]')) hideMenu(); });
+  function menuFor(list, at) {
+    if (!list.length) return;
+    var one = list.length === 1 ? list[0] : null;
+    var items = [];
+    if (st.view === 'trash') items = [{ icon: 'restore', label: 'Put back', run: function () { act('restore', list); } }, { icon: 'x', label: 'Delete for good', danger: true, run: function () { act('forever', list); } }];
+    else {
+      if (one && one.dir) items.push({ icon: 'folder', label: 'Open', run: function () { openItem(one); } });
+      if (one && !one.dir && previewable(one)) items.push({ icon: 'eye', label: 'Preview', run: function () { preview(one); } });
+      items.push({ icon: 'down', label: C.local ? 'Save to ' + C.local.saveTo : 'Save to this device', run: function () { act('download', list); } });
+      items.push({ icon: 'send', label: 'Send to a device…', run: function () { act('deliver', list); } });
+      if (one && !one.dir) items.push({ icon: 'link', label: 'Get a link + QR code', run: function () { act('share', list); } });
+      items.push('-');
+      if (one) items.push({ icon: 'pen', label: 'Rename', run: function () { act('rename', list); } });
+      items.push({ icon: 'move', label: 'Move to…', run: function () { act('move', list); } });
+      var starred = list.every(function (x) { var m = x.dir ? x.entry && x.entry.m : x.m; return m && m.star; });
+      items.push({ icon: 'star', label: starred ? 'Remove star' : 'Star', run: function () { act('star', list); } });
+      items.push('-');
+      items.push({ icon: 'trash', label: 'Delete', danger: true, run: function () { act('trash', list); } });
+    }
+    menu(items, at);
+  }
+  function newMenu(at) {
+    menu([
+      { icon: 'up', label: 'Upload files', run: function () { $('pickFiles').click(); } },
+      { icon: 'folder', label: 'Upload a folder', run: function () { $('pickFolder').click(); } },
+      '-',
+      { icon: 'plus', label: 'New folder', run: newFolder },
+    ], at);
+  }
+  $('newBtn').onclick = function () { newMenu(this.getBoundingClientRect()); };
+  $('fab').onclick = function () { var r = this.getBoundingClientRect(); newMenu({ left: r.left - 160, top: r.top, bottom: r.top - 200 }); };
+  $('meBtn').onclick = function () {
+    var items = [{ head: store.nest + ' · ' + deviceName() }];
+    items.push({ icon: 'pen', label: 'Rename this device', run: renameDevice });
+    if (st.owner) items.push({ icon: 'gift', label: 'Invite someone', run: invite });
+    if (!C.local) items.push({ icon: 'term', label: 'Get pigeon for your computer', run: getApp });
+    items.push('-');
+    if (!C.local) items.push({ icon: 'out', label: 'Sign out', danger: true, run: signOut });
+    menu(items, this.getBoundingClientRect());
+  };
+  function signOut() { call('logout', {}).catch(function () {}); keep(null); store = null; st.files = []; st.loaded = false; show('login'); setMode(false); }
+
+  // ── doing things ──
+  function act(what, list) {
+    list = list.filter(Boolean);
+    if (!list.length) return;
+    var files = function () { var out = []; list.forEach(function (x) { if (x.dir) under(x.path).forEach(function (f) { if (f.kind !== 'dir') out.push(f); }); else out.push(x); }); return out; };
+    var entries = function () { var out = []; list.forEach(function (x) { if (x.dir) under(x.path).forEach(function (f) { out.push(f); }); else out.push(x); }); return out; };
+    if (what === 'none') { st.sel.clear(); return render(); }
+    if (what === 'download') {
+      list.forEach(function (x) {
+        if (x.dir) files().filter(function (f) { return pk(f.m.path).indexOf(pk(x.path)) === 0; }).forEach(function (f) { saveFile(f, f.m.path.slice(x.path.length - 1)); });
+        else saveFile(x, []);
+      });
+      return;
+    }
+    if (what === 'share') return shareSheet(list[0]);
+    if (what === 'rename') return rename(list[0]);
+    if (what === 'move') return movePicker(list);
+    if (what === 'deliver') return devicePicker(files());
+    if (what === 'star') {
+      var all = list.every(function (x) { var m = x.dir ? x.entry && x.entry.m : x.m; return m && m.star; });
+      var changes = [];
+      list.forEach(function (x) {
+        var f = x.dir ? (x.entry || null) : x;
+        if (x.dir && !f) return ensureDirEntry(x.path).then(function (e) { if (e) relabel([{ f: e, m: Object.assign({}, e.m, { star: true }) }]).then(refresh); });
+        changes.push({ f: f, m: Object.assign({}, f.m, { star: !all }) });
+      });
+      return relabel(changes).then(function () { toast(all ? 'Star removed.' : 'Starred.'); refresh(); }, alertErr);
+    }
+    if (what === 'trash') {
+      var ids = entries().map(function (f) { return f.id; });
+      return call('trash', { ids: ids }).then(function () {
+        st.sel.clear(); refresh();
+        toast('Moved ' + (list.length === 1 ? '"' + (list[0].dir ? list[0].name : list[0].m.name) + '"' : list.length + ' items') + ' to the trash.', 'Undo', function () { call('trash', { ids: ids, restore: true }).then(refresh); });
+      }, alertErr);
+    }
+    if (what === 'restore') return call('trash', { ids: entries().map(function (f) { return f.id; }), restore: true }).then(function () { st.sel.clear(); toast('Put back.'); refresh(); }, alertErr);
+    if (what === 'forever') {
+      return confirmBox('Delete for good?', (list.length === 1 ? '"' + (list[0].dir ? list[0].name : list[0].m.name) + '"' : list.length + ' items') + ' will be gone from every device. This can\'t be undone.', 'Delete for good').then(function (ok) {
+        if (ok) call('delete', { ids: entries().map(function (f) { return f.id; }) }).then(function () { st.sel.clear(); refresh(); }, alertErr);
+      });
+    }
+  }
+  function emptyTrash() {
+    var ids = st.files.filter(function (f) { return f.trashed; }).map(function (f) { return f.id; });
+    confirmBox('Empty the trash?', ids.length + ' items will be deleted for good.', 'Empty trash').then(function (ok) { if (ok) call('delete', { ids: ids }).then(refresh, alertErr); });
+  }
+  function relabel(changes) {
+    changes = changes.filter(function (c) { return c.f && c.f.fk; });
+    if (!changes.length) return Promise.resolve();
+    return Promise.all(changes.map(function (c) { return sealMeta(c.f.fk, c.m).then(function (m) { return { id: c.f.id, meta: m }; }); }))
+      .then(function (items) { return call('meta', { items: items }); });
+  }
+  function mkdirEntry(path) { // one folder (its parents should exist already)
+    var fk = crypto.getRandomValues(new Uint8Array(32));
+    var meta = { name: path[path.length - 1], kind: 'dir', path: path.slice(0, -1), from: deviceName(), made: Date.now() };
+    return Promise.all([sealMeta(fk, meta), seal(myKey(), fk, 'pigeon/key')]).then(function (x) { return call('start', { dir: true, meta: x[0], wrapped: b64(x[1]), device: deviceName() }); });
+  }
+  var made = {};
+  function ensureDirs(path) { // every folder down to `path`, made once
+    var chain = Promise.resolve();
+    path.forEach(function (_, i) {
+      var p = path.slice(0, i + 1), key = pk(p);
+      chain = chain.then(function () {
+        if (made[key]) return made[key];
+        var have = st.files.some(function (f) { return f.kind === 'dir' && !f.trashed && f.m && pk(f.m.path.concat(f.m.name)) === key; });
+        made[key] = have ? Promise.resolve() : mkdirEntry(p);
+        return made[key];
+      });
+    });
+    return chain;
+  }
+  function ensureDirEntry(path) { return ensureDirs(path).then(refresh).then(function () { return byKey('d:' + pk(path)).entry; }); }
+  function newFolder() {
+    promptBox('New folder', st.view === 'nest' && st.path.length ? 'Inside ' + st.path.join(' › ') : 'In your nest', 'Untitled folder', 'Make folder').then(function (name) {
+      name = (name || '').trim().replace(/\//g, '-');
+      if (!name) return;
+      var base = st.view === 'nest' ? st.path : [];
+      ensureDirs(base.concat(name)).then(function () { return refresh(); }).then(function () { toast('Made "' + name + '".'); }, alertErr);
+    });
+  }
+  function rename(it) {
+    var old = it.dir ? it.name : it.m.name;
+    promptBox('Rename', '', old, 'Rename').then(function (name) {
+      name = (name || '').trim().replace(/\//g, '-');
+      if (!name || name === old) return;
+      if (!it.dir) return relabel([{ f: it, m: Object.assign({}, it.m, { name: name }) }]).then(refresh, alertErr);
+      var from = it.path, to = it.path.slice(0, -1).concat(name);
+      relabel(rebase(from, to)).then(function () { if (st.view === 'nest' && pk(st.path).indexOf(pk(from)) === 0) st.path = to.concat(st.path.slice(from.length)); return refresh(); }, alertErr);
+    });
+  }
+  function rebase(from, to) { // new labels for everything in a folder that moves from `from` to `to`
+    return under(from).map(function (f) {
+      var m = Object.assign({}, f.m);
+      if (f.kind === 'dir' && pk(f.m.path.concat(f.m.name)) === pk(from)) { m.name = to[to.length - 1]; m.path = to.slice(0, -1); }
+      else m.path = to.concat(f.m.path.slice(from.length));
+      return { f: f, m: m };
+    });
+  }
+  function movePicker(list) {
+    var dirs = {};
+    st.files.forEach(function (f) { if (f.trashed || !f.m) return; var p = f.kind === 'dir' ? f.m.path.concat(f.m.name) : f.m.path; for (var i = 1; i <= p.length; i++) dirs[pk(p.slice(0, i))] = p.slice(0, i); });
+    var moving = list.filter(function (x) { return x.dir; }).map(function (x) { return pk(x.path); });
+    var options = [[]].concat(Object.keys(dirs).sort().map(function (k) { return dirs[k]; })).filter(function (p) { var k = pk(p); return !moving.some(function (m) { return k === m || k.indexOf(m + '/') === 0; }); });
+    var pick = st.view === 'nest' ? st.path : [];
+    var body = $('dlgBody');
+    body.innerHTML = '<h3>Move ' + (list.length === 1 ? '"' + esc(list[0].dir ? list[0].name : list[0].m.name) + '"' : list.length + ' items') + '</h3><div class="sub">Pick where it goes.</div><div class="tree">' +
+      options.map(function (p, i) { return '<button data-i="' + i + '" style="padding-left:' + (10 + p.length * 18) + 'px" aria-pressed="' + (pk(p) === pk(pick)) + '">' + icon(p.length ? 'folder' : 'nest') + esc(p.length ? p[p.length - 1] : 'My nest') + '</button>'; }).join('') +
+      '</div><div class="acts"><button class="btn" data-x>Cancel</button><button class="btn primary" data-ok>Move here</button></div>';
+    body.querySelectorAll('[data-i]').forEach(function (b) { b.onclick = function () { pick = options[Number(b.dataset.i)]; body.querySelectorAll('[data-i]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); }; });
+    body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+    body.querySelector('[data-ok]').onclick = function () {
+      $('dlg').close();
+      var changes = [];
+      list.forEach(function (x) { if (x.dir) changes = changes.concat(rebase(x.path, pick.concat(x.name))); else changes.push({ f: x, m: Object.assign({}, x.m, { path: pick }) }); });
+      ensureDirs(pick).then(function () { return relabel(changes); }).then(function () { st.sel.clear(); toast('Moved to ' + (pick.length ? pick.join(' › ') : 'My nest') + '.'); refresh(); }, alertErr);
+    };
+    $('dlg').showModal();
+  }
+
+  // ── devices ──
+  function loadDevices() {
+    return call('devices', {}).then(function (r) { st.devices = r.devices; if (st.view === 'devices') render(); }, function () {});
+  }
+  function devicesHtml() {
+    if (!st.devices.length) return '<div class="empty">Loading your devices…</div>';
+    var now = Date.now();
+    return '<div class="label">Everything signed in to your nest. Send files straight to one: they land there by themselves when it\'s open.</div><div class="devices">' + st.devices.slice().sort(function (a, b) { return (b.me - a.me) || (b.seen - a.seen); }).map(function (d) {
+      var live = now - d.seen < 120000;
+      var what = /iphone|android|phone/i.test(d.name) ? 'phone' : /web|chrome|safari|firefox|edge|browser/i.test(d.name) ? 'browser' : 'computer';
+      return '<div class="device"><div class="top"><span class="dot' + (live ? '' : ' off') + '">' + icon(what === 'phone' ? 'devices' : what === 'browser' ? 'eye' : 'term') + '</span><div style="min-width:0"><b>' + esc(d.name) + (d.me ? ' <span class="badge">this one</span>' : '') + '</b><span class="sub">' + (live ? 'online now' : 'last seen ' + ago(d.seen)) + (d.waiting ? ' · ' + d.waiting + ' waiting for it' : '') + '</span></div></div>' +
+        '<div class="acts">' + (d.me ? '<button class="btn" data-device="rename" data-did="' + d.did + '">' + icon('pen') + 'Rename</button>' : '<button class="btn primary" data-device="send" data-did="' + d.did + '">' + icon('send') + 'Send files</button><button class="btn danger" data-device="forget" data-did="' + d.did + '">Sign it out</button>') + '</div></div>';
+    }).join('') + '</div>';
+  }
+  var sendTo = null;
+  function deviceAct(b) {
+    var d = st.devices.filter(function (x) { return x.did === b.dataset.did; })[0];
+    if (!d) return;
+    if (b.dataset.device === 'rename') return renameDevice();
+    if (b.dataset.device === 'send') { sendTo = d; $('pickFiles').click(); return; }
+    if (b.dataset.device === 'forget') confirmBox('Sign out "' + d.name + '"?', 'It will need the nest name and password again. Its files stay in your nest.', 'Sign it out').then(function (ok) { if (ok) call('forget', { did: d.did }).then(loadDevices, alertErr); });
+  }
+  function devicePicker(files) {
+    if (!files.length) return;
+    loadDevices().then(function () {
+      var others = st.devices.filter(function (d) { return !d.me; });
+      var body = $('dlgBody');
+      body.innerHTML = '<h3>Send to a device</h3><div class="sub">' + (files.length === 1 ? '"' + esc(files[0].m.name) + '"' : files.length + ' files') + ' will land on it by itself the next time it\'s open (in pigeon or in the browser).</div>' +
+        (others.length ? '<div class="tree">' + others.map(function (d, i) { return '<button data-i="' + i + '">' + icon('devices') + esc(d.name) + '<span style="margin-left:auto;font-size:.8rem;color:var(--dim)">' + (Date.now() - d.seen < 120000 ? 'online' : ago(d.seen)) + '</span></button>'; }).join('') + '</div>' : '<p class="small">No other devices yet. Sign in to pigeon on another device first.</p>') +
+        '<div class="acts"><button class="btn" data-x>Cancel</button></div>';
+      body.querySelectorAll('[data-i]').forEach(function (b) {
+        b.onclick = function () {
+          var d = others[Number(b.dataset.i)];
+          $('dlg').close();
+          call('deliver', { ids: files.map(function (f) { return f.id; }), to: d.did }).then(function () { toast('On its way to ' + d.name + '.'); hop(); loadDevices(); }, alertErr);
+        };
+      });
+      body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+      $('dlg').showModal();
+    });
+  }
+  function renameDevice() {
+    promptBox('Name this device', 'This is how it shows up in Devices.', deviceName(), 'Save').then(function (n) {
+      n = (n || '').trim(); if (!n) return;
+      call('name', { name: n }).then(function () { try { localStorage.setItem('pigeon-device', n); } catch (e) { /* fine */ } toast('Renamed.'); loadDevices(); }, alertErr);
+    });
+  }
+  var _deviceName = deviceName;
+  deviceName = function () { try { return localStorage.getItem('pigeon-device') || _deviceName(); } catch (e) { return _deviceName(); } };
+
+  // files other devices sent straight here
+  var autoSaving = new Set();
+  function pollInbox() {
+    clearTimeout(timers.inbox);
+    if (!store) return;
+    call('inbox', {}).then(function (r) { return unlockAll(r.files); }).then(function (list) {
+      var before = st.inbox.length;
+      st.inbox = list;
+      if (list.length !== before) { render(); if (list.length > before) hop(); }
+      if (C.local) list.forEach(function (f) { if (!autoSaving.has(f.id)) { autoSaving.add(f.id); saveFile(f, [], true); } }); // the computer saves them by itself
+    }, function () {}).then(function () { timers.inbox = setTimeout(pollInbox, document.hidden ? 30000 : 6000); });
+  }
+  function inboxHtml() {
+    return '<div class="inbox"><h3>' + icon('send') + st.inbox.length + ' ' + (st.inbox.length === 1 ? 'thing' : 'things') + ' sent to this device</h3>' + st.inbox.map(function (f) {
+      return '<div class="row"><span><b>' + esc(f.m.name) + '</b> · ' + size(f.size) + ' · from ' + esc(f.m.from || f.device || 'another device') + '</span><button class="btn primary" style="padding:7px 12px" data-inbox="save" data-id="' + f.id + '">Save</button><button class="btn" style="padding:7px 12px" data-inbox="later" data-id="' + f.id + '">Later</button></div>';
+    }).join('') + '</div>';
+  }
+  function inboxAct(b) {
+    var f = st.inbox.filter(function (x) { return x.id === b.dataset.id; })[0];
+    if (!f) return;
+    if (b.dataset.inbox === 'save') saveFile(f, [], true);
+    else call('got', { id: f.id }).then(pollInbox);
+  }
+
+  // ── shared links ──
+  function loadLinks() { return call('links', {}).then(function (r) { st.links = r.links; if (st.view === 'links') render(); }, function () {}); }
+  function linksHtml() {
+    var rows = st.links.map(function (l) { var f = st.files.filter(function (x) { return x.id === l.file; })[0]; return f && f.fk ? { l: l, f: f } : null; }).filter(Boolean);
+    if (!rows.length) return '<div class="empty"><canvas class="coo big" width="20" height="16"></canvas><b>No shared links right now</b>Make one from a file\'s menu: anyone with the link can download it until it runs out.</div>';
+    return '<div class="list links">' + rows.map(function (x) {
+      var k = kind(x.f.m);
+      return '<div class="lrow"><span class="mini k-' + k.k + '">' + esc(k.t) + '</span><span class="nm">' + esc(x.f.m.name) + '</span><span class="c">until ' + new Date(x.l.expires).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) + '</span><span class="c">' + x.l.hits + ' ' + (x.l.hits === 1 ? 'open' : 'opens') + '</span>' +
+        '<span><button class="btn" style="padding:6px 10px" data-link="copy" data-code="' + x.l.code + '">Copy</button> <button class="btn danger" style="padding:6px 10px" data-link="stop" data-code="' + x.l.code + '">Stop</button></span></div>';
+    }).join('') + '</div>';
+  }
+  function linkAct(b) {
+    var l = st.links.filter(function (x) { return x.code === b.dataset.code; })[0];
+    if (!l) return;
+    var f = st.files.filter(function (x) { return x.id === l.file; })[0];
+    if (b.dataset.link === 'copy' && f) copyText(SITE + '/s/' + l.code + '#' + b64url(f.fk)).then(function () { toast('Link copied.'); });
+    if (b.dataset.link === 'stop') call('unshare', { code: l.code }).then(loadLinks);
+  }
 
   // ── moving bytes ──
-  function download(chunks, meta, fk, piece, onP) {
-    var parts = [], done = 0, n = 0;
-    function next() {
-      if (n >= chunks) return Promise.resolve(new Blob(parts, { type: meta.kind === 'folder' ? 'application/gzip' : meta.type || 'application/octet-stream' }));
-      var i = n++;
-      return piece(i).then(function (box) { return open(fk, box, 'pigeon/chunk/' + i); }).then(function (plain) {
-        parts.push(plain);
-        done += plain.byteLength;
-        onP(meta.size ? done / meta.size : i / chunks);
-        return next();
+  function download(o, onP) {
+    var parts = new Array(o.chunks), done = 0, next = 0, failed = null;
+    function worker() {
+      if (failed || next >= o.chunks) return Promise.resolve();
+      var i = next++;
+      return o.piece(i).then(function (box) { return open(o.fk, box, 'pigeon/chunk/' + i); }).then(function (plain) {
+        parts[i] = plain; done += plain.byteLength; onP(o.size ? done / o.size : (i + 1) / o.chunks);
+        return worker();
       });
     }
-    return next().catch(function (e) { throw new Error(e && e.name === 'OperationError' ? "Couldn't unlock this file (it may have been changed)." : (e && e.message) || 'Download failed.'); });
+    var w = []; for (var i = 0; i < Math.min(PAR, o.chunks); i++) w.push(worker());
+    return Promise.all(w).then(function () { return new Blob(parts, { type: o.meta.kind === 'folder' ? 'application/gzip' : o.meta.type || 'application/octet-stream' }); })
+      .catch(function (e) { throw new Error(e && e.name === 'OperationError' ? "Couldn't unlock this file (it may have been changed)." : (e && e.message) || 'Download failed.'); });
   }
-  function save(blob, meta) {
+  function fileName(meta) { return meta.kind === 'folder' ? meta.name + '.tar.gz' : meta.name; }
+  function saveBlob(blob, meta) {
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = meta.kind === 'folder' ? meta.name + '.tar.gz' : meta.name;
-    document.body.appendChild(a);
-    a.click();
+    a.download = fileName(meta);
+    document.body.appendChild(a); a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
   }
-  // little previews for photos (small ones only, once each)
-  var thumbs = {}, thumbing = {};
-  function thumbnails() {
-    files.filter(function (f) { return f.fk && f.done && /^image\/(png|jpe?g|gif|webp)$/.test(f.m.type || '') && f.size < 4e6 && !thumbs[f.id] && !thumbing[f.id]; }).slice(0, 12).forEach(function (f) {
-      thumbing[f.id] = true;
-      download(f.chunks, f.m, f.fk, function (n) { return call('piece?id=' + f.id + '&n=' + n, undefined, { method: 'GET' }); }, function () {})
-        .then(function (blob) { thumbs[f.id] = URL.createObjectURL(blob); render(); }, function () {});
-    });
+  function getBlob(f, job) {
+    return download({ chunks: f.chunks, size: f.size, meta: f.m, fk: f.fk, piece: function (n) { return call('piece?id=' + f.id + '&n=' + n, undefined, { method: 'GET' }); } }, function (p) { if (job) tick(job, p); });
   }
-  function view(blob, meta) {
-    var url = URL.createObjectURL(blob);
-    $('viewerTitle').textContent = meta.name;
-    $('viewerImg').src = url;
-    $('viewerSave').href = url;
-    $('viewerSave').download = meta.name;
-    $('viewer').showModal();
+  function saveFile(f, sub, fromInbox) {
+    if (!f.fk) return;
+    var job = addJob('down', f.m.name, f.size);
+    return getBlob(f, job).then(function (blob) {
+      if (C.local) return fetch(LOCAL + 'save?name=' + encodeURIComponent(fileName(f.m)) + '&path=' + encodeURIComponent((sub || []).join('/')), { method: 'POST', body: blob }).then(function (r) { return r.json(); }).then(function (j) { if (j.error) throw new Error(j.error); finish(job, 'Saved to ' + j.where); });
+      saveBlob(blob, f.m); finish(job, 'Saved');
+    }).then(function () {
+      if (fromInbox) return call('got', { id: f.id, drop: !!f.m.drop }).then(pollInbox);
+    }).catch(function (e) { failJob(job, e.message); });
   }
-  $('viewerClose').onclick = function () { $('viewer').close(); };
 
-  var queue = Promise.resolve();
-  function sendFiles(list) {
-    Array.prototype.forEach.call(list, function (file) {
-      var id = 'up' + Math.random().toString(36).slice(2);
-      busy[id] = { up: true, id: id, name: file.name, size: file.size, p: 0 };
-      render();
-      queue = queue.then(function () { return sendOne(file, busy[id]); }).then(function () { delete busy[id]; refresh(); }, function (e) { delete busy[id]; render(); alert(file.name + ': ' + e.message); });
-    });
+  // uploads: one file at a time, PAR pieces in flight
+  var upQ = Promise.resolve();
+  function upload(file, folder, to) {
+    var job = addJob('up', file.name, file.size);
+    upQ = upQ.then(function () { return ensureDirs(folder); }).then(function () { return sendOne(file, folder, to, job); })
+      .then(function () { finish(job, to ? 'Sent to ' + to.name : 'In your nest'); hop(); refresh(); }, function (e) { failJob(job, e.message); });
+    return upQ;
   }
-  function sendOne(file, job) {
+  function sendOne(file, folder, to, job) {
     var fk = crypto.getRandomValues(new Uint8Array(32));
     var chunks = Math.max(1, Math.ceil(file.size / CHUNK));
-    var meta = { name: file.name, size: file.size, type: file.type || 'application/octet-stream', kind: 'file', from: deviceName().replace(' (web)', ''), made: file.lastModified || Date.now() };
-    return Promise.all([seal(fk, enc.encode(JSON.stringify(meta)), 'pigeon/meta'), seal(myKey(), fk, 'pigeon/key')]).then(function (x) {
-      return call('start', { size: file.size, chunks: chunks, meta: b64(x[0]), wrapped: b64(x[1]), device: deviceName() });
+    var meta = { name: file.name, size: file.size, type: file.type || guessType(file.name), kind: 'file', from: deviceName(), made: file.lastModified || Date.now(), path: folder };
+    return Promise.all([sealMeta(fk, meta), seal(myKey(), fk, 'pigeon/key')]).then(function (x) {
+      return call('start', { size: file.size, chunks: chunks, meta: x[0], wrapped: b64(x[1]), device: deviceName(), to: to ? to.did : undefined });
     }).then(function (r) {
-      var n = 0;
-      function next() {
-        if (n >= chunks) return call('finish', { id: r.id });
-        var i = n++;
-        return file.slice(i * CHUNK, (i + 1) * CHUNK).arrayBuffer().then(function (buf) { return seal(fk, buf, 'pigeon/chunk/' + i); })
-          .then(function (box) { return call('piece?id=' + r.id + '&n=' + i, box, { method: 'PUT' }); })
-          .then(function () { job.p = Math.min(1, ((i + 1) * CHUNK) / Math.max(1, file.size)); render(); return next(); });
+      var next = 0, sent = 0;
+      function worker() {
+        if (job.cancel) return Promise.reject(new Error('Stopped.'));
+        if (next >= chunks) return Promise.resolve();
+        var i = next++;
+        return file.slice(i * CHUNK, (i + 1) * CHUNK).arrayBuffer().then(function (buf) {
+          return seal(fk, buf, 'pigeon/chunk/' + i).then(function (box) { return retry(function () { return call('piece?id=' + r.id + '&n=' + i, box, { method: 'PUT' }); }); })
+            .then(function () { sent += buf.byteLength; tick(job, sent / Math.max(1, file.size)); return worker(); });
+        });
       }
-      return next();
+      var w = []; for (var i = 0; i < Math.min(PAR, chunks); i++) w.push(worker());
+      return Promise.all(w).then(function () { return call('finish', { id: r.id }); }, function (e) { call('delete', { ids: [r.id] }).catch(function () {}); throw e; });
     });
   }
-  $('drop').onclick = function () { $('pick').click(); };
-  $('drop').onkeydown = function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('pick').click(); } };
-  $('pick').onchange = function () { sendFiles(this.files); this.value = ''; };
-  ['dragenter', 'dragover'].forEach(function (t) { document.addEventListener(t, function (e) { if (!store || $('nestView').hidden) return; e.preventDefault(); $('drop').classList.add('over'); }); });
-  ['dragleave', 'drop'].forEach(function (t) { document.addEventListener(t, function (e) { $('drop').classList.remove('over'); }); });
-  document.addEventListener('drop', function (e) { if (!store || $('nestView').hidden) return; e.preventDefault(); if (e.dataTransfer.files.length) sendFiles(e.dataTransfer.files); });
-  if (!('ontouchstart' in window)) $('dropHint').textContent = 'Drop files here, or click to pick. They\'re locked on this device before they leave it.';
-
-  // ── share sheet with a QR code to point a phone at ──
-  function sheet(title, sub, url) {
-    $('sheetTitle').textContent = title;
-    $('sheetSub').textContent = sub;
-    $('sheetUrl').textContent = url;
-    var q = window.pigeonQR.encode(url), cv = $('qr'), z = 3, n = q.size + z * 2;
-    cv.width = cv.height = n;
-    var g = cv.getContext('2d');
-    g.fillStyle = '#fff'; g.fillRect(0, 0, n, n);
-    g.fillStyle = '#000';
-    for (var y = 0; y < q.size; y++) for (var x = 0; x < q.size; x++) if (q.dark(x, y)) g.fillRect(x + z, y + z, 1, 1);
-    $('sheetCopy').textContent = 'Copy link';
-    $('sheetCopy').onclick = function () {
-      (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(function () { $('sheetCopy').textContent = 'Copied'; }, function () { $('sheetCopy').textContent = 'Select the link above'; });
-    };
-    if (navigator.share && 'ontouchstart' in window) { $('sheetCopy').textContent = 'Share'; $('sheetCopy').onclick = function () { navigator.share({ title: title, url: url }).catch(function () {}); }; }
-    $('sheet').showModal();
+  function retry(fn, n) { n = n || 3; return fn().catch(function (e) { if (n <= 1 || /room|too big|log in/i.test(e.message)) throw e; return new Promise(function (r) { setTimeout(r, 900); }).then(function () { return retry(fn, n - 1); }); }); }
+  function guessType(n) { var e = (n.split('.').pop() || '').toLowerCase(); return { md: 'text/markdown', txt: 'text/plain', py: 'text/x-python', js: 'text/javascript', json: 'application/json', csv: 'text/csv', heic: 'image/heic' }[e] || 'application/octet-stream'; }
+  function uploadList(list, to) {
+    var folder = st.view === 'nest' ? st.path : [];
+    Array.prototype.forEach.call(list, function (f) { upload(f, folder, to); });
   }
-  $('sheetClose').onclick = function () { $('sheet').close(); };
+  $('pickFiles').onchange = function () { uploadList(this.files, sendTo); sendTo = null; this.value = ''; };
+  $('pickFolder').onchange = function () {
+    var base = st.view === 'nest' ? st.path : [];
+    Array.prototype.forEach.call(this.files, function (f) { var rel = (f.webkitRelativePath || f.name).split('/'); upload(f, base.concat(rel.slice(0, -1))); });
+    this.value = '';
+  };
+  // drag files in from your computer (folders too)
+  var dragDepth = 0;
+  function external(e) { return e.dataTransfer && Array.prototype.indexOf.call(e.dataTransfer.types || [], 'Files') >= 0; }
+  document.addEventListener('dragenter', function (e) { if (!store || $('appView').hidden || !external(e)) return; e.preventDefault(); dragDepth++; $('content').classList.add('dragging'); });
+  document.addEventListener('dragover', function (e) { if (external(e)) e.preventDefault(); });
+  document.addEventListener('dragleave', function (e) { if (!external(e)) return; dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $('content').classList.remove('dragging'); });
+  document.addEventListener('drop', function (e) {
+    if (!external(e)) return;
+    e.preventDefault(); dragDepth = 0; $('content').classList.remove('dragging');
+    if (!store || $('appView').hidden) return;
+    var base = st.view === 'nest' ? st.path : [];
+    var items = e.dataTransfer.items;
+    if (items && items[0] && items[0].webkitGetAsEntry) {
+      Array.prototype.forEach.call(items, function (it) { var en = it.webkitGetAsEntry(); if (en) walkEntry(en, base); });
+    } else uploadList(e.dataTransfer.files);
+  });
+  function walkEntry(en, folder) {
+    if (en.isFile) return en.file(function (f) { upload(f, folder); });
+    if (!en.isDirectory || /^(node_modules|\.git|__pycache__|\.venv|venv|\.next|\.cache)$/.test(en.name)) return;
+    var r = en.createReader(), here = folder.concat(en.name);
+    ensureDirs(here);
+    (function more() { r.readEntries(function (list) { if (!list.length) return; list.forEach(function (x) { walkEntry(x, here); }); more(); }); })();
+  }
+  // drag things onto folders to move them
+  var dragging = null;
+  $('content').addEventListener('dragstart', function (e) { var el = e.target.closest('[data-k]'); if (!el) return; if (!st.sel.has(el.dataset.k)) { st.sel.clear(); st.sel.add(el.dataset.k); } dragging = itemsSelected(); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', 'pigeon'); });
+  $('content').addEventListener('dragend', function () { dragging = null; });
+  $('content').addEventListener('dragover', function (e) { var el = e.target.closest('.folder'); if (dragging && el) { e.preventDefault(); el.classList.add('dropping'); } });
+  $('content').addEventListener('dragleave', function (e) { var el = e.target.closest('.folder'); if (el) el.classList.remove('dropping'); });
+  $('content').addEventListener('drop', function (e) { var el = e.target.closest('.folder'); if (!dragging || !el) return; e.preventDefault(); e.stopPropagation(); moveTo(dragging, byKey(el.dataset.k).path); });
+  function dropTarget(el, path) {
+    el.addEventListener('dragover', function (e) { if (dragging) { e.preventDefault(); el.classList.add('drop-target'); } });
+    el.addEventListener('dragleave', function () { el.classList.remove('drop-target'); });
+    el.addEventListener('drop', function (e) { if (!dragging) return; e.preventDefault(); el.classList.remove('drop-target'); moveTo(dragging, path); });
+  }
+  function moveTo(list, path) {
+    var changes = [];
+    list.forEach(function (x) {
+      if (x.dir) { if (pk(path).indexOf(pk(x.path)) === 0) return; changes = changes.concat(rebase(x.path, path.concat(x.name))); }
+      else if (pk(x.m.path) !== pk(path)) changes.push({ f: x, m: Object.assign({}, x.m, { path: path }) });
+    });
+    dragging = null;
+    if (!changes.length) return;
+    relabel(changes).then(function () { st.sel.clear(); toast('Moved to ' + (path.length ? path[path.length - 1] : 'My nest') + '.'); refresh(); }, alertErr);
+  }
 
-  // install lines for the laptop
-  $('shCmd').textContent = 'curl -fsSL ' + (C.sh || location.origin + BASE + '/install.sh') + ' | sh';
-  $('ps1Cmd').textContent = 'irm ' + (C.ps1 || location.origin + BASE + '/install.ps1') + ' | iex';
+  // ── transfers tray ──
+  var jobs = [];
+  function addJob(dir, name, total) {
+    var j = { id: Math.random().toString(36).slice(2), dir: dir, name: name, total: total, p: 0, state: 'go', note: dir === 'up' ? 'waiting' : 'unlocking', at: Date.now() };
+    jobs.unshift(j); jobs = jobs.slice(0, 40); $('transfers').hidden = false; drawJobs(); return j;
+  }
+  function tick(j, p) { j.p = Math.min(1, p); var secs = (Date.now() - j.at) / 1000; j.note = Math.round(j.p * 100) + '%' + (secs > 1.5 && j.total ? ' · ' + size((j.total * j.p) / secs) + '/s' : ''); drawJobs(); }
+  function finish(j, note) { j.p = 1; j.state = 'done'; j.note = note; drawJobs(); }
+  function failJob(j, note) { j.state = 'bad'; j.note = note; drawJobs(); }
+  var drawPending = false;
+  function drawJobs() {
+    if (drawPending) return; drawPending = true;
+    requestAnimationFrame(function () {
+      drawPending = false;
+      var going = jobs.filter(function (j) { return j.state === 'go'; }).length;
+      $('tTitle').textContent = going ? 'Flying · ' + going + ' left' : 'All landed';
+      $('tlist').innerHTML = jobs.map(function (j) { return '<div class="tr ' + (j.state === 'done' ? 'done' : j.state === 'bad' ? 'bad' : '') + '"><div class="l">' + icon(j.dir === 'up' ? 'up' : 'down') + '<b>' + esc(j.name) + '</b><small>' + esc(j.note) + '</small></div><div class="bar"><i style="width:' + Math.round(j.p * 100) + '%"></i></div></div>'; }).join('');
+    });
+  }
+  $('tClose').onclick = function () { $('transfers').hidden = true; jobs = jobs.filter(function (j) { return j.state === 'go'; }); };
+
+  // ── little thumbnails for photos ──
+  var thumbs = new Map(), thumbing = new Set(), thumbQ = [];
+  var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { io.unobserve(e.target); wantThumb(e.target.dataset.thumb); } }); }, { rootMargin: '200px' }) : null;
+  function paintThumbs() {
+    document.querySelectorAll('[data-thumb]').forEach(function (el) {
+      var f = st.files.filter(function (x) { return x.id === el.dataset.thumb; })[0];
+      if (!f || thumbs.has(f.id) || !f.fk || !f.done || !/^image\/(png|jpe?g|gif|webp|avif)$/.test(f.m.type || '') || f.size > 8e6) return;
+      if (io) io.observe(el); else wantThumb(f.id);
+    });
+  }
+  function wantThumb(id) { if (thumbing.has(id) || thumbs.has(id)) return; thumbing.add(id); thumbQ.push(id); pumpThumbs(); }
+  var thumbBusy = 0;
+  function pumpThumbs() {
+    while (thumbBusy < 2 && thumbQ.length) {
+      var id = thumbQ.shift(), f = st.files.filter(function (x) { return x.id === id; })[0];
+      if (!f) continue;
+      thumbBusy++;
+      getBlob(f).then(function (blob) { return shrink(blob); }).then(function (url) { thumbs.set(id, url); document.querySelectorAll('[data-thumb="' + id + '"]').forEach(function (el) { el.innerHTML = '<img alt="" src="' + url + '">'; }); }, function () {})
+        .then(function () { thumbBusy--; pumpThumbs(); });
+    }
+  }
+  function shrink(blob) { // keep small copies in memory, not whole photos
+    return createImageBitmap(blob).then(function (bmp) {
+      var s = Math.min(1, 360 / Math.max(bmp.width, bmp.height)), cv = document.createElement('canvas');
+      cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s);
+      cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+      return new Promise(function (r) { cv.toBlob(function (b) { r(URL.createObjectURL(b)); }, 'image/jpeg', .82); });
+    }).catch(function () { return URL.createObjectURL(blob); });
+  }
+
+  // ── previews ──
+  var viewing = null, viewUrl = null;
+  function preview(f) {
+    viewing = f;
+    $('vTitle').textContent = f.m.name;
+    $('vStage').innerHTML = '<div class="small">Unlocking… <span id="vPct"></span></div>';
+    if (!$('viewerDlg').open) $('viewerDlg').showModal();
+    getBlob(f, null).then(function (blob) {
+      if (viewing !== f) return;
+      if (viewUrl) URL.revokeObjectURL(viewUrl);
+      var t = f.m.type || '', url = viewUrl = URL.createObjectURL(blob), html;
+      if (/^image\//.test(t)) html = '<img alt="" src="' + url + '">';
+      else if (/^video\//.test(t)) html = '<video controls autoplay src="' + url + '"></video>';
+      else if (/^audio\//.test(t)) html = '<audio controls autoplay src="' + url + '"></audio>';
+      else if (/pdf/.test(t)) html = '<iframe title="PDF" src="' + url + '"></iframe>';
+      else return blob.slice(0, 262144).text().then(function (txt) { $('vStage').innerHTML = '<pre></pre>'; $('vStage').firstChild.textContent = txt + (blob.size > 262144 ? '\n\n… (save it to see the rest)' : ''); });
+      $('vStage').innerHTML = html + (/^image\//.test(t) ? '<button class="icon-btn nav-arrow" style="left:10px" data-step="-1" aria-label="Previous">' + icon('left') + '</button><button class="icon-btn nav-arrow" style="right:10px" data-step="1" aria-label="Next">' + icon('right') + '</button>' : '');
+      $('vStage').querySelectorAll('[data-step]').forEach(function (b) { b.onclick = function () { step(Number(b.dataset.step)); }; });
+    }, function (e) { $('vStage').innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+  }
+  function step(d) {
+    if (!viewing) return;
+    var list = sorted(st.files.filter(function (x) { return !x.trashed && x.done && x.fk && x.m && /^image\//.test(x.m.type || '') && pk(x.m.path) === pk(viewing.m.path); }));
+    var i = list.indexOf(viewing);
+    if (i >= 0 && list.length > 1) preview(list[(i + d + list.length) % list.length]);
+  }
+  $('vClose').onclick = function () { $('viewerDlg').close(); };
+  $('viewerDlg').addEventListener('close', function () { viewing = null; $('vStage').innerHTML = ''; if (viewUrl) { URL.revokeObjectURL(viewUrl); viewUrl = null; } });
+  $('vSave').onclick = function () { if (viewing) saveFile(viewing, []); };
+
+  // ── sharing ──
+  function shareSheet(f) {
+    call('share', { id: f.id, hours: 24 }).then(function (r) {
+      var url = SITE + '/s/' + r.code + '#' + b64url(f.fk);
+      var body = $('dlgBody');
+      body.innerHTML = '<h3>' + esc(f.m.name) + '</h3><div class="sub">Anyone with this link can download it for 24 hours. Point a phone\'s camera at the code.</div><canvas class="qr" id="qr" width="10" height="10"></canvas><div class="url">' + esc(url) + '</div><div class="acts"><button class="btn" data-x>Done</button><button class="btn primary" data-copy>Copy link</button></div>';
+      var q = window.pigeonQR.encode(url), cv = $('qr'), z = 3, n = q.size + z * 2;
+      cv.width = cv.height = n;
+      var g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); g.fillStyle = '#000';
+      for (var y = 0; y < q.size; y++) for (var x = 0; x < q.size; x++) if (q.dark(x, y)) g.fillRect(x + z, y + z, 1, 1);
+      body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+      var cb = body.querySelector('[data-copy]');
+      cb.onclick = function () { copyText(url).then(function () { cb.textContent = 'Copied'; }, function () { cb.textContent = 'Select the link above'; }); };
+      if (navigator.share && matchMedia('(pointer: coarse)').matches) { cb.textContent = 'Share'; cb.onclick = function () { navigator.share({ title: f.m.name, url: url }).catch(function () {}); }; }
+      $('dlg').showModal();
+    }, alertErr);
+  }
+  function copyText(t) { return navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject(new Error('no clipboard')); }
+  function invite() {
+    call('invite', {}).then(function (r) {
+      var code = r.code.slice(0, 4) + '-' + r.code.slice(4), link = location.origin + location.pathname + '#invite=' + r.code;
+      var body = $('dlgBody');
+      body.innerHTML = '<h3>Invite someone</h3><div class="sub">Give them this code (or link). It makes one new nest, and works for 7 days. Their nest is theirs: you can\'t see inside it.</div><div class="url" style="font-size:1.4rem;text-align:center;letter-spacing:.08em">' + esc(code) + '</div><div class="url" style="margin-top:8px">' + esc(link) + '</div><div class="acts"><button class="btn" data-x>Done</button><button class="btn primary" data-copy>Copy link</button></div>';
+      body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+      body.querySelector('[data-copy]').onclick = function () { var b = this; copyText(link).then(function () { b.textContent = 'Copied'; }); };
+      $('dlg').showModal();
+    }, alertErr);
+  }
+  function getApp() {
+    var body = $('dlgBody');
+    body.innerHTML = '<h3>pigeon for your computer</h3><div class="sub">Send and get files from the terminal, keep a copy of your nest in a folder, and open this page already signed in with <b>pigeon dashboard</b>.</div><div class="small">Mac or Linux, in Terminal:</div><code class="cmd">curl -fsSL ' + esc(C.sh || SITE + '/install.sh') + ' | sh</code><div class="small">Windows, in PowerShell:</div><code class="cmd">irm ' + esc(C.ps1 || SITE + '/install.ps1') + ' | iex</code><div class="acts"><button class="btn primary" data-x>Done</button></div>';
+    body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+    $('dlg').showModal();
+  }
+
+  // ── small dialogs ──
+  function promptBox(title, sub, value, ok) {
+    return new Promise(function (resolve) {
+      var body = $('dlgBody');
+      body.innerHTML = '<form method="dialog"><h3>' + esc(title) + '</h3>' + (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') + '<label class="field"><input id="pIn" maxlength="120"></label><div class="acts"><button class="btn" value="no" type="button" data-x>Cancel</button><button class="btn primary" value="ok">' + esc(ok) + '</button></div></form>';
+      var input = $('pIn'); input.value = value || '';
+      var done = false;
+      body.querySelector('[data-x]').onclick = function () { done = true; $('dlg').close(); resolve(null); };
+      body.querySelector('form').onsubmit = function (e) { e.preventDefault(); done = true; $('dlg').close(); resolve(input.value); };
+      $('dlg').addEventListener('close', function once() { $('dlg').removeEventListener('close', once); if (!done) resolve(null); });
+      $('dlg').showModal();
+      var dot = input.value.lastIndexOf('.');
+      input.focus(); input.setSelectionRange(0, dot > 0 ? dot : input.value.length);
+    });
+  }
+  function confirmBox(title, sub, ok) {
+    return new Promise(function (resolve) {
+      var body = $('dlgBody');
+      body.innerHTML = '<h3>' + esc(title) + '</h3><div class="sub">' + esc(sub) + '</div><div class="acts"><button class="btn" data-x>Cancel</button><button class="btn primary" data-ok style="background:var(--rose)">' + esc(ok) + '</button></div>';
+      var done = false;
+      body.querySelector('[data-x]').onclick = function () { done = true; $('dlg').close(); resolve(false); };
+      body.querySelector('[data-ok]').onclick = function () { done = true; $('dlg').close(); resolve(true); };
+      $('dlg').addEventListener('close', function once() { $('dlg').removeEventListener('close', once); if (!done) resolve(false); });
+      $('dlg').showModal();
+    });
+  }
+  function alertErr(e) { toast((e && e.message) || 'Something went wrong.'); }
+  function toast(text, actLabel, fn) {
+    var t = $('toast');
+    t.innerHTML = '<span></span>' + (actLabel ? '<button>' + esc(actLabel) + '</button>' : '');
+    t.firstChild.textContent = text;
+    if (actLabel) t.querySelector('button').onclick = function () { t.hidden = true; fn(); };
+    t.hidden = false;
+    clearTimeout(timers.toast);
+    timers.toast = setTimeout(function () { t.hidden = true; }, actLabel ? 7000 : 3500);
+  }
+
+  // ── search, sorting, layout, keys ──
+  $('q').addEventListener('input', function () { st.q = this.value.trim(); if (st.q) { st.view = 'search'; st.sel.clear(); render(); } else go('nest', st.path); });
+  $('sort').onchange = function () { st.sort = this.value; try { localStorage.setItem('pigeon-sort', st.sort); } catch (e) { /* fine */ } render(); };
+  function layoutButtons() { $('gridBtn').setAttribute('aria-pressed', String(st.layout === 'grid')); $('listBtn').setAttribute('aria-pressed', String(st.layout === 'list')); }
+  $('gridBtn').onclick = function () { st.layout = 'grid'; try { localStorage.setItem('pigeon-layout', 'grid'); } catch (e) { /* fine */ } layoutButtons(); render(); };
+  $('listBtn').onclick = function () { st.layout = 'list'; try { localStorage.setItem('pigeon-layout', 'list'); } catch (e) { /* fine */ } layoutButtons(); render(); };
+  document.addEventListener('keydown', function (e) {
+    if (!store || $('appView').hidden || $('dlg').open) return;
+    if ($('viewerDlg').open) { if (e.key === 'ArrowRight') step(1); if (e.key === 'ArrowLeft') step(-1); return; }
+    var typing = /input|textarea|select/i.test((document.activeElement || {}).tagName || '');
+    if (e.key === '/' && !typing) { e.preventDefault(); $('q').focus(); return; }
+    if (typing) { if (e.key === 'Escape') document.activeElement.blur(); return; }
+    var sel = itemsSelected();
+    if (e.key === 'Escape') { hideMenu(); st.sel.clear(); paintSelection(); }
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && sel.length) { e.preventDefault(); act(st.view === 'trash' ? 'forever' : 'trash', sel); }
+    else if (e.key === 'Enter' && sel.length === 1) openItem(sel[0]);
+    else if ((e.key === 'F2' || e.key === 'r') && sel.length === 1 && st.view !== 'trash') { e.preventDefault(); act('rename', sel); }
+    else if ((e.metaKey || e.ctrlKey) && e.key === 'a') { e.preventDefault(); document.querySelectorAll('#content [data-k]').forEach(function (x) { st.sel.add(x.dataset.k); }); paintSelection(); }
+    else if (e.key === 'Backspace' && st.view === 'nest' && st.path.length) go('nest', st.path.slice(0, -1));
+  });
+
+  // ── off we go ──
+  if (C.local) { store = C.session; start(); }
+  else {
+    store = remembered();
+    if (store && store.token) start(); else show('login');
+  }
 })();
 </script>
 </body>

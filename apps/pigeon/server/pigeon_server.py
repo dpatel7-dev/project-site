@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""pigeon's server: a place to keep files and pass them between your devices.
+"""pigeon's server: your own encrypted drive, and a way to pass files between devices.
 
 It only ever sees locked bytes: names, contents and keys are encrypted on your
 device before they're sent (see src/crypto.js and web/index.html). What it
@@ -11,7 +11,7 @@ Runs anywhere Python 3.8+ runs, with nothing to install:
     from pigeon_server import application               # WSGI (PythonAnywhere)
 
 Settings: ~/pigeon-data/config.json (or PIGEON_* environment variables)
-    "signups":     "first" (default: only until the first nest exists), "open", or "closed"
+    "signups":     "first" (default: the first nest, then only people its owner invites), "open", or "closed"
     "quota_mb":    400     total space for all files (PythonAnywhere's free plan has 512 MB)
     "max_file_mb": 400     the biggest single file
     "public_url":  ""      the site's address, if it can't be worked out
@@ -32,13 +32,17 @@ import time
 REPO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHUNK = 4 * 1024 * 1024
 MAX_PIECE = CHUNK + 64
-NEST_RE = re.compile(r'^[a-z0-9][a-z0-9_-]{1,23}$')
+NEST_RE = re.compile(r'^[a-z0-9][a-z0-9._-]{1,31}$')
+NEST_HELP = 'A nest name is 2-32 characters: letters, numbers, dots, _ and -'
+DID_RE = re.compile(r'^[a-f0-9]{16}$')
 ID_RE = re.compile(r'^[a-f0-9]{16}$')
 CODE_RE = re.compile(r'^[a-z2-9]{8}$')
 CODE_ABC = 'abcdefghijkmnpqrstuvwxyz23456789'
 HOST_RE = re.compile(r'^[A-Za-z0-9.-]+(:\d{1,5})?$')
 TOKEN_DAYS = 60
 UPLOAD_HOURS = 24
+TRASH_DAYS = 30
+INVITE_DAYS = 7
 
 
 def _version():
@@ -79,9 +83,14 @@ class Pigeon:
         self.max_file = int(float(max_file_mb) * 1024 * 1024)
         self.public_url = (public_url or '').rstrip('/')
         self.lock = threading.RLock()
-        self.db = sqlite3.connect(os.path.join(data_dir, 'pigeon.db'), check_same_thread=False, isolation_level=None)
+        # No write-ahead log: PythonAnywhere keeps files on a network disk, where
+        # SQLite's WAL mode fails ("disk I/O error"). The classic journal works there.
+        self.db = sqlite3.connect(os.path.join(data_dir, 'pigeon.db'), timeout=20, check_same_thread=False, isolation_level=None)
         self.db.row_factory = sqlite3.Row
-        self.db.execute('PRAGMA journal_mode=WAL')
+        try:
+            self.db.execute('PRAGMA journal_mode=DELETE')
+        except sqlite3.Error:
+            pass
         self.db.executescript('''
             CREATE TABLE IF NOT EXISTS nests (name TEXT PRIMARY KEY, salt TEXT, proof TEXT, made INTEGER);
             CREATE TABLE IF NOT EXISTS tokens (hash TEXT PRIMARY KEY, nest TEXT, device TEXT, made INTEGER, seen INTEGER);
@@ -89,7 +98,19 @@ class Pigeon:
                 wrapped TEXT, made INTEGER, done INTEGER DEFAULT 0, stored INTEGER DEFAULT 0, device TEXT);
             CREATE TABLE IF NOT EXISTS shares (code TEXT PRIMARY KEY, file TEXT, nest TEXT, expires INTEGER, hits INTEGER DEFAULT 0);
             CREATE TABLE IF NOT EXISTS fails (key TEXT, at INTEGER);
+            CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, nest TEXT, made INTEGER, expires INTEGER, used_by TEXT);
         ''')
+        # newer columns (older pigeon sites get them added in place)
+        for table, col, kind in [('nests', 'owner', 'INTEGER DEFAULT 0'), ('tokens', 'did', 'TEXT'), ('files', 'kind', "TEXT DEFAULT 'file'"),
+                                 ('files', 'trashed', 'INTEGER DEFAULT 0'), ('files', 'to_did', 'TEXT'), ('files', 'from_did', 'TEXT'),
+                                 ('files', 'got', 'INTEGER DEFAULT 0')]:
+            have = [r[1] for r in self.db.execute('PRAGMA table_info(%s)' % table).fetchall()]
+            if col not in have:
+                self.db.execute('ALTER TABLE %s ADD COLUMN %s %s' % (table, col, kind))
+        if not self.db.execute('SELECT 1 FROM nests WHERE owner = 1').fetchall():
+            first = self.db.execute('SELECT name FROM nests ORDER BY made LIMIT 1').fetchall()
+            if first:
+                self.db.execute('UPDATE nests SET owner = 1 WHERE name = ?', (first[0][0],))
         self._swept = 0
         self._pages = {}
 
@@ -120,6 +141,9 @@ class Pigeon:
         self.q('DELETE FROM shares WHERE expires < ?', ms)
         self.q('DELETE FROM tokens WHERE seen < ?', ms - TOKEN_DAYS * 86400000)
         self.q('DELETE FROM fails WHERE at < ?', ms - 3600000)
+        self.q('DELETE FROM invites WHERE expires < ?', ms)
+        for r in self.q('SELECT id FROM files WHERE trashed > 0 AND trashed < ?', ms - TRASH_DAYS * 86400000):
+            self._drop(r['id'])
 
     def _drop(self, fid):
         shutil.rmtree(os.path.join(self.files_dir, fid), ignore_errors=True)
@@ -127,11 +151,13 @@ class Pigeon:
         self.q('DELETE FROM shares WHERE file = ?', fid)
 
     # ── accounts ────────────────────────────────────────────────────────────
-    def _token(self, nest, device):
+    def _token(self, nest, device, did=None):
         token = secrets.token_hex(32)
         now = int(time.time() * 1000)
-        self.q('INSERT INTO tokens VALUES (?, ?, ?, ?, ?)', hashlib.sha256(token.encode()).hexdigest(), nest, str(device or '')[:60], now, now)
-        return token
+        did = did if isinstance(did, str) and DID_RE.match(did) else secrets.token_hex(8)
+        self.q('INSERT INTO tokens (hash, nest, device, made, seen, did) VALUES (?, ?, ?, ?, ?, ?)',
+               hashlib.sha256(token.encode()).hexdigest(), nest, str(device or '')[:60], now, now, did)
+        return token, did
 
     def auth(self, environ):
         h = environ.get('HTTP_AUTHORIZATION') or ''
@@ -139,13 +165,13 @@ class Pigeon:
         if not m:
             raise Err('401 Unauthorized', 'Please log in.')
         th = hashlib.sha256(m.group(1).encode()).hexdigest()
-        r = self.one('SELECT nest, seen FROM tokens WHERE hash = ?', th)
+        r = self.one('SELECT nest, seen, did FROM tokens WHERE hash = ?', th)
         if not r:
             raise Err('401 Unauthorized', 'You were logged out. Please log in again.')
         now = int(time.time() * 1000)
-        if now - r['seen'] > 60000:
+        if now - r['seen'] > 30000:
             self.q('UPDATE tokens SET seen = ? WHERE hash = ?', now, th)
-        return r['nest'], th
+        return r['nest'], th, (r['did'] or th[:16])
 
     def _slow_down(self, key):
         now = int(time.time() * 1000)
@@ -154,13 +180,13 @@ class Pigeon:
             raise Err('429 Too Many Requests', 'Too many wrong passwords. Wait 10 minutes, then try again.')
 
     def hello(self, m):
-        nest = str(m.get('nest') or '').lower()
+        nest = str(m.get('nest') or '').strip().lower()
         if not NEST_RE.match(nest):
-            raise Err('400 Bad Request', 'A nest name is 2-24 characters: a-z, 0-9, _ and -')
+            raise Err('400 Bad Request', NEST_HELP)
         r = self.one('SELECT salt FROM nests WHERE name = ?', nest)
         if r:
             return {'exists': True, 'salt': r['salt']}
-        return {'exists': False, 'canMake': self._can_make()}
+        return {'exists': False, 'canMake': self._can_make(), 'invites': self.signups != 'closed'}
 
     def _can_make(self):
         if self.signups == 'open':
@@ -170,21 +196,30 @@ class Pigeon:
         return self.one('SELECT COUNT(*) AS n FROM nests')['n'] == 0
 
     def signup(self, m, ip):
-        nest = str(m.get('nest') or '').lower()
+        nest = str(m.get('nest') or '').strip().lower()
         if not NEST_RE.match(nest):
-            raise Err('400 Bad Request', 'A nest name is 2-24 characters: a-z, 0-9, _ and -')
+            raise Err('400 Bad Request', NEST_HELP)
         if not _b64ok(m.get('salt'), 16, 16) or not re.match(r'^[a-f0-9]{64}$', str(m.get('proof') or '')):
             raise Err('400 Bad Request', 'Malformed request')
+        code = str(m.get('invite') or '').strip().lower().replace('-', '')
         with self.lock:
             if self.one('SELECT 1 AS x FROM nests WHERE name = ?', nest):
-                raise Err('409 Conflict', 'That nest already exists. Log in instead.')
+                raise Err('409 Conflict', 'That nest already exists. Open it instead (same name and password).')
+            first = self.one('SELECT COUNT(*) AS n FROM nests')['n'] == 0
             if not self._can_make():
-                raise Err('403 Forbidden', "This pigeon site isn't taking new nests. (Its owner can allow it: \"signups\": \"open\" in pigeon-data/config.json)")
-            self.q('INSERT INTO nests VALUES (?, ?, ?, ?)', nest, m['salt'], hashlib.sha256(m['proof'].encode()).hexdigest(), int(time.time() * 1000))
-        return {'token': self._token(nest, m.get('device'))}
+                inv = self.one('SELECT * FROM invites WHERE code = ? AND used_by IS NULL AND expires > ?', code, int(time.time() * 1000)) if code else None
+                if not inv:
+                    if code:
+                        raise Err('403 Forbidden', "That invite code doesn't work (it may have been used already, or expired). Ask for a new one.")
+                    raise Err('403 Forbidden', 'This pigeon site is invite-only. Ask its owner for an invite code, or open the nest you already have.')
+                self.q('UPDATE invites SET used_by = ? WHERE code = ?', nest, code)
+            self.q('INSERT INTO nests (name, salt, proof, made, owner) VALUES (?, ?, ?, ?, ?)', nest, m['salt'],
+                   hashlib.sha256(m['proof'].encode()).hexdigest(), int(time.time() * 1000), 1 if first else 0)
+        token, did = self._token(nest, m.get('device'), m.get('did'))
+        return {'token': token, 'did': did}
 
     def login(self, m, ip):
-        nest = str(m.get('nest') or '').lower()
+        nest = str(m.get('nest') or '').strip().lower()
         proof = str(m.get('proof') or '')
         key = nest + '|' + ip
         self._slow_down(key)
@@ -192,32 +227,61 @@ class Pigeon:
         if not r or not hmac.compare_digest(r['proof'], hashlib.sha256(proof.encode()).hexdigest()):
             self.q('INSERT INTO fails VALUES (?, ?)', key, int(time.time() * 1000))
             raise Err('403 Forbidden', 'Wrong nest name or password.')
-        return {'token': self._token(nest, m.get('device'))}
+        token, did = self._token(nest, m.get('device'), m.get('did'))
+        return {'token': token, 'did': did}
+
+    def _owner(self, nest):
+        r = self.one('SELECT owner FROM nests WHERE name = ?', nest)
+        return bool(r and r['owner'])
+
+    def invite(self, nest):
+        if not self._owner(nest):
+            raise Err('403 Forbidden', "Only this site's owner can invite people.")
+        if self.signups == 'closed':
+            raise Err('403 Forbidden', 'New nests are switched off on this site ("signups": "closed").')
+        code = ''.join(secrets.choice(CODE_ABC) for _ in range(8))
+        now = int(time.time() * 1000)
+        self.q('INSERT INTO invites VALUES (?, ?, ?, ?, NULL)', code, nest, now, now + INVITE_DAYS * 86400000)
+        return {'code': code, 'expires': now + INVITE_DAYS * 86400000}
 
     # ── files ───────────────────────────────────────────────────────────────
-    def list(self, nest):
-        rows = self.q('SELECT * FROM files WHERE nest = ? ORDER BY made DESC', nest)
-        files = [{'id': r['id'], 'size': r['size'], 'chunks': r['chunks'], 'meta': r['meta'], 'wrapped': r['wrapped'],
-                  'made': r['made'], 'done': bool(r['done']), 'device': r['device'] or ''} for r in rows]
-        return {'files': files, 'used': self.used(), 'quota': self.quota, 'maxFile': self.max_file}
+    def _row(self, r):
+        return {'id': r['id'], 'size': r['size'], 'chunks': r['chunks'], 'meta': r['meta'], 'wrapped': r['wrapped'],
+                'made': r['made'], 'done': bool(r['done']), 'device': r['device'] or '', 'kind': r['kind'] or 'file',
+                'trashed': r['trashed'] or 0, 'to': r['to_did'] or '', 'from': r['from_did'] or '', 'got': r['got'] or 0}
 
-    def start(self, nest, m):
+    def list(self, nest, did):
+        rows = self.q('SELECT * FROM files WHERE nest = ? ORDER BY made DESC', nest)
+        return {'files': [self._row(r) for r in rows], 'used': self.used(), 'quota': self.quota, 'maxFile': self.max_file,
+                'me': did, 'owner': self._owner(nest), 'signups': self.signups, 'trashDays': TRASH_DAYS}
+
+    def start(self, nest, did, m):
+        if not _b64ok(m.get('meta'), 28, 8192) or not _b64ok(m.get('wrapped'), 60, 60):
+            raise Err('400 Bad Request', 'Malformed request')
+        to = m.get('to') or None
+        if to is not None and not (isinstance(to, str) and DID_RE.match(to)):
+            raise Err('400 Bad Request', 'Malformed request')
+        now = int(time.time() * 1000)
+        if m.get('dir'):  # a folder: just a name, nothing to upload
+            fid = secrets.token_hex(8)
+            self.q("INSERT INTO files (id, nest, size, chunks, meta, wrapped, made, device, kind, done, from_did) VALUES (?, ?, 0, 0, ?, ?, ?, ?, 'dir', 1, ?)",
+                   fid, nest, m['meta'], m['wrapped'], now, str(m.get('device') or '')[:60], did)
+            return {'id': fid}
         size = m.get('size')
         chunks = m.get('chunks')
         if not isinstance(size, int) or size < 0 or not isinstance(chunks, int) or chunks < 1:
             raise Err('400 Bad Request', 'Malformed request')
         if chunks != max(1, -(-size // CHUNK)):
             raise Err('400 Bad Request', 'Malformed request')
-        if not _b64ok(m.get('meta'), 28, 8192) or not _b64ok(m.get('wrapped'), 60, 60):
-            raise Err('400 Bad Request', 'Malformed request')
         if size > self.max_file:
             raise Err('413 Payload Too Large', 'That file is bigger than this site allows (%d MB).' % (self.max_file // 1048576))
         with self.lock:
             if self.used() + size + chunks * 28 > self.quota:
-                raise Err('507 Insufficient Storage', "There's no room left: delete some files first (%d of %d MB used)." % (self.used() // 1048576, self.quota // 1048576))
+                raise Err('507 Insufficient Storage', "There's no room left: empty the trash or delete some files first (%d of %d MB used)." % (self.used() // 1048576, self.quota // 1048576))
             fid = secrets.token_hex(8)
-            self.q('INSERT INTO files (id, nest, size, chunks, meta, wrapped, made, device) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                   fid, nest, size, chunks, m['meta'], m['wrapped'], int(time.time() * 1000), str(m.get('device') or '')[:60])
+            self.q('INSERT INTO files (id, nest, size, chunks, meta, wrapped, made, device, kind, to_did, from_did) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                   fid, nest, size, chunks, m['meta'], m['wrapped'], now, str(m.get('device') or '')[:60],
+                   'bundle' if m.get('bundle') else 'file', to, did)
         os.makedirs(os.path.join(self.files_dir, fid), exist_ok=True)
         return {'id': fid}
 
@@ -229,6 +293,12 @@ class Pigeon:
             raise Err('404 Not Found', "That file isn't here any more.")
         return r
 
+    def _ids(self, m):
+        ids = m.get('ids') if isinstance(m.get('ids'), list) else [m.get('id')]
+        if not ids or len(ids) > 2000 or not all(isinstance(i, str) and ID_RE.match(i) for i in ids):
+            raise Err('400 Bad Request', 'Malformed request')
+        return ids
+
     def put_piece(self, nest, fid, n, body):
         r = self._mine(nest, fid)
         if r['done'] or not (0 <= n < r['chunks']) or not (28 <= len(body) <= MAX_PIECE):
@@ -237,7 +307,7 @@ class Pigeon:
         old = os.path.getsize(path) if os.path.exists(path) else 0
         with self.lock:
             if self.used() - old + len(body) > self.quota + 1024 * 1024:
-                raise Err('507 Insufficient Storage', "There's no room left: delete some files first.")
+                raise Err('507 Insufficient Storage', "There's no room left: empty the trash or delete some files first.")
             tmp = path + '.part'
             with open(tmp, 'wb') as f:
                 f.write(body)
@@ -263,15 +333,38 @@ class Pigeon:
         except OSError:
             raise Err('404 Not Found', 'That piece is missing.')
 
+    def set_meta(self, nest, m):
+        items = m.get('items')
+        if not isinstance(items, list) or not 0 < len(items) <= 2000:
+            raise Err('400 Bad Request', 'Malformed request')
+        for it in items:
+            if not isinstance(it, dict) or not _b64ok(it.get('meta'), 28, 8192):
+                raise Err('400 Bad Request', 'Malformed request')
+            self._mine(nest, it.get('id'))
+        with self.lock:
+            for it in items:
+                self.q('UPDATE files SET meta = ? WHERE id = ? AND nest = ?', it['meta'], it['id'], nest)
+        return {'ok': True}
+
+    def trash(self, nest, m):
+        ids = self._ids(m)
+        when = 0 if m.get('restore') else int(time.time() * 1000)
+        with self.lock:
+            for fid in ids:
+                self.q('UPDATE files SET trashed = ? WHERE id = ? AND nest = ?', when, fid, nest)
+        return {'ok': True}
+
     def delete(self, nest, m):
-        r = self._mine(nest, m.get('id'))
-        self._drop(r['id'])
+        for fid in self._ids(m):
+            r = self.one('SELECT id FROM files WHERE id = ? AND nest = ?', fid, nest)
+            if r:
+                self._drop(fid)
         return {'ok': True, 'used': self.used()}
 
     def share(self, nest, m):
         r = self._mine(nest, m.get('id'))
-        if not r['done']:
-            raise Err('409 Conflict', "That file hasn't finished arriving yet.")
+        if not r['done'] or r['kind'] == 'dir':
+            raise Err('409 Conflict', "That can't be shared yet.")
         hours = m.get('hours', 24)
         if not isinstance(hours, (int, float)) or not (0.1 <= hours <= 24 * 30):
             hours = 24
@@ -279,6 +372,10 @@ class Pigeon:
         expires = int((time.time() + hours * 3600) * 1000)
         self.q('INSERT INTO shares VALUES (?, ?, ?, ?, 0)', code, r['id'], nest, expires)
         return {'code': code, 'expires': expires}
+
+    def links(self, nest):
+        rows = self.q('SELECT code, file, expires, hits FROM shares WHERE nest = ? AND expires > ? ORDER BY expires DESC', nest, int(time.time() * 1000))
+        return {'links': [{'code': r['code'], 'file': r['file'], 'expires': r['expires'], 'hits': r['hits']} for r in rows]}
 
     def unshare(self, nest, m):
         self.q('DELETE FROM shares WHERE code = ? AND nest = ?', str(m.get('code') or ''), nest)
@@ -291,7 +388,7 @@ class Pigeon:
         if not s or s['expires'] < time.time() * 1000:
             raise Err('410 Gone', 'That link has expired. Ask for a new one.')
         r = self.one('SELECT * FROM files WHERE id = ?', s['file'])
-        if not r:
+        if not r or r['trashed']:
             raise Err('410 Gone', 'That file was deleted.')
         return s, r
 
@@ -299,9 +396,56 @@ class Pigeon:
         self.q('DELETE FROM tokens WHERE hash = ?', th)
         return {'ok': True}
 
-    def devices(self, nest):
-        rows = self.q('SELECT device, made, seen FROM tokens WHERE nest = ? ORDER BY seen DESC', nest)
-        return {'devices': [{'device': r['device'], 'made': r['made'], 'seen': r['seen']} for r in rows]}
+    # ── devices: every computer, phone or browser that's logged in ─────────
+    def devices(self, nest, did):
+        rows = self.q('SELECT did, device, made, seen, hash FROM tokens WHERE nest = ? ORDER BY seen DESC', nest)
+        out = {}
+        for r in rows:
+            key = r['did'] or r['hash'][:16]
+            if key not in out:
+                out[key] = {'did': key, 'name': r['device'] or 'a device', 'made': r['made'], 'seen': r['seen'], 'me': key == did}
+            else:
+                out[key]['made'] = min(out[key]['made'], r['made'])
+        waiting = {r['to_did']: r['n'] for r in self.q(
+            'SELECT to_did, COUNT(*) AS n FROM files WHERE nest = ? AND to_did IS NOT NULL AND got = 0 AND done = 1 AND trashed = 0 GROUP BY to_did', nest)}
+        for d in out.values():
+            d['waiting'] = waiting.get(d['did'], 0)
+        return {'devices': list(out.values()), 'me': did}
+
+    def rename_device(self, nest, did, m):
+        name = str(m.get('name') or '').strip()[:60]
+        if not name:
+            raise Err('400 Bad Request', 'Give this device a name.')
+        self.q('UPDATE tokens SET device = ? WHERE nest = ? AND did = ?', name, nest, did)
+        return {'ok': True}
+
+    def forget(self, nest, m):
+        target = str(m.get('did') or '')
+        if not DID_RE.match(target):
+            raise Err('400 Bad Request', 'Malformed request')
+        self.q('DELETE FROM tokens WHERE nest = ? AND (did = ? OR substr(hash, 1, 16) = ?)', nest, target, target)
+        return {'ok': True}
+
+    def deliver(self, nest, m):
+        to = m.get('to')
+        if not (isinstance(to, str) and DID_RE.match(to)):
+            raise Err('400 Bad Request', 'Malformed request')
+        with self.lock:
+            for fid in self._ids(m):
+                self.q("UPDATE files SET to_did = ?, got = 0 WHERE id = ? AND nest = ? AND kind != 'dir'", to, fid, nest)
+        return {'ok': True}
+
+    def inbox(self, nest, did):
+        rows = self.q('SELECT * FROM files WHERE nest = ? AND to_did = ? AND got = 0 AND done = 1 AND trashed = 0 ORDER BY made', nest, did)
+        return {'files': [self._row(r) for r in rows]}
+
+    def got(self, nest, m):
+        r = self._mine(nest, m.get('id'))
+        if m.get('drop'):
+            self._drop(r['id'])
+        else:
+            self.q('UPDATE files SET got = ? WHERE id = ?', int(time.time() * 1000), r['id'])
+        return {'ok': True}
 
     # ── pages ───────────────────────────────────────────────────────────────
     def _read(self, *parts):
@@ -366,7 +510,7 @@ class Pigeon:
         try:
             self.sweep()
             if path == '/api' and method == 'GET':
-                return send('200 OK', {'name': 'pigeon', 'version': VERSION, 'signups': self.signups, 'chunk': CHUNK})
+                return send('200 OK', {'name': 'pigeon', 'version': VERSION, 'signups': self.signups, 'chunk': CHUNK, 'quota': self.quota})
             if path.startswith('/api/'):
                 return self.api(environ, method, path[5:], ip, send)
             if method not in ('GET', 'HEAD'):
@@ -375,7 +519,7 @@ class Pigeon:
                 html = self.page(environ, base)
                 if html is None:
                     return send('200 OK', 'pigeon v%s\n' % VERSION, 'text/plain; charset=utf-8')
-                csp = "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' blob: data:; media-src blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
+                csp = "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' blob: data:; media-src blob:; frame-src blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'"
                 return send('200 OK', html, 'text/html; charset=utf-8', [('Content-Security-Policy', csp)])
             if path in ('/install.sh', '/install.ps1'):
                 text = self.installer(path.rsplit('.', 1)[1], environ, base)
@@ -386,9 +530,10 @@ class Pigeon:
             return send('404 Not Found', {'error': 'not found'})
         except Err as e:
             return send(e.status, {'error': e.msg})
-        except Exception as e:  # never show a traceback to the world
-            sys.stderr.write('pigeon: %r\n' % (e,))
-            return send('500 Internal Server Error', {'error': 'Something went wrong on the server.'})
+        except Exception as e:  # never show a traceback to the world (it goes to the error log instead)
+            import traceback
+            sys.stderr.write('pigeon: %s\n' % traceback.format_exc())
+            return send('500 Internal Server Error', {'error': 'Something went wrong on the server (%s). Its error log has the details.' % type(e).__name__})
 
     def api(self, environ, method, what, ip, send):
         qs = dict(p.split('=', 1) for p in (environ.get('QUERY_STRING') or '').split('&') if '=' in p)
@@ -406,10 +551,10 @@ class Pigeon:
             n = int(qs.get('n', '-1')) if re.match(r'^\d{1,6}$', qs.get('n', '')) else -1
             fid = qs.get('id', '')
             if method == 'PUT':
-                nest, _ = self.auth(environ)
+                nest, _, _ = self.auth(environ)
                 return send('200 OK', self.put_piece(nest, fid, n, body(MAX_PIECE)))
             if method == 'GET':
-                nest, _ = self.auth(environ)
+                nest, _, _ = self.auth(environ)
                 if not ID_RE.match(fid):
                     raise Err('400 Bad Request', 'Malformed request')
                 return send('200 OK', self.get_piece(fid, n, nest), 'application/octet-stream')
@@ -436,11 +581,14 @@ class Pigeon:
             return send('200 OK', self.signup(msg, ip))
         if what == 'login':
             return send('200 OK', self.login(msg, ip))
-        nest, th = self.auth(environ)
+        nest, th, did = self.auth(environ)
         handlers = {
-            'list': lambda: self.list(nest), 'start': lambda: self.start(nest, msg), 'finish': lambda: self.finish(nest, msg),
-            'delete': lambda: self.delete(nest, msg), 'share': lambda: self.share(nest, msg), 'unshare': lambda: self.unshare(nest, msg),
-            'logout': lambda: self.logout(th), 'devices': lambda: self.devices(nest),
+            'list': lambda: self.list(nest, did), 'start': lambda: self.start(nest, did, msg), 'finish': lambda: self.finish(nest, msg),
+            'meta': lambda: self.set_meta(nest, msg), 'trash': lambda: self.trash(nest, msg), 'delete': lambda: self.delete(nest, msg),
+            'share': lambda: self.share(nest, msg), 'unshare': lambda: self.unshare(nest, msg), 'links': lambda: self.links(nest),
+            'logout': lambda: self.logout(th), 'devices': lambda: self.devices(nest, did), 'forget': lambda: self.forget(nest, msg),
+            'name': lambda: self.rename_device(nest, did, msg), 'inbox': lambda: self.inbox(nest, did), 'got': lambda: self.got(nest, msg),
+            'invite': lambda: self.invite(nest), 'deliver': lambda: self.deliver(nest, msg),
         }
         if what not in handlers:
             raise Err('404 Not Found', 'not found')
@@ -477,7 +625,14 @@ def application(environ, start_response):
     if _app is None:
         with _app_lock:
             if _app is None:
-                _app = from_env()
+                try:
+                    _app = from_env()
+                except Exception as e:  # say what's wrong instead of a blank error page
+                    import traceback
+                    sys.stderr.write('pigeon could not start: %s\n' % traceback.format_exc())
+                    body = json.dumps({'error': "pigeon's server couldn't start (%s: %s). Check the folder in PIGEON_DATA (default ~/pigeon-data)." % (type(e).__name__, e)}).encode()
+                    start_response('500 Internal Server Error', [('Content-Type', 'application/json'), ('Content-Length', str(len(body)))])
+                    return [body]
     return _app.wsgi(environ, start_response)
 
 

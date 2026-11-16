@@ -90,7 +90,8 @@ def origin(environ):
 
 NAV_CSS = """<style>
 .psnav,.psnav *{all:unset;box-sizing:border-box}
-.psnav{display:flex;align-items:center;gap:4px;min-height:40px;padding:0 max(12px,env(safe-area-inset-left));background:#17151d;color:#bdb8cb;
+:root{--site-nav:40px}
+.psnav{display:flex;align-items:center;gap:4px;height:40px;padding:0 max(12px,env(safe-area-inset-left));background:#17151d;color:#bdb8cb;
   font:500 14px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:auto;white-space:nowrap;position:relative;z-index:50;scrollbar-width:none}
 .psnav::-webkit-scrollbar{display:none}
 .psnav a{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border-radius:6px;color:#bdb8cb;cursor:pointer;text-decoration:none}
@@ -219,6 +220,9 @@ def application(environ, start_response):
         page = _read('pages', name + '.html')
         if page is not None:
             return _send(start_response, '200 OK', with_nav(fill(page, environ), here))
+    if path == '/versions.json':  # what pca compares against to keep everything up to date
+        body = json.dumps({app: version(app) for app in ('gossip', 'tot', 'pigeon', 'pca')})
+        return _send(start_response, '200 OK', body, 'application/json')
     if path == '/robots.txt':
         return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /api\n', 'text/plain; charset=utf-8')
     return _send(start_response, '404 Not Found', with_nav(_read('pages', '404.html') or 'not found', ''))
