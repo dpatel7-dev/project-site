@@ -6,6 +6,7 @@ project-site: one website for every project.
     /tot         Tree of Thought      /tot/install.sh, /tot/install.ps1
     /pigeon      pigeon (the whole web app lives under here)
     /pca         Project CLI Access   /pca/install.sh, /pca/install.ps1
+    /tidy        tidy                 /tidy/install.sh, /tidy/install.ps1
 
 gossip's chat hub and pigeon's file server run inside this one program, from the
 copies in apps/. Their data lives outside this folder (~/gossip-data and
@@ -45,6 +46,7 @@ PROJECTS = [
     ('gossip', '/gossip', 'gossip', '#7cc4ff'),
     ('tot', '/tot', 'tree of thought|tot', '#8fd16a'),
     ('pigeon', '/pigeon', 'pigeon', '#2bc4b2'),
+    ('tidy', '/tidy', 'tidy', '#e8913a'),
     ('pca', '/pca', 'pca', '#d9d4e8'),
 ]
 
@@ -136,6 +138,7 @@ def fill(page, environ):
         'tot_version': version('tot'),
         'pigeon_version': version('pigeon'),
         'pca_version': version('pca'),
+        'tidy_version': version('tidy'),
         'art': _read('pages', 'art.js') or '',
     }
     return re.sub(r'\{\{(\w+)\}\}', lambda m: values[m.group(1)] if m.group(1) == 'art'
@@ -207,21 +210,21 @@ def application(environ, start_response):
     if method not in ('GET', 'HEAD'):
         return _send(start_response, '405 Method Not Allowed', 'not allowed\n', 'text/plain; charset=utf-8')
 
-    for app in ('tot', 'pca'):
+    for app in ('tot', 'pca', 'tidy'):
         if path in ('/%s/install.sh' % app, '/%s/install.ps1' % app):
             text = installer(app, path.rsplit('.', 1)[1], environ)
             if text is not None:
                 return _send(start_response, '200 OK', text, 'text/plain; charset=utf-8')
 
     pages = {'/': ('home', 'home'), '/index.html': ('home', 'home'), '/tot': ('tot', 'tot'), '/tot/': ('tot', 'tot'),
-             '/pca': ('pca', 'pca'), '/pca/': ('pca', 'pca')}
+             '/pca': ('pca', 'pca'), '/pca/': ('pca', 'pca'), '/tidy': ('tidy', 'tidy'), '/tidy/': ('tidy', 'tidy')}
     if path in pages:
         name, here = pages[path]
         page = _read('pages', name + '.html')
         if page is not None:
             return _send(start_response, '200 OK', with_nav(fill(page, environ), here))
     if path == '/versions.json':  # what pca compares against to keep everything up to date
-        body = json.dumps({app: version(app) for app in ('gossip', 'tot', 'pigeon', 'pca')})
+        body = json.dumps({app: version(app) for app in ('gossip', 'tot', 'pigeon', 'pca', 'tidy')})
         return _send(start_response, '200 OK', body, 'application/json')
     if path == '/robots.txt':
         return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /api\n', 'text/plain; charset=utf-8')

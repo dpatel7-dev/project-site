@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>pca - Project CLI Access</title>
-<meta name="description" content="One command for every project: pick gossip, Tree of Thought or pigeon, press Enter, and pca installs and opens it.">
+<meta name="description" content="One command for every project: pick gossip, Tree of Thought, pigeon or tidy, press Enter, and pca installs and opens it.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -39,7 +39,7 @@
   .term .top b { font-weight: 700; }
   .term .top span { color: var(--term-dim); }
   .term .top i { font-style: normal; color: var(--term-faint); }
-  .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
   .card { border: 1px solid var(--term-faint); border-radius: 8px; padding: 14px 14px 12px; cursor: pointer; text-align: left; font: inherit; color: inherit; background: none; display: flex; flex-direction: column; }
   .card canvas { image-rendering: pixelated; width: 100%; max-width: 156px; height: auto; align-self: center; margin-bottom: 12px; }
   .card b { font-weight: 700; }
@@ -93,6 +93,7 @@
       <button type="button" class="card" data-id="gossip" data-cmd="gossip" data-v="{{gossip_version}}" style="--c:#7cc4ff" aria-pressed="true"><canvas aria-hidden="true"></canvas><b>gossip</b><span class="about">end-to-end encrypted chat</span><span class="more">people, servers and calls</span><span class="st"></span></button>
       <button type="button" class="card" data-id="tot" data-cmd="tot" data-v="" style="--c:#8fd16a" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>tree of thought</b><span class="about">many AI models, one garden</span><span class="more">every answer is a branch</span><span class="st"></span></button>
       <button type="button" class="card" data-id="pigeon" data-cmd="pigeon" data-v="{{pigeon_version}}" style="--c:#2bc4b2" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>pigeon</b><span class="about">your own locked drive</span><span class="more">files fly between devices</span><span class="st"></span></button>
+      <button type="button" class="card" data-id="tidy" data-cmd="tidy" data-v="{{tidy_version}}" style="--c:#e8913a" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>tidy</b><span class="about">an AI that tidies</span><span class="more">plans first · undo</span><span class="st"></span></button>
     </div>
     <div class="hint" id="hint" aria-live="polite"></div>
     <div class="from">from {{host}}</div>
@@ -114,7 +115,7 @@
   <h2 id="commands-title">Commands</h2>
   <table>
     <tr><td>pca</td><td>The picker. Enter opens a project, u updates it, U checks for updates, x then x removes it.</td></tr>
-    <tr><td>pca tot</td><td>Straight into Tree of Thought. Also pca gossip and pca pigeon.</td></tr>
+    <tr><td>pca tot</td><td>Straight into Tree of Thought. Also pca gossip, pca pigeon and pca tidy.</td></tr>
     <tr><td>pca pigeon send pic.png</td><td>Anything after the project's name goes to the project.</td></tr>
     <tr><td>pca list</td><td>What's installed, and which version.</td></tr>
     <tr><td>pca install all</td><td>Install every project.</td></tr>

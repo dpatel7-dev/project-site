@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tidy - an AI that tidies a folder, carefully</title>
+<meta name="description" content="Tell tidy how you want a folder tidied. It reads names, file types and a little of what's inside, shows you every move first, never deletes anything, and one key puts it all back.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Recursive:slnt,wght,CASL,CRSV,MONO@-15..0,300..900,0..1,0..1,0..1&display=swap" rel="stylesheet">
+<style>
+  /* A walnut desk with manila folders on it. One family (Recursive): casual and
+     heavy for headings, plain for reading, monospaced for file names. */
+  :root {
+    --sans: "Recursive", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "Recursive", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --desk: #231a13; --desk-2: #2c2118; --grain: #33261b;
+    --manila: #eedaaf; --manila-2: #e5cd97; --edge: #cdb27a; --ink: #2a1f16; --ink-2: #6b5a45;
+    --acorn: #e8913a; --acorn-ink: #a9561a; --moss: #5f8232; --sky: #3f7aa0; --berry: #b8324f;
+    --light: #f3e6cd; --light-dim: #b9a68a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--desk); color: var(--light); font: 400 1.0625rem/1.6 var(--sans); font-variation-settings: "CASL" .25; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--acorn); outline-offset: 3px; }
+  .mono { font-family: var(--mono); font-variation-settings: "MONO" 1, "CASL" 0; }
+  .wrap { max-width: 1020px; margin: 0 auto; padding: 0 22px; }
+  /* the wood: a few soft stripes, nothing more */
+  .desk { background: var(--desk) repeating-linear-gradient(179deg, transparent 0 46px, rgba(255, 230, 190, .025) 46px 49px, transparent 49px 118px, rgba(0, 0, 0, .18) 118px 119px); }
+
+  /* ── hero ── */
+  .hero { padding: 64px 0 40px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px 44px; align-items: end; }
+  .hero canvas { image-rendering: pixelated; display: block; }
+  h1 { margin: 0; font-size: clamp(2.6rem, 7.4vw, 5.2rem); line-height: .98; font-weight: 850; letter-spacing: -.025em; font-variation-settings: "CASL" 1, "CRSV" 1; color: var(--light); }
+  h1 .soft { color: var(--acorn); font-variation-settings: "CASL" 1, "slnt" -12, "CRSV" 1; font-weight: 700; display: block; }
+  .lede { margin: 18px 0 0; color: var(--light-dim); max-width: 34em; font-size: 1.12rem; }
+  .lede b { color: var(--light); font-weight: 650; }
+
+  /* ── the demo: a manila folder ── */
+  .folder { position: relative; margin: 34px 0 0; background: var(--manila); color: var(--ink); border-radius: 4px 12px 12px 12px; box-shadow: 0 1px 0 var(--edge) inset, 0 26px 50px -30px #000; }
+  .folder::before { content: attr(data-tab); position: absolute; left: 0; top: -34px; height: 36px; padding: 8px 22px 0 16px; background: var(--manila); border-radius: 10px 14px 0 0; font: 600 .95rem/1.2 var(--mono); font-variation-settings: "MONO" 1; color: var(--ink-2); }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 18px 22px 14px; border-bottom: 1px dashed var(--edge); }
+  .ask { flex: 1; min-width: min(16em, 100%); font-family: var(--mono); font-variation-settings: "MONO" 1; color: var(--ink); }
+  .ask b { color: var(--acorn-ink); }
+  .btn { font: 700 .95rem/1 var(--sans); font-variation-settings: "CASL" .6; border-radius: 8px; padding: 11px 16px; cursor: pointer; border: 2px solid var(--ink); background: var(--ink); color: var(--manila); }
+  .btn:hover { background: #000; }
+  .btn.ghost { background: none; color: var(--ink); }
+  .btn.ghost:hover { background: var(--manila-2); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .files { list-style: none; margin: 0; padding: 14px 22px 20px; columns: 2 300px; column-gap: 32px; min-height: 320px; }
+  .files li { break-inside: avoid; display: grid; grid-template-columns: 1.5em minmax(0, 1fr); gap: 0 8px; padding: 5px 0; font-family: var(--mono); font-variation-settings: "MONO" 1, "CASL" 0; font-size: .95rem; }
+  .files li .ic { color: var(--ink-2); }
+  .files li .why { grid-column: 2; color: var(--ink-2); font-size: .82rem; font-family: var(--sans); font-variation-settings: "MONO" 0, "CASL" .4; }
+  .files li.dir-head { padding-top: 12px; font-weight: 700; color: var(--acorn-ink); }
+  .files li.dir-head .ic { color: var(--acorn-ink); }
+  .files li.in { padding-left: 1.6em; }
+  .files li.stay .why { color: var(--berry); }
+  .files li.project .ic { color: var(--sky); }
+  .note { padding: 0 22px 18px; color: var(--ink-2); font-size: .92rem; margin: 0; }
+  .note b { color: var(--ink); }
+
+  /* ── how it stays careful: index cards ── */
+  section.rules { padding: 84px 0 0; }
+  h2 { font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.1; font-weight: 800; letter-spacing: -.02em; margin: 0 0 8px; font-variation-settings: "CASL" 1; color: var(--light); }
+  .sub { color: var(--light-dim); margin: 0 0 30px; max-width: 40em; }
+  .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px 20px; list-style: none; margin: 0; padding: 0; }
+  .card { position: relative; background: var(--light); color: var(--ink); border-radius: 3px; padding: 20px 18px 18px; box-shadow: 0 14px 30px -22px #000; background-image: linear-gradient(transparent 0 46px, #e8a4a4 46px 47px, transparent 47px), repeating-linear-gradient(transparent 0 25px, #cfdcec 25px 26px); background-position: 0 0, 0 22px; }
+  .card:nth-child(2n) { transform: rotate(.6deg); }
+  .card:nth-child(3n) { transform: rotate(-.5deg); }
+  .card h3 { margin: 0 0 12px; font-size: 1.08rem; font-weight: 800; font-variation-settings: "CASL" 1; line-height: 1.3; }
+  .card p { margin: 0; color: var(--ink-2); line-height: 26px; font-size: .97rem; }
+  .card .pin { position: absolute; top: -9px; left: 50%; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--c, var(--acorn)); box-shadow: 0 3px 4px -1px rgba(0, 0, 0, .5), inset -2px -2px 0 rgba(0, 0, 0, .18); }
+
+  /* ── install ── */
+  section.get { padding: 84px 0 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 34px; align-items: start; }
+  .term { background: #120d09; border: 1px solid var(--grain); border-radius: 10px; padding: 18px 18px 16px; }
+  .os { display: flex; gap: 6px; margin-bottom: 12px; }
+  .os button { font: 600 .88rem/1 var(--sans); color: var(--light-dim); background: none; border: 1px solid var(--grain); border-radius: 6px; padding: 8px 11px; cursor: pointer; }
+  .os button[aria-pressed=true] { color: var(--desk); background: var(--light); border-color: var(--light); }
+  .cmd { display: flex; align-items: center; gap: 10px; }
+  .cmd code { flex: 1; font: .9rem/1.5 var(--mono); font-variation-settings: "MONO" 1, "CASL" 0; overflow-x: auto; white-space: nowrap; padding: 6px 0; color: var(--light); }
+  .cmd code::before { content: "$ "; color: var(--light-dim); }
+  .cmd button { font: 700 .88rem/1 var(--sans); background: var(--acorn); color: #1c120a; border: 0; border-radius: 6px; padding: 10px 13px; cursor: pointer; flex: none; }
+  .steps { margin: 16px 0 0; padding: 0 0 0 1.3em; color: var(--light-dim); }
+  .steps li { margin: 4px 0; }
+  .steps b, .steps code { color: var(--light); }
+  code.k { font: .92em var(--mono); font-variation-settings: "MONO" 1; background: var(--grain); padding: 1px 6px; border-radius: 4px; color: var(--light); }
+  table.use { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  table.use td { padding: 8px 12px 8px 0; border-bottom: 1px dashed var(--grain); vertical-align: top; color: var(--light-dim); }
+  table.use td:first-child { color: var(--light); white-space: nowrap; font-family: var(--mono); font-variation-settings: "MONO" 1, "CASL" 0; }
+  footer { padding: 84px 0 48px; color: var(--light-dim); font-size: .93rem; }
+  footer a { color: var(--light); }
+
+  @media (max-width: 820px) {
+    .hero { grid-template-columns: minmax(0, 1fr); padding-top: 40px; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    section.get { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 540px) {
+    .cards { grid-template-columns: minmax(0, 1fr); }
+    .files { columns: 1; }
+    .bar .btn { flex: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) { .card { transform: none !important; } }
+</style>
+</head>
+<body class="desk">
+<div class="wrap">
+  <header class="hero">
+    <canvas id="hazel" aria-label="Hazel, tidy's squirrel" role="img"></canvas>
+    <div>
+      <h1>An AI that tidies a folder. <span class="soft">Carefully.</span></h1>
+      <p class="lede">Tell it what you want in your own words. tidy reads the names, the kinds of files, a little of what's inside, and how your folders are already set up. Then it shows you <b>every move before it makes one</b>, never deletes anything, and one key puts it all back.</p>
+    </div>
+  </header>
+
+  <div class="folder" data-tab="~/Downloads" role="region" aria-label="Try it: a messy Downloads folder">
+    <div class="bar">
+      <div class="ask">How should I tidy Downloads? <b>› sort by school subject, and put installers away</b></div>
+      <button class="btn" id="go" type="button">Tidy it</button>
+      <button class="btn ghost" id="back" type="button" disabled>Put it back</button>
+    </div>
+    <ul class="files" id="files" aria-live="polite"></ul>
+    <p class="note" id="note">13 things, as they are now. This is a pretend folder: press <b>Tidy it</b> to see what a plan looks like.</p>
+  </div>
+
+  <section class="rules" aria-labelledby="rules-title">
+    <h2 id="rules-title">How it stays careful</h2>
+    <p class="sub">The AI only suggests. tidy checks every single suggestion itself and drops anything that breaks a rule, so even a confused AI can't make a mess.</p>
+    <ul class="cards">
+      <li class="card"><span class="pin"></span><h3>Plans first</h3><p>Nothing moves until you've seen the whole plan, switched off what you don't like, and pressed Enter twice.</p></li>
+      <li class="card" style="--c:var(--moss)"><span class="pin"></span><h3>Only moves</h3><p>Never deletes, renames or edits a file. If a name is already taken where something's going, it gets a (2): nothing is replaced.</p></li>
+      <li class="card" style="--c:var(--sky)"><span class="pin"></span><h3>Stays inside</h3><p>Only the folder you pick. It refuses your whole disk, your whole home folder and system folders, and never follows a link out.</p></li>
+      <li class="card" style="--c:var(--berry)"><span class="pin"></span><h3>Keeps private things private</h3><p>Passwords, keys, tax forms and bank statements are never opened; the AI sees their names only. Other snippets have secrets blanked out.</p></li>
+      <li class="card" style="--c:#8a6a4f"><span class="pin"></span><h3>Keeps things whole</h3><p>Projects (with .git or package.json), apps and hidden files stay as they are, and nothing is ever moved into a project.</p></li>
+      <li class="card"><span class="pin"></span><h3>Undo always works</h3><p>Every move is written down before it happens, so tidy undo works even if your computer switched off halfway through.</p></li>
+    </ul>
+  </section>
+
+  <section class="get" aria-labelledby="get-title">
+    <div>
+      <h2 id="get-title">Get tidy</h2>
+      <p class="sub">The easy way: open <a href="/pca">pca</a> and pick tidy. Or paste this:</p>
+      <div class="term">
+        <div class="os" role="group" aria-label="Your computer">
+          <button type="button" data-os="sh" aria-pressed="true">Mac or Linux</button>
+          <button type="button" data-os="ps1" aria-pressed="false">Windows</button>
+        </div>
+        <div class="cmd"><code id="cmd">curl -fsSL {{origin}}/tidy/install.sh | sh</code><button type="button" id="copy">Copy</button></div>
+      </div>
+      <ol class="steps">
+        <li>Paste it into <span id="where">Terminal</span> and press Enter.</li>
+        <li>tidy needs an AI. The private way: install <a href="https://ollama.com/download">Ollama</a>, then <code class="k">tot free</code> or <code class="k">ollama pull llama3.2</code>. Nothing about your files leaves your computer. (It can also use Tree of Thought's models; it asks before sending anything.)</li>
+        <li>Type <code class="k">tidy ~/Downloads</code>.</li>
+      </ol>
+    </div>
+    <div>
+      <h2>Using it</h2>
+      <p class="sub">Version {{tidy_version}}. Also in Tree of Thought: Tab → Tidy a folder.</p>
+      <table class="use">
+        <tr><td>tidy ~/Downloads</td><td>open the screen for a folder, say how you want it, review, move</td></tr>
+        <tr><td>space · a</td><td>skip one move · all on or off</td></tr>
+        <tr><td>p</td><td>also remove folders the tidy left empty</td></tr>
+        <tr><td>u</td><td>put everything back</td></tr>
+        <tr><td>tidy plan ~/Desktop "by year"</td><td>print a plan without moving anything</td></tr>
+        <tr><td>tidy undo</td><td>undo the last tidy, any time later</td></tr>
+        <tr><td>tidy history</td><td>every tidy, newest first</td></tr>
+        <tr><td>tidy models</td><td>which AIs it can use</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>tidy is open source: <a href="https://github.com/dpatel7-dev/tidy">github.com/dpatel7-dev/tidy</a>. Part of the same family as <a href="/gossip">gossip</a>, <a href="/tot">Tree of Thought</a> and <a href="/pigeon">pigeon</a>.</p>
+  </footer>
+</div>
+
+<script>
+{{art}}
+(function () {
+  const ORIGIN = location.origin;
+  const H = ART.mascots.tidy;
+  drawPixels(document.getElementById('hazel'), trimGrid(H.grid), H.ink, innerWidth < 600 ? 6 : 9);
+
+  // the pretend Downloads folder, before and after
+  const FILES = [
+    ['Biology lab report.docx', 'School/Biology', 'a lab report about cells'],
+    ['IMG_2041.HEIC', 'Photos/2026', 'a photo from November'],
+    ['Minecraft-Installer.dmg', 'Installers', 'an installer'],
+    ['essay final FINAL.docx', 'School/English', 'an essay about Gatsby'],
+    ['passwords.txt', null, 'private: not read, left where it is'],
+    ['zoom_installer.pkg', 'Installers', 'an installer'],
+    ['chem worksheet 3.pdf', 'School/Chemistry', 'a worksheet on moles'],
+    ['screenshot 2026-11-02.png', 'Photos/2026', 'a screenshot'],
+    ['contrail-game/', 'Projects', 'a project: moves as one piece'],
+    ['song idea.m4a', 'Music', 'a voice memo'],
+    ['IMG_2042.HEIC', 'Photos/2026', 'a photo from November'],
+    ['budget fall.xlsx', 'Money', 'a budget'],
+    ['History notes.md', 'School/History', 'notes on the Civil War'],
+  ];
+  const list = document.getElementById('files');
+  const rows = new Map();
+  const icon = (n) => (/\/$/.test(n) ? '▣' : /\.(heic|png|jpe?g)$/i.test(n) ? '◩' : /\.(dmg|pkg)$/i.test(n) ? '⬡' : /\.m4a$/i.test(n) ? '♪' : '▤');
+  for (const [name, to, why] of FILES) {
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="ic" aria-hidden="true"></span><span class="nm"></span><span class="why" hidden></span>';
+    li.querySelector('.ic').textContent = icon(name);
+    li.querySelector('.nm').textContent = name;
+    li.querySelector('.why').textContent = why;
+    if (!to) li.classList.add('stay');
+    if (/\/$/.test(name)) li.classList.add('project');
+    rows.set(name, li);
+  }
+  const heads = new Map();
+  const head = (dir) => {
+    if (!heads.has(dir)) { const li = document.createElement('li'); li.className = 'dir-head'; li.innerHTML = '<span class="ic" aria-hidden="true">▸</span><span></span>'; li.lastChild.textContent = dir + '/'; heads.set(dir, li); }
+    return heads.get(dir);
+  };
+  const still = matchMedia('(prefers-reduced-motion: reduce)');
+
+  // FLIP: remember where each row was, rearrange, then glide from there
+  function arrange(tidy) {
+    const before = new Map([...rows].map(([k, li]) => [k, li.isConnected ? li.getBoundingClientRect() : null]));
+    list.textContent = '';
+    if (!tidy) {
+      for (const [name] of FILES) { const li = rows.get(name); li.classList.remove('in'); li.querySelector('.why').hidden = true; list.append(li); }
+    } else {
+      const dirs = [...new Set(FILES.filter((f) => f[1]).map((f) => f[1]))].sort();
+      for (const d of dirs) {
+        list.append(head(d));
+        for (const [name, to] of FILES) if (to === d) { const li = rows.get(name); li.classList.add('in'); li.querySelector('.why').hidden = false; list.append(li); }
+      }
+      for (const [name, to] of FILES) if (!to) { const li = rows.get(name); li.classList.remove('in'); li.querySelector('.why').hidden = false; list.append(li); }
+    }
+    if (still.matches) return;
+    for (const [k, li] of rows) {
+      const a = before.get(k);
+      if (!a) continue;
+      const b = li.getBoundingClientRect();
+      const dx = a.left - b.left;
+      const dy = a.top - b.top;
+      if (!dx && !dy) continue;
+      li.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 650 + Math.random() * 250, easing: 'cubic-bezier(.2, .8, .2, 1)' });
+    }
+    if (tidy) for (const h of heads.values()) h.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 300, fill: 'backwards' });
+  }
+  arrange(false);
+  const go = document.getElementById('go');
+  const back = document.getElementById('back');
+  const note = document.getElementById('note');
+  go.addEventListener('click', () => {
+    arrange(true);
+    go.disabled = true; back.disabled = false;
+    note.innerHTML = '<b>12 moves into 8 folders.</b> Nothing deleted, nothing renamed, nothing replaced. The private file stayed put, and the project moved as one piece.';
+  });
+  back.addEventListener('click', () => {
+    arrange(false);
+    go.disabled = false; back.disabled = true;
+    note.innerHTML = 'Back exactly as it was. (In tidy that is <b>u</b>, or <b>tidy undo</b> any time later.)';
+  });
+
+  // install command for this computer
+  const cmds = { sh: 'curl -fsSL ' + ORIGIN + '/tidy/install.sh | sh', ps1: 'irm ' + ORIGIN + '/tidy/install.ps1 | iex' };
+  const where = { sh: 'Terminal', ps1: 'PowerShell' };
+  function pick(os) {
+    document.getElementById('cmd').textContent = cmds[os];
+    document.getElementById('where').textContent = where[os];
+    document.querySelectorAll('.os button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.os === os)));
+  }
+  document.querySelectorAll('.os button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.os)));
+  pick(/Win/.test(navigator.platform || navigator.userAgent) ? 'ps1' : 'sh');
+  const copy = document.getElementById('copy');
+  copy.addEventListener('click', async () => {
+    const text = document.getElementById('cmd').textContent;
+    try { await navigator.clipboard.writeText(text); } catch (e) {
+      const r = document.createRange(); r.selectNodeContents(document.getElementById('cmd'));
+      getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy');
+    }
+    copy.textContent = 'Copied';
+    setTimeout(() => { copy.textContent = 'Copy'; }, 1600);
+  });
+})();
+</script>
+</body>
+</html>

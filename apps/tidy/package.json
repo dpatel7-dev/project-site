@@ -1,0 +1,11 @@
+{
+  "name": "tidy",
+  "version": "1.0.0",
+  "description": "An AI that tidies a folder, carefully: plans first, only moves, and undo always works.",
+  "bin": { "tidy": "bin/tidy.js" },
+  "scripts": { "test": "node --test", "start": "node bin/tidy.js" },
+  "engines": { "node": ">=18" },
+  "license": "MIT",
+  "repository": "github:dpatel7-dev/tidy",
+  "files": ["bin", "src", "install.sh", "install.ps1", "README.md", "CHANGELOG.md"]
+}

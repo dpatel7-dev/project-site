@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>djp7 - gossip, Tree of Thought, pigeon</title>
-<meta name="description" content="Terminal tools by djp7: gossip (encrypted chat), Tree of Thought (many AI models), pigeon (files between devices) and pca, which installs them all.">
+<title>djp7 - gossip, Tree of Thought, pigeon, tidy</title>
+<meta name="description" content="Terminal tools by djp7: gossip (encrypted chat), Tree of Thought (many AI models), pigeon (your own locked drive), tidy (an AI that tidies folders) and pca, which installs them all.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
@@ -45,6 +45,7 @@
   .crew .mascot { animation: land .6s cubic-bezier(.3, 1.4, .6, 1) both; }
   .crew .mascot:nth-child(2) { animation-delay: .12s; }
   .crew .mascot:nth-child(3) { animation-delay: .24s; }
+  .crew .mascot:nth-child(4) { animation-delay: .36s; }
   @media (prefers-reduced-motion: reduce) { .crew .mascot, .mascot:hover canvas, .mascot:focus-visible canvas { animation: none; } }
 
   main { max-width: 880px; margin: 0 auto; padding: 56px 22px 80px; }
@@ -94,13 +95,14 @@
     <a class="mascot" href="/gossip" data-id="gossip" style="--c:#7cc4ff"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>gossip</span></a>
     <a class="mascot" href="/tot" data-id="tot" style="--c:#8fd16a"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>tree of thought</span></a>
     <a class="mascot" href="/pigeon" data-id="pigeon" style="--c:#2bc4b2"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>pigeon</span></a>
+    <a class="mascot" href="/tidy" data-id="tidy" style="--c:#e8913a"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>tidy</span></a>
   </div>
   <div class="ground" aria-hidden="true"></div>
 </header>
 
 <main>
   <h1>Tools that live in your terminal</h1>
-  <p class="lede">Chat with friends, ask a whole garden of AI models at once, and keep your files in a locked drive that sends them to any of your devices. Each one is a single command, and one more command installs them all and keeps them up to date.</p>
+  <p class="lede">Chat with friends, ask a whole garden of AI models at once, keep your files in a locked drive that sends them to any of your devices, and let an AI tidy your Downloads folder (carefully). Each one is a single command, and one more command installs them all and keeps them up to date.</p>
 
   <section class="install" aria-labelledby="install-title">
     <h2 id="install-title">Install Project CLI Access</h2>
@@ -130,6 +132,11 @@
       <a class="go" href="/pigeon">Open pigeon</a>
     </li>
     <li class="project">
+      <canvas data-id="tidy" aria-hidden="true"></canvas>
+      <div><h3>tidy <span>v{{tidy_version}}</span></h3><p>Tell it how you want a folder tidied, in your own words. It reads names, file types and a little of what's inside, shows you every move first, never deletes anything, and one key puts it all back. Hazel the squirrel files things away.</p></div>
+      <a class="go" href="/tidy">Open tidy</a>
+    </li>
+    <li class="project">
       <canvas data-id="pca" aria-hidden="true"></canvas>
       <div><h3>pca <span>v{{pca_version}}</span></h3><p>Project CLI Access: one menu that installs and opens everything above, and quietly keeps it all up to date.</p></div>
       <a class="go" href="/pca">Open pca</a>
@@ -138,18 +145,18 @@
 </main>
 
 <footer>
-  <p>Source code: <a href="https://github.com/dpatel7-dev/gossip">gossip</a>, <a href="https://github.com/dpatel7-dev/Tree-Of-Thought">Tree of Thought</a>, <a href="https://github.com/dpatel7-dev/pigeon">pigeon</a>, <a href="https://github.com/dpatel7-dev/Project-CLI-Access">Project CLI Access</a> and <a href="https://github.com/dpatel7-dev/project-site">this website</a>.</p>
+  <p>Source code: <a href="https://github.com/dpatel7-dev/gossip">gossip</a>, <a href="https://github.com/dpatel7-dev/Tree-Of-Thought">Tree of Thought</a>, <a href="https://github.com/dpatel7-dev/pigeon">pigeon</a>, <a href="https://github.com/dpatel7-dev/tidy">tidy</a>, <a href="https://github.com/dpatel7-dev/Project-CLI-Access">Project CLI Access</a> and <a href="https://github.com/dpatel7-dev/project-site">this website</a>.</p>
 </footer>
 
 <script>
 {{art}}
 (function () {
   const ORIGIN = location.origin;
-  const big = () => (innerWidth < 620 ? 4 : 9);
+  const big = () => (innerWidth < 620 ? 3 : innerWidth < 900 ? 6 : 8);
 
-  // the pca picker's own little emblem: three coloured blocks, like its three cards
-  const PCA = { grid: ['GGG.TTT.PPP', 'GGG.TTT.PPP', 'GGG.TTT.PPP', '...........', 'KKKKKKKKKKK', 'K.........K', 'K.>.......K', 'K.........K', 'KKKKKKKKKKK'],
-    ink: { G: '#7cc4ff', T: '#8fd16a', P: '#2bc4b2', K: '#1a1d29', '>': '#1a1d29' } };
+  // the pca picker's own little emblem: coloured blocks, like its cards
+  const PCA = { grid: ['GG.TT.PP.HH', 'GG.TT.PP.HH', 'GG.TT.PP.HH', '...........', 'KKKKKKKKKKK', 'K.........K', 'K.>.......K', 'K.........K', 'KKKKKKKKKKK'],
+    ink: { G: '#7cc4ff', T: '#8fd16a', P: '#2bc4b2', H: '#e8913a', K: '#1a1d29', '>': '#1a1d29' } };
   const art = (id) => (id === 'pca' ? PCA : ART.mascots[id]);
 
   function drawCrew() {

@@ -9,6 +9,7 @@ projects' own repositories, cloned next to this one:
       pigeon/
       Tree-Of-Thought/          (or tree-of-thought)
       Project-CLI-Access/       (or project-cli-access)
+      tidy/
 
     python3 tools/sync.py            # copy what changed
     python3 tools/sync.py --check    # just say whether anything is out of date
@@ -32,6 +33,7 @@ COPIES = {
     'pigeon': (['pigeon'], ['server/pigeon_server.py', 'web/index.html', 'src/qr.js', 'install.sh', 'install.ps1', 'package.json']),
     'tot': (['Tree-Of-Thought', 'tree-of-thought'], ['install.sh', 'install.ps1', 'package.json']),
     'pca': (['Project-CLI-Access', 'project-cli-access'], ['install.sh', 'install.ps1', 'package.json']),
+    'tidy': (['tidy'], ['install.sh', 'install.ps1', 'package.json']),
 }
 
 ART = r"""
