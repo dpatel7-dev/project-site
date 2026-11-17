@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>djp7 · gossip, Tree of Thought, pigeon, tidy</title>
-<meta name="description" content="Terminal tools by djp7: gossip (encrypted chat), Tree of Thought (many AI models), pigeon (your own locked drive), tidy (an AI that tidies folders) and pca, which installs them all.">
+<title>djp7 · gossip, Tree of Thought, pigeon, tidy, den</title>
+<meta name="description" content="Terminal tools by djp7: gossip (encrypted chat), Tree of Thought (many AI models), pigeon (your own locked drive), tidy (an AI that tidies folders), den (a beginner-friendly code editor) and pca, which installs them all.">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#000000">
 <style>
@@ -36,7 +36,7 @@
 (function () {
   'use strict';
   var PUZZLE = { c: '{{c}}', s: '{{s}}', bits: {{bits}} };
-  var names = ['gossip', 'tot', 'pigeon', 'tidy'];
+  var names = ['gossip', 'tot', 'pigeon', 'tidy', 'den'];
   var who = '{{mascot}}' || names[Math.floor(Math.random() * names.length)];
   var M = ART.mascots[who];
   var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -86,6 +86,7 @@
       else if (who === 'pigeon') { y -= Math.max(0, Math.sin(t * 5)) * 14; flip = Math.sin(t * 1.25) < 0; }
       else if (who === 'tidy') { y -= Math.abs(Math.sin(t * 4)) * 6; }
       else if (who === 'tot') { x += Math.sin(t * 1.6) * 2; }
+      else if (who === 'den') { y -= Math.max(0, Math.sin(t * 2.2)) * 3; }
     }
     // a soft shadow on the ground
     g.fillStyle = '#111317';

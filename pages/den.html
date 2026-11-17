@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>den - a cozy place to learn to code</title>
+<meta name="description" content="den is a beginner-friendly code editor that opens in your browser. Run your code with one button, and Ember the fox explains words and errors in plain English.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..800,100,1&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  /* Inside the den at night: warm dark wood, one lantern, Ember's orange.
+     Fraunces (soft and a little wonky) for headings, Atkinson Hyperlegible
+     (made to be easy to read) for everything else, the computer's own
+     monospace for code, as in den itself. */
+  :root {
+    --night: #17120e; --burrow: #211a14; --wood: #2d241c; --line: #3d3127;
+    --cream: #f3e9dc; --dim: #ad9c86; --faint: #6d5f50;
+    --fox: #f0843c; --fox-hi: #ffb07a; --moss: #9ccf7a; --sky: #82b8ff; --sun: #f2c86b; --berry: #e88aa8; --err: #ff7b6b; --teal: #6cc7c0;
+    --display: "Fraunces", Georgia, "Times New Roman", serif;
+    --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--night); color: var(--cream); font: 400 1.0625rem/1.6 var(--body); }
+  a { color: var(--fox-hi); text-underline-offset: 3px; }
+  :focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+  code, kbd, .mono { font-family: var(--mono); }
+  code.k { font-size: .9em; background: var(--wood); padding: 1px 7px; border-radius: 5px; color: var(--cream); }
+  kbd { font-size: .85em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; color: var(--cream); background: var(--burrow); }
+
+  /* the lantern: one warm glow behind Ember */
+  .hero { position: relative; padding: 70px 0 34px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px 52px; align-items: center; }
+  .hero::before { content: ""; position: absolute; z-index: -1; left: -140px; top: -40px; width: 620px; height: 520px; background: radial-gradient(closest-side, rgba(255, 191, 110, .2), rgba(240, 132, 60, .07) 55%, transparent); pointer-events: none; }
+  .ember { position: relative; }
+  .ember canvas { display: block; image-rendering: pixelated; }
+  .ember .floor { height: 10px; margin: 2px -14px 0; border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, .55), transparent); }
+  h1 { margin: 0; font: 650 clamp(2.5rem, 6.6vw, 4.9rem)/.98 var(--display); font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144; letter-spacing: -.02em; }
+  h1 em { font-style: italic; font-weight: 500; color: var(--fox); }
+  .lede { margin: 18px 0 0; max-width: 36em; color: var(--dim); font-size: 1.14rem; }
+  .lede b { color: var(--cream); }
+
+  /* install, right where you'll want it */
+  .term { margin-top: 26px; background: #100c09; border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 14px; max-width: 640px; }
+  .os { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .os button { font: 700 .88rem/1 var(--body); color: var(--dim); background: none; border: 1px solid var(--line); border-radius: 7px; padding: 8px 12px; cursor: pointer; }
+  .os button[aria-pressed=true] { color: var(--night); background: var(--cream); border-color: var(--cream); }
+  .cmd { display: flex; align-items: center; gap: 10px; }
+  .cmd code { flex: 1; min-width: 0; font-size: .9rem; overflow-x: auto; white-space: nowrap; padding: 6px 0; }
+  .cmd code::before { content: "$ "; color: var(--faint); }
+  .btn { font: 700 .92rem/1 var(--body); background: var(--fox); color: #1c110a; border: 0; border-radius: 8px; padding: 11px 15px; cursor: pointer; flex: none; }
+  .btn:hover { background: var(--fox-hi); }
+  .btn.quiet { background: none; color: var(--cream); border: 1px solid var(--line); }
+  .btn.quiet:hover { border-color: var(--fox); color: var(--fox-hi); }
+  .then { margin: 10px 0 0; color: var(--dim); font-size: .95rem; }
+
+  /* ── the demo: a little den you can poke ── */
+  .try { padding: 30px 0 0; }
+  .try p.how { margin: 0 0 12px; color: var(--dim); }
+  .try p.how b { color: var(--cream); }
+  .den { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; padding: 22px 16px 16px; background: var(--burrow); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 40px 80px -40px #000; font-family: var(--mono); font-size: .95rem; }
+  .pane { position: relative; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
+  .pane > .t { position: absolute; top: -.8em; left: 12px; padding: 0 7px; background: var(--burrow); color: var(--fox); font-weight: 700; line-height: 1.5; }
+  .pane > .t2 { position: absolute; top: -.8em; right: 12px; padding: 0 6px; background: var(--burrow); }
+  .left { display: grid; grid-template-rows: auto auto; gap: 18px; min-width: 0; }
+  pre.code { margin: 0; padding: 16px 12px 14px 0; overflow-x: auto; background: #120e0b; border-radius: 9px; line-height: 1.75; }
+  pre.code .ln { display: inline-block; width: 3.4ch; text-align: right; margin-right: 1.6ch; color: var(--faint); user-select: none; }
+  pre.code .row { display: block; transition: background .3s; }
+  pre.code .row.fixed { background: rgba(156, 207, 122, .14); }
+  pre.code .row.bad { background: rgba(255, 123, 107, .12); }
+  .w { cursor: pointer; border-radius: 3px; }
+  .w:hover, .w.on { background: rgba(242, 200, 107, .22); outline: 1px solid rgba(242, 200, 107, .5); }
+  .kw { color: var(--fox); } .str { color: var(--moss); } .num { color: var(--sun); } .fn { color: var(--sky); } .bi { color: var(--teal); } .com { color: var(--faint); font-style: italic; }
+  .console { background: #120e0b; border-radius: 9px; min-height: 8.6em; padding: 14px 14px 10px; white-space: pre-wrap; }
+  .console .e { color: var(--err); } .console .ok { color: var(--moss); } .console .sys { color: var(--faint); }
+  .runbar { display: flex; gap: 8px; align-items: center; }
+  .side { display: flex; flex-direction: column; gap: 14px; padding: 18px 14px 14px; }
+  .who { display: flex; gap: 12px; align-items: flex-end; }
+  .who canvas { image-rendering: pixelated; flex: none; }
+  .bubble { position: relative; flex: 1; background: var(--wood); border-radius: 12px; padding: 8px 12px; margin-bottom: 10px; font-family: var(--body); font-size: 1rem; line-height: 1.4; }
+  .bubble::before { content: ""; position: absolute; left: -6px; bottom: 12px; width: 12px; height: 12px; background: var(--wood); transform: rotate(45deg); }
+  .card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-family: var(--body); }
+  .card h3 { margin: 0 0 6px; font: 700 1.05rem/1.3 var(--mono); color: var(--fox); }
+  .card.bad { border-color: rgba(255, 123, 107, .6); }
+  .card.bad h3 { color: var(--err); font-family: var(--body); }
+  .card p { margin: 0 0 8px; }
+  .card p:last-child { margin: 0; }
+  .card pre { margin: 8px 0 0; padding: 8px 10px; background: #120e0b; border-radius: 7px; font: .88rem/1.5 var(--mono); white-space: pre-wrap; }
+  .card code { font-size: .9em; background: #120e0b; padding: 0 5px; border-radius: 4px; }
+
+  /* ── what's inside: den's own panels, titles cut into the border ── */
+  section { padding: 92px 0 0; }
+  h2 { margin: 0 0 8px; font: 650 clamp(1.8rem, 3.6vw, 2.6rem)/1.08 var(--display); font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 72; letter-spacing: -.015em; }
+  .sub { margin: 0 0 34px; color: var(--dim); max-width: 40em; }
+  .rooms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 34px 22px; }
+  .room { position: relative; border: 1px solid var(--line); border-radius: 12px; padding: 24px 20px 18px; }
+  .room h3 { position: absolute; top: -.85em; left: 14px; margin: 0; padding: 0 8px; background: var(--night); font: 700 1rem/1.5 var(--mono); color: var(--fox); }
+  .room p { margin: 0; color: var(--dim); }
+  .room p b { color: var(--cream); }
+  .room.wide { grid-column: span 2; }
+
+  ol.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; counter-reset: s; }
+  ol.steps li { counter-increment: s; border-top: 2px solid var(--line); padding-top: 14px; color: var(--dim); }
+  ol.steps li::before { content: counter(s); display: block; font: 700 2.2rem/1 var(--display); font-variation-settings: "SOFT" 100, "WONK" 1; color: var(--fox); margin-bottom: 8px; }
+  ol.steps b { color: var(--cream); }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 34px 54px; }
+  .two p { color: var(--dim); margin: 0 0 12px; }
+  .two p b { color: var(--cream); }
+  table.use { width: 100%; border-collapse: collapse; font-size: .95rem; }
+  table.use td { padding: 8px 12px 8px 0; border-bottom: 1px dashed var(--line); vertical-align: top; color: var(--dim); }
+  table.use td:first-child { color: var(--cream); white-space: nowrap; font-family: var(--mono); font-size: .9rem; }
+  footer { padding: 92px 0 50px; color: var(--dim); font-size: .95rem; overflow-wrap: anywhere; }
+
+  @media (max-width: 860px) {
+    .hero { grid-template-columns: minmax(0, 1fr); padding-top: 40px; }
+    .hero::before { left: -24px; width: 100vw; height: 420px; }
+    .den { grid-template-columns: minmax(0, 1fr); }
+    .rooms { grid-template-columns: minmax(0, 1fr); }
+    .room.wide { grid-column: auto; }
+    ol.steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .two { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 480px) { ol.steps { grid-template-columns: minmax(0, 1fr); } .cmd { flex-wrap: wrap; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="ember"><canvas id="ember" role="img" aria-label="Ember, den's fox"></canvas><div class="floor"></div></div>
+    <div>
+      <h1>A cozy den to <em>learn to code</em> in.</h1>
+      <p class="lede">Type <code class="k">den</code> in a folder and it opens in your browser as a real code editor: your files, your code, a <b>Run</b> button, and Ember the fox, who explains words and errors <b>in plain English</b>.</p>
+      <div class="term">
+        <div class="os" role="group" aria-label="Your computer">
+          <button type="button" data-os="sh" aria-pressed="true">Mac or Linux</button>
+          <button type="button" data-os="ps1" aria-pressed="false">Windows</button>
+        </div>
+        <div class="cmd"><code id="cmd">curl -fsSL {{origin}}/den/install.sh | sh</code><button class="btn" type="button" id="copy">Copy</button></div>
+      </div>
+      <p class="then">Paste it into <span id="where">Terminal</span>, press Enter, then type <code class="k">den</code>. Or open <a href="/pca">pca</a> and pick den. Version {{den_version}}.</p>
+    </div>
+  </header>
+
+  <div class="try" role="region" aria-label="Try den: a small program with a mistake in it">
+    <p class="how"><b>Try it:</b> click any word in the code to see what it means. Then press <b>▶ Run</b>.</p>
+    <div class="den">
+      <div class="left">
+        <div class="pane"><span class="t">score.py</span>
+          <pre class="code" id="code" aria-live="polite"></pre>
+        </div>
+        <div class="pane"><span class="t">Console</span><span class="t2"><span class="runbar"><button class="btn" type="button" id="run">▶ Run score.py</button></span></span>
+          <div class="console" id="out"><span class="sys">What your program prints shows up here.</span></div>
+        </div>
+      </div>
+      <div class="pane side"><span class="t">Ember</span>
+        <div class="who"><canvas id="ember2" aria-hidden="true"></canvas><div class="bubble" id="bubble">Hi! Click a word in the code and I'll tell you what it does.</div></div>
+        <div id="cards"></div>
+      </div>
+    </div>
+  </div>
+
+  <section aria-labelledby="in-title">
+    <h2 id="in-title">Everything a beginner needs, nothing in the way</h2>
+    <p class="sub">den looks like the editors the pros use, with the confusing parts taken out and a friend added in.</p>
+    <div class="rooms">
+      <div class="room wide"><h3>▶ Run</h3><p>One button runs your code: <b>Python, JavaScript</b> and about a dozen more. If your program asks a question with <code class="k">input()</code>, you answer it right in the console. When something breaks, Ember says what it means, points at the line, and can <b>install a missing module</b> for you.</p></div>
+      <div class="room"><h3>What's this?</h3><p>Put your cursor on a word like <code class="k">for</code>, <code class="k">def</code> or <code class="k">padding</code>, and Ember explains it with a tiny example.</p></div>
+      <div class="room"><h3>Preview</h3><p>See your <b>web page</b> next to its code as you type. Its <code class="k">console.log</code> and errors show up in den too. Markdown notes, pictures and tables preview as well.</p></div>
+      <div class="room"><h3>Ask Ember</h3><p>Ask anything about your code. Ember sees the file you have open and suggests changes you can <b>put in with one click</b> (and undo). She uses <a href="/tot">Tree of Thought</a>'s free AI.</p></div>
+      <div class="room"><h3>Nothing gets lost</h3><p>den <b>saves as you type</b> and keeps earlier versions of every file. Deleting only moves things to den's bin, so you can always put them back.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="start-title">
+    <h2 id="start-title">Your first program, start to finish</h2>
+    <p class="sub">No setup screens. If you can type in a terminal, you can do this.</p>
+    <ol class="steps">
+      <li><b>Install den</b> with the command at the top (or <code class="k">pca</code>).</li>
+      <li><b>Make a folder</b> for your project: type <code class="k">den my-game</code>. den offers to make it.</li>
+      <li><b>Press + file</b> and name it <code class="k">game.py</code> (or <code class="k">index.html</code> for a web page). An empty file? Ember offers a starting point.</li>
+      <li><b>Press ▶ Run.</b> Change something, run it again. That's coding.</li>
+    </ol>
+  </section>
+
+  <section class="two" aria-label="More about den">
+    <div>
+      <h2>Ember's AI is free</h2>
+      <p>The word explanations and error help work with <b>no AI at all</b>. To also ask Ember questions, set up free AI once in Tree of Thought: install it from <a href="/pca">pca</a>, type <code class="k">tot free</code> and follow the steps. It runs in the cloud, so nothing heavy runs on your computer.</p>
+      <p>Ember only suggests. Your files change only when you press <b>Put in file</b>, and <kbd>⌘Z</kbd> undoes it.</p>
+      <h2 style="margin-top:40px">Safe by design</h2>
+      <p>den only listens on <b>your own computer</b>, behind an address with a long secret in it, so websites you visit can't reach it. It only touches the folder you opened, previews your pages from a separate address, and never runs anything unless you press Run.</p>
+    </div>
+    <div>
+      <h2>Keys worth knowing</h2>
+      <p>On Windows, use <kbd>Ctrl</kbd> where this says <kbd>⌘</kbd>.</p>
+      <table class="use">
+        <tr><td>⌘ Enter</td><td>run the file you're on</td></tr>
+        <tr><td>⌘ P</td><td>find a file by typing part of its name</td></tr>
+        <tr><td>⌘ ⇧ F</td><td>search every file</td></tr>
+        <tr><td>⌘ F</td><td>find and replace in this file</td></tr>
+        <tr><td>⌘ /</td><td>turn lines into comments, and back</td></tr>
+        <tr><td>⌘ K</td><td>everything den can do: just type what you want</td></tr>
+        <tr><td>Tab</td><td>push lines in (Shift+Tab pulls them out)</td></tr>
+        <tr><td>?</td><td>every key</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>den is open source: <a href="https://github.com/dpatel7-dev/Den">github.com/dpatel7-dev/Den</a>. If this website is blocked where you are, install from GitHub instead: <code class="k">curl -fsSL https://raw.githubusercontent.com/dpatel7-dev/Den/main/install.sh | sh</code></p>
+    <p>Part of the same family as <a href="/gossip">gossip</a>, <a href="/tot">Tree of Thought</a>, <a href="/pigeon">pigeon</a> and <a href="/tidy">tidy</a>.</p>
+  </footer>
+</div>
+
+<script>
+{{art}}
+(function () {
+  'use strict';
+  var E = ART.mascots.den;
+  var big = innerWidth < 600 ? 7 : 10;
+  drawPixels(document.getElementById('ember'), trimGrid(E.grid), E.ink, big);
+  drawPixels(document.getElementById('ember2'), trimGrid(E.grid), E.ink, 3);
+  // now and then, Ember blinks
+  var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var blink = E.grid.map(function (r, y) { return y === 6 ? '...OOOOOOOOOOOOOOOOOOO....' : r; });
+  var happy = E.grid.map(function (r, y) { return y === 6 ? '...OOOOEEOOOOOOOEEOOOO....' : y === 7 ? '...WWOEOOEOOOOOEOOEOWW....' : r; });
+  var mood = null;
+  function face(g) { drawPixels(document.getElementById('ember'), trimGrid(g), E.ink, big); drawPixels(document.getElementById('ember2'), trimGrid(g), E.ink, 3); }
+  if (!still) setInterval(function () { if (mood) return; face(blink); setTimeout(function () { if (!mood) face(E.grid); }, 160); }, 4200);
+  function feel(g, ms) { mood = g; face(g); setTimeout(function () { mood = null; face(E.grid); }, ms); }
+
+  // ── the little den ──
+  var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); };
+  var WORDS = {
+    score: ['A variable: a name for a value, so you can use it later. Here it holds a number that changes as the game goes on.', 'score = 0'],
+    for: ['Repeats the indented lines once for each item. Here, once for each number in range(3).', 'for fruit in ["apple", "pear"]:\n    print(fruit)'],
+    round: ['The name this loop gives each number as it goes: 0, then 1, then 2.', 'for round in range(3):'],
+    in: ['In a for loop, it means "go through each one of these".', 'for letter in "fox":'],
+    range: ['Makes a row of numbers. range(3) is 0, 1, 2.', 'range(5)   # 0, 1, 2, 3, 4'],
+    print: ['Shows something in the console below.', 'print("Hello!")'],
+    str: ['Turns something into text.', 'str(42)   # "42"'],
+  };
+  var BROKEN = [
+    [['com', '# A tiny game: three rounds, ten points each']],
+    [['w', 'score'], ['', ' = '], ['num', '0']],
+    [['wk', 'for'], ['', ' '], ['w', 'round'], ['', ' '], ['wk', 'in'], ['', ' '], ['wb', 'range'], ['', '('], ['num', '3'], ['', '):']],
+    [['', '    '], ['w', 'score'], ['', ' = '], ['w', 'score'], ['', ' + '], ['num', '10']],
+    [['wb', 'print'], ['', '('], ['str', '"Your score: "'], ['', ' + '], ['w', 'score'], ['', ')']],
+  ];
+  var FIXED = BROKEN.slice(0, 4).concat([[['wb', 'print'], ['', '('], ['str', '"Your score: "'], ['', ' + '], ['wb', 'str'], ['', '('], ['w', 'score'], ['', '))']]]);
+  var code = BROKEN, fixed = false, onWord = null;
+  function draw(mark) {
+    document.getElementById('code').innerHTML = code.map(function (row, i) {
+      var html = row.map(function (t) {
+        var cls = t[0];
+        if (cls[0] === 'w') return '<span class="w ' + (cls === 'wk' ? 'kw' : cls === 'wb' ? 'bi' : '') + (t[1] === onWord ? ' on' : '') + '" data-w="' + t[1] + '" role="button" tabindex="0">' + esc(t[1]) + '</span>';
+        return cls ? '<span class="' + cls + '">' + esc(t[1]) + '</span>' : esc(t[1]);
+      }).join('');
+      return '<span class="row' + (mark && mark[i] ? ' ' + mark[i] : '') + '"><span class="ln">' + (i + 1) + '</span>' + html + '</span>';
+    }).join('');
+  }
+  function say(t) { document.getElementById('bubble').innerHTML = t; }
+  function cards(html) { document.getElementById('cards').innerHTML = html; }
+  function explain(w) {
+    var g = WORDS[w];
+    if (!g) return;
+    onWord = w;
+    draw(fixed ? { 4: 'fixed' } : null);
+    say('That’s <b>' + esc(w) + '</b>.');
+    cards('<div class="card"><h3>' + esc(w) + '</h3><p>' + esc(g[0]) + '</p><pre>' + esc(g[1]) + '</pre></div>');
+  }
+  var codeEl = document.getElementById('code');
+  codeEl.addEventListener('click', function (e) { var w = e.target.closest('[data-w]'); if (w) explain(w.getAttribute('data-w')); });
+  codeEl.addEventListener('keydown', function (e) { var w = e.target.closest('[data-w]'); if (w && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); explain(w.getAttribute('data-w')); } });
+
+  var out = document.getElementById('out'), run = document.getElementById('run');
+  run.addEventListener('click', function () {
+    run.disabled = true;
+    out.innerHTML = '<span class="sys">▶ running score.py</span>\n';
+    setTimeout(function () {
+      if (!fixed) {
+        out.innerHTML += '<span class="e">Traceback (most recent call last):\n  File "score.py", line 5, in &lt;module&gt;\n    print("Your score: " + score)\nTypeError: can only concatenate str (not "int") to str</span>\n<span class="e">✗ it stopped with an error</span>';
+        draw({ 4: 'bad' });
+        feel(E.grid.map(function (r, y) { return y === 4 ? '....OWWO.........OWWO.SSS.' : y === 3 ? '....KWK...........KWK..S..' : y === 5 ? '...OOOOOOOOOOOOOOOOOOOSSS.' : r; }), 2600);
+        say('<b>Text and a number got mixed.</b> Here’s what that means:');
+        cards('<div class="card bad"><h3>Text and a number got mixed</h3><p>You’re joining text with a number (<code>score</code> is 30). Turn it into text first with <code>str(...)</code>, or use an f-string: <code>f"Your score: {score}"</code>.</p><p style="opacity:.8">It happened on line 5.</p><p><button class="btn" type="button" id="fix">Fix it for me</button></p></div>');
+        document.getElementById('fix').onclick = function () {
+          code = FIXED; fixed = true; onWord = null;
+          draw({ 4: 'fixed' });
+          say('I wrapped <b>score</b> in <code>str()</code> on line 5. Press <b>▶ Run</b> again!');
+          cards('<div class="card"><h3>str</h3><p>' + esc(WORDS.str[0]) + '</p><pre>' + esc(WORDS.str[1]) + '</pre></div>');
+          run.focus();
+        };
+      } else {
+        out.innerHTML += 'Your score: 30\n<span class="ok">✓ finished in 41 ms</span>';
+        feel(happy, 2600);
+        say('That worked! <b>Your score: 30</b>. In the real den, you’d keep going from here.');
+      }
+      run.disabled = false;
+    }, 450);
+  });
+  draw();
+
+  // install command for this computer
+  var ORIGIN = location.origin;
+  var cmds = { sh: 'curl -fsSL ' + ORIGIN + '/den/install.sh | sh', ps1: 'irm ' + ORIGIN + '/den/install.ps1 | iex' };
+  var where = { sh: 'Terminal', ps1: 'PowerShell' };
+  function pick(os) {
+    document.getElementById('cmd').textContent = cmds[os];
+    document.getElementById('where').textContent = where[os];
+    document.querySelectorAll('.os button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.os === os)); });
+  }
+  document.querySelectorAll('.os button').forEach(function (b) { b.addEventListener('click', function () { pick(b.dataset.os); }); });
+  pick(/Win/.test(navigator.platform || navigator.userAgent) ? 'ps1' : 'sh');
+  var copy = document.getElementById('copy');
+  copy.addEventListener('click', function () {
+    var text = document.getElementById('cmd').textContent;
+    var done = function () { copy.textContent = 'Copied'; setTimeout(function () { copy.textContent = 'Copy'; }, 1600); };
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () { fallback(); done(); }); else { fallback(); done(); }
+    function fallback() { var r = document.createRange(); r.selectNodeContents(document.getElementById('cmd')); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy'); }
+  });
+})();
+</script>
+</body>
+</html>

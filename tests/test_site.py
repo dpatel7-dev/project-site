@@ -48,7 +48,7 @@ class Site(unittest.TestCase):
         self.assertTrue(h['Content-Type'].startswith('text/html'), path)
         text = body.decode()
         self.assertEqual(text.count('class="psnav"'), 1, path)
-        for link in ('href="/gossip"', 'href="/tot"', 'href="/pigeon"', 'href="/tidy"', 'href="/pca"'):
+        for link in ('href="/gossip"', 'href="/tot"', 'href="/pigeon"', 'href="/tidy"', 'href="/den"', 'href="/pca"'):
             self.assertIn(link, text, path)
         if here:
             self.assertRegex(text, r'href="/%s"[^>]*aria-current="page"' % here)
@@ -65,6 +65,11 @@ class Site(unittest.TestCase):
         tidy = self.page('/tidy', 'tidy')
         self.assertIn('https://djp7.pythonanywhere.com/tidy/install.sh', tidy)
         self.assertIn('Carefully', tidy)
+        den = self.page('/den', 'den')
+        self.assertIn('https://djp7.pythonanywhere.com/den/install.sh', den)
+        self.assertIn('learn to code', den)
+        self.assertIn('"den":{"name":"Ember"', den)
+        self.page('/den/', 'den')
         gossip = self.page('/gossip', 'gossip')
         self.assertIn('"hub": "https://djp7.pythonanywhere.com"', gossip)
         pigeon = self.page('/pigeon', 'pigeon')
@@ -80,6 +85,8 @@ class Site(unittest.TestCase):
             ('/tot/install.sh', 'TOT_HUB="${TOT_HUB:-https://djp7.pythonanywhere.com}"'),
             ('/pca/install.sh', 'PCA_HUB="${PCA_HUB:-https://djp7.pythonanywhere.com}"'),
             ('/tidy/install.sh', 'TIDY_HUB="${TIDY_HUB:-https://djp7.pythonanywhere.com}"'),
+            ('/den/install.sh', 'DEN_HUB="${DEN_HUB:-https://djp7.pythonanywhere.com}"'),
+            ('/den/install.ps1', "$env:DEN_HUB = 'https://djp7.pythonanywhere.com'"),
             ('/pigeon/install.sh', 'PIGEON_HUB="${PIGEON_HUB:-https://djp7.pythonanywhere.com/pigeon}"'),
             ('/install.ps1', "$env:GOSSIP_HUB = 'https://djp7.pythonanywhere.com'"),
             ('/tot/install.ps1', "$env:TOT_HUB = 'https://djp7.pythonanywhere.com'"),
@@ -121,7 +128,7 @@ class Site(unittest.TestCase):
         code, h, body = call('/versions.json')
         self.assertEqual(code, 200)
         v = json.loads(body)
-        self.assertEqual(set(v), {'gossip', 'tot', 'pigeon', 'pca', 'tidy'})
+        self.assertEqual(set(v), {'gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den'})
         self.assertTrue(all(isinstance(x, str) and x.count('.') == 2 for x in v.values()))
 
     def test_only_get_for_our_pages(self):

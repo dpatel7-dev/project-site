@@ -9,6 +9,7 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 | `/tot` | [Tree of Thought](https://github.com/dpatel7-dev/Tree-Of-Thought), plus `/tot/install.sh` and `/tot/install.ps1` |
 | `/pigeon` | [pigeon](https://github.com/dpatel7-dev/pigeon)'s web app (open it on your phone), its file server and installers |
 | `/tidy` | [tidy](https://github.com/dpatel7-dev/tidy), the AI that tidies folders, plus `/tidy/install.sh` and `/tidy/install.ps1` |
+| `/den` | [den](https://github.com/dpatel7-dev/Den), the beginner-friendly code editor, plus `/den/install.sh` and `/den/install.ps1` |
 | `/pca` | [Project CLI Access](https://github.com/dpatel7-dev/Project-CLI-Access), plus `/pca/install.sh` and `/pca/install.ps1` |
 | `/versions.json` | the newest version of each project: pca checks it to keep everything up to date |
 
@@ -121,7 +122,7 @@ python3 -m unittest discover tests
 
 `apps/` holds copies of the parts of each project the site serves: gossip's
 hub, page and installers; pigeon's server, web app and installers; and the
-Tree of Thought, tidy and pca installers. `pages/art.js` holds the mascots' pixel art.
+Tree of Thought, tidy, den and pca installers. `pages/art.js` holds the mascots' pixel art.
 With the projects cloned next to this folder, refresh all of it with:
 
 ```sh
