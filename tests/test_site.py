@@ -14,6 +14,7 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = tempfile.mkdtemp(prefix='site-test-')
 os.environ['GOSSIP_DATA'] = os.path.join(DATA, 'gossip-data')
 os.environ['PIGEON_DATA'] = os.path.join(DATA, 'pigeon-data')
+os.environ['SITE_DATA'] = os.path.join(DATA, 'site-data')
 sys.path.insert(0, HERE)
 import site_app  # noqa: E402
 
@@ -125,6 +126,59 @@ class Site(unittest.TestCase):
 
     def test_only_get_for_our_pages(self):
         self.assertEqual(call('/tot', 'POST', b'x')[0], 405)
+
+
+
+
+class BotCheck(unittest.TestCase):
+    BROWSER = {'HTTP_ACCEPT': 'text/html,application/xhtml+xml,*/*;q=0.8'}
+
+    def solve(self, c, bits):
+        import hashlib
+        n = 0
+        while True:
+            d = hashlib.sha256(('%s:%d' % (c, n)).encode()).digest()
+            if int.from_bytes(d[:4], 'big') >> (32 - bits) == 0:
+                return str(n)
+            n += 1
+
+    def test_browsers_get_the_check_first_and_then_the_page(self):
+        import re
+        code, h, body = call('/tot', headers=self.BROWSER)
+        page = body.decode()
+        self.assertEqual(code, 200)
+        self.assertIn("checking you're a person", page)
+        self.assertIn('Tree of Thought', page, 'the real description is on the check page too')
+        self.assertIn("var who = 'tot'", page.replace("'{{mascot}}'", ''), 'Rowan for the Tree of Thought page')
+        c = re.search(r"c: '([^']+)'", page).group(1)
+        s = re.search(r"s: '([^']+)'", page).group(1)
+        bits = int(re.search(r'bits: (\d+)', page).group(1))
+        # a wrong answer, a forged puzzle and an automated browser are turned away
+        bad = json.dumps({'c': c, 's': s, 'n': 'nope'}).encode()
+        self.assertEqual(call('/__check', 'POST', bad)[0], 403)
+        forged = json.dumps({'c': c + '1', 's': s, 'n': '0'}).encode()
+        self.assertEqual(call('/__check', 'POST', forged)[0], 403)
+        n = self.solve(c, bits)
+        robot = json.dumps({'c': c, 's': s, 'n': n, 'w': True}).encode()
+        self.assertEqual(call('/__check', 'POST', robot)[0], 403)
+        code, h, body = call('/__check', 'POST', json.dumps({'c': c, 's': s, 'n': n, 'w': False}).encode())
+        self.assertEqual(code, 200, body)
+        cookie = h['Set-Cookie'].split(';')[0]
+        self.assertIn('HttpOnly', h['Set-Cookie'])
+        code, h, body = call('/tot', headers=dict(self.BROWSER, HTTP_COOKIE=cookie))
+        self.assertNotIn("checking you're a person", body.decode())
+        # a tampered cookie doesn't count
+        code, h, body = call('/tot', headers=dict(self.BROWSER, HTTP_COOKIE=cookie[:-2] + 'xx'))
+        self.assertIn("checking you're a person", body.decode())
+
+    def test_tools_and_apis_never_see_the_check(self):
+        for path in ('/tidy/install.sh', '/install.sh', '/pca/install.ps1', '/versions.json', '/robots.txt'):
+            code, h, body = call(path, headers=self.BROWSER)
+            self.assertNotIn(b"checking you're a person", body, path)
+        code, h, body = call('/tot', headers={'HTTP_ACCEPT': '*/*'})  # curl
+        self.assertNotIn(b"checking you're a person", body)
+        code, h, body = call('/tot', headers=dict(self.BROWSER, HTTP_UPGRADE='websocket'))
+        self.assertNotIn(b"checking you're a person", body)
 
 
 if __name__ == '__main__':

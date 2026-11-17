@@ -14,6 +14,29 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 
 A bar across the top of every page links them together.
 
+## The "checking you're a person" screen
+
+The first time someone opens a page in a browser, they see a short loading
+screen (about a second): a black background with the section's mascot doing
+something, while their browser solves a small puzzle. When it's solved, the
+page they asked for opens, and they won't see the screen again for 30 days.
+
+- Nobody signs in, and nothing is saved about them except one small cookie
+  that says "passed".
+- Installers (`curl ... | sh`), `/versions.json`, the chat hub and pigeon's
+  apps never see it, so pca, gossip and pigeon keep working exactly as before.
+- The secret that signs the cookie is made by itself in `~/site-data/check-secret`.
+- To turn it off, put these two lines in the WSGI file just above
+  `from site_app import application`, then Reload:
+
+  ```python
+  import os
+  os.environ['SITE_CHECK'] = 'off'
+  ```
+
+It stops simple bots that scrape pages. It doesn't change what a school or
+office web filter thinks of the site.
+
 ## Your data is not in this folder
 
 gossip keeps its accounts and messages in `~/gossip-data`, and pigeon keeps its

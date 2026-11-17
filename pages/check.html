@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>djp7 · gossip, Tree of Thought, pigeon, tidy</title>
+<meta name="description" content="Terminal tools by djp7: gossip (encrypted chat), Tree of Thought (many AI models), pigeon (your own locked drive), tidy (an AI that tidies folders) and pca, which installs them all.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#000000">
+<style>
+  /* One moment on a black backdrop: a mascot doing its thing while the page
+     checks you're a person. Then straight through. */
+  html, body { margin: 0; height: 100%; background: #000; color: #8a8f98; }
+  body { display: grid; place-items: center; font: 14px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; overflow: hidden; }
+  main { display: grid; justify-items: center; gap: 22px; }
+  canvas { image-rendering: pixelated; display: block; }
+  #stage { width: 320px; height: 240px; }
+  .bar { display: flex; gap: 4px; }
+  .bar i { width: 10px; height: 10px; background: #1b1d22; display: block; }
+  .bar i.on { background: var(--c, #8fd16a); }
+  #say { min-height: 1.5em; letter-spacing: .02em; text-align: center; padding: 0 20px; }
+  #say b { color: #e8eaee; font-weight: 400; }
+  noscript p { color: #e8eaee; max-width: 40ch; text-align: center; margin: 0 20px; }
+  @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <canvas id="stage" width="320" height="240" role="img" aria-label="{{mascot_label}}"></canvas>
+  <div class="bar" id="bar" aria-hidden="true"></div>
+  <div id="say" role="status">checking you're a person</div>
+  <noscript><p>This site checks that you're a person with a tiny bit of JavaScript. Turn JavaScript on for this site, then reload.</p></noscript>
+</main>
+<script>
+{{art}}
+(function () {
+  'use strict';
+  var PUZZLE = { c: '{{c}}', s: '{{s}}', bits: {{bits}} };
+  var names = ['gossip', 'tot', 'pigeon', 'tidy'];
+  var who = '{{mascot}}' || names[Math.floor(Math.random() * names.length)];
+  var M = ART.mascots[who];
+  var still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var say = document.getElementById('say');
+  var bar = document.getElementById('bar');
+  document.documentElement.style.setProperty('--c', M.color);
+  for (var i = 0; i < 12; i++) bar.appendChild(document.createElement('i'));
+  var cells = bar.children;
+
+  // ── the mascot ──
+  var cv = document.getElementById('stage');
+  var g = cv.getContext('2d');
+  var grid = trimGrid(M.grid);
+  var S = 8; // one art pixel = 8 screen pixels
+  var gw = Math.max.apply(null, grid.map(function (r) { return r.length; }));
+  var gh = grid.length;
+  var dpr = window.devicePixelRatio || 1;
+  cv.width = 320 * dpr; cv.height = 240 * dpr;
+  g.scale(dpr, dpr);
+  g.imageSmoothingEnabled = false;
+  function sprite(x, y, flip) {
+    for (var r = 0; r < gh; r++) for (var c = 0; c < grid[r].length; c++) {
+      var ink = M.ink[grid[r][c]];
+      if (!ink) continue;
+      g.fillStyle = ink;
+      g.fillRect(Math.round(x + (flip ? gw - 1 - c : c) * S), Math.round(y + r * S), S, S);
+    }
+  }
+  // what each one is doing: Pebble waddles in the snow, Rowan drops blossoms,
+  // Coo hops while letters fly past, Hazel juggles an acorn
+  var bits = [];
+  function spawn() {
+    if (still) return;
+    if (who === 'gossip') bits.push({ x: Math.random() * 320, y: -4, vx: (Math.random() - .5) * .3, vy: .5 + Math.random() * .6, c: '#e8f1ff', s: 3 });
+    else if (who === 'tot') bits.push({ x: 110 + Math.random() * 100, y: 30 + Math.random() * 40, vx: (Math.random() - .3) * .6, vy: .35 + Math.random() * .4, c: Math.random() < .5 ? '#f2a7c3' : '#ffd6e5', s: 4 });
+    else if (who === 'pigeon') bits.push({ x: -16, y: 30 + Math.random() * 120, vx: 1.6 + Math.random(), vy: (Math.random() - .5) * .3, c: '#f3efe2', s: 0, env: true });
+  }
+  var t0 = performance.now();
+  function frame(now) {
+    var t = (now - t0) / 1000;
+    g.clearRect(0, 0, 320, 240);
+    var x = 160 - gw * S / 2;
+    var y = 200 - gh * S;
+    var flip = false;
+    if (!still) {
+      if (who === 'gossip') { x += Math.sin(t * 3) * 10; y -= Math.abs(Math.sin(t * 6)) * 4; flip = Math.cos(t * 3) < 0; }
+      else if (who === 'pigeon') { y -= Math.max(0, Math.sin(t * 5)) * 14; flip = Math.sin(t * 1.25) < 0; }
+      else if (who === 'tidy') { y -= Math.abs(Math.sin(t * 4)) * 6; }
+      else if (who === 'tot') { x += Math.sin(t * 1.6) * 2; }
+    }
+    // a soft shadow on the ground
+    g.fillStyle = '#111317';
+    g.fillRect(160 - gw * S / 2 + 8, 204, gw * S - 16, 4);
+    sprite(x, y, flip);
+    if (who === 'tidy' && !still) { // the acorn goes up and comes down
+      var p = (t * 1.4) % 1;
+      var ay = y - 20 - Math.sin(p * Math.PI) * 70;
+      var ax = x + gw * S * .62;
+      g.fillStyle = '#6e4a2c'; g.fillRect(ax, ay, 12, 5);
+      g.fillStyle = '#c99a58'; g.fillRect(ax + 2, ay + 5, 8, 8);
+    }
+    if (Math.random() < (who === 'pigeon' ? .03 : .25)) spawn();
+    bits = bits.filter(function (b) { return b.y < 250 && b.x < 340; });
+    bits.forEach(function (b) {
+      b.x += b.vx; b.y += b.vy;
+      if (b.env) { g.fillStyle = b.c; g.fillRect(b.x, b.y, 14, 9); g.fillStyle = '#2bc4b2'; g.fillRect(b.x, b.y, 14, 2); g.fillStyle = '#9b82ff'; g.fillRect(b.x + 3, b.y + 4, 8, 1); }
+      else { g.fillStyle = b.c; g.fillRect(Math.round(b.x), Math.round(b.y), b.s, b.s); }
+    });
+    if (!done) requestAnimationFrame(frame);
+  }
+  var done = false;
+  requestAnimationFrame(frame);
+
+  // ── the check ──
+  // SHA-256 of a short ASCII text; only the first 32 bits are needed
+  var K = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+  var Wd = new Int32Array(64);
+  function firstWord(str) {
+    var len = str.length, blocks = (len + 9 + 63) >> 6, w = new Int32Array(blocks * 16), i, t;
+    for (i = 0; i < len; i++) w[i >> 2] |= (str.charCodeAt(i) & 255) << (24 - (i & 3) * 8);
+    w[len >> 2] |= 0x80 << (24 - (len & 3) * 8);
+    w[blocks * 16 - 1] = len * 8;
+    var h0 = 0x6a09e667, h1 = 0xbb67ae85 | 0, h2 = 0x3c6ef372, h3 = 0xa54ff53a | 0, h4 = 0x510e527f, h5 = 0x9b05688c | 0, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+    for (var b = 0; b < blocks; b++) {
+      for (t = 0; t < 16; t++) Wd[t] = w[b * 16 + t];
+      for (t = 16; t < 64; t++) {
+        var x = Wd[t - 15], y = Wd[t - 2];
+        var s0 = ((x >>> 7) | (x << 25)) ^ ((x >>> 18) | (x << 14)) ^ (x >>> 3);
+        var s1 = ((y >>> 17) | (y << 15)) ^ ((y >>> 19) | (y << 13)) ^ (y >>> 10);
+        Wd[t] = (Wd[t - 16] + s0 + Wd[t - 7] + s1) | 0;
+      }
+      var a = h0, bb = h1, c = h2, d = h3, e = h4, f = h5, gg = h6, h = h7;
+      for (t = 0; t < 64; t++) {
+        var S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+        var t1 = (h + S1 + ((e & f) ^ (~e & gg)) + K[t] + Wd[t]) | 0;
+        var S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+        var t2 = (S0 + ((a & bb) ^ (a & c) ^ (bb & c))) | 0;
+        h = gg; gg = f; f = e; e = (d + t1) | 0; d = c; c = bb; bb = a; a = (t1 + t2) | 0;
+      }
+      h0 = (h0 + a) | 0; h1 = (h1 + bb) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0; h4 = (h4 + e) | 0; h5 = (h5 + f) | 0; h6 = (h6 + gg) | 0; h7 = (h7 + h) | 0;
+    }
+    return h0 >>> 0;
+  }
+  window.__firstWord = firstWord; // (for the site's own tests)
+
+  var tries = Number(sessionStorage.getItem('djp7-check') || 0) + 1;
+  try { sessionStorage.setItem('djp7-check', String(tries)); } catch (e) { /* private mode */ }
+  if (tries > 3) {
+    done = true;
+    say.innerHTML = '<b>Your browser isn\'t keeping this site\'s cookie</b>, so the check can\'t finish.<br>Allow cookies for this site, then reload.';
+    return;
+  }
+  var started = performance.now();
+  var shift = 32 - PUZZLE.bits;
+  var nonce = 0;
+  var expect = Math.pow(2, PUZZLE.bits);
+  function work() {
+    var stop = performance.now() + 12; // a little each frame, so the mascot stays smooth
+    while (performance.now() < stop) {
+      if ((firstWord(PUZZLE.c + ':' + nonce) >>> shift) === 0) return solved();
+      nonce++;
+    }
+    var shown = Math.min(11, Math.floor(12 * (1 - Math.exp(-nonce / expect))));
+    for (var i = 0; i < cells.length; i++) cells[i].className = i <= shown ? 'on' : '';
+    setTimeout(work, 0);
+  }
+  function solved() {
+    var wait = Math.max(0, 1100 - (performance.now() - started)); // long enough to see who's here
+    fetch('/__check', { method: 'POST', headers: { 'content-type': 'application/json' }, credentials: 'same-origin',
+      body: JSON.stringify({ c: PUZZLE.c, s: PUZZLE.s, n: String(nonce), w: navigator.webdriver === true }) })
+      .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || 'check failed'); }); })
+      .then(function () {
+        for (var i = 0; i < cells.length; i++) cells[i].className = 'on';
+        setTimeout(function () {
+          say.innerHTML = '<b>welcome</b>';
+          try { sessionStorage.removeItem('djp7-check'); } catch (e) { /* fine */ }
+          setTimeout(function () { done = true; location.reload(); }, 250);
+        }, wait);
+      }, function (e) {
+        say.innerHTML = '<b>That didn\'t work</b> (' + String(e.message).replace(/[<>&]/g, '') + '). Reload to try again.';
+      });
+  }
+  setTimeout(work, 60);
+})();
+</script>
+</body>
+</html>

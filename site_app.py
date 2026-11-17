@@ -38,6 +38,9 @@ def _load(name, *parts):
     return mod
 
 
+sys.path.insert(0, HERE)
+import site_check  # noqa: E402  (the quick "are you a person?" check)
+
 gossip = _load('gossip_hub', 'gossip', 'hub', 'gossip_hub.py')
 pigeon = _load('pigeon_server', 'pigeon', 'server', 'pigeon_server.py')
 
@@ -129,9 +132,10 @@ def with_nav(page, here):
 
 # ── our own pages ──────────────────────────────────────────────────────────
 
-def fill(page, environ):
+def fill(page, environ, extra=None):
     o = origin(environ) or ''
-    values = {
+    values = dict(extra or {})
+    values.update({
         'origin': o,
         'host': o.split('://', 1)[-1],
         'gossip_version': version('gossip'),
@@ -140,7 +144,7 @@ def fill(page, environ):
         'pca_version': version('pca'),
         'tidy_version': version('tidy'),
         'art': _read('pages', 'art.js') or '',
-    }
+    })
     return re.sub(r'\{\{(\w+)\}\}', lambda m: values[m.group(1)] if m.group(1) == 'art'
                   else html.escape(values.get(m.group(1), m.group(0))), page)
 
@@ -193,9 +197,48 @@ def _navved(app, environ, start_response, here):
     return [data]
 
 
+MASCOTS = {'gossip': 'Pebble the penguin', 'tot': 'Rowan the tree', 'pigeon': 'Coo the pigeon', 'tidy': 'Hazel the squirrel'}
+
+
+def check_page(environ, start_response, path):
+    """The loading screen that checks for a person, served in place of the page (the address stays the same)."""
+    c, sig, bits = site_check.challenge()
+    who = site_check.mascot_for(path)
+    page = fill(_read('pages', 'check.html') or '', environ, {
+        'c': c, 's': sig, 'bits': str(bits), 'mascot': who,
+        'mascot_label': (MASCOTS.get(who, 'A mascot') + ', while the page checks you\'re a person'),
+    })
+    data = page.encode('utf-8')
+    start_response('200 OK', [('Content-Type', 'text/html; charset=utf-8'), ('Content-Length', str(len(data))), ('Cache-Control', 'no-store'),
+                              ('X-Content-Type-Options', 'nosniff'), ('Referrer-Policy', 'strict-origin-when-cross-origin'), ('Vary', 'Cookie, Accept')])
+    return [data] if environ.get('REQUEST_METHOD') != 'HEAD' else [b'']
+
+
+def check_answer(environ, start_response):
+    try:
+        size = min(int(environ.get('CONTENT_LENGTH') or 0), 4096)
+    except ValueError:
+        size = 0
+    ok, why = site_check.verify(environ['wsgi.input'].read(size) if size else b'')
+    body = json.dumps({'ok': True} if ok else {'error': why}).encode()
+    headers = [('Content-Type', 'application/json'), ('Content-Length', str(len(body))), ('Cache-Control', 'no-store')]
+    if ok:
+        headers.append(('Set-Cookie', site_check.pass_cookie(origin(environ).startswith('https://'))))
+    start_response('200 OK' if ok else '403 Forbidden', headers)
+    return [body]
+
+
 def application(environ, start_response):
     path = environ.get('PATH_INFO') or '/'
     method = environ.get('REQUEST_METHOD', 'GET')
+
+    # the quick "are you a person?" check (pages in browsers only; see site_check.py)
+    if path == '/__check':
+        if method != 'POST':
+            return _send(start_response, '405 Method Not Allowed', 'not allowed\n', 'text/plain; charset=utf-8')
+        return check_answer(environ, start_response)
+    if site_check.needs_check(environ, path):
+        return check_page(environ, start_response, path)
 
     # gossip's chat hub keeps the addresses every gossip install already knows
     if path in ('/api', '/install.sh', '/install.ps1', '/healthz', '/favicon.ico'):
@@ -227,7 +270,7 @@ def application(environ, start_response):
         body = json.dumps({app: version(app) for app in ('gossip', 'tot', 'pigeon', 'pca', 'tidy')})
         return _send(start_response, '200 OK', body, 'application/json')
     if path == '/robots.txt':
-        return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /api\n', 'text/plain; charset=utf-8')
+        return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /api\nDisallow: /__check\n', 'text/plain; charset=utf-8')
     return _send(start_response, '404 Not Found', with_nav(_read('pages', '404.html') or 'not found', ''))
 
 
@@ -245,6 +288,7 @@ def main(argv):
     if args.data:
         os.environ.setdefault('GOSSIP_DATA', os.path.join(os.path.abspath(args.data), 'gossip-data'))
         os.environ.setdefault('PIGEON_DATA', os.path.join(os.path.abspath(args.data), 'pigeon-data'))
+        os.environ.setdefault('SITE_DATA', os.path.join(os.path.abspath(args.data), 'site-data'))
 
     class Server(ThreadingMixIn, WSGIServer):
         daemon_threads = True
