@@ -1,6 +1,6 @@
 {
   "name": "pigeon",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Move files between your devices: end-to-end encrypted, from the terminal or your phone.",
   "bin": { "pigeon": "bin/pigeon.js" },
   "scripts": { "test": "node --test", "start": "node bin/pigeon.js", "server": "python3 server/pigeon_server.py --port 8080" },

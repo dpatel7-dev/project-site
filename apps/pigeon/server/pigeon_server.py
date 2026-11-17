@@ -12,7 +12,8 @@ Runs anywhere Python 3.8+ runs, with nothing to install:
 
 Settings: ~/pigeon-data/config.json (or PIGEON_* environment variables)
     "signups":     "first" (default: the first nest, then only people its owner invites), "open", or "closed"
-    "quota_mb":    400     total space for all files (PythonAnywhere's free plan has 512 MB)
+    "quota_mb":    400     total space for everyone's files together (PythonAnywhere's free plan has 512 MB)
+    "nest_mb":     100     how much each invited nest may use (the owner can change it per nest; the owner's own nest can use it all)
     "max_file_mb": 400     the biggest single file
     "public_url":  ""      the site's address, if it can't be worked out
 """
@@ -42,7 +43,9 @@ HOST_RE = re.compile(r'^[A-Za-z0-9.-]+(:\d{1,5})?$')
 TOKEN_DAYS = 60
 UPLOAD_HOURS = 24
 TRASH_DAYS = 30
+TIGHT_TRASH_DAYS = 3    # when the site is nearly full, the trash empties sooner
 INVITE_DAYS = 7
+MB = 1024 * 1024
 
 
 def _version():
@@ -74,13 +77,14 @@ def _b64ok(s, lo, hi):
 
 
 class Pigeon:
-    def __init__(self, data_dir, signups='first', quota_mb=400, max_file_mb=400, public_url=''):
+    def __init__(self, data_dir, signups='first', quota_mb=400, max_file_mb=400, public_url='', nest_mb=100):
         self.dir = data_dir
         self.files_dir = os.path.join(data_dir, 'files')
         os.makedirs(self.files_dir, exist_ok=True)
         self.signups = signups if signups in ('first', 'open', 'closed') else 'first'
         self.quota = int(float(quota_mb) * 1024 * 1024)
         self.max_file = int(float(max_file_mb) * 1024 * 1024)
+        self.nest_default = int(float(nest_mb) * MB)
         self.public_url = (public_url or '').rstrip('/')
         self.lock = threading.RLock()
         # No write-ahead log: PythonAnywhere keeps files on a network disk, where
@@ -101,7 +105,7 @@ class Pigeon:
             CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, nest TEXT, made INTEGER, expires INTEGER, used_by TEXT);
         ''')
         # newer columns (older pigeon sites get them added in place)
-        for table, col, kind in [('nests', 'owner', 'INTEGER DEFAULT 0'), ('tokens', 'did', 'TEXT'), ('files', 'kind', "TEXT DEFAULT 'file'"),
+        for table, col, kind in [('nests', 'owner', 'INTEGER DEFAULT 0'), ('nests', 'quota', 'INTEGER DEFAULT 0'), ('tokens', 'did', 'TEXT'), ('files', 'kind', "TEXT DEFAULT 'file'"),
                                  ('files', 'trashed', 'INTEGER DEFAULT 0'), ('files', 'to_did', 'TEXT'), ('files', 'from_did', 'TEXT'),
                                  ('files', 'got', 'INTEGER DEFAULT 0')]:
             have = [r[1] for r in self.db.execute('PRAGMA table_info(%s)' % table).fetchall()]
@@ -123,9 +127,32 @@ class Pigeon:
         rows = self.q(sql, *args)
         return rows[0] if rows else None
 
-    def used(self):
-        r = self.one('SELECT COALESCE(SUM(stored), 0) AS n FROM files')
+    def used(self, nest=None):
+        if nest:
+            r = self.one('SELECT COALESCE(SUM(stored), 0) AS n FROM files WHERE nest = ?', nest)
+        else:
+            r = self.one('SELECT COALESCE(SUM(stored), 0) AS n FROM files')
         return int(r['n'])
+
+    def limit_of(self, nest):
+        """How much one nest may use: the owner's nest can use the whole site; others get their share."""
+        r = self.one('SELECT owner, quota FROM nests WHERE name = ?', nest)
+        if not r:
+            return 0
+        if r['owner'] and not r['quota']:
+            return self.quota
+        return min(self.quota, int(r['quota'] or self.nest_default))
+
+    def _room(self, nest, more):
+        """Raise a friendly error if `more` bytes won't fit in this nest or on the site."""
+        mine, cap = self.used(nest), self.limit_of(nest)
+        if mine + more > cap + MB:
+            raise Err('507 Insufficient Storage', "Your nest is full (%d of %d MB). Empty the trash or delete some files first%s." % (
+                mine // MB, cap // MB, '' if self._owner(nest) else ", or ask the site's owner for more room"))
+        total = self.used()
+        if total + more > self.quota + MB:
+            raise Err('507 Insufficient Storage', "This site is full (everyone's files together use %d of %d MB). Delete some files, or ask the site's owner to make room." % (
+                total // MB, self.quota // MB))
 
     def _piece_path(self, fid, n):
         return os.path.join(self.files_dir, fid, '%d' % n)
@@ -144,6 +171,9 @@ class Pigeon:
         self.q('DELETE FROM invites WHERE expires < ?', ms)
         for r in self.q('SELECT id FROM files WHERE trashed > 0 AND trashed < ?', ms - TRASH_DAYS * 86400000):
             self._drop(r['id'])
+        if self.used() > self.quota * 0.9:  # nearly full: the trash empties after a few days instead
+            for r in self.q('SELECT id FROM files WHERE trashed > 0 AND trashed < ?', ms - TIGHT_TRASH_DAYS * 86400000):
+                self._drop(r['id'])
 
     def _drop(self, fid):
         shutil.rmtree(os.path.join(self.files_dir, fid), ignore_errors=True)
@@ -234,6 +264,39 @@ class Pigeon:
         r = self.one('SELECT owner FROM nests WHERE name = ?', nest)
         return bool(r and r['owner'])
 
+    def people(self, nest, m):
+        """For the site's owner: every nest, how much it uses, and a way to give more room or remove one."""
+        if not self._owner(nest):
+            raise Err('403 Forbidden', "Only this site's owner can see this.")
+        act = m.get('do')
+        who = str(m.get('nest') or '').strip().lower()
+        if act in ('limit', 'remove'):
+            r = self.one('SELECT owner FROM nests WHERE name = ?', who)
+            if not r:
+                raise Err('404 Not Found', 'There is no nest called %s.' % who)
+            if act == 'limit':
+                mb = m.get('mb')
+                if not isinstance(mb, (int, float)) or not (0 <= mb <= self.quota / MB):
+                    raise Err('400 Bad Request', 'Give a number of MB between 0 and %d.' % (self.quota // MB))
+                self.q('UPDATE nests SET quota = ? WHERE name = ?', int(mb * MB), who)
+            else:
+                if r['owner']:
+                    raise Err('409 Conflict', "That's your own nest: it can't be removed from here.")
+                for f in self.q('SELECT id FROM files WHERE nest = ?', who):
+                    self._drop(f['id'])
+                self.q('DELETE FROM tokens WHERE nest = ?', who)
+                self.q('DELETE FROM shares WHERE nest = ?', who)
+                self.q('DELETE FROM nests WHERE name = ?', who)
+        rows = []
+        for r in self.q('SELECT name, owner, made FROM nests ORDER BY made'):
+            seen = self.one('SELECT MAX(seen) AS s FROM tokens WHERE nest = ?', r['name'])['s'] or 0
+            n = self.one("SELECT COUNT(*) AS n FROM files WHERE nest = ? AND kind != 'dir'", r['name'])['n']
+            rows.append({'nest': r['name'], 'owner': bool(r['owner']), 'used': self.used(r['name']), 'limit': self.limit_of(r['name']),
+                         'files': n, 'made': r['made'], 'seen': seen})
+        # (no disk-free figure: on shared hosts like PythonAnywhere it shows the whole
+        # server's disk, not your own allowance, so it would only mislead)
+        return {'nests': rows, 'used': self.used(), 'quota': self.quota, 'nestDefault': self.nest_default}
+
     def invite(self, nest):
         if not self._owner(nest):
             raise Err('403 Forbidden', "Only this site's owner can invite people.")
@@ -252,7 +315,9 @@ class Pigeon:
 
     def list(self, nest, did):
         rows = self.q('SELECT * FROM files WHERE nest = ? ORDER BY made DESC', nest)
-        return {'files': [self._row(r) for r in rows], 'used': self.used(), 'quota': self.quota, 'maxFile': self.max_file,
+        tight = self.used() > self.quota * 0.9
+        return {'files': [self._row(r) for r in rows], 'used': self.used(nest), 'quota': self.limit_of(nest), 'siteUsed': self.used(), 'siteQuota': self.quota,
+                'trashSoon': tight, 'maxFile': self.max_file,
                 'me': did, 'owner': self._owner(nest), 'signups': self.signups, 'trashDays': TRASH_DAYS}
 
     def start(self, nest, did, m):
@@ -276,8 +341,7 @@ class Pigeon:
         if size > self.max_file:
             raise Err('413 Payload Too Large', 'That file is bigger than this site allows (%d MB).' % (self.max_file // 1048576))
         with self.lock:
-            if self.used() + size + chunks * 28 > self.quota:
-                raise Err('507 Insufficient Storage', "There's no room left: empty the trash or delete some files first (%d of %d MB used)." % (self.used() // 1048576, self.quota // 1048576))
+            self._room(nest, size + chunks * 28)
             fid = secrets.token_hex(8)
             self.q('INSERT INTO files (id, nest, size, chunks, meta, wrapped, made, device, kind, to_did, from_did) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                    fid, nest, size, chunks, m['meta'], m['wrapped'], now, str(m.get('device') or '')[:60],
@@ -306,8 +370,7 @@ class Pigeon:
         path = self._piece_path(fid, n)
         old = os.path.getsize(path) if os.path.exists(path) else 0
         with self.lock:
-            if self.used() - old + len(body) > self.quota + 1024 * 1024:
-                raise Err('507 Insufficient Storage', "There's no room left: empty the trash or delete some files first.")
+            self._room(nest, len(body) - old)
             tmp = path + '.part'
             with open(tmp, 'wb') as f:
                 f.write(body)
@@ -588,7 +651,7 @@ class Pigeon:
             'share': lambda: self.share(nest, msg), 'unshare': lambda: self.unshare(nest, msg), 'links': lambda: self.links(nest),
             'logout': lambda: self.logout(th), 'devices': lambda: self.devices(nest, did), 'forget': lambda: self.forget(nest, msg),
             'name': lambda: self.rename_device(nest, did, msg), 'inbox': lambda: self.inbox(nest, did), 'got': lambda: self.got(nest, msg),
-            'invite': lambda: self.invite(nest), 'deliver': lambda: self.deliver(nest, msg),
+            'invite': lambda: self.invite(nest), 'deliver': lambda: self.deliver(nest, msg), 'people': lambda: self.people(nest, msg),
         }
         if what not in handlers:
             raise Err('404 Not Found', 'not found')
@@ -616,6 +679,7 @@ def from_env():
         quota_mb=env.get('PIGEON_QUOTA_MB') or conf.get('quota_mb') or 400,
         max_file_mb=env.get('PIGEON_MAX_FILE_MB') or conf.get('max_file_mb') or 400,
         public_url=env.get('PIGEON_PUBLIC_URL') or conf.get('public_url') or '',
+        nest_mb=env.get('PIGEON_NEST_MB') or conf.get('nest_mb') or 100,
     )
 
 

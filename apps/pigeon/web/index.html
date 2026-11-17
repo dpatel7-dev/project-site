@@ -655,7 +655,7 @@ dialog::backdrop { background: rgba(8, 11, 16, .5); }
     if (refreshing) return refreshing;
     var changed = true;
     refreshing = call('list', {}).then(function (r) {
-      st.used = r.used; st.quota = r.quota; st.me = r.me; st.owner = r.owner;
+      st.used = r.used; st.quota = r.quota; st.me = r.me; st.owner = r.owner; st.site = { used: r.siteUsed, quota: r.siteQuota, tight: r.trashSoon };
       var sig = r.used + '|' + r.files.map(function (f) { return f.id + f.meta.slice(-12) + f.trashed + f.done + f.got; }).join(',');
       if (sig === st.sig && st.loaded) { changed = false; return; }
       st.sig = sig;
@@ -663,7 +663,8 @@ dialog::backdrop { background: rgba(8, 11, 16, .5); }
     }).then(function () {
       if (!changed) return;
       var pct = st.quota ? Math.min(100, (st.used / st.quota) * 100) : 0;
-      $('spaceText').textContent = size(st.used) + ' of ' + size(st.quota) + ' used';
+      $('spaceText').textContent = size(st.used) + ' of ' + size(st.quota) + ' used' + (st.site && st.site.tight ? ' · site nearly full' : '');
+      $('spaceText').title = st.site && st.site.quota ? 'Everyone on this site together: ' + size(st.site.used) + ' of ' + size(st.site.quota) + (st.site.tight ? '. While it is nearly full, the trash empties after 3 days.' : '') : '';
       $('spaceBar').style.width = pct + '%';
       render();
     }).catch(function (e) { if (!st.loaded) $('content').innerHTML = '<div class="empty"><b>Couldn\'t load your nest</b>' + esc(e.message) + '</div>'; })
@@ -980,6 +981,7 @@ dialog::backdrop { background: rgba(8, 11, 16, .5); }
     var items = [{ head: store.nest + ' · ' + deviceName() }];
     items.push({ icon: 'pen', label: 'Rename this device', run: renameDevice });
     if (st.owner) items.push({ icon: 'gift', label: 'Invite someone', run: invite });
+    if (st.owner) items.push({ icon: 'devices', label: 'People and space', run: peopleSheet });
     if (!C.local) items.push({ icon: 'term', label: 'Get pigeon for your computer', run: getApp });
     items.push('-');
     if (!C.local) items.push({ icon: 'out', label: 'Sign out', danger: true, run: signOut });
@@ -1433,6 +1435,40 @@ dialog::backdrop { background: rgba(8, 11, 16, .5); }
       body.querySelector('[data-copy]').onclick = function () { var b = this; copyText(link).then(function () { b.textContent = 'Copied'; }); };
       $('dlg').showModal();
     }, alertErr);
+  }
+  // the site's owner: who uses how much, and making room
+  function peopleSheet(r) {
+    if (!r || !r.nests) return call('people', {}).then(peopleSheet, alertErr);
+    var bar = function (part) { var n = Math.max(0, Math.min(16, Math.round(part * 16))); return '<span style="color:var(--teal)">' + '█'.repeat(n) + '</span><span style="color:var(--border)">' + '░'.repeat(16 - n) + '</span>'; };
+    var ago = function (ms) { if (!ms) return 'never'; var d = (Date.now() - ms) / 86400000; return d < 1 ? 'today' : d < 2 ? 'yesterday' : Math.round(d) + ' days ago'; };
+    var body = $('dlgBody');
+    body.innerHTML = '<h3>People and space</h3><div class="sub">Everyone\'s files together: <b>' + size(r.used) + '</b> of ' + size(r.quota) + '. Each invited nest can use ' + size(r.nestDefault) + ' unless you give it more. You can see how much each nest uses, never what\'s in it.</div>' +
+      '<div style="max-height:50vh;overflow:auto"><table style="width:100%;border-collapse:collapse">' + r.nests.map(function (n) {
+        return '<tr style="border-top:1px dashed var(--border)"><td style="padding:.45em 1ch .45em 0"><b>' + esc(n.nest) + '</b>' + (n.owner ? ' <span class="badge">you</span>' : '') + '<div class="small">' + n.files + ' files · last seen ' + ago(n.seen) + '</div></td>' +
+          '<td style="padding:.45em 1ch;white-space:nowrap">' + bar(n.limit ? n.used / n.limit : 0) + '<div class="small">' + size(n.used) + ' of ' + size(n.limit) + '</div></td>' +
+          '<td style="padding:.45em 0;text-align:right;white-space:nowrap">' + (n.owner ? '' : '<button class="btn" data-lim="' + esc(n.nest) + '">Room…</button> <button class="btn danger" data-rm="' + esc(n.nest) + '">Remove</button>') + '</td></tr>';
+      }).join('') + '</table></div><div class="acts"><button class="btn primary" data-x>Done</button></div>';
+    body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+    body.querySelectorAll('[data-lim]').forEach(function (b) {
+      b.onclick = function () {
+        var who = b.dataset.lim;
+        promptBox('Room for ' + who, 'How many MB this nest may use (the whole site has ' + size(r.quota) + ').', String(Math.round(r.nests.filter(function (n) { return n.nest === who; })[0].limit / 1048576)), 'Save').then(function (v) {
+          if (v === null) return peopleSheet();
+          var mb = Number(String(v).replace(/[^0-9.]/g, ''));
+          call('people', { do: 'limit', nest: who, mb: mb }).then(peopleSheet, function (e) { alertErr(e); });
+        });
+      };
+    });
+    body.querySelectorAll('[data-rm]').forEach(function (b) {
+      b.onclick = function () {
+        var who = b.dataset.rm;
+        confirmBox('Remove ' + who + '?', 'This deletes the nest and every file in it, for good. Its owner can\'t get them back.', 'Remove').then(function (yes) {
+          if (!yes) return peopleSheet();
+          call('people', { do: 'remove', nest: who }).then(function (x) { toast('Removed ' + who + '.'); peopleSheet(x); refresh(); }, alertErr);
+        });
+      };
+    });
+    if (!$('dlg').open) $('dlg').showModal();
   }
   function getApp() {
     var body = $('dlgBody');
