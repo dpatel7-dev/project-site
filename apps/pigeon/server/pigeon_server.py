@@ -11,9 +11,9 @@ Runs anywhere Python 3.8+ runs, with nothing to install:
     from pigeon_server import application               # WSGI (PythonAnywhere)
 
 Settings: ~/pigeon-data/config.json (or PIGEON_* environment variables)
-    "signups":     "first" (default: the first nest, then only people its owner invites), "open", or "closed"
+    "signups":     "open" (default: anyone can make a nest) or "closed" (nobody new)
     "quota_mb":    400     total space for everyone's files together (PythonAnywhere's free plan has 512 MB)
-    "nest_mb":     100     how much each invited nest may use (the owner can change it per nest; the owner's own nest can use it all)
+    "nest_mb":     100     how much each nest may use (the owner can change it per nest; the owner's own nest can use it all)
     "max_file_mb": 400     the biggest single file
     "public_url":  ""      the site's address, if it can't be worked out
 """
@@ -44,7 +44,6 @@ TOKEN_DAYS = 60
 UPLOAD_HOURS = 24
 TRASH_DAYS = 30
 TIGHT_TRASH_DAYS = 3    # when the site is nearly full, the trash empties sooner
-INVITE_DAYS = 7
 MB = 1024 * 1024
 
 
@@ -77,11 +76,11 @@ def _b64ok(s, lo, hi):
 
 
 class Pigeon:
-    def __init__(self, data_dir, signups='first', quota_mb=400, max_file_mb=400, public_url='', nest_mb=100):
+    def __init__(self, data_dir, signups='open', quota_mb=400, max_file_mb=400, public_url='', nest_mb=100):
         self.dir = data_dir
         self.files_dir = os.path.join(data_dir, 'files')
         os.makedirs(self.files_dir, exist_ok=True)
-        self.signups = signups if signups in ('first', 'open', 'closed') else 'first'
+        self.signups = 'closed' if signups == 'closed' else 'open'  # ("first", the old invite-only setting, now means open)
         self.quota = int(float(quota_mb) * 1024 * 1024)
         self.max_file = int(float(max_file_mb) * 1024 * 1024)
         self.nest_default = int(float(nest_mb) * MB)
@@ -102,7 +101,7 @@ class Pigeon:
                 wrapped TEXT, made INTEGER, done INTEGER DEFAULT 0, stored INTEGER DEFAULT 0, device TEXT);
             CREATE TABLE IF NOT EXISTS shares (code TEXT PRIMARY KEY, file TEXT, nest TEXT, expires INTEGER, hits INTEGER DEFAULT 0);
             CREATE TABLE IF NOT EXISTS fails (key TEXT, at INTEGER);
-            CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, nest TEXT, made INTEGER, expires INTEGER, used_by TEXT);
+            DROP TABLE IF EXISTS invites;
         ''')
         # newer columns (older pigeon sites get them added in place)
         for table, col, kind in [('nests', 'owner', 'INTEGER DEFAULT 0'), ('nests', 'quota', 'INTEGER DEFAULT 0'), ('tokens', 'did', 'TEXT'), ('files', 'kind', "TEXT DEFAULT 'file'"),
@@ -168,7 +167,6 @@ class Pigeon:
         self.q('DELETE FROM shares WHERE expires < ?', ms)
         self.q('DELETE FROM tokens WHERE seen < ?', ms - TOKEN_DAYS * 86400000)
         self.q('DELETE FROM fails WHERE at < ?', ms - 3600000)
-        self.q('DELETE FROM invites WHERE expires < ?', ms)
         for r in self.q('SELECT id FROM files WHERE trashed > 0 AND trashed < ?', ms - TRASH_DAYS * 86400000):
             self._drop(r['id'])
         if self.used() > self.quota * 0.9:  # nearly full: the trash empties after a few days instead
@@ -216,14 +214,10 @@ class Pigeon:
         r = self.one('SELECT salt FROM nests WHERE name = ?', nest)
         if r:
             return {'exists': True, 'salt': r['salt']}
-        return {'exists': False, 'canMake': self._can_make(), 'invites': self.signups != 'closed'}
+        return {'exists': False, 'canMake': self._can_make()}
 
     def _can_make(self):
-        if self.signups == 'open':
-            return True
-        if self.signups == 'closed':
-            return False
-        return self.one('SELECT COUNT(*) AS n FROM nests')['n'] == 0
+        return self.signups != 'closed'
 
     def signup(self, m, ip):
         nest = str(m.get('nest') or '').strip().lower()
@@ -231,18 +225,12 @@ class Pigeon:
             raise Err('400 Bad Request', NEST_HELP)
         if not _b64ok(m.get('salt'), 16, 16) or not re.match(r'^[a-f0-9]{64}$', str(m.get('proof') or '')):
             raise Err('400 Bad Request', 'Malformed request')
-        code = str(m.get('invite') or '').strip().lower().replace('-', '')
         with self.lock:
             if self.one('SELECT 1 AS x FROM nests WHERE name = ?', nest):
                 raise Err('409 Conflict', 'That nest already exists. Open it instead (same name and password).')
             first = self.one('SELECT COUNT(*) AS n FROM nests')['n'] == 0
             if not self._can_make():
-                inv = self.one('SELECT * FROM invites WHERE code = ? AND used_by IS NULL AND expires > ?', code, int(time.time() * 1000)) if code else None
-                if not inv:
-                    if code:
-                        raise Err('403 Forbidden', "That invite code doesn't work (it may have been used already, or expired). Ask for a new one.")
-                    raise Err('403 Forbidden', 'This pigeon site is invite-only. Ask its owner for an invite code, or open the nest you already have.')
-                self.q('UPDATE invites SET used_by = ? WHERE code = ?', nest, code)
+                raise Err('403 Forbidden', "This pigeon site isn't taking new nests right now. Open the nest you already have.")
             self.q('INSERT INTO nests (name, salt, proof, made, owner) VALUES (?, ?, ?, ?, ?)', nest, m['salt'],
                    hashlib.sha256(m['proof'].encode()).hexdigest(), int(time.time() * 1000), 1 if first else 0)
         token, did = self._token(nest, m.get('device'), m.get('did'))
@@ -297,17 +285,6 @@ class Pigeon:
         # server's disk, not your own allowance, so it would only mislead)
         return {'nests': rows, 'used': self.used(), 'quota': self.quota, 'nestDefault': self.nest_default}
 
-    def invite(self, nest):
-        if not self._owner(nest):
-            raise Err('403 Forbidden', "Only this site's owner can invite people.")
-        if self.signups == 'closed':
-            raise Err('403 Forbidden', 'New nests are switched off on this site ("signups": "closed").')
-        code = ''.join(secrets.choice(CODE_ABC) for _ in range(8))
-        now = int(time.time() * 1000)
-        self.q('INSERT INTO invites VALUES (?, ?, ?, ?, NULL)', code, nest, now, now + INVITE_DAYS * 86400000)
-        return {'code': code, 'expires': now + INVITE_DAYS * 86400000}
-
-    # ── files ───────────────────────────────────────────────────────────────
     def _row(self, r):
         return {'id': r['id'], 'size': r['size'], 'chunks': r['chunks'], 'meta': r['meta'], 'wrapped': r['wrapped'],
                 'made': r['made'], 'done': bool(r['done']), 'device': r['device'] or '', 'kind': r['kind'] or 'file',
@@ -651,7 +628,7 @@ class Pigeon:
             'share': lambda: self.share(nest, msg), 'unshare': lambda: self.unshare(nest, msg), 'links': lambda: self.links(nest),
             'logout': lambda: self.logout(th), 'devices': lambda: self.devices(nest, did), 'forget': lambda: self.forget(nest, msg),
             'name': lambda: self.rename_device(nest, did, msg), 'inbox': lambda: self.inbox(nest, did), 'got': lambda: self.got(nest, msg),
-            'invite': lambda: self.invite(nest), 'deliver': lambda: self.deliver(nest, msg), 'people': lambda: self.people(nest, msg),
+            'deliver': lambda: self.deliver(nest, msg), 'people': lambda: self.people(nest, msg),
         }
         if what not in handlers:
             raise Err('404 Not Found', 'not found')
@@ -675,7 +652,7 @@ def from_env():
         pass
     return Pigeon(
         data,
-        signups=env.get('PIGEON_SIGNUPS') or conf.get('signups') or 'first',
+        signups=env.get('PIGEON_SIGNUPS') or conf.get('signups') or 'open',
         quota_mb=env.get('PIGEON_QUOTA_MB') or conf.get('quota_mb') or 400,
         max_file_mb=env.get('PIGEON_MAX_FILE_MB') or conf.get('max_file_mb') or 400,
         public_url=env.get('PIGEON_PUBLIC_URL') or conf.get('public_url') or '',

@@ -50,7 +50,8 @@
   .btn:disabled { opacity: .45; cursor: default; }
   .files { list-style: none; margin: 0; padding: 14px 22px 20px; columns: 2 300px; column-gap: 32px; min-height: 320px; }
   .files li { break-inside: avoid; display: grid; grid-template-columns: 1.5em minmax(0, 1fr); gap: 0 8px; padding: 5px 0; font-family: var(--mono); font-variation-settings: "MONO" 1, "CASL" 0; font-size: .95rem; }
-  .files li .ic { color: var(--ink-2); }
+  .files li .ic { color: var(--ink-2); display: inline-grid; place-items: center; width: 16px; height: 1.4em; }
+  .files li .ic svg { display: block; }
   .files li .why { grid-column: 2; color: var(--ink-2); font-size: .82rem; font-family: var(--sans); font-variation-settings: "MONO" 0, "CASL" .4; }
   .files li.dir-head { padding-top: 12px; font-weight: 700; color: var(--acorn-ink); }
   .files li.dir-head .ic { color: var(--acorn-ink); }
@@ -110,26 +111,27 @@
   <header class="hero">
     <canvas id="hazel" aria-label="Hazel, tidy's squirrel" role="img"></canvas>
     <div>
-      <h1>An AI that tidies a folder. <span class="soft">Carefully.</span></h1>
-      <p class="lede">Tell it what you want in your own words. tidy reads the names, the kinds of files, a little of what's inside, and how your folders are already set up. Then it shows you <b>every move before it makes one</b>, never deletes anything, and one key puts it all back.</p>
+      <h1>Sorts a messy folder for you. <span class="soft">Carefully.</span></h1>
+      <p class="lede">Pick a folder and a plan is ready at once: installers together, pictures together, documents together. You see <b>every move before it makes one</b>, one key moves them, and one key puts it all back. Want something cleverer, like "by school subject"? Ask the AI, in your own words.</p>
     </div>
   </header>
 
   <div class="folder" data-tab="~/Downloads" role="region" aria-label="Try it: a messy Downloads folder">
     <div class="bar">
-      <div class="ask">How should I tidy Downloads? <b>› sort by school subject, and put installers away</b></div>
-      <button class="btn" id="go" type="button">Tidy it</button>
+      <div class="ask">Sort <b>Downloads</b>:</div>
+      <button class="btn" id="kind" type="button">By kind</button>
+      <button class="btn" id="ai" type="button">Ask the AI: by school subject</button>
       <button class="btn ghost" id="back" type="button" disabled>Put it back</button>
     </div>
     <ul class="files" id="files" aria-live="polite"></ul>
-    <p class="note" id="note">13 things, as they are now. This is a pretend folder: press <b>Tidy it</b> to see what a plan looks like.</p>
+    <p class="note" id="note">13 things, as they are now. This is a pretend folder: press <b>By kind</b> or <b>Ask the AI</b> to see what a plan looks like.</p>
   </div>
 
   <section class="rules" aria-labelledby="rules-title">
     <h2 id="rules-title">How it stays careful</h2>
-    <p class="sub">The AI only suggests. tidy checks every single suggestion itself and drops anything that breaks a rule, so even a confused AI can't make a mess.</p>
+    <p class="sub">The AI (and the instant plans) only suggest. tidy checks every single suggestion itself and drops anything that breaks a rule, so even a confused AI can't make a mess.</p>
     <ul class="cards">
-      <li class="card"><span class="pin"></span><h3>Plans first</h3><p>Nothing moves until you've seen the whole plan, switched off what you don't like, and pressed Enter twice.</p></li>
+      <li class="card"><span class="pin"></span><h3>Plans first</h3><p>Nothing moves until you've seen the whole plan, skipped what you don't like, and pressed Enter.</p></li>
       <li class="card" style="--c:var(--moss)"><span class="pin"></span><h3>Only moves</h3><p>Never deletes, renames or edits a file. If a name is already taken where something's going, it gets a (2): nothing is replaced.</p></li>
       <li class="card" style="--c:var(--sky)"><span class="pin"></span><h3>Stays inside</h3><p>Only the folder you pick. It refuses your whole disk, your whole home folder and system folders, and never follows a link out.</p></li>
       <li class="card" style="--c:var(--berry)"><span class="pin"></span><h3>Keeps private things private</h3><p>Passwords, keys, tax forms and bank statements are never opened; the AI sees their names only. Other snippets have secrets blanked out.</p></li>
@@ -151,19 +153,21 @@
       </div>
       <ol class="steps">
         <li>Paste it into <span id="where">Terminal</span> and press Enter.</li>
-        <li>tidy needs an AI. The private way: install <a href="https://ollama.com/download">Ollama</a>, then <code class="k">tot free</code> or <code class="k">ollama pull llama3.2</code>. Nothing about your files leaves your computer. (It can also use Tree of Thought's models; it asks before sending anything.)</li>
-        <li>Type <code class="k">tidy ~/Downloads</code>.</li>
+        <li>Type <code class="k">tidy</code>, pick a folder, press Enter. Sorting by kind or by date needs no AI at all.</li>
+        <li>To ask the AI too: set up free AI once with <code class="k">tot free</code> (from Tree of Thought), or install <a href="https://ollama.com/download">Ollama</a> so nothing leaves your computer. tidy asks once before a cloud AI sees any file names.</li>
       </ol>
     </div>
     <div>
       <h2>Using it</h2>
       <p class="sub">Version {{tidy_version}}. Also in Tree of Thought: Tab → Tidy a folder.</p>
       <table class="use">
-        <tr><td>tidy ~/Downloads</td><td>open the screen for a folder, say how you want it, review, move</td></tr>
-        <tr><td>space · a</td><td>skip one move · all on or off</td></tr>
-        <tr><td>p</td><td>also remove folders the tidy left empty</td></tr>
+        <tr><td>tidy</td><td>pick a folder (Downloads, Desktop…): the plan is ready at once</td></tr>
+        <tr><td>← →</td><td>another way: by kind, by date, or ask the AI</td></tr>
+        <tr><td>enter</td><td>move them</td></tr>
+        <tr><td>space</td><td>skip one move (press again to keep it)</td></tr>
         <tr><td>u</td><td>put everything back</td></tr>
-        <tr><td>tidy plan ~/Desktop "by year"</td><td>print a plan without moving anything</td></tr>
+        <tr><td>tidy ~/Downloads "by subject"</td><td>ask the AI straight away</td></tr>
+        <tr><td>tidy plan ~/Desktop</td><td>print a plan without moving anything</td></tr>
         <tr><td>tidy undo</td><td>undo the last tidy, any time later</td></tr>
         <tr><td>tidy history</td><td>every tidy, newest first</td></tr>
         <tr><td>tidy models</td><td>which AIs it can use</td></tr>
@@ -184,54 +188,65 @@
   drawPixels(document.getElementById('hazel'), trimGrid(H.grid), H.ink, innerWidth < 600 ? 6 : 9);
 
   // the pretend Downloads folder, before and after
+  // [name, where the AI puts it, why, where "by kind" puts it, why]
   const FILES = [
-    ['Biology lab report.docx', 'School/Biology', 'a lab report about cells'],
-    ['IMG_2041.HEIC', 'Photos/2026', 'a photo from November'],
-    ['Minecraft-Installer.dmg', 'Installers', 'an installer'],
-    ['essay final FINAL.docx', 'School/English', 'an essay about Gatsby'],
-    ['passwords.txt', null, 'private: not read, left where it is'],
-    ['zoom_installer.pkg', 'Installers', 'an installer'],
-    ['chem worksheet 3.pdf', 'School/Chemistry', 'a worksheet on moles'],
-    ['screenshot 2026-11-02.png', 'Photos/2026', 'a screenshot'],
-    ['contrail-game/', 'Projects', 'a project: moves as one piece'],
-    ['song idea.m4a', 'Music', 'a voice memo'],
-    ['IMG_2042.HEIC', 'Photos/2026', 'a photo from November'],
-    ['budget fall.xlsx', 'Money', 'a budget'],
-    ['History notes.md', 'School/History', 'notes on the Civil War'],
+    ['Biology lab report.docx', 'School/Biology', 'a lab report about cells', 'Documents', 'a document'],
+    ['IMG_2041.HEIC', 'Photos/2026', 'a photo from November', 'Images', 'a picture'],
+    ['Minecraft-Installer.dmg', 'Installers', 'an installer', 'Installers', 'an installer'],
+    ['essay final FINAL.docx', 'School/English', 'an essay about Gatsby', 'Documents', 'a document'],
+    ['passwords.txt', null, 'private: not read, left where it is', 'Code & Notes', 'notes (never opened: it looks private)'],
+    ['zoom_installer.pkg', 'Installers', 'an installer', 'Installers', 'an installer'],
+    ['chem worksheet 3.pdf', 'School/Chemistry', 'a worksheet on moles', 'Documents', 'a PDF'],
+    ['screenshot 2026-11-02.png', 'Photos/2026', 'a screenshot', 'Images', 'a screenshot'],
+    ['contrail-game/', 'Projects', 'a project: moves as one piece', null, 'a folder you made: left as it is'],
+    ['song idea.m4a', 'Music', 'a voice memo', null, 'the only sound file: left where it is'],
+    ['IMG_2042.HEIC', 'Photos/2026', 'a photo from November', 'Images', 'a picture'],
+    ['budget fall.xlsx', 'Money', 'a budget', 'Documents', 'a spreadsheet'],
+    ['History notes.md', 'School/History', 'notes on the Civil War', 'Code & Notes', 'notes'],
   ];
+  // little drawn icons, like tidy's own (never emoji)
+  const tile = (c, inner) => '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><rect x="1" y="1.5" width="14" height="13" rx="4" fill="' + c + '" fill-opacity=".18" stroke="' + c + '" stroke-opacity=".6"/>' + inner + '</svg>';
+  const label = (c, t) => tile(c, '<text x="8" y="10.6" text-anchor="middle" font-size="' + (t.length > 2 ? 5.2 : 6.4) + '" font-weight="800" fill="' + c + '" font-family="system-ui, sans-serif">' + t + '</text>');
+  const ICON = {
+    dir: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M1.5 4.2c0-.7.5-1.2 1.2-1.2h3.2l1.4 1.5h5.8c.7 0 1.2.5 1.2 1.2v6.6c0 .7-.5 1.2-1.2 1.2H2.7c-.7 0-1.2-.5-1.2-1.2z" fill="#c9861e"/></svg>',
+    pic: tile('#8a4fb8', '<circle cx="6" cy="6.5" r="1.4" fill="#8a4fb8"/><path d="M3.5 12.2 6.8 9l2 1.8 2.4-2.6 1.8 2.2v1.8z" fill="#8a4fb8"/>'),
+    pkg: label('#2f6f9a', 'pkg'), doc: label('#2f6f9a', 'doc'), pdf: label('#b8324f', 'pdf'), xls: label('#3f7a2a', 'xls'), txt: label('#7a6a58', 'txt'), md: label('#2f6f9a', 'md'),
+    snd: tile('#b8324f', '<path d="M7 11.2V5l4.5-1v6" fill="none" stroke="#b8324f" stroke-width="1.2" stroke-linecap="round"/><circle cx="5.8" cy="11.3" r="1.3" fill="#b8324f"/><circle cx="10.3" cy="10.1" r="1.3" fill="#b8324f"/>'),
+  };
+  const chevron = '<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M5 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const list = document.getElementById('files');
   const rows = new Map();
-  const icon = (n) => (/\/$/.test(n) ? '▣' : /\.(heic|png|jpe?g)$/i.test(n) ? '◩' : /\.(dmg|pkg)$/i.test(n) ? '⬡' : /\.m4a$/i.test(n) ? '♪' : '▤');
-  for (const [name, to, why] of FILES) {
+  const icon = (n) => (/\/$/.test(n) ? ICON.dir : /\.(heic|png|jpe?g)$/i.test(n) ? ICON.pic : /\.(dmg|pkg)$/i.test(n) ? ICON.pkg : /\.m4a$/i.test(n) ? ICON.snd : /\.docx$/i.test(n) ? ICON.doc : /\.pdf$/i.test(n) ? ICON.pdf : /\.xlsx$/i.test(n) ? ICON.xls : /\.md$/i.test(n) ? ICON.md : ICON.txt);
+  for (const [name] of FILES) {
     const li = document.createElement('li');
-    li.innerHTML = '<span class="ic" aria-hidden="true"></span><span class="nm"></span><span class="why" hidden></span>';
-    li.querySelector('.ic').textContent = icon(name);
+    li.innerHTML = '<span class="ic"></span><span class="nm"></span><span class="why" hidden></span>';
+    li.querySelector('.ic').innerHTML = icon(name);
     li.querySelector('.nm').textContent = name;
-    li.querySelector('.why').textContent = why;
-    if (!to) li.classList.add('stay');
     if (/\/$/.test(name)) li.classList.add('project');
     rows.set(name, li);
   }
   const heads = new Map();
   const head = (dir) => {
-    if (!heads.has(dir)) { const li = document.createElement('li'); li.className = 'dir-head'; li.innerHTML = '<span class="ic" aria-hidden="true">▸</span><span></span>'; li.lastChild.textContent = dir + '/'; heads.set(dir, li); }
+    if (!heads.has(dir)) { const li = document.createElement('li'); li.className = 'dir-head'; li.innerHTML = '<span class="ic">' + chevron + '</span><span></span>'; li.lastChild.textContent = dir + '/'; heads.set(dir, li); }
     return heads.get(dir);
   };
   const still = matchMedia('(prefers-reduced-motion: reduce)');
 
   // FLIP: remember where each row was, rearrange, then glide from there
-  function arrange(tidy) {
+  // how: null (as it is now), 'ai' or 'kind'
+  function arrange(how) {
     const before = new Map([...rows].map(([k, li]) => [k, li.isConnected ? li.getBoundingClientRect() : null]));
     list.textContent = '';
-    if (!tidy) {
-      for (const [name] of FILES) { const li = rows.get(name); li.classList.remove('in'); li.querySelector('.why').hidden = true; list.append(li); }
+    const plan = FILES.map((f) => ({ name: f[0], to: how === 'ai' ? f[1] : f[3], why: how === 'ai' ? f[2] : f[4] }));
+    if (!how) {
+      for (const [name] of FILES) { const li = rows.get(name); li.classList.remove('in', 'stay'); li.querySelector('.why').hidden = true; list.append(li); }
     } else {
-      const dirs = [...new Set(FILES.filter((f) => f[1]).map((f) => f[1]))].sort();
+      const dirs = [...new Set(plan.filter((f) => f.to).map((f) => f.to))].sort();
       for (const d of dirs) {
         list.append(head(d));
-        for (const [name, to] of FILES) if (to === d) { const li = rows.get(name); li.classList.add('in'); li.querySelector('.why').hidden = false; list.append(li); }
+        for (const f of plan) if (f.to === d) { const li = rows.get(f.name); li.classList.add('in'); li.classList.remove('stay'); li.querySelector('.why').textContent = f.why; li.querySelector('.why').hidden = false; list.append(li); }
       }
-      for (const [name, to] of FILES) if (!to) { const li = rows.get(name); li.classList.remove('in'); li.querySelector('.why').hidden = false; list.append(li); }
+      for (const f of plan) if (!f.to) { const li = rows.get(f.name); li.classList.remove('in'); li.classList.add('stay'); li.querySelector('.why').textContent = f.why; li.querySelector('.why').hidden = false; list.append(li); }
     }
     if (still.matches) return;
     for (const [k, li] of rows) {
@@ -243,20 +258,26 @@
       if (!dx && !dy) continue;
       li.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 650 + Math.random() * 250, easing: 'cubic-bezier(.2, .8, .2, 1)' });
     }
-    if (tidy) for (const h of heads.values()) h.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 300, fill: 'backwards' });
+    if (how) for (const h of heads.values()) if (h.isConnected) h.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, delay: 300, fill: 'backwards' });
   }
-  arrange(false);
-  const go = document.getElementById('go');
+  arrange(null);
+  const kind = document.getElementById('kind');
+  const ai = document.getElementById('ai');
   const back = document.getElementById('back');
   const note = document.getElementById('note');
-  go.addEventListener('click', () => {
-    arrange(true);
-    go.disabled = true; back.disabled = false;
-    note.innerHTML = '<b>12 moves into 8 folders.</b> Nothing deleted, nothing renamed, nothing replaced. The private file stayed put, and the project moved as one piece.';
+  kind.addEventListener('click', () => {
+    arrange('kind');
+    kind.disabled = true; ai.disabled = false; back.disabled = false;
+    note.innerHTML = '<b>11 moves into 4 folders, ready at once, with no AI.</b> The folder you made and the only sound file stay where they are. Nothing deleted, nothing replaced.';
+  });
+  ai.addEventListener('click', () => {
+    arrange('ai');
+    ai.disabled = true; kind.disabled = false; back.disabled = false;
+    note.innerHTML = '<b>12 moves into 8 folders.</b> The AI read a little of each file to sort them by subject. The private file was never opened and stayed put, and the project moved as one piece.';
   });
   back.addEventListener('click', () => {
-    arrange(false);
-    go.disabled = false; back.disabled = true;
+    arrange(null);
+    kind.disabled = false; ai.disabled = false; back.disabled = true;
     note.innerHTML = 'Back exactly as it was. (In tidy that is <b>u</b>, or <b>tidy undo</b> any time later.)';
   });
 

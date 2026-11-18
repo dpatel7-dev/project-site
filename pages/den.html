@@ -100,6 +100,7 @@
   .room p { margin: 0; color: var(--dim); }
   .room p b { color: var(--cream); }
   .room.wide { grid-column: span 2; }
+  .pi { width: .85em; height: .85em; vertical-align: -.08em; margin-right: .45em; }
 
   ol.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 22px; counter-reset: s; }
   ol.steps li { counter-increment: s; border-top: 2px solid var(--line); padding-top: 14px; color: var(--dim); }
@@ -130,8 +131,8 @@
   <header class="hero">
     <div class="ember"><canvas id="ember" role="img" aria-label="Ember, den's fox"></canvas><div class="floor"></div></div>
     <div>
-      <h1>A cozy den to <em>learn to code</em> in.</h1>
-      <p class="lede">Type <code class="k">den</code> in a folder and it opens in your browser as a real code editor: your files, your code, a <b>Run</b> button, and Ember the fox, who explains words and errors <b>in plain English</b>.</p>
+      <h1>A real code editor, <em>made for learning</em>.</h1>
+      <p class="lede">Type <code class="k">den</code> in a folder and it opens in your browser: files, search, git, terminals, two files side by side and live previews, plus Ember the fox, who explains words and errors <b>in plain English</b> and can change your code with you, <b>showing exactly what changes first</b>.</p>
       <div class="term">
         <div class="os" role="group" aria-label="Your computer">
           <button type="button" data-os="sh" aria-pressed="true">Mac or Linux</button>
@@ -144,13 +145,13 @@
   </header>
 
   <div class="try" role="region" aria-label="Try den: a small program with a mistake in it">
-    <p class="how"><b>Try it:</b> click any word in the code to see what it means. Then press <b>▶ Run</b>.</p>
+    <p class="how"><b>Try it:</b> click any word in the code to see what it means. Then press <b>Run</b>.</p>
     <div class="den">
       <div class="left">
         <div class="pane"><span class="t">score.py</span>
           <pre class="code" id="code" aria-live="polite"></pre>
         </div>
-        <div class="pane"><span class="t">Console</span><span class="t2"><span class="runbar"><button class="btn" type="button" id="run">▶ Run score.py</button></span></span>
+        <div class="pane"><span class="t">Console</span><span class="t2"><span class="runbar"><button class="btn" type="button" id="run"><svg class="pi" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.8v14.4a1 1 0 0 0 1.5.9l11.3-7.2a1 1 0 0 0 0-1.8L8.5 3.9A1 1 0 0 0 7 4.8z" fill="currentColor"/></svg>Run score.py</button></span></span>
           <div class="console" id="out"><span class="sys">What your program prints shows up here.</span></div>
         </div>
       </div>
@@ -162,14 +163,18 @@
   </div>
 
   <section aria-labelledby="in-title">
-    <h2 id="in-title">Everything a beginner needs, nothing in the way</h2>
-    <p class="sub">den looks like the editors the pros use, with the confusing parts taken out and a friend added in.</p>
+    <h2 id="in-title">Everything the pros use, nothing in the way</h2>
+    <p class="sub">den does what big editors do, with the confusing parts taken out and a friend added in.</p>
     <div class="rooms">
-      <div class="room wide"><h3>▶ Run</h3><p>One button runs your code: <b>Python, JavaScript</b> and about a dozen more. If your program asks a question with <code class="k">input()</code>, you answer it right in the console. When something breaks, Ember says what it means, points at the line, and can <b>install a missing module</b> for you.</p></div>
+      <div class="room wide"><h3>Run, and fix it</h3><p>One button runs your code: <b>Python, JavaScript</b> and about a dozen more, and <code class="k">input()</code> questions are answered right in the console. When something breaks, Ember says what it means, points at the line, and can <b>fix it with you</b>: she shows the exact change, green for added and red for removed, before anything happens.</p></div>
+      <div class="room"><h3>Mistakes, as you type</h3><p>A squiggle under the problem and the reason when you point at it, before you even press Run (Python, JavaScript, JSON, CSS).</p></div>
+      <div class="room"><h3>Terminals</h3><p>Real ones, built in: colours, arrow keys, <code class="k">python3</code> on its own, <code class="k">pip install</code>, <code class="k">git</code>, anything.</p></div>
+      <div class="room"><h3>Changes</h3><p>git, made friendly: coloured bars beside changed lines, <b>commit</b> with one button (Ember can write the message), and put your project on GitHub.</p></div>
+      <div class="room"><h3>Search everything</h3><p>Find and <b>replace across every file</b>, with whole-word and pattern options and a preview of each change.</p></div>
+      <div class="room wide"><h3>Two files, side by side</h3><p>Your code on the left and your <b>web page or game running on the right</b>, updating as you type. A map of the whole file, indent lines, matching brackets, and a path bar that shows which function you're in.</p></div>
       <div class="room"><h3>What's this?</h3><p>Put your cursor on a word like <code class="k">for</code>, <code class="k">def</code> or <code class="k">padding</code>, and Ember explains it with a tiny example.</p></div>
-      <div class="room"><h3>Preview</h3><p>See your <b>web page</b> next to its code as you type. Its <code class="k">console.log</code> and errors show up in den too. Markdown notes, pictures and tables preview as well.</p></div>
-      <div class="room"><h3>Ask Ember</h3><p>Ask anything about your code. Ember sees the file you have open and suggests changes you can <b>put in with one click</b> (and undo). She uses <a href="/tot">Tree of Thought</a>'s free AI.</p></div>
-      <div class="room"><h3>Nothing gets lost</h3><p>den <b>saves as you type</b> and keeps earlier versions of every file. Deleting only moves things to den's bin, so you can always put them back.</p></div>
+      <div class="room"><h3>Start from an example</h3><p>A web page, a Python program, a quiz, notes, or an <b>arcade game</b> you can play the moment it opens.</p></div>
+      <div class="room wide"><h3>Nothing gets lost</h3><p>den <b>saves as you type</b>, keeps earlier versions of every file, and deleting only moves things to den's bin.</p></div>
     </div>
   </section>
 
@@ -179,8 +184,8 @@
     <ol class="steps">
       <li><b>Install den</b> with the command at the top (or <code class="k">pca</code>).</li>
       <li><b>Make a folder</b> for your project: type <code class="k">den my-game</code>. den offers to make it.</li>
-      <li><b>Press + file</b> and name it <code class="k">game.py</code> (or <code class="k">index.html</code> for a web page). An empty file? Ember offers a starting point.</li>
-      <li><b>Press ▶ Run.</b> Change something, run it again. That's coding.</li>
+      <li><b>Pick an example</b> on the first page (the arcade game is playable straight away), or press <b>+</b> and name a file <code class="k">game.py</code> or <code class="k">index.html</code>.</li>
+      <li><b>Press Run.</b> Change something, run it again. That's coding.</li>
     </ol>
   </section>
 
@@ -188,21 +193,22 @@
     <div>
       <h2>Ember's AI is free</h2>
       <p>The word explanations and error help work with <b>no AI at all</b>. To also ask Ember questions, set up free AI once in Tree of Thought: install it from <a href="/pca">pca</a>, type <code class="k">tot free</code> and follow the steps. It runs in the cloud, so nothing heavy runs on your computer.</p>
-      <p>Ember only suggests. Your files change only when you press <b>Put in file</b>, and <kbd>⌘Z</kbd> undoes it.</p>
+      <p>Ember only suggests. When she writes code, <b>Apply</b> shows you exactly what would change before anything does, and <kbd>⌘Z</kbd> undoes it.</p>
       <h2 style="margin-top:40px">Safe by design</h2>
-      <p>den only listens on <b>your own computer</b>, behind an address with a long secret in it, so websites you visit can't reach it. It only touches the folder you opened, previews your pages from a separate address, and never runs anything unless you press Run.</p>
+      <p>den only listens on <b>your own computer</b>, behind an address with a long secret in it, so websites you visit can't reach it. It only touches the folder you opened, previews your pages from a separate address, and never runs anything unless you press Run, type a command or use a terminal.</p>
     </div>
     <div>
       <h2>Keys worth knowing</h2>
       <p>On Windows, use <kbd>Ctrl</kbd> where this says <kbd>⌘</kbd>.</p>
       <table class="use">
         <tr><td>⌘ Enter</td><td>run the file you're on</td></tr>
-        <tr><td>⌘ P</td><td>find a file by typing part of its name</td></tr>
-        <tr><td>⌘ ⇧ F</td><td>search every file</td></tr>
-        <tr><td>⌘ F</td><td>find and replace in this file</td></tr>
+        <tr><td>⌘ P</td><td>find a file (then &gt; for commands, @ for functions, : for a line)</td></tr>
+        <tr><td>⌘ E</td><td>ask Ember to change your code (you see the change first)</td></tr>
+        <tr><td>⌘ ⇧ F</td><td>search and replace in every file</td></tr>
+        <tr><td>⌘ \</td><td>two files side by side</td></tr>
+        <tr><td>Ctrl `</td><td>a terminal</td></tr>
         <tr><td>⌘ /</td><td>turn lines into comments, and back</td></tr>
-        <tr><td>⌘ K</td><td>everything den can do: just type what you want</td></tr>
-        <tr><td>Tab</td><td>push lines in (Shift+Tab pulls them out)</td></tr>
+        <tr><td>F8</td><td>jump to the next mistake</td></tr>
         <tr><td>?</td><td>every key</td></tr>
       </table>
     </div>
@@ -278,7 +284,7 @@
   var out = document.getElementById('out'), run = document.getElementById('run');
   run.addEventListener('click', function () {
     run.disabled = true;
-    out.innerHTML = '<span class="sys">▶ running score.py</span>\n';
+    out.innerHTML = '<span class="sys">▸ running score.py</span>\n';
     setTimeout(function () {
       if (!fixed) {
         out.innerHTML += '<span class="e">Traceback (most recent call last):\n  File "score.py", line 5, in &lt;module&gt;\n    print("Your score: " + score)\nTypeError: can only concatenate str (not "int") to str</span>\n<span class="e">✗ it stopped with an error</span>';
@@ -289,7 +295,7 @@
         document.getElementById('fix').onclick = function () {
           code = FIXED; fixed = true; onWord = null;
           draw({ 4: 'fixed' });
-          say('I wrapped <b>score</b> in <code>str()</code> on line 5. Press <b>▶ Run</b> again!');
+          say('I wrapped <b>score</b> in <code>str()</code> on line 5. Press <b>Run</b> again!');
           cards('<div class="card"><h3>str</h3><p>' + esc(WORDS.str[0]) + '</p><pre>' + esc(WORDS.str[1]) + '</pre></div>');
           run.focus();
         };

@@ -309,7 +309,6 @@ dialog::backdrop { background: rgba(8, 11, 16, .5); }
       <label class="field"><span>Nest name</span><input type="text" id="nestName" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="32"><small id="nameHint">Your nest is your account. Use the same name on every device.</small></label>
       <label class="field"><span>Password</span><input type="password" id="nestPw" autocomplete="current-password"></label>
       <label class="field" id="pw2Row" hidden><span>Password again</span><input type="password" id="nestPw2" autocomplete="new-password"><small>Your password locks your files. Nobody can reset it, so keep it somewhere safe.</small></label>
-      <label class="field" id="inviteRow" hidden><span>Invite code</span><input type="text" id="invite" autocapitalize="none" spellcheck="false" maxlength="12" placeholder="from the site's owner"></label>
       <label class="check"><input type="checkbox" id="remember" checked> Keep me signed in on this device</label>
       <button class="btn primary" id="loginBtn" type="submit" style="width:100%">Open my nest</button>
       <div class="msg" id="loginMsg" role="status"></div>
@@ -566,8 +565,6 @@ dialog::backdrop { background: rgba(8, 11, 16, .5); }
   }
   $('modeOpen').onclick = function () { setMode(false); };
   $('modeMake').onclick = function () { setMode(true); };
-  var inviteFromLink = /[#&]invite=([a-z2-9-]{8,9})/i.exec(location.hash);
-  if (inviteFromLink) { setMode(true); $('inviteRow').hidden = false; $('invite').value = inviteFromLink[1]; }
   // what does this site allow?
   fetch(API.replace(/\/$/, ''), { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (info) {
     if (info && info.signups === 'closed') $('modeMake').hidden = true;
@@ -596,15 +593,11 @@ dialog::backdrop { background: rgba(8, 11, 16, .5); }
         });
       }
       if (hi.exists) { setMode(false); $('nestPw').value = pw; throw new Error('"' + name + '" already exists. If it\'s yours, press Open my nest.'); }
-      var code = $('invite').value.trim();
-      if (!hi.canMake && !code) {
-        $('inviteRow').hidden = false; $('invite').focus();
-        throw new Error(hi.invites ? 'This site only takes new nests with an invite code. Ask its owner for one, then type it here.' : 'This site isn\'t taking new nests.');
-      }
+      if (!hi.canMake) throw new Error('This site isn\'t taking new nests right now.');
       var salt = b64(crypto.getRandomValues(new Uint8Array(16)));
       say('Making your nest… (locking takes a second)');
       return stretch(pw, salt).then(function (k) {
-        return call('signup', { nest: name, salt: salt, proof: k.proof, device: deviceName(), did: myDid(), invite: code }, { auth: false }).then(function (r) { enter(name, r.token, k.key, r.did); });
+        return call('signup', { nest: name, salt: salt, proof: k.proof, device: deviceName(), did: myDid() }, { auth: false }).then(function (r) { enter(name, r.token, k.key, r.did); });
       });
     }).then(done, function (e) { done(); fail('loginMsg')(e); });
   };
@@ -980,7 +973,6 @@ dialog::backdrop { background: rgba(8, 11, 16, .5); }
   $('meBtn').onclick = function () {
     var items = [{ head: store.nest + ' · ' + deviceName() }];
     items.push({ icon: 'pen', label: 'Rename this device', run: renameDevice });
-    if (st.owner) items.push({ icon: 'gift', label: 'Invite someone', run: invite });
     if (st.owner) items.push({ icon: 'devices', label: 'People and space', run: peopleSheet });
     if (!C.local) items.push({ icon: 'term', label: 'Get pigeon for your computer', run: getApp });
     items.push('-');
@@ -1426,23 +1418,12 @@ dialog::backdrop { background: rgba(8, 11, 16, .5); }
     }, alertErr);
   }
   function copyText(t) { return navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject(new Error('no clipboard')); }
-  function invite() {
-    call('invite', {}).then(function (r) {
-      var code = r.code.slice(0, 4) + '-' + r.code.slice(4), link = location.origin + location.pathname + '#invite=' + r.code;
-      var body = $('dlgBody');
-      body.innerHTML = '<h3>Invite someone</h3><div class="sub">Give them this code (or link). It makes one new nest, and works for 7 days. Their nest is theirs: you can\'t see inside it.</div><div class="url" style="font-size:1.4rem;text-align:center;letter-spacing:.08em">' + esc(code) + '</div><div class="url" style="margin-top:8px">' + esc(link) + '</div><div class="acts"><button class="btn" data-x>Done</button><button class="btn primary" data-copy>Copy link</button></div>';
-      body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
-      body.querySelector('[data-copy]').onclick = function () { var b = this; copyText(link).then(function () { b.textContent = 'Copied'; }); };
-      $('dlg').showModal();
-    }, alertErr);
-  }
-  // the site's owner: who uses how much, and making room
   function peopleSheet(r) {
     if (!r || !r.nests) return call('people', {}).then(peopleSheet, alertErr);
     var bar = function (part) { var n = Math.max(0, Math.min(16, Math.round(part * 16))); return '<span style="color:var(--teal)">' + '█'.repeat(n) + '</span><span style="color:var(--border)">' + '░'.repeat(16 - n) + '</span>'; };
     var ago = function (ms) { if (!ms) return 'never'; var d = (Date.now() - ms) / 86400000; return d < 1 ? 'today' : d < 2 ? 'yesterday' : Math.round(d) + ' days ago'; };
     var body = $('dlgBody');
-    body.innerHTML = '<h3>People and space</h3><div class="sub">Everyone\'s files together: <b>' + size(r.used) + '</b> of ' + size(r.quota) + '. Each invited nest can use ' + size(r.nestDefault) + ' unless you give it more. You can see how much each nest uses, never what\'s in it.</div>' +
+    body.innerHTML = '<h3>People and space</h3><div class="sub">Everyone\'s files together: <b>' + size(r.used) + '</b> of ' + size(r.quota) + '. Each nest can use ' + size(r.nestDefault) + ' unless you give it more. You can see how much each nest uses, never what\'s in it.</div>' +
       '<div style="max-height:50vh;overflow:auto"><table style="width:100%;border-collapse:collapse">' + r.nests.map(function (n) {
         return '<tr style="border-top:1px dashed var(--border)"><td style="padding:.45em 1ch .45em 0"><b>' + esc(n.nest) + '</b>' + (n.owner ? ' <span class="badge">you</span>' : '') + '<div class="small">' + n.files + ' files · last seen ' + ago(n.seen) + '</div></td>' +
           '<td style="padding:.45em 1ch;white-space:nowrap">' + bar(n.limit ? n.used / n.limit : 0) + '<div class="small">' + size(n.used) + ' of ' + size(n.limit) + '</div></td>' +

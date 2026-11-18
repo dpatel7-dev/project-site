@@ -1,7 +1,7 @@
 {
   "name": "den",
-  "version": "1.0.0",
-  "description": "A cozy, beginner-friendly code editor that opens in your browser: files, tabs, previews, Run, and a fox who explains things.",
+  "version": "2.0.0",
+  "description": "A code editor that opens in your browser, made for learning: files, search, git, terminals, split view, live previews, and Ember the fox, who explains things and can change your code (showing you exactly what changes first).",
   "bin": { "den": "bin/den.js" },
   "scripts": { "test": "node --test", "start": "node bin/den.js" },
   "engines": { "node": ">=18" },

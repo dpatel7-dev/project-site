@@ -1,6 +1,6 @@
 {
   "name": "gossip-chat",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "description": "End-to-end encrypted chat that lives in your terminal. DMs, group servers, contacts. Zero dependencies.",
   "license": "MIT",
   "bin": {
