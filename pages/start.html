@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Start here - your first time in Terminal</title>
+<meta name="description" content="A picture guide for your first time in Terminal: open it, paste one line, type pca, and pick an app. No experience needed.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* One step per screenful: a big number, one sentence, and a picture of
+     exactly what you'll see. Atkinson Hyperlegible is made to be easy to read. */
+  :root {
+    --paper: #f2f4f8; --card: #fff; --ink: #1a1d29; --muted: #5a6175; --line: #dde1ea;
+    --term: #1e2130; --term-ink: #e8eaf2; --term-dim: #8d93a8; --green: #8fd16a; --yellow: #f2c14e; --blue: #7cc4ff; --pink: #ff8fa3;
+    --pixel: "Pixelify Sans", ui-monospace, monospace;
+    --sans: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { background: var(--paper); color: var(--ink); font: 400 1.15rem/1.6 var(--sans); }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 22px; }
+  header.top { padding: 52px 0 18px; }
+  h1 { font: 700 clamp(2.3rem, 6vw, 3.6rem)/1.05 var(--pixel); margin: 0 0 14px; }
+  .lede { color: var(--muted); font-size: 1.25rem; margin: 0; max-width: 32em; }
+  .os { display: inline-flex; gap: 4px; margin-top: 22px; background: #e3e7ef; padding: 4px; border-radius: 12px; }
+  .os button { font: 700 1rem/1 var(--sans); border: 0; background: none; padding: 10px 16px; border-radius: 9px; cursor: pointer; color: var(--muted); }
+  .os button[aria-pressed=true] { background: var(--card); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+  ol.steps { list-style: none; padding: 0; margin: 24px 0 0; counter-reset: s; }
+  ol.steps > li { counter-increment: s; display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 0 20px; padding: 30px 0; border-top: 2px dashed var(--line); }
+  ol.steps > li::before { content: counter(s); width: 56px; height: 56px; display: grid; place-items: center; font: 700 1.9rem/1 var(--pixel); background: var(--c, var(--ink)); color: var(--ink); border-radius: 12px; }
+  .steps h2 { font: 700 1.6rem/1.2 var(--sans); margin: 8px 0 6px; }
+  .steps p { margin: 0 0 14px; color: var(--muted); }
+  .steps p b { color: var(--ink); }
+  kbd { font: 700 .95rem/1 var(--sans); display: inline-block; min-width: 2em; text-align: center; background: var(--card); color: var(--ink); border-radius: 8px; padding: 7px 9px 8px; box-shadow: 0 3px 0 #a8afc2, 0 0 0 1px #c9cfdc; margin: 0 2px; vertical-align: 2px; }
+  .keys { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 700; color: var(--muted); }
+  .keys kbd { font-size: 1.15rem; padding: 12px 14px 13px; min-width: 3em; }
+
+  /* pictures of the screen */
+  .shot { border-radius: 14px; overflow: hidden; box-shadow: 0 18px 40px -22px rgba(20, 25, 45, .55), 0 0 0 1px rgba(0,0,0,.08); background: var(--term); color: var(--term-ink); font: .95rem/1.55 var(--mono); max-width: 620px; }
+  .shot .bar { display: flex; align-items: center; gap: 7px; padding: 10px 12px; background: #2a2e40; }
+  .shot .bar i { width: 12px; height: 12px; border-radius: 50%; background: #ff6b6b; }
+  .shot .bar i:nth-child(2) { background: var(--yellow); } .shot .bar i:nth-child(3) { background: var(--green); }
+  .shot .bar span { margin-left: 8px; color: var(--term-dim); font: 600 .82rem var(--sans); }
+  .shot pre { margin: 0; padding: 14px 16px 18px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .p { color: var(--green); } .d { color: var(--term-dim); } .y { color: var(--yellow); } .k { background: var(--term-ink); color: var(--term); }
+  .spot { max-width: 560px; border-radius: 16px; background: rgba(250, 250, 252, .96); box-shadow: 0 18px 40px -20px rgba(20, 25, 45, .5), 0 0 0 1px rgba(0,0,0,.1); padding: 14px 18px; display: flex; align-items: center; gap: 12px; font-size: 1.5rem; color: #222; }
+  .spot svg { width: 26px; height: 26px; stroke: #888; fill: none; stroke-width: 2.4; flex: none; }
+  .spot small { margin-left: auto; font-size: .9rem; color: #777; }
+  .hit { display: flex; align-items: center; gap: 12px; margin-top: 8px; max-width: 560px; background: #2d6ff0; color: #fff; border-radius: 10px; padding: 10px 14px; font-weight: 700; }
+  .hit .icon { width: 30px; height: 30px; border-radius: 7px; background: #222; display: grid; place-items: center; color: var(--green); font: 700 .8rem var(--mono); }
+  .cmdbox { display: flex; align-items: center; gap: 10px; background: var(--term); border-radius: 12px; padding: 8px 8px 8px 16px; max-width: 620px; }
+  .cmdbox code { flex: 1; color: var(--term-ink); font: 1rem/1.5 var(--mono); overflow-x: auto; white-space: nowrap; padding: 6px 0; }
+  .cmdbox button { font: 700 1.05rem/1 var(--sans); background: var(--green); color: var(--ink); border: 0; border-radius: 9px; padding: 13px 20px; cursor: pointer; }
+  .cards { display: flex; gap: 8px; flex-wrap: wrap; padding: 4px 0 2px; }
+  .cards span { border: 1px solid #3a3f55; padding: 6px 10px; border-radius: 4px; }
+  .cards span.on { border-color: var(--blue); color: var(--blue); }
+  .note { background: #fff6d6; border: 2px solid #f0d77a; border-radius: 12px; padding: 12px 16px; color: var(--ink); max-width: 620px; font-size: 1.02rem; }
+
+  section { padding: 44px 0 0; }
+  h2.big { font: 700 clamp(1.6rem, 4vw, 2.1rem)/1.15 var(--pixel); margin: 0 0 14px; }
+  dl.words { display: grid; grid-template-columns: max-content 1fr; gap: 10px 20px; margin: 0; }
+  dl.words dt { font-weight: 700; }
+  dl.words dd { margin: 0; color: var(--muted); }
+  details { background: var(--card); border: 2px solid var(--line); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; }
+  details summary { cursor: pointer; font-weight: 700; }
+  details p { margin: 10px 0 0; color: var(--muted); }
+  table.ways { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; border: 2px solid var(--line); }
+  table.ways th, table.ways td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.ways th { font-size: .9rem; color: var(--muted); }
+  table.ways code { font: .95rem var(--mono); background: var(--paper); padding: 3px 7px; border-radius: 6px; white-space: nowrap; }
+  footer { padding: 56px 0 48px; color: var(--muted); font-size: .95rem; }
+  [data-only] { display: none; }
+  body[data-os=sh] [data-only=sh], body[data-os=ps1] [data-only=ps1] { display: revert; }
+  @media (max-width: 620px) {
+    body { font-size: 1.08rem; }
+    ol.steps > li { grid-template-columns: 1fr; gap: 10px; }
+    dl.words { grid-template-columns: 1fr; gap: 2px; }
+    dl.words dd { margin-bottom: 10px; }
+    table.ways th:nth-child(3), table.ways td:nth-child(3) { display: none; }
+  }
+</style>
+</head>
+<body data-os="sh">
+<div class="wrap">
+  <header class="top">
+    <h1>Your first time in Terminal</h1>
+    <p class="lede">Terminal is an app where you type short commands instead of clicking. It looks scary but it's just typing. Follow these steps; each one shows exactly what you'll see.</p>
+    <div class="os" role="group" aria-label="Your computer"><button type="button" data-os="sh" aria-pressed="true">I have a Mac</button><button type="button" data-os="ps1" aria-pressed="false">I have Windows</button></div>
+  </header>
+
+  <ol class="steps">
+    <li style="--c: var(--blue)">
+      <div>
+        <h2 data-only="sh">Open Terminal</h2><h2 data-only="ps1">Open PowerShell</h2>
+        <p data-only="sh">Hold the <b>command</b> key and press <b>space</b>. A search box pops up. Type <b>Terminal</b> and press <b>return</b>.</p>
+        <p data-only="ps1">Press the <b>Windows</b> key. Type <b>PowerShell</b> and press <b>Enter</b>.</p>
+        <div class="keys" data-only="sh"><kbd>⌘ command</kbd> + <kbd>space</kbd></div>
+        <div class="keys" data-only="ps1"><kbd>⊞ Windows</kbd></div>
+        <div style="margin-top:16px" data-only="sh"><div class="spot"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Terminal<small>Spotlight</small></div><div class="hit"><span class="icon">&gt;_</span>Terminal</div></div>
+      </div>
+    </li>
+    <li style="--c: var(--green)">
+      <div>
+        <h2>A window like this opens</h2>
+        <p>The last line ends with <b data-only="sh">%</b><b data-only="ps1">&gt;</b> and a blinking block. That means it's waiting for you to type.</p>
+        <div class="shot"><div class="bar"><i></i><i></i><i></i><span data-only="sh">Terminal</span><span data-only="ps1">Windows PowerShell</span></div><pre data-only="sh"><span class="d">Last login: Tue on ttys000</span>
+<span class="p">you@Mac ~ %</span> <span class="k"> </span></pre><pre data-only="ps1"><span class="d">Windows PowerShell</span>
+<span class="p">PS C:\Users\you&gt;</span> <span class="k"> </span></pre></div>
+      </div>
+    </li>
+    <li style="--c: var(--yellow)">
+      <div>
+        <h2>Copy this line</h2>
+        <p>Click <b>Copy</b>. You don't need to understand it: it downloads <b>pca</b>, a menu that installs all the apps for you.</p>
+        <div class="cmdbox"><code id="cmd">curl -fsSL {{origin}}/pca/install.sh | sh</code><button type="button" id="copy">Copy</button></div>
+      </div>
+    </li>
+    <li style="--c: var(--pink)">
+      <div>
+        <h2>Paste it into the window, then press Enter</h2>
+        <p data-only="sh">Click on the Terminal window. Hold <b>command</b> and press <b>V</b> to paste. Then press <b>return</b>.</p>
+        <p data-only="ps1">Click on the PowerShell window. Right-click once to paste. Then press <b>Enter</b>.</p>
+        <div class="keys" data-only="sh"><kbd>⌘ command</kbd> + <kbd>V</kbd> then <kbd>return</kbd></div>
+        <div class="keys" data-only="ps1"><kbd>right-click</kbd> then <kbd>Enter</kbd></div>
+        <p style="margin-top:14px">Words scroll by for a minute while it installs. That's normal. Wait until you see this:</p>
+        <div class="shot"><div class="bar"><i></i><i></i><i></i><span>installing</span></div><pre><span class="d">  Downloading pca…</span>
+<span class="d">  Setting up…</span>
+  <span class="p">✓ Done!</span> Pick a project:  <span class="y">pca</span></pre></div>
+      </div>
+    </li>
+    <li style="--c: var(--blue)">
+      <div>
+        <h2>Type pca and press Enter</h2>
+        <p>If it says <b>command not found</b>, close the window, open a new one (step 1), and try again.</p>
+        <div class="shot"><div class="bar"><i></i><i></i><i></i><span>pca</span></div><pre><span class="p">you@Mac ~ %</span> pca
+
+  project cli access  ·  one command, every project
+  <span class="cards"><span>gossip</span><span>tree of thought</span><span>pigeon</span><span>tidy</span><span class="on">scout</span><span>roomy</span><span>den</span><span>hey</span></span>
+  <span class="d">← → choose · enter installs and opens scout</span></pre></div>
+      </div>
+    </li>
+    <li style="--c: var(--green)">
+      <div>
+        <h2>Pick an app with the arrow keys, then press Enter</h2>
+        <p>The first time, it installs itself (about a minute), then it opens. Next time, just type its name: <b>scout</b>, <b>roomy</b>, <b>hey</b>…</p>
+        <div class="keys"><kbd>←</kbd><kbd>→</kbd> to choose, <kbd>return</kbd> to open, <kbd>q</kbd> to quit</div>
+      </div>
+    </li>
+  </ol>
+
+  <div class="note">That's it. You never have to do this again: pca keeps every app up to date by itself.</div>
+
+  <section aria-labelledby="first">
+    <h2 class="big" id="first">Good first things to try</h2>
+    <table class="ways">
+      <tr><th>Type this</th><th>What happens</th><th>App</th></tr>
+      <tr><td><code>scout why is the sky blue</code></td><td>a short answer from the web, with its sources</td><td>scout</td></tr>
+      <tr><td><code>hey how much space is left on my disk</code></td><td>the command for it, explained; Enter runs it</td><td>hey</td></tr>
+      <tr><td><code>roomy</code></td><td>see what's filling your disk and clear the easy stuff</td><td>roomy</td></tr>
+      <tr><td><code>tidy</code></td><td>sort your Downloads folder (shows you first)</td><td>tidy</td></tr>
+      <tr><td><code>tot</code></td><td>chat with free AIs</td><td>Tree of Thought</td></tr>
+    </table>
+  </section>
+
+  <section aria-labelledby="pigeon-ways">
+    <h2 class="big" id="pigeon-ways">Every way to open your pigeon drive</h2>
+    <p style="color:var(--muted);margin:0 0 14px">pigeon looks the same every way. If one doesn't work for you, use another.</p>
+    <table class="ways">
+      <tr><th>Way</th><th>How</th><th>Good for</th></tr>
+      <tr><td>The website</td><td><a href="/pigeon">open it here</a></td><td>any computer, nothing to install</td></tr>
+      <tr><td>Signed in, from your computer</td><td><code>pigeon dashboard</code></td><td>saving files straight into Downloads</td></tr>
+      <tr><td>A window of its own</td><td><code>pigeon app</code></td><td>using pigeon like an app</td></tr>
+      <tr><td>Your own pigeon, at home</td><td><code>pigeon home</code></td><td>when the website is down or blocked</td></tr>
+      <tr><td>The terminal</td><td><code>pigeon</code></td><td>arrow keys, drag files onto the window</td></tr>
+    </table>
+  </section>
+
+  <section aria-labelledby="words">
+    <h2 class="big" id="words">Words you'll see</h2>
+    <dl class="words">
+      <dt>Terminal</dt><dd>The app where you type commands. On Windows it's called PowerShell.</dd>
+      <dt>Command</dt><dd>A short line you type, like <b>scout</b> or <b>roomy</b>, then press Enter.</dd>
+      <dt>Enter / return</dt><dd>The big key on the right of the letters. It means "go".</dd>
+      <dt>Paste</dt><dd>Putting in what you copied: <b>⌘ command + V</b> on a Mac.</dd>
+      <dt>Esc</dt><dd>The key in the top-left corner. It means "go back" in these apps.</dd>
+      <dt>Ctrl + C</dt><dd>Stops whatever is running in Terminal, if you're ever stuck.</dd>
+    </dl>
+  </section>
+
+  <section aria-labelledby="help">
+    <h2 class="big" id="help">If something goes wrong</h2>
+    <details><summary>It says "command not found"</summary><p>Close the Terminal window and open a new one. New commands only show up in new windows. If it still happens, paste the line from step 3 again.</p></details>
+    <details><summary>It asks for my password</summary><p>These apps never need your password. Press Ctrl + C to stop, and check you pasted the line from step 3 exactly.</p></details>
+    <details><summary>Nothing happens when I press keys</summary><p>Click inside the window first, so it's the one listening. If an app is open, press Esc or q to leave it.</p></details>
+    <details><summary>My school or work network blocks the website</summary><p>The install falls back to GitHub by itself. If that's blocked too, try again at home.</p></details>
+    <details><summary>How do I remove an app?</summary><p>Open pca, pick the app, and press x. Or type the app's name, then uninstall, like: <b>roomy uninstall</b>.</p></details>
+  </section>
+
+  <footer>Made for people who've never touched Terminal before. Something unclear? That's on us, not you.</footer>
+</div>
+<script>
+(function () {
+  const ORIGIN = location.origin;
+  const cmds = { sh: 'curl -fsSL ' + ORIGIN + '/pca/install.sh | sh', ps1: 'irm ' + ORIGIN + '/pca/install.ps1 | iex' };
+  function pick(os) {
+    document.body.dataset.os = os;
+    document.getElementById('cmd').textContent = cmds[os];
+    document.querySelectorAll('.os button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.os === os)));
+  }
+  document.querySelectorAll('.os button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.os)));
+  pick(/Win/.test(navigator.platform || navigator.userAgent) ? 'ps1' : 'sh');
+  const copy = document.getElementById('copy');
+  copy.addEventListener('click', async () => {
+    const text = document.getElementById('cmd').textContent;
+    try { await navigator.clipboard.writeText(text); } catch (e) {
+      const r = document.createRange(); r.selectNodeContents(document.getElementById('cmd'));
+      getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy');
+    }
+    copy.textContent = 'Copied!';
+    setTimeout(() => { copy.textContent = 'Copy'; }, 1600);
+  });
+})();
+</script>
+</body>
+</html>

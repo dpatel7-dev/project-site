@@ -1,0 +1,11 @@
+{
+  "name": "hey",
+  "version": "1.0.0",
+  "description": "Say what you want to do in plain words, and hey gives you the terminal command: what it does, how risky it is, and Enter runs it. hey explain <command> tells you what any command does.",
+  "bin": { "hey": "bin/hey.js" },
+  "scripts": { "test": "node --test", "start": "node bin/hey.js" },
+  "engines": { "node": ">=18" },
+  "license": "MIT",
+  "repository": "github:dpatel7-dev/hey",
+  "files": ["bin", "src", "install.sh", "install.ps1", "README.md", "CHANGELOG.md"]
+}

@@ -516,7 +516,8 @@ class Pigeon:
         if html is None:
             return None
         origin = self.origin(environ)
-        conf = json.dumps({'base': base, 'origin': origin, 'version': VERSION, 'sh': origin + base + '/install.sh', 'ps1': origin + base + '/install.ps1'})
+        conf = json.dumps({'base': base, 'origin': origin, 'version': VERSION, 'sh': origin + base + '/install.sh', 'ps1': origin + base + '/install.ps1',
+                           'home': bool(os.environ.get('PIGEON_HOME_MODE'))})
         html = html.replace('/*PIGEON_CONFIG*/{}', conf.replace('<', '\\u003c'))
         qr = self._read('src', 'qr.js') or ''
         return html.replace('/*PIGEON_QR*/', qr.replace('</script', '<\\/script'))

@@ -3,182 +3,240 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>djp7 - gossip, Tree of Thought, pigeon, tidy, den</title>
-<meta name="description" content="Terminal tools by djp7: gossip (encrypted chat), Tree of Thought (many AI models), pigeon (your own locked drive), tidy (an AI that tidies folders), den (a beginner-friendly code editor) and pca, which installs them all.">
+<title>djp7 - little apps you open by typing one word</title>
+<meta name="description" content="Small, friendly apps that run in your Mac's Terminal: ask anything (scout), chat (gossip), many AIs (Tree of Thought), your own drive (pigeon), tidy a folder (tidy), free up space (roomy), learn to code (den), and get any command in plain words (hey). One command installs them all.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
+  /* A pixel meadow at dawn where the mascots live, then plain, roomy reading
+     below it. Pixel type for names and headings, Atkinson Hyperlegible (made
+     to be easy to read) for everything else. */
   :root {
-    --sky: #cdd9ec;
-    --sky-deep: #b7c7e0;
-    --grass: #74a85a;
-    --grass-dark: #5a8a45;
-    --soil: #8a6446;
-    --soil-dark: #6c4c34;
-    --paper: #f1f3f7;
-    --ink: #1a1d29;
-    --muted: #5d6478;
-    --line: #d9dde6;
+    --sky-top: #a9c3ea; --sky: #cddcf2; --sky-low: #e6eefa;
+    --grass: #74a85a; --grass-dark: #5a8a45; --soil: #8a6446; --soil-dark: #6c4c34;
+    --paper: #f2f4f8; --card: #ffffff; --ink: #1a1d29; --muted: #5a6175; --line: #dde1ea;
+    --night: #1a1d29; --night-2: #262a3a; --night-ink: #eef0f6; --night-dim: #aab0c3;
+    --go: #74a85a;
     --pixel: "Pixelify Sans", ui-monospace, monospace;
     --sans: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
+  html { scroll-behavior: smooth; }
   body { background: var(--paper); color: var(--ink); font: 400 1.0625rem/1.6 var(--sans); }
   a { color: inherit; }
   :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px; }
 
-  /* the meadow where the three of them stand */
-  .meadow { background: var(--sky); position: relative; padding: 72px 20px 0; overflow: hidden; }
-  .cloud { position: absolute; image-rendering: pixelated; opacity: .9; }
-  .crew { display: flex; justify-content: center; align-items: flex-end; gap: clamp(16px, 7vw, 104px); position: relative; z-index: 1; margin-bottom: -37px; }
-  .mascot { display: flex; flex-direction: column; align-items: center; gap: 10px; text-decoration: none; border-radius: 10px; }
-  .mascot canvas { display: block; image-rendering: pixelated; width: var(--w); height: auto; }
-  .mascot .tag { font: 700 1rem/1 var(--pixel); background: var(--ink); color: #fff; padding: 6px 9px 7px; border-radius: 4px; white-space: nowrap; height: 29px; }
-  .mascot .tag i { display: inline-block; width: 9px; height: 9px; background: var(--c); margin-right: 7px; vertical-align: 0; }
+  /* ── the meadow ── */
+  .meadow { position: relative; overflow: hidden; padding: 64px 12px 0; background: linear-gradient(var(--sky-top), var(--sky) 55%, var(--sky-low)); }
+  .meadow canvas.sky { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+  .crew { position: relative; z-index: 1; display: flex; justify-content: center; align-items: flex-end; gap: clamp(6px, 2.6vw, 40px); margin-bottom: -6px; flex-wrap: nowrap; }
+  .mascot { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; border-radius: 8px; padding: 4px; }
+  .mascot canvas { display: block; image-rendering: pixelated; }
+  .mascot .tag { font: 700 .92rem/1 var(--pixel); background: var(--ink); color: #fff; padding: 6px 8px 7px; border-radius: 4px; white-space: nowrap; }
+  .mascot .tag i { display: inline-block; width: 8px; height: 8px; background: var(--c); margin-right: 6px; }
   .mascot:hover canvas, .mascot:focus-visible canvas { animation: hop .42s steps(4) 1; }
-  .ground { height: 64px; margin: 0 -20px; image-rendering: pixelated; background-size: 96px 72px; }
-  @keyframes hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-14px); } }
-  @keyframes land { from { transform: translateY(-120px); opacity: 0; } 70% { transform: translateY(4px); opacity: 1; } to { transform: translateY(0); } }
-  .crew .mascot { animation: land .6s cubic-bezier(.3, 1.4, .6, 1) both; }
-  .crew .mascot:nth-child(2) { animation-delay: .12s; }
-  .crew .mascot:nth-child(3) { animation-delay: .24s; }
-  .crew .mascot:nth-child(4) { animation-delay: .36s; }
-  @media (prefers-reduced-motion: reduce) { .crew .mascot, .mascot:hover canvas, .mascot:focus-visible canvas { animation: none; } }
+  .ground { height: 58px; margin: 0 -12px; image-rendering: pixelated; background-size: 96px 72px; position: relative; z-index: 0; }
+  @keyframes hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-12px); } }
+  @keyframes land { from { transform: translateY(-90px); opacity: 0; } 70% { transform: translateY(3px); opacity: 1; } to { transform: translateY(0); } }
+  .crew .mascot { animation: land .55s cubic-bezier(.3, 1.4, .6, 1) both; animation-delay: calc(var(--n) * 70ms); }
+  @media (prefers-reduced-motion: reduce) { .crew .mascot, .mascot:hover canvas, .mascot:focus-visible canvas { animation: none; } html { scroll-behavior: auto; } }
 
-  main { max-width: 880px; margin: 0 auto; padding: 56px 22px 80px; }
-  h1 { font: 700 clamp(2.4rem, 7vw, 4.2rem)/1 var(--pixel); margin: 0 0 18px; letter-spacing: -.01em; }
-  .lede { font-size: 1.2rem; color: var(--muted); max-width: 36em; margin: 0 0 36px; }
+  /* ── the first thing you read ── */
+  .intro { padding: 52px 0 10px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+  h1 { font: 700 clamp(2.5rem, 6.4vw, 4.1rem)/1 var(--pixel); margin: 6px 0 18px; letter-spacing: -.01em; }
+  .lede { font-size: 1.2rem; color: var(--muted); margin: 0 0 20px; max-width: 30em; }
+  .lede b { color: var(--ink); }
+  .newbie { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; background: #fff6d6; border: 2px solid #f0d77a; border-radius: 12px; padding: 12px 16px; font-weight: 700; }
+  .newbie small { display: block; font-weight: 400; color: var(--muted); }
+  .newbie:hover { background: #ffefb5; }
+  .newbie canvas { image-rendering: pixelated; flex: none; }
 
-  .install { background: var(--ink); color: #eef0f6; border-radius: 12px; padding: 20px 22px 18px; }
-  .install h2 { font: 700 1.05rem/1.3 var(--sans); margin: 0 0 4px; }
-  .install p { margin: 0 0 14px; color: #b9bdcc; font-size: .98rem; }
-  .os { display: flex; gap: 6px; margin-bottom: 10px; }
-  .os button { font: 700 .9rem/1 var(--sans); color: #b9bdcc; background: none; border: 1px solid #3a3e4f; border-radius: 6px; padding: 8px 12px; cursor: pointer; }
-  .os button[aria-pressed=true] { color: var(--ink); background: #eef0f6; border-color: #eef0f6; }
-  .cmd { display: flex; align-items: center; gap: 10px; background: #0f1119; border-radius: 8px; padding: 6px 6px 6px 14px; }
-  .cmd code { flex: 1; font: .95rem/1.5 var(--mono); overflow-x: auto; white-space: nowrap; padding: 6px 0; scrollbar-width: thin; }
-  .cmd code::before { content: "$ "; color: #6f7487; }
-  .cmd button { font: 700 .9rem/1 var(--sans); background: #74a85a; color: #0f1119; border: 0; border-radius: 6px; padding: 10px 14px; cursor: pointer; flex: none; }
-  .then { margin: 12px 0 0; font-size: .95rem; color: #b9bdcc; }
-  .then kbd { font: .9rem var(--mono); background: #2a2e3d; padding: 2px 7px; border-radius: 4px; color: #fff; }
+  /* the three steps, on the dark card */
+  .steps { background: var(--night); color: var(--night-ink); border-radius: 16px; padding: 22px 22px 18px; }
+  .steps h2 { font: 700 1.35rem/1.2 var(--pixel); margin: 0 0 14px; }
+  .os { display: flex; gap: 6px; margin-bottom: 16px; }
+  .os button { font: 700 .9rem/1 var(--sans); color: var(--night-dim); background: none; border: 1px solid #3a3e4f; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+  .os button[aria-pressed=true] { color: var(--ink); background: var(--night-ink); border-color: var(--night-ink); }
+  .step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 4px 12px; padding: 10px 0; border-top: 1px solid #2f3446; }
+  .step:first-of-type { border-top: 0; }
+  .step .n { width: 30px; height: 30px; display: grid; place-items: center; font: 700 1rem/1 var(--pixel); color: var(--ink); background: var(--c); border-radius: 6px; }
+  .step > div > b { display: block; font-size: 1.05rem; }
+  .step p { margin: 2px 0 0; color: var(--night-dim); font-size: .98rem; }
+  kbd { font: 700 .82rem/1 var(--sans); display: inline-block; min-width: 1.9em; text-align: center; background: #f3f4f8; color: var(--ink); border-radius: 6px; padding: 5px 7px 6px; box-shadow: 0 2px 0 #9aa0b3; margin: 0 1px; }
+  .cmd { display: flex; align-items: center; gap: 10px; background: #0f1119; border-radius: 10px; padding: 6px 6px 6px 14px; margin-top: 8px; }
+  .cmd code { flex: 1; font: .9rem/1.5 var(--mono); overflow-x: auto; white-space: nowrap; padding: 6px 0; scrollbar-width: thin; }
+  .cmd button { font: 700 .95rem/1 var(--sans); background: var(--go); color: #0f1119; border: 0; border-radius: 8px; padding: 11px 16px; cursor: pointer; flex: none; }
+  .cmd button:hover { filter: brightness(1.1); }
 
-  .projects { margin: 56px 0 0; padding: 0; list-style: none; }
-  .project { display: grid; grid-template-columns: 72px 1fr auto; gap: 6px 22px; align-items: center; padding: 22px 0; border-top: 1px solid var(--line); }
-  .project:last-child { border-bottom: 1px solid var(--line); }
-  .project canvas { image-rendering: pixelated; width: 64px; height: auto; justify-self: center; }
-  .project h3 { font: 700 1.5rem/1.1 var(--pixel); margin: 0 0 4px; }
-  .project h3 span { color: var(--muted); font: 400 .85rem var(--sans); margin-left: 10px; }
-  .project p { margin: 0; color: var(--muted); }
-  .project .go { font: 700 .95rem/1 var(--sans); text-decoration: none; border: 2px solid var(--ink); border-radius: 8px; padding: 10px 14px; white-space: nowrap; }
-  .project .go:hover { background: var(--ink); color: #fff; }
+  /* ── "what do you want to do?" ── */
+  section { padding: 54px 0 0; }
+  h2.big { font: 700 clamp(1.7rem, 4vw, 2.3rem)/1.1 var(--pixel); margin: 0 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 22px; }
+  .wants { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .want { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); font: 700 1.02rem/1.25 var(--sans); text-align: left; cursor: pointer; color: var(--ink); text-decoration: none; }
+  .want:hover { border-color: var(--c); }
+  .want canvas { image-rendering: pixelated; flex: none; }
+  .want small { display: block; font-weight: 400; color: var(--muted); font-size: .86rem; }
 
-  footer { max-width: 880px; margin: 0 auto; padding: 0 22px 48px; color: var(--muted); font-size: .92rem; }
+  /* ── the apps: each one a little diorama ── */
+  .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .app { display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: var(--card); border: 2px solid var(--line); text-decoration: none; color: var(--ink); scroll-margin-top: 80px; }
+  .app:hover { border-color: var(--c); }
+  .app.lit { border-color: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 35%, transparent); }
+  .app .scene { position: relative; height: 128px; display: grid; place-items: end center; background: color-mix(in srgb, var(--c) 16%, #fff); }
+  .app .scene canvas.who { image-rendering: pixelated; position: relative; z-index: 1; margin-bottom: 10px; }
+  .app .scene canvas.floor { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 14px; image-rendering: pixelated; }
+  .app .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .app h3 { font: 700 1.4rem/1.1 var(--pixel); margin: 0; display: flex; align-items: baseline; gap: 8px; }
+  .app h3 span { font: 400 .8rem var(--sans); color: var(--muted); }
+  .app p { margin: 0; color: var(--muted); font-size: .98rem; }
+  .app .more { margin-top: auto; padding-top: 10px; font-weight: 700; font-size: .95rem; }
+  .app .badge { position: absolute; top: 10px; left: 10px; z-index: 2; font: 700 .75rem/1 var(--pixel); background: var(--ink); color: #fff; padding: 5px 7px; border-radius: 4px; }
+
+  /* ── what's new ── */
+  .newsbox { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .news { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  .news header { font: 700 1.15rem/1.2 var(--pixel); margin-bottom: 6px; }
+  .news header a { text-decoration: none; }
+  .news header span { font: 400 .8rem var(--sans); color: var(--muted); margin-left: 6px; }
+  .news p, .news ul { margin: 0; color: var(--muted); font-size: .95rem; }
+  .news ul { padding-left: 1.1em; }
+  .news code { font: .85em var(--mono); background: var(--paper); padding: 1px 5px; border-radius: 4px; }
+  .seeall { display: inline-block; margin-top: 16px; font-weight: 700; }
+
+  footer { padding: 56px 0 48px; color: var(--muted); font-size: .92rem; }
   footer a { color: var(--ink); }
 
+  @media (max-width: 860px) {
+    .intro { grid-template-columns: minmax(0, 1fr); gap: 26px; padding-top: 36px; }
+  }
   @media (max-width: 620px) {
-    .meadow { padding-top: 36px; }
-    .mascot .tag { font-size: .8rem; padding: 7px 7px; }
-    .crew { gap: 10px; }
-    .cloud { display: none; }
-    .project { grid-template-columns: 52px 1fr; }
-    .project canvas { width: 48px; }
-    .project .go { grid-column: 2; justify-self: start; margin-top: 8px; }
+    .meadow { padding-top: 34px; }
+    .mascot .tag { display: none; }
+    .mascot { padding: 4px 0; }
+    .crew { gap: 6px; }
+    .apps { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .app .scene { height: 96px; }
+    .app .body { padding: 10px 12px 12px; }
+    .app p { font-size: .9rem; }
+    .app h3 { font-size: 1.15rem; flex-wrap: wrap; }
   }
 </style>
 </head>
 <body>
-<header class="meadow" aria-label="The projects">
-  <div class="crew">
-    <a class="mascot" href="/gossip" data-id="gossip" style="--c:#7cc4ff"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>gossip</span></a>
-    <a class="mascot" href="/tot" data-id="tot" style="--c:#8fd16a"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>tree of thought</span></a>
-    <a class="mascot" href="/pigeon" data-id="pigeon" style="--c:#2bc4b2"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>pigeon</span></a>
-    <a class="mascot" href="/tidy" data-id="tidy" style="--c:#e8913a"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>tidy</span></a>
-    <a class="mascot" href="/den" data-id="den" style="--c:#f0843c"><canvas aria-hidden="true"></canvas><span class="tag"><i></i>den</span></a>
-  </div>
+<header class="meadow" aria-label="The apps">
+  <canvas class="sky" aria-hidden="true"></canvas>
+  <div class="crew" id="crew"></div>
   <div class="ground" aria-hidden="true"></div>
 </header>
 
-<main>
-  <h1>Tools that live in your terminal</h1>
-  <p class="lede">Chat with friends, ask a whole garden of AI models at once, keep your files in a locked drive that sends them to any of your devices, let an AI tidy your Downloads folder (carefully), and learn to code in a cozy editor with a fox who explains things. Each one is a single command, and one more command installs them all and keeps them up to date.</p>
-
-  <section class="install" aria-labelledby="install-title">
-    <h2 id="install-title">Install Project CLI Access</h2>
-    <p>It's a little menu: pick a project, press Enter, and it installs and opens it. It also keeps every project up to date by itself.</p>
-    <div class="os" role="group" aria-label="Your computer">
-      <button type="button" data-os="sh" aria-pressed="true">Mac or Linux</button>
-      <button type="button" data-os="ps1" aria-pressed="false">Windows</button>
+<main class="wrap">
+  <div class="intro">
+    <div>
+      <h1>Little apps you open by typing one word</h1>
+      <p class="lede">Ask anything and get a clear answer. Chat with friends. Free up space. Tidy a messy folder. Learn to code. <b>Each one is a word you type in Terminal</b>, and one menu installs them all and keeps them up to date.</p>
+      <a class="newbie" href="/start"><canvas id="newbieArt" aria-hidden="true"></canvas><span>Never used Terminal? Start here<small>A picture guide, one step at a time. No experience needed.</small></span></a>
     </div>
-    <div class="cmd"><code id="cmd">curl -fsSL {{origin}}/pca/install.sh | sh</code><button type="button" id="copy">Copy</button></div>
-    <p class="then">Paste it into <span id="where">Terminal</span>, then open a new window and type <kbd>pca</kbd>.</p>
+    <div class="steps" aria-labelledby="steps-title">
+      <h2 id="steps-title">Get everything in 3 steps</h2>
+      <div class="os" role="group" aria-label="Your computer">
+        <button type="button" data-os="sh" aria-pressed="true">Mac</button>
+        <button type="button" data-os="ps1" aria-pressed="false">Windows</button>
+      </div>
+      <div class="step" style="--c:#7cc4ff"><span class="n">1</span><div><b id="s1">Open Terminal</b><p id="s1p">Hold <kbd>⌘</kbd> and press <kbd>space</kbd>, type <b>Terminal</b>, press <kbd>return</kbd>.</p></div></div>
+      <div class="step" style="--c:#8fd16a"><span class="n">2</span><div><b>Copy this, paste it in, press Enter</b><div class="cmd"><code id="cmd">curl -fsSL {{origin}}/pca/install.sh | sh</code><button type="button" id="copy">Copy</button></div></div></div>
+      <div class="step" style="--c:#f2c14e"><span class="n">3</span><div><b>Type <kbd>pca</kbd> and press Enter</b><p>Use the arrow keys to pick an app, then press Enter. It installs itself and opens.</p></div></div>
+    </div>
+  </div>
+
+  <section aria-labelledby="want-title">
+    <h2 class="big" id="want-title">What do you want to do?</h2>
+    <p class="sub">Pick one and you'll see which app does it.</p>
+    <div class="wants" id="wants"></div>
   </section>
 
-  <ul class="projects">
-    <li class="project">
-      <canvas data-id="gossip" aria-hidden="true"></canvas>
-      <div><h3>gossip <span>v{{gossip_version}}</span></h3><p>End-to-end encrypted chat in the terminal: people, servers, calls and files. Pebble keeps watch.</p></div>
-      <a class="go" href="/gossip">Open gossip</a>
-    </li>
-    <li class="project">
-      <canvas data-id="tot" aria-hidden="true"></canvas>
-      <div><h3>tree of thought <span>v{{tot_version}}</span></h3><p>Many AI models in one garden. Set up free AI in a minute (copy a key, done), ask one model or all of them, and every answer becomes a branch you can go back to. Comes with a dashboard, a usage tracker, flashcards and terminal help.</p></div>
-      <a class="go" href="/tot">Open Tree of Thought</a>
-    </li>
-    <li class="project">
-      <canvas data-id="pigeon" aria-hidden="true"></canvas>
-      <div><h3>pigeon <span>v{{pigeon_version}}</span></h3><p>Your own locked drive: folders, previews, share links and a trash, in the terminal or the browser. Send something to another device and it lands there by itself.</p></div>
-      <a class="go" href="/pigeon">Open pigeon</a>
-    </li>
-    <li class="project">
-      <canvas data-id="tidy" aria-hidden="true"></canvas>
-      <div><h3>tidy <span>v{{tidy_version}}</span></h3><p>Tell it how you want a folder tidied, in your own words. It reads names, file types and a little of what's inside, shows you every move first, never deletes anything, and one key puts it all back. Hazel the squirrel files things away.</p></div>
-      <a class="go" href="/tidy">Open tidy</a>
-    </li>
-    <li class="project">
-      <canvas data-id="den" aria-hidden="true"></canvas>
-      <div><h3>den <span>v{{den_version}}</span></h3><p>A cozy code editor that opens in your browser: your files, a Run button, live previews of your web pages, and Ember the fox, who explains words and errors in plain English. Made for learning.</p></div>
-      <a class="go" href="/den">Open den</a>
-    </li>
-    <li class="project">
-      <canvas data-id="pca" aria-hidden="true"></canvas>
-      <div><h3>pca <span>v{{pca_version}}</span></h3><p>Project CLI Access: one menu that installs and opens everything above, and quietly keeps it all up to date.</p></div>
-      <a class="go" href="/pca">Open pca</a>
-    </li>
-  </ul>
-</main>
+  <section aria-labelledby="apps-title">
+    <h2 class="big" id="apps-title">The apps</h2>
+    <p class="sub">Each one has a friendly mascot, works with your keyboard, and explains itself as you go.</p>
+    <div class="apps" id="apps"></div>
+  </section>
 
-<footer>
-  <p>Source code: <a href="https://github.com/dpatel7-dev/gossip">gossip</a>, <a href="https://github.com/dpatel7-dev/Tree-Of-Thought">Tree of Thought</a>, <a href="https://github.com/dpatel7-dev/pigeon">pigeon</a>, <a href="https://github.com/dpatel7-dev/tidy">tidy</a>, <a href="https://github.com/dpatel7-dev/Den">den</a>, <a href="https://github.com/dpatel7-dev/Project-CLI-Access">Project CLI Access</a> and <a href="https://github.com/dpatel7-dev/project-site">this website</a>.</p>
-</footer>
+  <section aria-labelledby="news-title">
+    <h2 class="big" id="news-title">What's new</h2>
+    <p class="sub">The latest from each app. pca updates everything for you.</p>
+    <div class="newsbox">{{news_short}}</div>
+    <a class="seeall" href="/new">See everything that's new</a>
+  </section>
+
+  <footer>
+    Source code: <a href="https://github.com/dpatel7-dev/gossip">gossip</a>, <a href="https://github.com/dpatel7-dev/Tree-Of-Thought">Tree of Thought</a>, <a href="https://github.com/dpatel7-dev/pigeon">pigeon</a>, <a href="https://github.com/dpatel7-dev/Tidy">tidy</a>, <a href="https://github.com/dpatel7-dev/Den">den</a>, <a href="https://github.com/dpatel7-dev/scout">scout</a>, <a href="https://github.com/dpatel7-dev/roomy">roomy</a>, <a href="https://github.com/dpatel7-dev/hey">hey</a>, <a href="https://github.com/dpatel7-dev/Project-CLI-Access">Project CLI Access</a> and <a href="https://github.com/dpatel7-dev/project-site">this website</a>.
+  </footer>
+</main>
 
 <script>
 {{art}}
 (function () {
   const ORIGIN = location.origin;
-  const big = () => (innerWidth < 620 ? 3 : innerWidth < 900 ? 6 : 8);
+  const APPS = [
+    { id: 'scout', name: 'scout', v: '{{scout_version}}', fresh: true, c: '#7c9cff', line: 'Ask anything. It searches the web and explains the answer, with links to every source.', want: ['Ask a question', 'and get a clear answer'] },
+    { id: 'gossip', name: 'gossip', v: '{{gossip_version}}', c: '#7cc4ff', line: 'Private chat with friends: messages, calls and files, locked so only you two can read them.', want: ['Chat with friends', 'messages, calls, files'] },
+    { id: 'tot', name: 'tree of thought', v: '{{tot_version}}', c: '#8fd16a', line: 'Talk to lots of free AIs in one place. Ask one, or all of them at once.', want: ['Talk to AI', 'lots of free ones at once'] },
+    { id: 'pigeon', name: 'pigeon', v: '{{pigeon_version}}', c: '#2bc4b2', line: 'Your own locked drive. Keep files and send them to your other computers.', want: ['Keep and send files', 'your own locked drive'] },
+    { id: 'tidy', name: 'tidy', v: '{{tidy_version}}', c: '#e8913a', line: 'Sorts a messy folder (like Downloads) into neat folders. Shows you first; u puts it all back.', want: ['Tidy a messy folder', 'like Downloads'] },
+    { id: 'roomy', name: 'roomy', v: '{{roomy_version}}', fresh: true, c: '#ff7a59', line: 'Frees up space on your computer, safely. Everything goes to the Trash first.', want: ['Free up space', 'when your disk is full'] },
+    { id: 'den', name: 'den', v: '{{den_version}}', c: '#f0843c', line: 'A friendly code editor in your browser, with a fox who explains things. Made for learning.', want: ['Learn to code', 'with a fox who helps'] },
+    { id: 'hey', name: 'hey', v: '{{hey_version}}', fresh: true, c: '#f2c14e', line: 'Say what you want to do in plain words and get the Terminal command, explained.', want: ['Find a Terminal command', 'in plain words'] },
+  ];
+  const art = (id) => ART.mascots[id];
+  const fits = (id) => trimGrid(art(id).grid);
+  const pageOf = (id) => '/' + id;
 
-  // the pca picker's own little emblem: coloured blocks, like its cards
-  const PCA = { grid: ['GG.TT.PP.HH', 'GG.TT.PP.HH', 'GG.TT.PP.HH', '...........', 'KKKKKKKKKKK', 'K.........K', 'K.>.......K', 'K.........K', 'KKKKKKKKKKK'],
-    ink: { G: '#7cc4ff', T: '#8fd16a', P: '#2bc4b2', H: '#e8913a', K: '#1a1d29', '>': '#1a1d29' } };
-  const art = (id) => (id === 'pca' ? PCA : ART.mascots[id]);
-
+  // the meadow: everyone standing on the grass
+  const crew = document.getElementById('crew');
+  APPS.forEach((a, i) => {
+    const el = document.createElement('a');
+    el.className = 'mascot'; el.href = pageOf(a.id); el.style.setProperty('--c', a.c); el.style.setProperty('--n', i);
+    el.setAttribute('aria-label', a.name + ': ' + (art(a.id).name || ''));
+    el.innerHTML = '<canvas aria-hidden="true"></canvas><span class="tag"><i></i>' + a.name + '</span>';
+    crew.appendChild(el);
+  });
   function drawCrew() {
-    document.querySelectorAll('.crew .mascot').forEach((a) => {
-      const m = art(a.dataset.id);
-      const c = a.querySelector('canvas');
-      drawPixels(c, trimGrid(m.grid), m.ink, big());
-      c.style.setProperty('--w', c.width + 'px');
+    // as big as fits in one row: the widths of everyone, plus the gaps between them
+    const widths = APPS.map((a) => Math.max(...fits(a.id).map((r) => r.length)));
+    const gap = parseFloat(getComputedStyle(crew).columnGap) || 8;
+    const pad = innerWidth < 620 ? 0 : 8;
+    const fit = (crew.clientWidth - gap * (APPS.length - 1) - pad * APPS.length) / widths.reduce((a, b) => a + b, 0);
+    const s = Math.max(1, Math.min(5, Math.floor(fit)));
+    crew.querySelectorAll('.mascot').forEach((el, i) => {
+      const c = drawPixels(el.querySelector('canvas'), fits(APPS[i].id), art(APPS[i].id).ink, Math.max(2, s));
+      c.style.width = fit < 2 ? Math.floor(widths[i] * fit) + 'px' : ''; // small screens: shrink to fit
     });
   }
-  document.querySelectorAll('.project canvas').forEach((c) => {
-    const m = art(c.dataset.id);
-    drawPixels(c, trimGrid(m.grid), m.ink, 4);
-  });
   drawCrew();
   addEventListener('resize', drawCrew);
+
+  // dawn: a few rows of coloured pixels low in the sky, and two clouds
+  function drawSky() {
+    const c = document.querySelector('canvas.sky');
+    const W = Math.ceil(c.clientWidth / 8), H = Math.ceil(c.clientHeight / 8);
+    c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    const hue = ['#ffd9a8', '#ffc9b5', '#f8d2e4', '#dcd6f7'];
+    const n = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
+    for (let y = Math.floor(H * 0.55); y < H; y++) for (let x = 0; x < W; x++) {
+      const t = (y - H * 0.55) / (H * 0.45);
+      if (n(x, y) < t * 0.4) { g.fillStyle = hue[Math.min(3, Math.floor(n(y, x) * 4))]; g.globalAlpha = 0.45; g.fillRect(x, y, 1, 1); }
+    }
+    g.globalAlpha = 1;
+    const CLOUD = ['....WWWW......', '..WWWWWWWW.WW.', '.WWWWWWWWWWWWW', 'WWWWWWWWWWWWWW', '.wwwwwwwwwwww.'];
+    [[0.07, 2], [0.74, 4], [0.42, 1]].forEach(([fx, y]) => CLOUD.forEach((row, r) => [...row].forEach((ch, k) => { if (ch !== '.') { g.fillStyle = ch === 'W' ? '#f4f7fd' : '#e2e9f6'; g.fillRect(Math.floor(W * fx) + k, y + r, 1, 1); } })));
+  }
+  drawSky();
+  addEventListener('resize', drawSky);
 
   // a strip of pixel grass and soil, drawn once and tiled
   const tile = document.createElement('canvas');
@@ -187,20 +245,49 @@
   drawPixels(tile, T, { G: '#74a85a', g: '#5a8a45', S: '#8a6446', s: '#6c4c34' }, 3);
   document.querySelector('.ground').style.backgroundImage = 'url(' + tile.toDataURL() + ')';
 
-  // two slow pixel clouds
-  const CLOUD = ['....WWWW......', '..WWWWWWWW.WW.', '.WWWWWWWWWWWWW', 'WWWWWWWWWWWWWW', '.wwwwwwwwwwww.'];
-  [[6, 18, 5], [78, 34, 4]].forEach(([left, top, s]) => {
-    const c = drawPixels(document.createElement('canvas'), CLOUD, { W: '#eef3fb', w: '#dde6f4' }, s);
-    c.className = 'cloud'; c.style.left = left + '%'; c.style.top = top + 'px'; c.setAttribute('aria-hidden', 'true');
-    document.querySelector('.meadow').prepend(c);
+  // "never used Terminal?": a tiny terminal window
+  drawPixels(document.getElementById('newbieArt'), ['KKKKKKKKKK', 'KRYGKKKKKK', 'KKKKKKKKKK', 'K.........K'.slice(0, 10), 'K.>.......', 'K..>......', 'K.>.WWW...', 'K.........', 'KKKKKKKKKK'], { K: '#1a1d29', R: '#ff6b6b', Y: '#f2c14e', G: '#8fd16a', '>': '#8fd16a', W: '#eef0f6', '.': '#2b3042' }, 4);
+
+  // the apps, each on its own patch of ground
+  const apps = document.getElementById('apps');
+  APPS.forEach((a) => {
+    const el = document.createElement('a');
+    el.className = 'app'; el.id = 'app-' + a.id; el.href = pageOf(a.id); el.style.setProperty('--c', a.c);
+    const ver = a.v && a.v !== '?' ? 'v' + a.v : 'coming soon';
+    el.innerHTML = '<div class="scene">' + (a.fresh ? '<span class="badge">new</span>' : '') + '<canvas class="who" aria-hidden="true"></canvas><canvas class="floor" aria-hidden="true"></canvas></div><div class="body"><h3>' + a.name + ' <span>' + ver + '</span></h3><p>' + a.line + '</p><span class="more">See how it works</span></div>';
+    apps.appendChild(el);
+    drawPixels(el.querySelector('canvas.who'), fits(a.id), art(a.id).ink, innerWidth < 620 ? 3 : 4);
+    const floor = el.querySelector('canvas.floor');
+    const row = (k) => [...Array(48)].map((_, x) => ((x * 5 + k * 3) % 7 === 0 ? 'd' : 'g')).join('');
+    drawPixels(floor, [row(0), row(1), row(2).replace(/g/g, 'G')], { g: a.c, d: '#00000022', G: '#00000014' }, 1);
   });
 
-  // install command for this computer
+  // what do you want to do?
+  const wants = document.getElementById('wants');
+  APPS.forEach((a) => {
+    const b = document.createElement('a');
+    b.className = 'want'; b.href = '#app-' + a.id; b.style.setProperty('--c', a.c);
+    b.innerHTML = '<canvas aria-hidden="true"></canvas><span>' + a.want[0] + '<small>' + a.want[1] + ' · ' + a.name + '</small></span>';
+    wants.appendChild(b);
+    drawPixels(b.querySelector('canvas'), fits(a.id), art(a.id).ink, 2);
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.app.lit').forEach((x) => x.classList.remove('lit'));
+      const card = document.getElementById('app-' + a.id);
+      card.classList.add('lit');
+      setTimeout(() => card.classList.remove('lit'), 2600);
+    });
+  });
+
+  // install command and first step for this computer
   const cmds = { sh: 'curl -fsSL ' + ORIGIN + '/pca/install.sh | sh', ps1: 'irm ' + ORIGIN + '/pca/install.ps1 | iex' };
-  const where = { sh: 'Terminal', ps1: 'PowerShell' };
+  const first = {
+    sh: ['Open Terminal', 'Hold <kbd>⌘</kbd> and press <kbd>space</kbd>, type <b>Terminal</b>, press <kbd>return</kbd>.'],
+    ps1: ['Open PowerShell', 'Press the <kbd>⊞ Win</kbd> key, type <b>PowerShell</b>, press <kbd>Enter</kbd>.'],
+  };
   function pick(os) {
     document.getElementById('cmd').textContent = cmds[os];
-    document.getElementById('where').textContent = where[os];
+    document.getElementById('s1').textContent = first[os][0];
+    document.getElementById('s1p').innerHTML = first[os][1];
     document.querySelectorAll('.os button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.os === os)));
   }
   document.querySelectorAll('.os button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.os)));
@@ -212,7 +299,7 @@
       const r = document.createRange(); r.selectNodeContents(document.getElementById('cmd'));
       getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy');
     }
-    copy.textContent = 'Copied';
+    copy.textContent = 'Copied!';
     setTimeout(() => { copy.textContent = 'Copy'; }, 1600);
   });
 })();

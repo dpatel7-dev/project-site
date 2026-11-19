@@ -52,8 +52,17 @@ PROJECTS = [
     ('pigeon', '/pigeon', 'pigeon', '#2bc4b2'),
     ('tidy', '/tidy', 'tidy', '#e8913a'),
     ('den', '/den', 'den', '#f0843c'),
+    ('scout', '/scout', 'scout', '#7c9cff'),
+    ('roomy', '/roomy', 'roomy', '#ff7a59'),
+    ('hey', '/hey', 'hey', '#f2c14e'),
     ('pca', '/pca', 'pca', '#d9d4e8'),
 ]
+
+APPS = ('gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey')
+# newest news first: the order "what's new" lists the apps in (move an app up when it changes)
+NEWS_ORDER = ('scout', 'roomy', 'hey', 'pigeon', 'tidy', 'tot', 'pca', 'den', 'gossip')
+NAMES = {'gossip': 'gossip', 'tot': 'Tree of Thought', 'pigeon': 'pigeon', 'pca': 'Project CLI Access', 'tidy': 'tidy',
+         'den': 'den', 'scout': 'scout', 'roomy': 'roomy', 'hey': 'hey'}
 
 _cache = {}
 
@@ -80,6 +89,59 @@ def version(app):
         return '?'
 
 
+def _inline(text):
+    """A line of a changelog as safe HTML: **bold**, `code` and [links](https://...)."""
+    t = html.escape(text, quote=False)
+    t = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', t)
+    t = re.sub(r'`([^`]+)`', r'<code>\1</code>', t)
+    t = re.sub(r'\[([^\]]+)\]\((https?://[^)\s]+)\)', lambda m: '<a href="%s">%s</a>' % (m.group(2).replace('"', '%22'), m.group(1)), t)
+    return t
+
+
+def changes(app, sections=1):
+    """The newest sections of an app's changelog: [(version, intro, [points])]."""
+    text = _read('apps', app, 'CHANGELOG.md') or ''
+    out = []
+    for block in re.split(r'^## ', text, flags=re.M)[1:sections + 1]:
+        head, _, body = block.partition('\n')
+        intro, points, cur = [], [], None
+        for line in body.split('\n'):
+            if re.match(r'^\s*- ', line) and not line.startswith('  '):
+                cur = line.strip()[2:]
+                points.append(cur)
+            elif line.strip() and points and (line.startswith('  ') or not line.startswith('#')):
+                points[-1] += ' ' + line.strip().lstrip('- ')
+            elif line.strip() and not points:
+                intro.append(line.strip())
+        out.append((head.strip(), ' '.join(intro), points))
+    return out
+
+
+def _lead(point):
+    m = re.match(r'^\*\*(.+?)\*\*', point)
+    if m:
+        return '**%s**' % m.group(1)
+    parts = re.split(r'(?<=[.!?])\s+', point)
+    out = parts[0]
+    if len(out) < 40 and len(parts) > 1:
+        out += ' ' + parts[1]
+    return out if len(out) <= 220 else out[:217].rsplit(' ', 1)[0] + '…'
+
+
+def news_html(per_app=1, apps=NEWS_ORDER, points=99):
+    """What's new, as HTML: one block per app, newest first."""
+    blocks = []
+    for app in apps:
+        for ver, intro, pts in changes(app, per_app):
+            if points == 1:  # the short version: the bold lead of the first point, or its first sentence or two
+                pts = [_lead(p) for p in pts[:1]]
+                intro = ''
+            items = ''.join('<li>%s</li>' % _inline(p) for p in pts[:points])
+            blocks.append('<article class="news" data-app="%s"><header><a href="/%s">%s</a> <span>%s</span></header>%s<ul>%s</ul></article>' % (
+                app, app if app != 'gossip' else 'gossip', html.escape(NAMES[app]), html.escape(ver), ('<p>%s</p>' % _inline(intro)) if intro else '', items))
+    return ''.join(blocks)
+
+
 def origin(environ):
     """This site's own address, e.g. https://djp7.pythonanywhere.com"""
     public = os.environ.get('SITE_PUBLIC_URL', '').rstrip('/')
@@ -104,11 +166,13 @@ NAV_CSS = """<style>
 .psnav a{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border-radius:6px;color:#bdb8cb;cursor:pointer;text-decoration:none}
 .psnav a:hover{color:#fff;background:#25222e}
 .psnav a:focus-visible{outline:2px solid #fff;outline-offset:-2px}
-.psnav .psnav-home{font-weight:700;color:#fff;margin-right:auto;letter-spacing:.02em}
+.psnav .psnav-home{font-weight:700;color:#fff;letter-spacing:.02em;margin-right:6px}
+.psnav .psnav-guide{color:#e9e4f5}
+.psnav .psnav-last{margin-right:auto}
 .psnav .psnav-dot{width:8px;height:8px;background:var(--c);display:inline-block}
 .psnav a[aria-current=page]{color:#fff;box-shadow:inset 0 -2px 0 var(--c)}
 .psnav .psnav-short{display:none}
-@media (max-width:520px){.psnav{gap:0}.psnav a{padding:8px 7px;gap:6px}.psnav .psnav-full{display:none}.psnav .psnav-short{display:inline}}
+@media (max-width:520px){.psnav{gap:0}.psnav a{padding:8px 7px;gap:6px}.psnav .psnav-full{display:none}.psnav .psnav-short{display:inline}.psnav .psnav-last{margin-right:8px}}
 </style>"""
 
 
@@ -124,8 +188,10 @@ def nav(here):
         '<a href="%s" style="--c:%s"%s><span class="psnav-dot"></span>%s</a>'
         % (path, colour, ' aria-current="page"' if pid == here else '', _label(name))
         for pid, path, name, colour in PROJECTS)
-    return NAV_CSS + '<nav class="psnav" aria-label="Projects"><a class="psnav-home" href="/"%s>djp7</a>%s</nav>' % (
-        ' aria-current="page" style="--c:#fff"' if here == 'home' else '', links)
+    guides = ''.join('<a class="psnav-guide%s" href="%s"%s>%s</a>' % (' psnav-last' if i else '', path, ' aria-current="page" style="--c:#fff"' if here == pid else '', label)
+                     for i, (pid, path, label) in enumerate((('start', '/start', 'Start here'), ('new', '/new', "What's new"))))
+    return NAV_CSS + '<nav class="psnav" aria-label="Projects"><a class="psnav-home" href="/"%s>djp7</a>%s%s</nav>' % (
+        ' aria-current="page" style="--c:#fff"' if here == 'home' else '', guides, links)
 
 
 def with_nav(page, here):
@@ -146,9 +212,19 @@ def fill(page, environ, extra=None):
         'pca_version': version('pca'),
         'tidy_version': version('tidy'),
         'den_version': version('den'),
+        'scout_version': version('scout'),
+        'roomy_version': version('roomy'),
+        'hey_version': version('hey'),
         'art': _read('pages', 'art.js') or '',
     })
-    return re.sub(r'\{\{(\w+)\}\}', lambda m: values[m.group(1)] if m.group(1) == 'art'
+    raw = {'art'}
+    if '{{news}}' in page:
+        values['news'] = news_html()
+        raw.add('news')
+    if '{{news_short}}' in page:
+        values['news_short'] = news_html(apps=NEWS_ORDER[:4], points=1)
+        raw.add('news_short')
+    return re.sub(r'\{\{(\w+)\}\}', lambda m: values[m.group(1)] if m.group(1) in raw
                   else html.escape(values.get(m.group(1), m.group(0))), page)
 
 
@@ -200,7 +276,8 @@ def _navved(app, environ, start_response, here):
     return [data]
 
 
-MASCOTS = {'gossip': 'Pebble the penguin', 'tot': 'Rowan the tree', 'pigeon': 'Coo the pigeon', 'tidy': 'Hazel the squirrel', 'den': 'Ember the fox'}
+MASCOTS = {'gossip': 'Pebble the penguin', 'tot': 'Rowan the tree', 'pigeon': 'Coo the pigeon', 'tidy': 'Hazel the squirrel', 'den': 'Ember the fox',
+           'scout': 'Pip the owl', 'roomy': 'Shelly the hermit crab', 'hey': 'Biscuit the dog'}
 
 
 def check_page(environ, start_response, path):
@@ -256,7 +333,7 @@ def application(environ, start_response):
     if method not in ('GET', 'HEAD'):
         return _send(start_response, '405 Method Not Allowed', 'not allowed\n', 'text/plain; charset=utf-8')
 
-    for app in ('tot', 'pca', 'tidy', 'den'):
+    for app in ('tot', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey'):
         if path in ('/%s/install.sh' % app, '/%s/install.ps1' % app):
             text = installer(app, path.rsplit('.', 1)[1], environ)
             if text is not None:
@@ -265,13 +342,17 @@ def application(environ, start_response):
     pages = {'/': ('home', 'home'), '/index.html': ('home', 'home'), '/tot': ('tot', 'tot'), '/tot/': ('tot', 'tot'),
              '/pca': ('pca', 'pca'), '/pca/': ('pca', 'pca'), '/tidy': ('tidy', 'tidy'), '/tidy/': ('tidy', 'tidy'),
              '/den': ('den', 'den'), '/den/': ('den', 'den')}
+    for name in ('scout', 'roomy', 'hey'):
+        pages['/' + name] = pages['/%s/' % name] = (name, name)
+    for p, name in (('/start', 'start'), ('/new', 'new')):
+        pages[p] = pages[p + '/'] = (name, name)
     if path in pages:
         name, here = pages[path]
         page = _read('pages', name + '.html')
         if page is not None:
             return _send(start_response, '200 OK', with_nav(fill(page, environ), here))
     if path == '/versions.json':  # what pca compares against to keep everything up to date
-        body = json.dumps({app: version(app) for app in ('gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den')})
+        body = json.dumps({app: version(app) for app in APPS if version(app) != '?'})
         return _send(start_response, '200 OK', body, 'application/json')
     if path == '/robots.txt':
         return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /api\nDisallow: /__check\n', 'text/plain; charset=utf-8')

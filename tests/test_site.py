@@ -79,6 +79,30 @@ class Site(unittest.TestCase):
         self.assertEqual(code, 404)
         self.assertIn(b'psnav', body)
 
+    def test_new_apps_and_guides(self):
+        for app, mascot in (('scout', 'Pip'), ('roomy', 'Shelly'), ('hey', 'Biscuit')):
+            text = self.page('/' + app, app)
+            self.assertIn('https://djp7.pythonanywhere.com/%s/install.sh' % app, text)
+            self.assertIn('"%s":{"name":"%s"' % (app, mascot), text)
+            self.page('/%s/' % app, app)
+            code, _, body = call('/%s/install.sh' % app)
+            self.assertEqual(code, 200)
+            self.assertIn(('%s_HUB="${%s_HUB:-https://djp7.pythonanywhere.com}"' % (app.upper(), app.upper())).encode(), body)
+            self.assertIn(('dpatel7-dev/%s' % app).encode(), body)
+        start = self.page('/start', 'start')
+        self.assertIn('Your first time in Terminal', start)
+        self.assertIn('pigeon home', start)
+        new = self.page('/new', 'new')
+        self.assertRegex(new, r'<article class="news" data-app="scout">')
+        self.assertIn('<b>', new, 'changelog bold becomes HTML')
+        self.assertNotIn('**', new)
+        home = self.page('/', None)
+        self.assertIn('href="/start"', home)
+        self.assertIn('class="news"', home)
+        v = json.loads(call('/versions.json')[2])
+        for app in ('scout', 'roomy', 'hey', 'tidy', 'pigeon'):
+            self.assertIn(app, v)
+
     def test_installers_remember_this_site(self):
         for path, line in [
             ('/install.sh', 'GOSSIP_HUB="${GOSSIP_HUB:-https://djp7.pythonanywhere.com}"'),
@@ -128,7 +152,7 @@ class Site(unittest.TestCase):
         code, h, body = call('/versions.json')
         self.assertEqual(code, 200)
         v = json.loads(body)
-        self.assertEqual(set(v), {'gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den'})
+        self.assertEqual(set(v), {'gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey'})
         self.assertTrue(all(isinstance(x, str) and x.count('.') == 2 for x in v.values()))
 
     def test_only_get_for_our_pages(self):

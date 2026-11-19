@@ -30,12 +30,15 @@ SITE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PARENT = os.path.dirname(SITE)
 
 COPIES = {
-    'gossip': (['gossip'], ['hub/gossip_hub.py', 'site/index.html', 'install.sh', 'install.ps1', 'package.json']),
-    'pigeon': (['pigeon'], ['server/pigeon_server.py', 'web/index.html', 'src/qr.js', 'install.sh', 'install.ps1', 'package.json']),
-    'tot': (['Tree-Of-Thought', 'tree-of-thought'], ['install.sh', 'install.ps1', 'package.json']),
-    'pca': (['Project-CLI-Access', 'project-cli-access'], ['install.sh', 'install.ps1', 'package.json']),
-    'tidy': (['tidy'], ['install.sh', 'install.ps1', 'package.json']),
-    'den': (['den', 'Den'], ['install.sh', 'install.ps1', 'package.json']),
+    'gossip': (['gossip'], ['hub/gossip_hub.py', 'site/index.html', 'install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'pigeon': (['pigeon'], ['server/pigeon_server.py', 'web/index.html', 'src/qr.js', 'install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'tot': (['Tree-Of-Thought', 'tree-of-thought'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'pca': (['Project-CLI-Access', 'project-cli-access'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'tidy': (['tidy', 'Tidy'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'den': (['den', 'Den'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'scout': (['scout'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'roomy': (['roomy'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'hey': (['hey'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
 }
 
 ART = r"""

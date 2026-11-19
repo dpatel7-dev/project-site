@@ -1,6 +1,6 @@
 {
   "name": "project-cli-access",
-  "version": "1.4.0",
+  "version": "1.6.0",
   "description": "One command for every project: gossip, Tree of Thought, pigeon, tidy and den.",
   "bin": { "pca": "bin/pca.js" },
   "scripts": { "test": "node --test", "start": "node bin/pca.js" },
