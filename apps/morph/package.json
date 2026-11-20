@@ -1,0 +1,28 @@
+{
+  "name": "morph",
+  "version": "1.0.0",
+  "description": "Convert any file to any other: about 2,000 conversions between 127 formats, PDF tools and more. Runs on your own computer and opens in its own window. Luma the jellyfish keeps you company.",
+  "bin": { "morph": "bin/morph.js" },
+  "scripts": {
+    "test": "node --test",
+    "start": "node bin/morph.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": "github:dpatel7-dev/morph",
+  "files": [
+    "bin",
+    "src",
+    "app.py",
+    "youtube.py",
+    "converters",
+    "core",
+    "static",
+    "requirements.txt",
+    "install.sh",
+    "install.ps1",
+    "README.md",
+    "CHANGELOG.md"
+  ]
+}

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.7.0
+- New: **morph** (Luma the jellyfish): convert any file to any other, right on your computer: about 2,000 conversions between 127 formats, plus PDF tools. It opens in its own window. morph needs Python 3; the first start sets it up and takes a few minutes.
+
 ## 1.6.0
 - Three new projects, each with its own mascot:
   - **scout** (Pip the owl): ask anything; it searches the web, reads the best pages and explains what it found, with links to every source.

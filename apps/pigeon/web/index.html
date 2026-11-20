@@ -1482,8 +1482,11 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
         return '<tr style="border-top:1px dashed var(--border)"><td style="padding:.45em 1ch .45em 0"><b>' + esc(n.nest) + '</b>' + (n.owner ? ' <span class="badge">you</span>' : '') + '<div class="small">' + n.files + ' files · last seen ' + ago(n.seen) + '</div></td>' +
           '<td style="padding:.45em 1ch;white-space:nowrap">' + bar(n.limit ? n.used / n.limit : 0) + '<div class="small">' + size(n.used) + ' of ' + size(n.limit) + '</div></td>' +
           '<td style="padding:.45em 0;text-align:right;white-space:nowrap">' + (n.owner ? '' : '<button class="btn" data-lim="' + esc(n.nest) + '">Room…</button> <button class="btn danger" data-rm="' + esc(n.nest) + '">Remove</button>') + '</td></tr>';
-      }).join('') + '</table></div><div class="acts"><button class="btn primary" data-x>Done</button></div>';
+      }).join('') + '</table></div>' +
+      '<label class="check" style="margin:14px 0 0;color:var(--ink)"><input type="checkbox" data-open' + (r.signups !== 'closed' ? ' checked' : '') + '> Anyone can make a nest on this site</label><div class="small">' + (r.signups !== 'closed' ? 'New people can make their own nest from the sign-in page.' : 'Only the nests already here can sign in.') + '</div>' +
+      '<div class="acts"><button class="btn primary" data-x>Done</button></div>';
     body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+    body.querySelector('[data-open]').onchange = function () { call('people', { do: 'signups', open: this.checked }).then(function (x) { toast(x.signups === 'open' ? 'Anyone can make a nest now.' : 'No new nests for now.'); peopleSheet(x); }, alertErr); };
     body.querySelectorAll('[data-lim]').forEach(function (b) {
       b.onclick = function () {
         var who = b.dataset.lim;

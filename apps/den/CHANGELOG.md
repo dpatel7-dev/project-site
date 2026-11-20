@@ -1,5 +1,10 @@
 # What's new in den
 
+
+## 2.1.0
+- **A living pixel forest behind den.** With the dark colours (Ember, Dusk, Moss) it's night: stars twinkle, the moon glows, fireflies drift and a shooting star goes by now and then. With the light colours (Daylight, Frost) it's day: the sun, clouds drifting past, falling leaves and butterflies. The trees sway in the wind, birds fly off, and sometimes a fox (or a deer, or a rabbit) wanders through.
+- It holds still while you type, so typing stays quick, and it's hidden when glass is turned off.
+
 ## 2.0.0
 A whole new den: everything a big code editor does, still made for learning.
 - **A new look**: see-through panes over a soft, glowing background, a colour for every part (files amber, search sky, changes green, outline violet, Ember coral), drawn icons, and five themes: Ember, Dusk, Moss, Daylight and Frost.

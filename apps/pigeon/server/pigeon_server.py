@@ -102,6 +102,7 @@ class Pigeon:
             CREATE TABLE IF NOT EXISTS shares (code TEXT PRIMARY KEY, file TEXT, nest TEXT, expires INTEGER, hits INTEGER DEFAULT 0);
             CREATE TABLE IF NOT EXISTS fails (key TEXT, at INTEGER);
             DROP TABLE IF EXISTS invites;
+            CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
         ''')
         # newer columns (older pigeon sites get them added in place)
         for table, col, kind in [('nests', 'owner', 'INTEGER DEFAULT 0'), ('nests', 'quota', 'INTEGER DEFAULT 0'), ('tokens', 'did', 'TEXT'), ('files', 'kind', "TEXT DEFAULT 'file'"),
@@ -114,8 +115,20 @@ class Pigeon:
             first = self.db.execute('SELECT name FROM nests ORDER BY made LIMIT 1').fetchall()
             if first:
                 self.db.execute('UPDATE nests SET owner = 1 WHERE name = ?', (first[0][0],))
+        # Who can make a nest is the owner's choice, made in the app (People and space) and kept
+        # here. pigeon 2.5 opened every site once, as asked; after that the owner's switch decides.
+        if not self._setting('signups_opened_once'):
+            self.db.execute("INSERT OR REPLACE INTO settings VALUES ('signups', 'open')")
+            self.db.execute("INSERT OR REPLACE INTO settings VALUES ('signups_opened_once', '1')")
+        saved = self._setting('signups')
+        if saved in ('open', 'closed'):
+            self.signups = saved
         self._swept = 0
         self._pages = {}
+
+    def _setting(self, key):
+        r = self.db.execute('SELECT value FROM settings WHERE key = ?', (key,)).fetchall()
+        return r[0][0] if r else None
 
     # ── storage ─────────────────────────────────────────────────────────────
     def q(self, sql, *args):
@@ -258,6 +271,9 @@ class Pigeon:
             raise Err('403 Forbidden', "Only this site's owner can see this.")
         act = m.get('do')
         who = str(m.get('nest') or '').strip().lower()
+        if act == 'signups':
+            self.signups = 'open' if m.get('open') else 'closed'
+            self.q("INSERT OR REPLACE INTO settings VALUES ('signups', ?)", self.signups)
         if act in ('limit', 'remove'):
             r = self.one('SELECT owner FROM nests WHERE name = ?', who)
             if not r:
@@ -283,7 +299,7 @@ class Pigeon:
                          'files': n, 'made': r['made'], 'seen': seen})
         # (no disk-free figure: on shared hosts like PythonAnywhere it shows the whole
         # server's disk, not your own allowance, so it would only mislead)
-        return {'nests': rows, 'used': self.used(), 'quota': self.quota, 'nestDefault': self.nest_default}
+        return {'nests': rows, 'used': self.used(), 'quota': self.quota, 'nestDefault': self.nest_default, 'signups': self.signups}
 
     def _row(self, r):
         return {'id': r['id'], 'size': r['size'], 'chunks': r['chunks'], 'meta': r['meta'], 'wrapped': r['wrapped'],

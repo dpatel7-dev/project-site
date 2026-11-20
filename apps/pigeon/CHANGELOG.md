@@ -1,6 +1,11 @@
 # Changelog
 
 
+
+## 2.5.0
+- **Anyone can make a nest on the website now.** New people click "Make a nest" on the sign-in page.
+- The site's owner has a switch for it in **People and space** (your account menu): "Anyone can make a nest on this site". It's kept in pigeon itself, so it survives updates.
+
 ## 2.4.0
 - **A new look for pigeon in the browser.** A calm dashboard: a soft grey sidebar (My nest, Recent, Starred, Devices, Shared links, Trash) with your storage as a row of coloured pixels, a white workspace with clean cards, and one colourful strip of pixel art with Coo flying through it. Light and dark.
 - **More ways to open your nest, all with the same page.** "Other ways to open it" (in the sidebar and your account menu) lists them:
