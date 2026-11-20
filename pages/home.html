@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>djp7 - little apps you open by typing one word</title>
-<meta name="description" content="Small, friendly apps that run in your Mac's Terminal: ask anything (scout), chat (gossip), many AIs (Tree of Thought), your own drive (pigeon), tidy a folder (tidy), free up space (roomy), learn to code (den), get any command in plain words (hey), and convert any file (morph). One command installs them all.">
+<meta name="description" content="Small, friendly apps that run in your Mac's Terminal: ask anything (scout), chat (gossip), many AIs (Tree of Thought), your own drive (pigeon), tidy a folder (tidy), free up space (roomy), learn to code (den), get any command in plain words (hey), convert any file (morph), and block ads on your whole Mac (shoo). One command installs them all.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
@@ -175,7 +175,7 @@
   </section>
 
   <footer>
-    Source code: <a href="https://github.com/dpatel7-dev/gossip">gossip</a>, <a href="https://github.com/dpatel7-dev/Tree-Of-Thought">Tree of Thought</a>, <a href="https://github.com/dpatel7-dev/pigeon">pigeon</a>, <a href="https://github.com/dpatel7-dev/Tidy">tidy</a>, <a href="https://github.com/dpatel7-dev/Den">den</a>, <a href="https://github.com/dpatel7-dev/scout">scout</a>, <a href="https://github.com/dpatel7-dev/roomy">roomy</a>, <a href="https://github.com/dpatel7-dev/hey">hey</a>, <a href="https://github.com/dpatel7-dev/morph">morph</a>, <a href="https://github.com/dpatel7-dev/Project-CLI-Access">Project CLI Access</a> and <a href="https://github.com/dpatel7-dev/project-site">this website</a>.
+    Source code: <a href="https://github.com/dpatel7-dev/gossip">gossip</a>, <a href="https://github.com/dpatel7-dev/Tree-Of-Thought">Tree of Thought</a>, <a href="https://github.com/dpatel7-dev/pigeon">pigeon</a>, <a href="https://github.com/dpatel7-dev/Tidy">tidy</a>, <a href="https://github.com/dpatel7-dev/Den">den</a>, <a href="https://github.com/dpatel7-dev/scout">scout</a>, <a href="https://github.com/dpatel7-dev/roomy">roomy</a>, <a href="https://github.com/dpatel7-dev/hey">hey</a>, <a href="https://github.com/dpatel7-dev/morph">morph</a>, <a href="https://github.com/dpatel7-dev/shoo">shoo</a>, <a href="https://github.com/dpatel7-dev/Project-CLI-Access">Project CLI Access</a> and <a href="https://github.com/dpatel7-dev/project-site">this website</a>.
   </footer>
 </main>
 
@@ -185,6 +185,7 @@
   const ORIGIN = location.origin;
   const APPS = [
     { id: 'scout', name: 'scout', v: '{{scout_version}}', fresh: true, c: '#7c9cff', line: 'Ask anything. It searches the web and explains the answer, with links to every source.', want: ['Ask a question', 'and get a clear answer'] },
+    { id: 'shoo', name: 'shoo', v: '{{shoo_version}}', fresh: true, c: '#d9a877', line: 'Blocks ads on your whole Mac: Google\'s full-page ads, banners, trackers, and YouTube\'s ads.', want: ['Block ads', 'on every site, YouTube too'] },
     { id: 'morph', name: 'morph', v: '{{morph_version}}', fresh: true, c: '#d39cf5', line: 'Turn any file into any other: videos, songs, photos, documents, PDFs. Right on your computer.', want: ['Convert a file', 'photo, video, PDF, anything'] },
     { id: 'gossip', name: 'gossip', v: '{{gossip_version}}', c: '#7cc4ff', line: 'Private chat with friends: messages, calls and files, locked so only you two can read them.', want: ['Chat with friends', 'messages, calls, files'] },
     { id: 'tot', name: 'tree of thought', v: '{{tot_version}}', c: '#8fd16a', line: 'Talk to lots of free AIs in one place. Ask one, or all of them at once.', want: ['Talk to AI', 'lots of free ones at once'] },

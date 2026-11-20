@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.8.0
+- New: **shoo** (Bramble the hedgehog): blocks ads on your whole Mac. Google's full-page ads, banners, pop-ups and trackers in every browser and app, and the ads on YouTube. It asks an administrator first and won't change a Mac a school manages.
+
 ## 1.7.0
 - New: **morph** (Luma the jellyfish): convert any file to any other, right on your computer: about 2,000 conversions between 127 formats, plus PDF tools. It opens in its own window. morph needs Python 3; the first start sets it up and takes a few minutes.
 

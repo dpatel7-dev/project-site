@@ -40,6 +40,7 @@ COPIES = {
     'roomy': (['roomy'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     'hey': (['hey'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     'morph': (['morph'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'shoo': (['shoo'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
 }
 
 ART = r"""

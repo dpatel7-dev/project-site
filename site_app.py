@@ -56,14 +56,15 @@ PROJECTS = [
     ('roomy', '/roomy', 'roomy', '#ff7a59'),
     ('hey', '/hey', 'hey', '#f2c14e'),
     ('morph', '/morph', 'morph', '#d39cf5'),
+    ('shoo', '/shoo', 'shoo', '#d9a877'),
     ('pca', '/pca', 'pca', '#d9d4e8'),
 ]
 
-APPS = ('gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph')
+APPS = ('gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph', 'shoo')
 # newest news first: the order "what's new" lists the apps in (move an app up when it changes)
-NEWS_ORDER = ('morph', 'scout', 'den', 'pigeon', 'pca', 'roomy', 'hey', 'tidy', 'tot', 'gossip')
+NEWS_ORDER = ('shoo', 'morph', 'scout', 'den', 'pigeon', 'pca', 'roomy', 'hey', 'tidy', 'tot', 'gossip')
 NAMES = {'gossip': 'gossip', 'tot': 'Tree of Thought', 'pigeon': 'pigeon', 'pca': 'Project CLI Access', 'tidy': 'tidy',
-         'den': 'den', 'scout': 'scout', 'roomy': 'roomy', 'hey': 'hey', 'morph': 'morph'}
+         'den': 'den', 'scout': 'scout', 'roomy': 'roomy', 'hey': 'hey', 'morph': 'morph', 'shoo': 'shoo'}
 
 _cache = {}
 
@@ -217,6 +218,7 @@ def fill(page, environ, extra=None):
         'roomy_version': version('roomy'),
         'hey_version': version('hey'),
         'morph_version': version('morph'),
+        'shoo_version': version('shoo'),
         'art': _read('pages', 'art.js') or '',
     })
     raw = {'art'}
@@ -279,7 +281,7 @@ def _navved(app, environ, start_response, here):
 
 
 MASCOTS = {'gossip': 'Pebble the penguin', 'tot': 'Rowan the tree', 'pigeon': 'Coo the pigeon', 'tidy': 'Hazel the squirrel', 'den': 'Ember the fox',
-           'scout': 'Pip the owl', 'roomy': 'Shelly the hermit crab', 'hey': 'Biscuit the dog', 'morph': 'Luma the jellyfish'}
+           'scout': 'Pip the owl', 'roomy': 'Shelly the hermit crab', 'hey': 'Biscuit the dog', 'morph': 'Luma the jellyfish', 'shoo': 'Bramble the hedgehog'}
 
 
 def check_page(environ, start_response, path):
@@ -335,7 +337,7 @@ def application(environ, start_response):
     if method not in ('GET', 'HEAD'):
         return _send(start_response, '405 Method Not Allowed', 'not allowed\n', 'text/plain; charset=utf-8')
 
-    for app in ('tot', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph'):
+    for app in ('tot', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph', 'shoo'):
         if path in ('/%s/install.sh' % app, '/%s/install.ps1' % app):
             text = installer(app, path.rsplit('.', 1)[1], environ)
             if text is not None:
@@ -344,7 +346,7 @@ def application(environ, start_response):
     pages = {'/': ('home', 'home'), '/index.html': ('home', 'home'), '/tot': ('tot', 'tot'), '/tot/': ('tot', 'tot'),
              '/pca': ('pca', 'pca'), '/pca/': ('pca', 'pca'), '/tidy': ('tidy', 'tidy'), '/tidy/': ('tidy', 'tidy'),
              '/den': ('den', 'den'), '/den/': ('den', 'den')}
-    for name in ('scout', 'roomy', 'hey', 'morph'):
+    for name in ('scout', 'roomy', 'hey', 'morph', 'shoo'):
         pages['/' + name] = pages['/%s/' % name] = (name, name)
     for p, name in (('/start', 'start'), ('/new', 'new')):
         pages[p] = pages[p + '/'] = (name, name)
