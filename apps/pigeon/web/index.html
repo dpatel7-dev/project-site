@@ -80,6 +80,36 @@ details.get summary:hover { color: var(--ink); }
 code.cmd { display: block; font: .88em/1.5 var(--mono); background: var(--panel); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; margin: 6px 0 12px; overflow-wrap: anywhere; user-select: all; color: var(--ink); }
 .share-preview { display: block; max-width: 100%; max-height: 50vh; border-radius: 10px; margin: 16px auto 0; border: 1px solid var(--border); }
 
+/* the owner's sheet */
+.owner-part { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.owner-part > b { display: block; margin-bottom: 4px; }
+.barn { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; margin-top: 10px; color: var(--ink); }
+.barn .dot { width: 8px; height: 8px; border-radius: 2px; background: var(--ok); }
+.barn .dot.off { background: var(--rose); }
+.barn .nm small { display: block; color: var(--rose); }
+.barn .meter { grid-column: 2 / -1; margin-top: 2px; }
+
+/* Rewind: what changed */
+.diff { align-self: start; justify-self: stretch; font: .86em/1.55 var(--mono); padding: 0 0 24px; }
+.diffhead { padding: 12px 18px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 0; }
+.hunk { padding: 6px 18px; color: var(--dim); background: var(--panel); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-top: 10px; font-family: var(--sans); font-size: .9em; }
+.dl { display: grid; grid-template-columns: 44px 44px 18px minmax(0, 1fr); background: var(--bg); }
+.dl .ln { color: var(--faint); text-align: right; padding-right: 8px; user-select: none; }
+.dl .sg { color: var(--dim); user-select: none; }
+.dl code { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.dl.add { background: color-mix(in srgb, var(--ok) 13%, var(--bg)); }
+.dl.del { background: color-mix(in srgb, var(--rose) 12%, var(--bg)); }
+.dl.add .sg { color: var(--ok); } .dl.del .sg { color: var(--rose); }
+.vers { display: inline-flex; align-items: center; gap: 3px; color: var(--violet); }
+.vers svg { width: 12px; height: 12px; }
+
+/* a drop box page */
+.drop-zone { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 28px 16px; border: 2px dashed var(--border); border-radius: 12px; color: var(--dim); cursor: pointer; text-align: center; background: var(--panel); }
+.drop-zone svg { width: 26px; height: 26px; color: var(--accent); }
+.drop-zone b { color: var(--ink); font-size: 1.05rem; }
+.drop-zone.over, .drop-zone:hover { border-color: var(--accent); background: var(--sel); }
+.dbnote { margin: -6px 0 16px; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 8px 8px 0; white-space: pre-wrap; }
+
 /* ── the app: the sidebar, and the workspace beside it ── */
 .app { height: calc(100% - var(--site-nav, 0px)); display: grid; grid-template-columns: 248px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
 .side { grid-row: 1 / -1; grid-column: 1; display: flex; flex-direction: column; gap: 2px; padding: 14px 12px 12px; min-height: 0; overflow: auto; border-right: 1px solid var(--border); background: var(--canvas); }
@@ -301,6 +331,18 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
   </div>
 </section>
 
+<!-- someone's drop box: send them files, no account -->
+<section id="dropView" class="center" hidden>
+  <div class="card"><canvas class="band" aria-hidden="true"></canvas>
+    <div class="hello"><canvas class="coo" width="20" height="16" aria-hidden="true"></canvas><div><b id="dbTitle">A drop box</b><span id="dbInfo">Opening…</span></div></div>
+    <p id="dbNote" class="dbnote" hidden></p>
+    <label class="drop-zone" id="dbZone" hidden><input type="file" id="dbPick" multiple hidden><svg class="i"><use href="#i-up"/></svg><b>Drop files here</b><span>or click to choose them</span></label>
+    <label class="field" id="dbNameRow" hidden style="margin-top:14px"><span>Your name <small style="display:inline;margin:0">(so they know who it's from)</small></span><input id="dbName" maxlength="60" autocomplete="name"></label>
+    <div class="tlist" id="dbList" style="padding:0;max-height:none"></div>
+    <p class="small" style="margin-top:16px">Each file is locked in this browser with the box's key before it leaves, so only the person who made this box can open it. Not even the website can.</p>
+  </div>
+</section>
+
 <!-- open or make a nest -->
 <section id="loginView" class="center" hidden>
   <div class="card"><canvas class="band" aria-hidden="true"></canvas>
@@ -335,6 +377,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     <div class="group">Sharing</div>
     <button class="nav" data-view="devices"><svg class="i"><use href="#i-devices"/></svg>Devices<span class="count" id="inboxCount" hidden></span></button>
     <button class="nav" data-view="links"><svg class="i"><use href="#i-link"/></svg>Shared links</button>
+    <button class="nav" data-view="boxes"><svg class="i"><use href="#i-tray"/></svg>Drop boxes</button>
     <button class="nav" data-view="trash"><svg class="i"><use href="#i-trash"/></svg>Trash</button>
     <div class="group">More</div>
     <button class="nav" id="waysBtn"><svg class="i"><use href="#i-browser"/></svg>Other ways to open it</button>
@@ -413,11 +456,17 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
   <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></symbol>
   <symbol id="i-browser" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="M3 9h18M6.5 6.8h.01M9 6.8h.01"/></symbol>
   <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></symbol>
+  <symbol id="i-tray" viewBox="0 0 24 24"><path d="M3.5 13.5 6 5.5h12l2.5 8"/><path d="M3.5 13.5V18a1.5 1.5 0 0 0 1.5 1.5h14a1.5 1.5 0 0 0 1.5-1.5v-4.5h-5a3.5 3.5 0 0 1-7 0z"/></symbol>
+  <symbol id="i-rewind" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.5 4v4.5H8"/><path d="M12 8v4.2l2.8 1.8"/></symbol>
+  <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6.5h14M5 11h14M5 15.5h9"/><path d="m16 18 2.5 2.5L22 15"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></symbol>
   <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
   <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
 </svg>
 
 <script>/*PIGEON_QR*/</script>
+<script>/*PIGEON_WIRE*/</script>
+<script>/*PIGEON_DIFF*/</script>
 <script>
 (function () {
   'use strict';
@@ -556,25 +605,167 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     if (store && store.did) return store.did;
     try { var d = localStorage.getItem('pigeon-did'); if (/^[a-f0-9]{16}$/.test(d || '')) return d; d = hex(crypto.getRandomValues(new Uint8Array(8))); localStorage.setItem('pigeon-did', d); return d; } catch (e) { return hex(crypto.getRandomValues(new Uint8Array(8))); }
   }
+  // Every request travels sealed (src/wire.js): the site sees one locked blob per request.
+  var wire = null;
+  function getWire() {
+    if (wire || !C.wire || !window.PigeonWire) return wire;
+    wire = new PigeonWire.Wire({ url: API + 'w', serverKey: C.wire });
+    return wire;
+  }
+  function gone() { keep(null); store = null; show('login'); }
+  /** Ask the site something: call('list', {}), or call('piece_get', { id, n }, { wantRaw: true }) for bytes. */
   function call(what, body, opts) {
     opts = opts || {};
+    var w = getWire();
+    var token = store && store.token && opts.auth !== false ? store.token : undefined;
+    if (!w) return plainCall(what, body, opts, token);
+    return w.call(what, body || {}, { token: token, raw: opts.raw, signal: opts.signal, timeout: opts.timeout || 180000 }).then(function (r) {
+      return opts.wantRaw ? r.raw : r.result;
+    }, function (e) {
+      if (e.status === 401 && opts.auth !== false && !C.local) gone();
+      if (e.code === 'net') throw new Error("Couldn't reach pigeon's website. Check your connection.");
+      throw new Error(e.message || 'Something went wrong.');
+    });
+  }
+  /** The plain API (an older pigeon site, through pigeon dashboard). */
+  function plainCall(what, body, opts, token) {
+    var url = API + what, method = 'POST', data = body === undefined ? undefined : JSON.stringify(body);
+    if (what === 'piece_get' || what === 'piece_put') { url = API + 'piece?id=' + body.id + '&n=' + body.n; method = what === 'piece_get' ? 'GET' : 'PUT'; data = opts.raw; }
+    if (what === 'shared') { url = API + 'shared/' + body.code; method = 'GET'; data = undefined; }
+    if (what === 'shared_piece') { url = API + 'shared/' + body.code + '/' + body.n; method = 'GET'; data = undefined; }
     var h = {};
-    if (store && store.token && opts.auth !== false) h.authorization = 'Bearer ' + store.token;
-    if (body !== undefined && !(body instanceof Uint8Array)) h['content-type'] = 'application/json';
-    return fetch(API + what, { method: opts.method || 'POST', headers: h, body: body === undefined ? undefined : body instanceof Uint8Array ? body : JSON.stringify(body), signal: opts.signal })
+    if (token) h.authorization = 'Bearer ' + token;
+    if (method === 'POST') h['content-type'] = 'application/json';
+    return fetch(url, { method: method, headers: h, body: data, signal: opts.signal })
       .catch(function (e) { if (e && e.name === 'AbortError') throw e; throw new Error("Couldn't reach pigeon's website. Check your connection."); })
       .then(function (r) {
-        if ((r.headers.get('content-type') || '').indexOf('octet-stream') >= 0 && r.ok) return r.arrayBuffer();
+        if ((r.headers.get('content-type') || '').indexOf('octet-stream') >= 0 && r.ok) return r.arrayBuffer().then(function (b) { return new Uint8Array(b); });
         return r.json().catch(function () { return {}; }).then(function (j) {
-          if (r.status === 401 && opts.auth !== false && !C.local) { keep(null); store = null; show('login'); }
+          if (r.status === 401 && opts.auth !== false && !C.local) gone();
           if (!r.ok) throw new Error(j.error || (r.status >= 500 ? "pigeon's website had a problem (" + r.status + '). Try again in a moment.' : 'The site answered ' + r.status));
           return j;
         });
       });
   }
 
+  // ── pigeon 3: squeezing, labels, fingerprints, drop-box keys (the same steps as src/crypto.js) ──
+  var SQUEEZE_SKIP = /\.(jpe?g|png|gif|webp|heic|heif|avif|mp4|mov|m4v|webm|mkv|mp3|m4a|aac|ogg|opus|flac|zip|gz|tgz|bz2|xz|zst|7z|rar|dmg|pdf|docx|xlsx|pptx|key|pages|numbers|jar|apk|ipa|woff2?)$/i;
+  function streamThrough(bytes, ts) { return new Response(new Blob([bytes]).stream().pipeThrough(ts)).arrayBuffer().then(function (b) { return new Uint8Array(b); }); }
+  function squeeze(buf, tryIt) {
+    buf = new Uint8Array(buf);
+    var plainOne = function () { var o = new Uint8Array(buf.length + 1); o.set(buf, 1); return o; };
+    if (!tryIt || buf.length < 512 || typeof CompressionStream !== 'function') return Promise.resolve(plainOne());
+    return streamThrough(buf, new CompressionStream('deflate-raw')).then(function (z) {
+      if (z.length > buf.length * 0.95) return plainOne();
+      var o = new Uint8Array(z.length + 1); o[0] = 1; o.set(z, 1); return o;
+    }, plainOne);
+  }
+  function unsqueeze(p) {
+    p = new Uint8Array(p);
+    if (p[0] === 0) return Promise.resolve(p.subarray(1));
+    if (p[0] === 1) {
+      if (typeof DecompressionStream !== 'function') return Promise.reject(new Error('This browser is too old to open squeezed files. Try a newer Chrome, Safari or Firefox.'));
+      return streamThrough(p.subarray(1), new DecompressionStream('deflate-raw'));
+    }
+    return Promise.reject(new Error('A piece of this file is damaged.'));
+  }
+  function sealPiece(fk, n, buf, z, tryIt) {
+    if (!z) return seal(fk, buf, 'pigeon/chunk/' + n);
+    return squeeze(buf, tryIt).then(function (sq) { return seal(fk, sq, 'pigeon/z/' + n); });
+  }
+  function openPiece(fk, n, box, z) {
+    if (!z) return open(fk, box, 'pigeon/chunk/' + n).then(function (b) { return new Uint8Array(b); });
+    return open(fk, box, 'pigeon/z/' + n).then(unsqueeze);
+  }
+  var subKeys = {};
+  function subKey(what, raw) {
+    raw = raw || myKey();
+    var id = b64(raw) + '|' + what;
+    if (!subKeys[id]) subKeys[id] = S.importKey('raw', raw, 'HKDF', false, ['deriveBits']).then(function (k) {
+      return S.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: enc.encode('pigeon'), info: enc.encode(what) }, k, 256);
+    }).then(function (b) { return new Uint8Array(b); });
+    return subKeys[id];
+  }
+  function sealLabel(text, raw) {
+    if (!C.wire) return Promise.resolve(text);
+    return subKey('label', raw).then(function (k) { return seal(k, enc.encode(text), 'pigeon/label'); }).then(function (b) { return 'l1:' + b64(b); });
+  }
+  function openLabel(s) {
+    if (!/^l1:/.test(String(s || ''))) return Promise.resolve(s || '');
+    return subKey('label').then(function (k) { return open(k, unb64(s.slice(3)), 'pigeon/label'); }).then(function (b) { return dec.decode(b); }, function () { return 'a device'; });
+  }
+  /** A file's fingerprint, keyed with your nest key (so the same bytes are never stored twice). */
+  function printOf(file) {
+    var parts = [enc.encode('pigeon-print-1:' + file.size + ':')], n = Math.max(1, Math.ceil(file.size / CHUNK)), i = 0;
+    function next() {
+      if (i >= n) return Promise.resolve();
+      var at = i++ * CHUNK;
+      return file.slice(at, at + CHUNK).arrayBuffer().then(function (b) { return S.digest('SHA-256', b); }).then(function (d) { parts.push(new Uint8Array(d)); return next(); });
+    }
+    return next().then(function () { return subKey('print'); }).then(function (k) { return S.importKey('raw', k, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']); })
+      .then(function (k) { return S.sign('HMAC', k, PigeonWire.concat(parts)); }).then(hex);
+  }
+  var EC = { name: 'ECDH', namedCurve: 'P-256' };
+  function hkdfBytes(ikm, salt, info) {
+    return S.importKey('raw', ikm, 'HKDF', false, ['deriveBits']).then(function (k) { return S.deriveBits({ name: 'HKDF', hash: 'SHA-256', salt: enc.encode(salt), info: info }, k, 256); }).then(function (b) { return new Uint8Array(b); });
+  }
+  function newBoxKeys() {
+    return S.generateKey(EC, true, ['deriveBits']).then(function (kp) {
+      return Promise.all([S.exportKey('raw', kp.publicKey), S.exportKey('jwk', kp.privateKey)]);
+    }).then(function (x) {
+      return seal(myKey(), enc.encode(JSON.stringify({ d: x[1].d })), 'pigeon/box').then(function (priv) { return { pub: b64(x[0]), priv: b64(priv) }; });
+    });
+  }
+  function dropWrap(boxPubB64, fk) {
+    var boxPub = unb64(boxPubB64), eph, ephPub;
+    return S.generateKey(EC, true, ['deriveBits']).then(function (kp) { eph = kp; return S.exportKey('raw', kp.publicKey); }).then(function (raw) {
+      ephPub = new Uint8Array(raw);
+      return S.importKey('raw', boxPub, EC, false, []);
+    }).then(function (pk) { return S.deriveBits({ name: 'ECDH', public: pk }, eph.privateKey, 256); })
+      .then(function (secret) { return hkdfBytes(new Uint8Array(secret), 'pigeon/drop', PigeonWire.concat([ephPub, boxPub])); })
+      .then(function (k) { return seal(k, fk, 'pigeon/drop'); })
+      .then(function (box) { return b64(PigeonWire.concat([ephPub, box])); });
+  }
+  function dropUnwrap(box, wrapped) {
+    var w = unb64(wrapped), ephPub = w.subarray(0, 65), boxPub = unb64(box.pub);
+    return open(myKey(), unb64(box.priv), 'pigeon/box').then(function (p) {
+      var d = JSON.parse(dec.decode(p)).d;
+      return Promise.all([
+        S.importKey('jwk', { kty: 'EC', crv: 'P-256', d: d, x: b64url(boxPub.subarray(1, 33)), y: b64url(boxPub.subarray(33, 65)), ext: true }, EC, false, ['deriveBits']),
+        S.importKey('raw', ephPub, EC, false, []),
+      ]);
+    }).then(function (k) { return S.deriveBits({ name: 'ECDH', public: k[1] }, k[0], 256); })
+      .then(function (secret) { return hkdfBytes(new Uint8Array(secret), 'pigeon/drop', PigeonWire.concat([ephPub, boxPub])); })
+      .then(function (k) { return open(k, w.subarray(65), 'pigeon/drop'); }).then(function (b) { return new Uint8Array(b); });
+  }
+  /** Pieces in a storage barn come straight from (and go straight to) the bucket. */
+  function barnGet(url) {
+    return fetch(url).then(function (r) { if (!r.ok) throw new Error('The storage barn answered ' + r.status + '.'); return r.arrayBuffer(); }, function () { throw new Error("Couldn't reach the storage barn. Check your connection."); });
+  }
+  function barnPut(url, box) {
+    return fetch(url, { method: 'PUT', body: box }).then(function (r) { if (!r.ok) throw new Error('The storage barn said no (' + r.status + ').'); }, function () { throw new Error("Couldn't reach the storage barn. Check your connection."); });
+  }
+  /** The bytes of piece n of a file in your nest. */
+  function pieceFn(f) {
+    if (f.barn) {
+      var urls = null;
+      return function (n) {
+        if (!urls) urls = call('where_get', { id: f.id }).then(function (r) { return r.urls; });
+        return urls.then(function (u) { return barnGet(u[n]); });
+      };
+    }
+    return function (n) { return call('piece_get', { id: f.id, n: n }, { wantRaw: true }); };
+  }
+  /** Send one locked piece (to the site, or a barn). ticket: for drop-box uploads. */
+  function putPiece(r, n, box, ticket) {
+    box = new Uint8Array(box);
+    if (!r.barn) return ticket ? call('box_piece', { id: r.id, n: n, ticket: ticket }, { raw: box, auth: false }) : call('piece_put', { id: r.id, n: n }, { raw: box });
+    return call(ticket ? 'box_where' : 'where', { id: r.id, op: 'put', n: n, len: box.length, ticket: ticket }, { auth: !ticket }).then(function (w) { return barnPut(w.url, box); });
+  }
+
   function show(which) {
     $('shareView').hidden = which !== 'share';
+    $('dropView').hidden = which !== 'drop';
     $('loginView').hidden = which !== 'login';
     $('appView').hidden = which !== 'app';
     if (which === 'app') { $('whoName').textContent = store.nest; $('avatar').textContent = (store.nest || '?').slice(0, 1).toUpperCase(); }
@@ -590,17 +781,79 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     var key;
     try { key = unb64url(location.hash.slice(1)); if (key.length !== 32) throw 0; } catch (e) { key = null; }
     if (!key) { $('shName').textContent = 'This link is missing its key'; $('shInfo').textContent = 'Copy the whole link, including everything after the #.'; }
-    else call('shared/' + shareM[1], undefined, { method: 'GET', auth: false }).then(function (info) {
+    else call('shared', { code: shareM[1] }, { auth: false }).then(function (info) {
       return openMeta(key, info.meta).then(function (meta) {
         $('shName').textContent = meta.name + (meta.kind === 'folder' ? ' (folder)' : '');
         $('shInfo').textContent = size(info.size) + ' · from ' + (meta.from || 'someone') + ' · this link works until ' + new Date(info.expires).toLocaleString();
         $('shGet').disabled = false;
         var job = null;
-        function get() { if (!job) job = download({ chunks: info.chunks, size: info.size, meta: meta, fk: key, piece: function (n) { return call('shared/' + shareM[1] + '/' + n, undefined, { method: 'GET', auth: false }); } }, function (p) { $('shMsg').textContent = Math.round(p * 100) + '%'; }); return job; }
+        function get() { if (!job) job = download({ chunks: info.chunks, size: info.size, meta: meta, fk: key, piece: info.urls ? function (n) { return barnGet(info.urls[n]); } : function (n) { return call('shared_piece', { code: shareM[1], n: n }, { auth: false, wantRaw: true }); } }, function (p) { $('shMsg').textContent = Math.round(p * 100) + '%'; }); return job; }
         if (/^image\//.test(meta.type || '') && info.size < 25e6) get().then(function (blob) { $('shPreview').src = URL.createObjectURL(blob); $('shPreview').hidden = false; $('shMsg').textContent = ''; });
         $('shGet').onclick = function () { get().then(function (blob) { saveBlob(blob, meta); $('shMsg').className = 'msg ok'; $('shMsg').textContent = 'Saved.'; }, function (e) { $('shMsg').className = 'msg err'; $('shMsg').textContent = e.message; }); };
       });
     }).catch(function (e) { $('shName').textContent = "Couldn't open this link"; $('shInfo').textContent = e.message; });
+    return;
+  }
+
+  // ══ someone's drop box ══
+  var dropM = /\/d\/([a-z2-9]{10})$/.exec(location.pathname);
+  if (dropM) {
+    show('drop');
+    var code = dropM[1], box = null;
+    try { $('dbName').value = localStorage.getItem('pigeon-drop-name') || ''; } catch (e) { /* fine */ }
+    call('box_info', { code: code }, { auth: false }).then(function (info) {
+      box = info;
+      document.title = info.title + ' · pigeon';
+      $('dbTitle').textContent = info.title;
+      $('dbInfo').textContent = 'Send files here. Up to ' + size(info.maxFile) + ' · open until ' + new Date(info.expires).toLocaleDateString();
+      if (info.note) { $('dbNote').hidden = false; $('dbNote').textContent = info.note; }
+      $('dbZone').hidden = false; $('dbNameRow').hidden = false;
+    }, function (e) { $('dbTitle').textContent = "This drop box can't take files"; $('dbInfo').textContent = e.message; });
+    var dq = Promise.resolve();
+    function dropFiles(list) {
+      if (!box) return;
+      var who = $('dbName').value.trim();
+      try { localStorage.setItem('pigeon-drop-name', who); } catch (e) { /* fine */ }
+      Array.prototype.forEach.call(list, function (file) {
+        var row = document.createElement('div');
+        row.className = 'tr';
+        row.innerHTML = '<div class="l">' + icon('up') + '<b></b><small>waiting</small></div><div class="bar"><i></i></div>';
+        row.querySelector('b').textContent = file.name;
+        $('dbList').prepend(row);
+        var note = function (t) { row.querySelector('small').textContent = t; };
+        var bar = function (p) { row.querySelector('.bar i').style.width = Math.round(p * 100) + '%'; };
+        dq = dq.then(function () { return dropOne(file, who, note, bar); }).then(function () { row.classList.add('done'); note('Sent'); bar(1); hop(); }, function (e) { row.classList.add('bad'); note(e.message); });
+      });
+    }
+    function dropOne(file, who, note, bar) {
+      if (file.size > box.maxFile) return Promise.reject(new Error('Too big for this box (' + size(box.maxFile) + ' left)'));
+      var fk = crypto.getRandomValues(new Uint8Array(32)), chunks = Math.max(1, Math.ceil(file.size / CHUNK));
+      var meta = { name: file.name, type: file.type || guessType(file.name), kind: 'file', from: who || 'someone', made: file.lastModified || Date.now(), size: file.size, path: [], z: 1 };
+      var tryIt = !SQUEEZE_SKIP.test(file.name);
+      note('locking…');
+      return Promise.all([sealMeta(fk, meta), dropWrap(box.pub, fk)]).then(function (x) {
+        return call('box_start', { code: code, size: file.size, chunks: chunks, meta: x[0], wrapped: x[1], barns: true }, { auth: false });
+      }).then(function (r) {
+        var next = 0, sent = 0;
+        function worker() {
+          if (next >= chunks) return Promise.resolve();
+          var i = next++;
+          return file.slice(i * CHUNK, (i + 1) * CHUNK).arrayBuffer().then(function (buf) {
+            return sealPiece(fk, i, buf, true, tryIt).then(function (b) { return retry(function () { return putPiece(r, i, b, r.ticket); }); })
+              .then(function () { sent += buf.byteLength; bar(sent / Math.max(1, file.size)); note(Math.round((100 * sent) / Math.max(1, file.size)) + '%'); return worker(); });
+          });
+        }
+        var w = []; for (var i = 0; i < Math.min(PAR, chunks); i++) w.push(worker());
+        return Promise.all(w).then(function () { return call('box_finish', { id: r.id, ticket: r.ticket }, { auth: false }); });
+      }).then(function () { box.maxFile = Math.max(0, box.maxFile - file.size); });
+    }
+    $('dbPick').onchange = function () { dropFiles(this.files); this.value = ''; };
+    var zone = $('dbZone');
+    ['dragenter', 'dragover'].forEach(function (t) { zone.addEventListener(t, function (e) { e.preventDefault(); zone.classList.add('over'); }); });
+    ['dragleave', 'drop'].forEach(function (t) { zone.addEventListener(t, function () { zone.classList.remove('over'); }); });
+    zone.addEventListener('drop', function (e) { e.preventDefault(); dropFiles(e.dataTransfer.files); });
+    document.addEventListener('dragover', function (e) { e.preventDefault(); });
+    document.addEventListener('drop', function (e) { e.preventDefault(); if (!e.target.closest('#dbZone')) dropFiles(e.dataTransfer.files); });
     return;
   }
 
@@ -642,7 +895,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
         if (!hi.exists) { setMode(true); $('nestPw').value = pw; $('nestPw2').focus(); throw new Error('There\'s no nest called "' + name + '" yet. To make it, type the password again.'); }
         say('Unlocking…');
         return stretch(pw, hi.salt).then(function (k) {
-          return call('login', { nest: name, proof: k.proof, device: deviceName(), did: myDid() }, { auth: false }).then(function (r) { enter(name, r.token, k.key, r.did); });
+          return sealLabel(deviceName(), k.key).then(function (label) { return call('login', { nest: name, proof: k.proof, device: label, did: myDid() }, { auth: false }); }).then(function (r) { enter(name, r.token, k.key, r.did); });
         });
       }
       if (hi.exists) { setMode(false); $('nestPw').value = pw; throw new Error('"' + name + '" already exists. If it\'s yours, press Open my nest.'); }
@@ -650,7 +903,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
       var salt = b64(crypto.getRandomValues(new Uint8Array(16)));
       say('Making your nest… (locking takes a second)');
       return stretch(pw, salt).then(function (k) {
-        return call('signup', { nest: name, salt: salt, proof: k.proof, device: deviceName(), did: myDid() }, { auth: false }).then(function (r) { enter(name, r.token, k.key, r.did); });
+        return sealLabel(deviceName(), k.key).then(function (label) { return call('signup', { nest: name, salt: salt, proof: k.proof, device: label, did: myDid() }, { auth: false }); }).then(function (r) { enter(name, r.token, k.key, r.did); });
       });
     }).then(done, function (e) { done(); fail('loginMsg')(e); });
   };
@@ -670,7 +923,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
   }
 
   // ══ the drive ══
-  var st = { files: [], used: 0, quota: 0, me: '', owner: false, view: 'nest', path: [], sel: new Set(), layout: 'grid', sort: 'name', q: '', devices: [], links: [], inbox: [], loaded: false };
+  var st = { files: [], used: 0, quota: 0, me: '', owner: false, view: 'nest', path: [], sel: new Set(), layout: 'grid', sort: 'name', q: '', devices: [], links: [], inbox: [], boxes: null, sent: [], loaded: false };
   try { st.layout = localStorage.getItem('pigeon-layout') || 'grid'; st.sort = localStorage.getItem('pigeon-sort') || 'name'; } catch (e) { /* fine */ }
   var timers = {};
   function myKey() { return unb64(store.key); }
@@ -690,8 +943,8 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     return Promise.all(list.map(function (f) {
       return open(mk, unb64(f.wrapped), 'pigeon/key').then(function (fk) {
         fk = new Uint8Array(fk);
-        return openMeta(fk, f.meta).then(function (m) { if (!Array.isArray(m.path)) m.path = []; if (f.kind === 'bundle' && !m.kind) m.kind = 'folder'; f.fk = fk; f.m = m; return f; });
-      }).catch(function () { f.m = { name: '(locked with a different password)', path: [] }; return f; });
+        return Promise.all([openMeta(fk, f.meta), openLabel(f.device)]).then(function (x) { var m = x[0]; if (!Array.isArray(m.path)) m.path = []; if (f.kind === 'bundle' && !m.kind) m.kind = 'folder'; f.fk = fk; f.m = m; f.device = x[1]; return f; });
+      }).catch(function () { f.m = f.box ? { name: '(just arrived in a drop box)', path: ['Drop boxes'] } : { name: '(locked with a different password)', path: [] }; return f; });
     }));
   }
   var refreshing = null;
@@ -705,7 +958,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
       var sig = r.used + '|' + r.files.map(function (f) { return f.id + f.meta.slice(-12) + f.trashed + f.done + f.got; }).join(',');
       if (sig === st.sig && st.loaded) { changed = false; return; }
       st.sig = sig;
-      return unlockAll(r.files).then(function (list) { st.files = list; st.loaded = true; });
+      return unlockAll(r.files).then(adoptDrops).then(function (list) { st.files = list; st.loaded = true; if (r.chores) doChores(); });
     }).then(function () {
       if (!changed) return;
       var pct = st.quota ? Math.min(100, Math.max(st.used ? 4 : 0, (st.used / st.quota) * 100)) : 0; // at least one pixel once something's there
@@ -718,6 +971,38 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     return refreshing;
   }
   document.addEventListener('visibilitychange', function () { if (!document.hidden && store) { refresh(); pollInbox(); } });
+
+  // files people sent to your drop boxes: unlock them with the box's key, then lock them with yours like any other
+  function adoptDrops(list) {
+    var waiting = list.filter(function (f) { return f.box && !f.fk && f.done; });
+    if (!waiting.length) return Promise.resolve(list);
+    return loadBoxes().then(function () {
+      var items = [];
+      return Promise.all(waiting.map(function (f) {
+        var b = st.boxes.filter(function (x) { return x.code === f.box; })[0];
+        if (!b) return null;
+        return dropUnwrap(b, f.wrapped).then(function (fk) {
+          return openMeta(fk, f.meta).then(function (theirs) {
+            var m = Object.assign({}, theirs, { name: String(theirs.name || 'file').slice(0, 200), path: ['Drop boxes', b.title], from: String(theirs.from || 'someone').slice(0, 60) + ' (drop box)', box: b.title });
+            return Promise.all([sealMeta(fk, m), seal(myKey(), fk, 'pigeon/key')]).then(function (x) {
+              items.push({ id: f.id, meta: x[0], wrapped: b64(x[1]) });
+              f.fk = fk; f.m = m; f.meta = x[0]; f.wrapped = b64(x[1]);
+            });
+          });
+        }).catch(function () { /* not this time */ });
+      })).then(function () { return items.length ? call('adopt', { items: items }) : null; }).then(function () { return list; });
+    });
+  }
+  // leftover pieces in storage barns: any signed-in device deletes a few now and then
+  var choring = false;
+  function doChores() {
+    if (choring) return;
+    choring = true;
+    call('chores', {}).then(function (r) {
+      return Promise.all(r.chores.map(function (c) { return fetch(c.url, { method: 'DELETE' }).then(function (x) { return x.ok || x.status === 404 ? c.id : null; }, function () { return null; }); }));
+    }).then(function (ids) { ids = (ids || []).filter(function (x) { return x !== null; }); if (ids.length) return call('chores_done', { ids: ids }); })
+      .catch(function () {}).then(function () { choring = false; });
+  }
 
   // what's in a folder, including folders that only exist because something is inside them
   function inside(folder) {
@@ -761,14 +1046,15 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
   var previewable = function (f) { return f.m && /^(image|video|audio)\/|^text\/|pdf|json|javascript|x-python/.test(f.m.type || '') || /\.(md|txt|py|js|json|csv|html|css|sh)$/i.test((f.m && f.m.name) || ''); };
 
   // ── views ──
-  var TITLES = { recent: 'Recent', starred: 'Starred', devices: 'Devices', links: 'Shared links', trash: 'Trash', search: 'Search' };
+  var TITLES = { recent: 'Recent', starred: 'Starred', devices: 'Devices', links: 'Shared links', boxes: 'Drop boxes', trash: 'Trash', search: 'Search' };
   function go(view, path) {
     st.view = view; st.path = path || []; st.sel.clear();
     if (view !== 'search') { $('q').value = ''; st.q = ''; }
     var h = '#' + view + (view === 'nest' && st.path.length ? '/' + st.path.map(encodeURIComponent).join('/') : '');
     if (location.hash !== h && !C.local) history.pushState(null, '', h);
-    if (view === 'devices') loadDevices();
+    if (view === 'devices') { loadDevices(); loadSent(); }
     if (view === 'links') loadLinks();
+    if (view === 'boxes') loadBoxes().then(render, alertErr);
     render();
     $('content').scrollTop = 0;
   }
@@ -776,10 +1062,11 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     var h = decodeURIComponent(location.hash.slice(1));
     var parts = h.split('/');
     var v = parts[0];
-    if (['nest', 'recent', 'starred', 'devices', 'links', 'trash'].indexOf(v) < 0) v = 'nest';
+    if (['nest', 'recent', 'starred', 'devices', 'links', 'boxes', 'trash'].indexOf(v) < 0) v = 'nest';
     st.view = v; st.path = v === 'nest' ? parts.slice(1).filter(Boolean) : [];
-    if (v === 'devices') loadDevices();
+    if (v === 'devices') { loadDevices(); loadSent(); }
     if (v === 'links') loadLinks();
+    if (v === 'boxes') loadBoxes().then(render, function () {});
   }
   window.addEventListener('popstate', function () { fromHash(); st.sel.clear(); render(); });
   document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { go(b.dataset.view); }); });
@@ -789,12 +1076,13 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     document.querySelectorAll('[data-view]').forEach(function (b) { if (b.dataset.view === st.view) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
     renderCrumbs();
     renderSelbar();
-    $('viewTools').hidden = st.view === 'devices' || st.view === 'links';
+    $('viewTools').hidden = st.view === 'devices' || st.view === 'links' || st.view === 'boxes';
     var c = $('content'), html = '';
     if (st.inbox.length && st.view !== 'trash') html += inboxHtml();
     if (!st.loaded) { c.innerHTML = '<div class="empty">Opening your nest…</div>'; return; }
-    if (st.view === 'devices') html += devicesHtml();
+    if (st.view === 'devices') html += devicesHtml() + sentHtml();
     else if (st.view === 'links') html += linksHtml();
+    else if (st.view === 'boxes') html += boxesHtml();
     else {
       var dirs = [], files = [], showWhere = false, emptyMsg = '';
       if (st.view === 'nest') { var x = inside(st.path); dirs = x.dirs; files = sorted(x.files); emptyMsg = st.path.length ? '<b>This folder is empty</b>Drop files here, or press New.' : '<b>Your nest is empty</b>Drop files anywhere on this page, press New, or send from your computer with <code>pigeon send</code>.'; }
@@ -862,11 +1150,11 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
   }
   function tileHtml(f) {
     var k = kind(f.m), key = 'f:' + f.id;
-    var sub = st.view === 'trash' ? 'deleted ' + ago(f.trashed) : (f.done ? size(f.size) + ' · ' + ago(f.made) : 'still arriving…');
+    var sub = st.view === 'trash' ? 'deleted ' + ago(f.trashed) : (f.done ? size(f.size) + ' · ' + ago(f.made) + (f.vers ? ' · <span class="vers">' + icon('rewind') + (f.vers + 1) + '</span>' : '') : 'still arriving…');
     return '<button class="tile' + (st.sel.has(key) ? ' on' : '') + '" data-k="' + key + '" draggable="true">' +
       '<span class="thumb" data-thumb="' + f.id + '">' + (thumbs.get(f.id) ? '<img alt="" src="' + thumbs.get(f.id) + '">' : '<span class="stamp k-' + k.k + '">' + esc(k.t) + '</span>') + '</span>' +
       '<span class="tick">' + icon('check') + '</span>' + (f.m.star ? '<span class="star">' + icon('star') + '</span>' : '') +
-      '<span class="meta"><span class="nm" title="' + esc(f.m.name) + '">' + esc(f.m.name) + '</span><span class="sub">' + sub + '</span></span></button>';
+      '<span class="meta"><span class="nm" title="' + esc(f.m.name) + '">' + esc(f.m.name) + '</span><span class="sub"' + (f.vers ? ' title="' + (f.vers + 1) + ' versions: right-click › Versions"' : '') + '>' + sub + '</span></span></button>';
   }
   function listHtml(files, where) {
     return '<div class="list"><div class="lhead"><span></span><span>Name</span><span>From</span><span>Size</span><span>' + (st.view === 'trash' ? 'Deleted' : 'Added') + '</span><span></span></div>' + files.map(function (f) {
@@ -887,6 +1175,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     if (e.target.closest('[data-device]')) return deviceAct(e.target.closest('[data-device]'));
     if (e.target.closest('[data-link]')) return linkAct(e.target.closest('[data-link]'));
     if (e.target.closest('[data-inbox]')) return inboxAct(e.target.closest('[data-inbox]'));
+    if (e.target.closest('[data-box]')) return boxAct(e.target.closest('[data-box]'));
     if (!el) { if (st.sel.size) { st.sel.clear(); paintSelection(); } return; }
     var k = el.dataset.k;
     var tick = e.target.closest('.tick');
@@ -960,6 +1249,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
       items.push({ icon: 'down', label: C.local ? 'Save to ' + C.local.saveTo : 'Save to this device', run: function () { act('download', list); } });
       items.push({ icon: 'send', label: 'Send to a device…', run: function () { act('deliver', list); } });
       if (one && !one.dir) items.push({ icon: 'link', label: 'Get a link + QR code', run: function () { act('share', list); } });
+      if (one && !one.dir && C.wire) items.push({ icon: 'rewind', label: one.vers ? 'Versions (' + (one.vers + 1) + ')…' : 'Versions…', run: function () { versionsSheet(one); } });
       items.push('-');
       if (one) items.push({ icon: 'pen', label: 'Rename', run: function () { act('rename', list); } });
       items.push({ icon: 'move', label: 'Move to…', run: function () { act('move', list); } });
@@ -977,6 +1267,9 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
       '-',
       { icon: 'plus', label: 'New folder', run: newFolder },
       { icon: 'pen', label: 'New note', run: function () { noteBox(''); } },
+      '-',
+      { icon: 'text', label: 'Send text to a device', run: function () { textSheet(''); } },
+      { icon: 'tray', label: 'New drop box', run: function () { go('boxes'); newBoxSheet(); } },
     ], at);
   }
   function localStamp(secs) { var d = new Date(), p = function (n) { return String(n).padStart(2, '0'); }; return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + '.' + p(d.getMinutes()) + (secs ? '.' + p(d.getSeconds()) : ''); }
@@ -1090,7 +1383,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
   function mkdirEntry(path) { // one folder (its parents should exist already)
     var fk = crypto.getRandomValues(new Uint8Array(32));
     var meta = { name: path[path.length - 1], kind: 'dir', path: path.slice(0, -1), from: deviceName(), made: Date.now() };
-    return Promise.all([sealMeta(fk, meta), seal(myKey(), fk, 'pigeon/key')]).then(function (x) { return call('start', { dir: true, meta: x[0], wrapped: b64(x[1]), device: deviceName() }); });
+    return Promise.all([sealMeta(fk, meta), seal(myKey(), fk, 'pigeon/key'), sealLabel(deviceName())]).then(function (x) { return call('start', { dir: true, meta: x[0], wrapped: b64(x[1]), device: x[2] }); });
   }
   var made = {};
   function ensureDirs(path) { // every folder down to `path`, made once
@@ -1156,7 +1449,9 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
 
   // ── devices ──
   function loadDevices() {
-    return call('devices', {}).then(function (r) { st.devices = r.devices; if (st.view === 'devices') render(); }, function () {});
+    return call('devices', {}).then(function (r) {
+      return Promise.all(r.devices.map(function (d) { return openLabel(d.name).then(function (n) { d.name = n; return d; }); }));
+    }).then(function (list) { st.devices = list; if (st.view === 'devices') render(); }, function () {});
   }
   function devicesHtml() {
     if (!st.devices.length) return '<div class="empty">Loading your devices…</div>';
@@ -1181,14 +1476,17 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     loadDevices().then(function () {
       var others = st.devices.filter(function (d) { return !d.me; });
       var body = $('dlgBody');
-      body.innerHTML = '<h3>Send to a device</h3><div class="sub">' + (files.length === 1 ? '"' + esc(files[0].m.name) + '"' : files.length + ' files') + ' will land on it by itself the next time it\'s open (in pigeon or in the browser).</div>' +
-        (others.length ? '<div class="tree">' + others.map(function (d, i) { return '<button data-i="' + i + '">' + icon('devices') + esc(d.name) + '<span style="margin-left:auto;font-size:.8rem;color:var(--dim)">' + (Date.now() - d.seen < 120000 ? 'online' : ago(d.seen)) + '</span></button>'; }).join('') + '</div>' : '<p class="small">No other devices yet. Sign in to pigeon on another device first.</p>') +
+      body.innerHTML = '<h3>Send to a device</h3><div class="sub">' + (files.length === 1 ? '"' + esc(files[0].m.name) + '"' : files.length + ' files') + ' will land on it by itself (right away if pigeon is roosting there, or the next time it opens). It stays in your nest too.</div>' +
+        (others.length ? '<div class="tree">' + (others.length > 1 ? '<button data-i="all">' + icon('devices') + '<b>Every other device</b><span style="margin-left:auto;font-size:.8rem;color:var(--dim)">' + others.length + '</span></button>' : '') + others.map(function (d, i) { return '<button data-i="' + i + '">' + icon('devices') + esc(d.name) + '<span style="margin-left:auto;font-size:.8rem;color:var(--dim)">' + (Date.now() - d.seen < 120000 ? 'online' : ago(d.seen)) + '</span></button>'; }).join('') + '</div>' +
+          '<label class="field" style="margin-top:12px"><span>If it doesn\'t come for it</span><select id="dpHours" class="sortsel" style="border:1px solid var(--border);width:100%;padding:8px"><option value="24">give up after a day</option><option value="168" selected>give up after a week</option><option value="720">give up after a month</option></select></label>' : '<p class="small">No other devices yet. Sign in to pigeon on another device first.</p>') +
         '<div class="acts"><button class="btn" data-x>Cancel</button></div>';
       body.querySelectorAll('[data-i]').forEach(function (b) {
         b.onclick = function () {
-          var d = others[Number(b.dataset.i)];
+          var targets = b.dataset.i === 'all' ? others : [others[Number(b.dataset.i)]];
+          var hours = Number($('dpHours').value);
           $('dlg').close();
-          call('deliver', { ids: files.map(function (f) { return f.id; }), to: d.did }).then(function () { toast('On its way to ' + d.name + '.'); hop(); loadDevices(); }, alertErr);
+          call('deliver', { ids: files.map(function (f) { return f.id; }), to: targets.map(function (d) { return d.did; }), hours: hours })
+            .then(function () { toast('On its way to ' + (targets.length === 1 ? targets[0].name : targets.length + ' devices') + '.'); hop(); loadDevices(); loadSent(); }, alertErr);
         };
       });
       body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
@@ -1198,7 +1496,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
   function renameDevice() {
     promptBox('Name this device', 'This is how it shows up in Devices.', deviceName(), 'Save').then(function (n) {
       n = (n || '').trim(); if (!n) return;
-      call('name', { name: n }).then(function () { try { localStorage.setItem('pigeon-device', n); } catch (e) { /* fine */ } toast('Renamed.'); loadDevices(); }, alertErr);
+      sealLabel(n).then(function (label) { return call('name', { name: label }); }).then(function () { try { localStorage.setItem('pigeon-device', n); } catch (e) { /* fine */ } toast('Renamed.'); loadDevices(); }, alertErr);
     });
   }
   var _deviceName = deviceName;
@@ -1210,14 +1508,22 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     clearTimeout(timers.inbox);
     if (!store) return;
     call('inbox', {}).then(function (r) { return unlockAll(r.files); }).then(function (list) {
+      return Promise.all(list.map(function (f) {
+        if (!f.m.clip || f.size > 200000 || !f.fk) return f;
+        var had = st.inbox.filter(function (x) { return x.id === f.id; })[0];
+        if (had && had.text != null) { f.text = had.text; return f; }
+        return getBlob(f).then(function (b) { return b.text(); }).then(function (t) { f.text = t; return f; }, function () { return f; });
+      }));
+    }).then(function (list) {
       var before = st.inbox.length;
       st.inbox = list;
       if (list.length !== before) { render(); if (list.length > before) hop(); }
-      if (C.local) list.forEach(function (f) { if (!autoSaving.has(f.id)) { autoSaving.add(f.id); saveFile(f, [], true); } }); // the computer saves them by itself
+      if (C.local) list.forEach(function (f) { if (!f.m.clip && !autoSaving.has(f.id)) { autoSaving.add(f.id); saveFile(f, [], true); } }); // the computer saves them by itself
     }, function () {}).then(function () { timers.inbox = setTimeout(pollInbox, document.hidden ? 30000 : 6000); });
   }
   function inboxHtml() {
     return '<div class="inbox"><h3>' + icon('send') + st.inbox.length + ' ' + (st.inbox.length === 1 ? 'thing' : 'things') + ' sent to this device</h3>' + st.inbox.map(function (f) {
+      if (f.m.clip) return '<div class="row"><span><b>' + esc(f.text != null ? f.text.slice(0, 120) : 'Some text') + '</b> · from ' + esc(f.m.from || 'another device') + '</span><button class="btn primary" style="padding:7px 12px" data-inbox="copy" data-id="' + f.id + '">' + icon('copy') + 'Copy</button><button class="btn" style="padding:7px 12px" data-inbox="later" data-id="' + f.id + '">Dismiss</button></div>';
       return '<div class="row"><span><b>' + esc(f.m.name) + '</b> · ' + size(f.size) + ' · from ' + esc(f.m.from || f.device || 'another device') + '</span><button class="btn primary" style="padding:7px 12px" data-inbox="save" data-id="' + f.id + '">Save</button><button class="btn" style="padding:7px 12px" data-inbox="later" data-id="' + f.id + '">Later</button></div>';
     }).join('') + '</div>';
   }
@@ -1225,7 +1531,170 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     var f = st.inbox.filter(function (x) { return x.id === b.dataset.id; })[0];
     if (!f) return;
     if (b.dataset.inbox === 'save') saveFile(f, [], true);
-    else call('got', { id: f.id }).then(pollInbox);
+    else if (b.dataset.inbox === 'copy') copyText(f.text || '').then(function () { toast('Copied.'); return call('got', { id: f.id, drop: true }); }, function () { toast("This browser wouldn't copy it: select the text instead."); }).then(pollInbox);
+    else call('got', { id: f.id, drop: !!f.m.clip }).then(pollInbox);
+  }
+
+
+  // ── drop boxes: links anyone can send you files through ──
+  function loadBoxes() { return call('boxes', {}).then(function (r) { st.boxes = r.boxes; return r.boxes; }); }
+  function boxUrl(b) { return SITE + '/d/' + b.code; }
+  function boxesHtml() {
+    var top = '<div class="label">A drop box is a link anyone can send you files through, with no account. Their browser locks each file with the box\'s key, so only you can open it.<button class="btn primary" data-box="new" style="margin-left:auto;padding:6px 12px">' + icon('plus') + 'New drop box</button></div>';
+    if (!st.boxes) return top + '<div class="empty">Loading your drop boxes…</div>';
+    if (!st.boxes.length) return top + '<div class="empty"><canvas class="coo big" width="20" height="16"></canvas><b>No drop boxes yet</b>Make one for homework, photos from a trip, or anything people need to send you.</div>';
+    return top + '<div class="devices">' + st.boxes.map(function (b) {
+      var pct = b.max ? Math.min(1, b.used / b.max) : 0;
+      return '<div class="device"><div class="top"><span class="dot' + (b.open ? '' : ' off') + '">' + icon('tray') + '</span><div style="min-width:0"><b>' + esc(b.title) + '</b><span class="sub">' + b.files + ' ' + (b.files === 1 ? 'file' : 'files') + ' · ' + size(b.used) + ' of ' + size(b.max) + ' · ' + (b.open ? 'open until ' + new Date(b.expires).toLocaleDateString() : 'closed') + '</span></div></div>' +
+        '<div class="meter" style="margin:0"><i style="width:' + Math.round(pct * 100) + '%"></i></div>' +
+        '<div class="acts">' + (b.open ? '<button class="btn primary" data-box="share" data-code="' + b.code + '">' + icon('link') + 'Link + QR</button><button class="btn" data-box="close" data-code="' + b.code + '">Close</button>' : '<button class="btn" data-box="open" data-code="' + b.code + '">Open again</button><button class="btn danger" data-box="delete" data-code="' + b.code + '">Remove</button>') +
+        (b.files ? '<button class="btn" data-box="files" data-code="' + b.code + '">' + icon('folder') + 'Files</button>' : '') + '</div></div>';
+    }).join('') + '</div>';
+  }
+  function boxAct(btn) {
+    var what = btn.dataset.box, b = (st.boxes || []).filter(function (x) { return x.code === btn.dataset.code; })[0];
+    if (what === 'new') return newBoxSheet();
+    if (!b) return;
+    if (what === 'share') return qrSheet(b.title, 'Anyone with this link can send you files until ' + new Date(b.expires).toLocaleDateString() + '. No account needed.', boxUrl(b));
+    if (what === 'files') return go('nest', ['Drop boxes', b.title]);
+    if (what === 'delete') return confirmBox('Remove "' + b.title + '"?', 'The link stops working. Files already sent stay in your nest.', 'Remove').then(function (ok) { if (ok) call('boxes', { do: 'delete', code: b.code }).then(function (r) { st.boxes = r.boxes; render(); }, alertErr); });
+    call('boxes', { do: what, code: b.code }).then(function (r) { st.boxes = r.boxes; render(); toast(what === 'close' ? 'Closed: the link stops working.' : 'Open again for at least a day.'); }, alertErr);
+  }
+  function newBoxSheet() {
+    var body = $('dlgBody');
+    body.innerHTML = '<form method="dialog"><h3>New drop box</h3><div class="sub">A link people can send you files through. You can close it any time.</div>' +
+      '<label class="field"><span>Name</span><input id="bxTitle" maxlength="60" placeholder="Homework, Trip photos…"></label>' +
+      '<label class="field"><span>A note for them <small style="display:inline;margin:0">(optional)</small></span><input id="bxNote" maxlength="280" placeholder="Put your essays here by Friday"></label>' +
+      '<div style="display:flex;gap:12px"><label class="field" style="flex:1"><span>Open for</span><select id="bxDays" class="sortsel" style="border:1px solid var(--border);width:100%;padding:8px"><option value="1">1 day</option><option value="3">3 days</option><option value="7">a week</option><option value="14" selected>2 weeks</option><option value="30">a month</option><option value="90">3 months</option></select></label>' +
+      '<label class="field" style="flex:1"><span>Room</span><select id="bxMb" class="sortsel" style="border:1px solid var(--border);width:100%;padding:8px"><option value="50">50 MB</option><option value="200" selected>200 MB</option><option value="1000">1 GB</option><option value="4000">4 GB</option></select></label></div>' +
+      '<div class="acts"><button class="btn" type="button" data-x>Cancel</button><button class="btn primary">Make it</button></div><div class="msg" id="bxMsg"></div></form>';
+    body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+    body.querySelector('form').onsubmit = function (e) {
+      e.preventDefault();
+      var title = $('bxTitle').value.trim();
+      if (!title) { $('bxTitle').focus(); return; }
+      $('bxMsg').textContent = 'Making a key for it…';
+      newBoxKeys().then(function (k) {
+        return call('boxes', { do: 'new', title: title, note: $('bxNote').value.trim(), days: Number($('bxDays').value), mb: Number($('bxMb').value), pub: k.pub, priv: k.priv });
+      }).then(function (r) {
+        st.boxes = r.boxes; render();
+        var b = r.boxes[0];
+        qrSheet(b.title, 'Your drop box is ready. Send this link to anyone: they need no account.', boxUrl(b));
+      }, function (err) { $('bxMsg').className = 'msg err'; $('bxMsg').textContent = err.message; });
+    };
+    $('dlg').showModal();
+    $('bxTitle').focus();
+  }
+  function qrSheet(title, sub, url) {
+    var body = $('dlgBody');
+    body.innerHTML = '<h3>' + esc(title) + '</h3><div class="sub">' + esc(sub) + ' Point a phone\'s camera at the code.</div><canvas class="qr" id="qr" width="10" height="10"></canvas><div class="url">' + esc(url) + '</div><div class="acts"><button class="btn" data-x>Done</button><button class="btn primary" data-copy>Copy link</button></div>';
+    drawQr($('qr'), url);
+    body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+    var cb = body.querySelector('[data-copy]');
+    cb.onclick = function () { copyText(url).then(function () { cb.textContent = 'Copied'; }, function () { cb.textContent = 'Select the link above'; }); };
+    if (!$('dlg').open) $('dlg').showModal();
+  }
+  function drawQr(cv, text) {
+    var q = window.pigeonQR.encode(text), z = 3, n = q.size + z * 2;
+    cv.width = cv.height = n;
+    var g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, n, n); g.fillStyle = '#000';
+    for (var y = 0; y < q.size; y++) for (var x = 0; x < q.size; x++) if (q.dark(x, y)) g.fillRect(x + z, y + z, 1, 1);
+  }
+
+  // ── what you sent to devices, and whether it landed (receipts) ──
+  function loadSent() {
+    return call('sent', {}).then(function (r) {
+      var mk = myKey();
+      return Promise.all(r.sent.map(function (x) {
+        return open(mk, unb64(x.wrapped), 'pigeon/key').then(function (fk) { return openMeta(new Uint8Array(fk), x.meta); }).then(function (m) { x.m = m; return x; }, function () { x.m = { name: '(a file)' }; return x; });
+      }));
+    }).then(function (list) { st.sent = list; if (st.view === 'devices') render(); }, function () {});
+  }
+  function sentHtml() {
+    if (!st.sent.length) return '';
+    var name = function (did) { var d = st.devices.filter(function (x) { return x.did === did; })[0]; return d ? d.name : 'a device that signed out'; };
+    return '<div class="label" style="margin-top:26px">Sent lately</div><div class="list links">' + st.sent.slice(0, 25).map(function (x) {
+      var k = kind(x.m || {});
+      var state = x.got ? '<span style="color:var(--ok)">landed ' + esc(ago(x.got)) + '</span>' : x.gone === 'expired' ? '<span style="color:var(--rose)">never came for it</span>' : 'on its way';
+      return '<div class="lrow"><span class="mini k-' + k.k + '">' + esc(k.t) + '</span><span class="nm">' + esc(x.m.name) + '</span><span class="c">→ ' + esc(name(x.to)) + '</span><span class="c">' + esc(ago(x.made)) + '</span><span class="c">' + state + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  // ── Rewind: a file's old versions ──
+  function versionsSheet(f) {
+    var body = $('dlgBody');
+    body.innerHTML = '<h3>' + esc(f.m.name) + '</h3><div class="sub">Every time you send a file with the same name to the same folder, the old one is kept here. pigeon keeps the last 20, for 90 days.</div><div class="tree" id="vList"><div class="small">Loading…</div></div><div class="acts"><button class="btn primary" data-x>Done</button></div>';
+    body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+    body.classList.add('wide');
+    $('dlg').addEventListener('close', function once() { body.classList.remove('wide'); $('dlg').removeEventListener('close', once); });
+    if (!$('dlg').open) $('dlg').showModal();
+    call('versions', { id: f.id }).then(function (r) { return unlockAll(r.versions); }).then(function (vs) {
+      var textish = previewable(f) && !/^(image|video|audio)\//.test(f.m.type || '') && !/pdf/.test(f.m.type || '');
+      $('vList').innerHTML = vs.map(function (v, i) {
+        return '<div class="way" style="grid-template-columns:34px minmax(0,1fr) auto;margin-bottom:6px"><span class="ic" style="background:' + (i ? 'var(--faint)' : 'var(--teal)') + '">' + icon(i ? 'rewind' : 'check') + '</span><b>' + (i ? esc(new Date(v.made).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })) : 'Now') + '</b><span>' + size(v.size) + ' · from ' + esc((v.m && v.m.from) || v.device || 'a device') + '</span>' +
+          '<span style="grid-column:3;grid-row:1 / span 2;display:flex;gap:6px">' + (i && textish ? '<button class="btn" data-v="diff" data-i="' + i + '">Compare</button>' : '') + '<button class="btn" data-v="save" data-i="' + i + '">Save</button>' + (i ? '<button class="btn primary" data-v="back" data-i="' + i + '">Bring back</button>' : '') + '</span></div>';
+      }).join('') || '<div class="small">No other versions yet.</div>';
+      $('vList').querySelectorAll('[data-v]').forEach(function (b) {
+        var v = vs[Number(b.dataset.i)];
+        b.onclick = function () {
+          if (b.dataset.v === 'save') return saveFile(Object.assign({}, v, { m: Object.assign({}, v.m, { name: f.m.name }) }), []);
+          if (b.dataset.v === 'diff') { $('dlg').close(); return showDiff(f, v, vs[0]); }
+          b.disabled = true;
+          var m = Object.assign({}, v.m, { name: f.m.name, path: f.m.path, star: f.m.star, made: Date.now(), from: deviceName() });
+          Promise.all([sealMeta(v.fk, m), sealLabel(deviceName())]).then(function (x) { return call('start', { copy: v.id, replaces: f.id, meta: x[0], device: x[1] }); })
+            .then(function () { $('dlg').close(); toast('Brought back the version from ' + ago(v.made) + '. The one it replaced is kept too.'); refresh(); }, alertErr);
+        };
+      });
+    }, function (e) { $('vList').innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+  }
+  function showDiff(f, older, newer) {
+    viewing = null;
+    $('vSave').hidden = true;
+    $('vTitle').textContent = f.m.name + ': ' + ago(older.made) + ' → now';
+    $('vStage').innerHTML = '<div class="small">Comparing…</div>';
+    if (!$('viewerDlg').open) $('viewerDlg').showModal();
+    Promise.all([getBlob(older), getBlob(newer)]).then(function (b) { return Promise.all([b[0].text(), b[1].text()]); }).then(function (t) {
+      var d = PigeonDiff.texts(t[0], t[1]);
+      if (!d) { $('vStage').innerHTML = '<div class="small">These two are too different to show line by line.</div>'; return; }
+      var html = '<div class="diff"><div class="diffhead"><b style="color:var(--ok)">+' + d.added + '</b> <b style="color:var(--rose)">−' + d.removed + '</b> lines</div>';
+      if (!d.hunks.length) html += '<div class="small" style="padding:18px">No changes.</div>';
+      d.hunks.forEach(function (h) {
+        var a = h.aStart, b2 = h.bStart;
+        html += '<div class="hunk">line ' + (a + 1) + '</div>';
+        h.rows.forEach(function (r) {
+          var an = r.t === '+' ? '' : ++a, bn = r.t === '-' ? '' : ++b2;
+          html += '<div class="dl ' + (r.t === '+' ? 'add' : r.t === '-' ? 'del' : '') + '"><span class="ln">' + an + '</span><span class="ln">' + bn + '</span><span class="sg">' + (r.t === ' ' ? '' : r.t === '-' ? '−' : '+') + '</span><code></code></div>';
+        });
+      });
+      $('vStage').innerHTML = html + '</div>';
+      var codes = $('vStage').querySelectorAll('.dl code'), k = 0;
+      d.hunks.forEach(function (h) { h.rows.forEach(function (r) { codes[k++].textContent = r.s; }); });
+    }, function (e) { $('vStage').innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+  }
+
+  // ── a bit of text for another device: it lands on its clipboard ──
+  function textSheet(prefill) {
+    loadDevices().then(function () {
+      var others = st.devices.filter(function (d) { return !d.me; });
+      var body = $('dlgBody');
+      body.innerHTML = '<form method="dialog"><h3>Send text to a device</h3><div class="sub">A link, a code, a message. It lands on the other device\'s clipboard (with pigeon roosting there, or the next time pigeon opens).</div>' +
+        '<label class="field"><textarea id="tText" rows="5" style="width:100%;padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:inherit;font:inherit;resize:vertical" placeholder="https://…"></textarea></label>' +
+        (others.length ? '<label class="field"><span>To</span><select id="tTo" class="sortsel" style="border:1px solid var(--border);width:100%;padding:8px"><option value="all">Every other device (' + others.length + ')</option>' + others.map(function (d, i) { return '<option value="' + i + '">' + esc(d.name) + '</option>'; }).join('') + '</select></label>' : '<p class="small">No other devices yet. Sign in to pigeon on another device first.</p>') +
+        '<div class="acts"><button class="btn" type="button" data-x>Cancel</button>' + (others.length ? '<button class="btn primary">Send</button>' : '') + '</div></form>';
+      $('tText').value = prefill || '';
+      body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+      body.querySelector('form').onsubmit = function (e) {
+        e.preventDefault();
+        var text = $('tText').value;
+        if (!text.trim() || !others.length) return;
+        var pickd = $('tTo').value, targets = pickd === 'all' ? others : [others[Number(pickd)]];
+        $('dlg').close();
+        var first = text.trim().split('\n')[0].replace(/[\\/:*?"<>|]/g, ' ').slice(0, 40).trim() || 'text';
+        upload(new File([text], first + '.txt', { type: 'text/plain', lastModified: Date.now() }), ['Clips'], targets[0], { clip: true, drop: true, hours: 48, more: targets.slice(1) });
+      };
+      $('dlg').showModal();
+      $('tText').focus();
+    });
   }
 
   // ── shared links ──
@@ -1253,7 +1722,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     function worker() {
       if (failed || next >= o.chunks) return Promise.resolve();
       var i = next++;
-      return o.piece(i).then(function (box) { return open(o.fk, box, 'pigeon/chunk/' + i); }).then(function (plain) {
+      return o.piece(i).then(function (box) { return openPiece(o.fk, i, box, o.meta.z); }).then(function (plain) {
         parts[i] = plain; done += plain.byteLength; onP(o.size ? done / o.size : (i + 1) / o.chunks);
         return worker();
       });
@@ -1271,7 +1740,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
   }
   function getBlob(f, job) {
-    return download({ chunks: f.chunks, size: f.size, meta: f.m, fk: f.fk, piece: function (n) { return call('piece?id=' + f.id + '&n=' + n, undefined, { method: 'GET' }); } }, function (p) { if (job) tick(job, p); });
+    return download({ chunks: f.chunks, size: f.size, meta: f.m, fk: f.fk, piece: pieceFn(f) }, function (p) { if (job) tick(job, p); });
   }
   function saveFile(f, sub, fromInbox) {
     if (!f.fk) return;
@@ -1286,32 +1755,59 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
 
   // uploads: one file at a time, PAR pieces in flight
   var upQ = Promise.resolve();
-  function upload(file, folder, to) {
+  function upload(file, folder, to, opts) {
     var job = addJob('up', file.name, file.size);
-    upQ = upQ.then(function () { return ensureDirs(folder); }).then(function () { return sendOne(file, folder, to, job); })
-      .then(function () { finish(job, to ? 'Sent to ' + to.name : 'In your nest'); hop(); refresh(); }, function (e) { failJob(job, e.message); });
-    return upQ;
+    var r = null;
+    upQ = upQ.then(function () { return opts && opts.clip ? null : ensureDirs(folder); }).then(function () { return sendOne(file, folder, to, job, opts); })
+      .then(function (x) {
+        r = x;
+        var more = opts && opts.more;
+        if (more && more.length && x) return call('deliver', { ids: [x.id], to: more.map(function (d) { return d.did; }), hours: opts.hours });
+      })
+      .then(function () {
+        finish(job, to ? 'On its way to ' + (opts && opts.more && opts.more.length ? (opts.more.length + 1) + ' devices' : to.name) : job.copied ? 'Already there: nothing to upload' : job.version ? 'New version (the old one is kept)' : 'In your nest');
+        hop(); refresh();
+      }, function (e) { failJob(job, e.message); });
+    return upQ.then(function () { return r; });
   }
-  function sendOne(file, folder, to, job) {
+  function sendOne(file, folder, to, job, opts) {
+    opts = opts || {};
     var fk = crypto.getRandomValues(new Uint8Array(32));
     var chunks = Math.max(1, Math.ceil(file.size / CHUNK));
+    var z = !!C.wire;
     var meta = { name: file.name, size: file.size, type: file.type || guessType(file.name), kind: 'file', from: deviceName(), made: file.lastModified || Date.now(), path: folder };
-    return Promise.all([sealMeta(fk, meta), seal(myKey(), fk, 'pigeon/key')]).then(function (x) {
-      return call('start', { size: file.size, chunks: chunks, meta: x[0], wrapped: b64(x[1]), device: deviceName(), to: to ? to.did : undefined });
+    if (z) meta.z = 1;
+    if (opts.clip) meta.clip = true;
+    if (opts.open) meta.open = true;
+    if (to && opts.drop) meta.drop = true;
+    // the same name in the same folder: a new version (Rewind keeps the old one)
+    var same = to || opts.clip ? null : st.files.filter(function (f) { return f.done && !f.trashed && f.kind !== 'dir' && f.fk && f.m && f.m.name === file.name && pk(f.m.path) === pk(folder); })[0];
+    var common, device;
+    return Promise.all([sealLabel(deviceName()), z && file.size <= 512 * 1048576 ? printOf(file) : Promise.resolve(undefined)]).then(function (x) {
+      device = x[0];
+      common = { device: device, to: to ? to.did : undefined, drop: to ? !!opts.drop : undefined, hours: opts.hours, replaces: same ? same.id : undefined };
+      return Promise.all([sealMeta(fk, meta), seal(myKey(), fk, 'pigeon/key')]).then(function (y) {
+        return call('start', Object.assign({ size: file.size, chunks: chunks, meta: y[0], wrapped: b64(y[1]), print: x[1], barns: true }, common));
+      });
     }).then(function (r) {
-      var next = 0, sent = 0;
+      if (r.same) { // these exact bytes are already in your nest: a new entry for them, nothing to upload
+        return open(myKey(), unb64(r.same.wrapped), 'pigeon/key').then(function (k) { return sealMeta(new Uint8Array(k), meta); })
+          .then(function (m) { return call('start', Object.assign({ copy: r.same.id, meta: m }, common)); })
+          .then(function (c) { tick(job, 1); job.copied = true; return c; });
+      }
+      var next = 0, sent = 0, tryIt = z && !SQUEEZE_SKIP.test(file.name);
       function worker() {
         if (job.cancel) return Promise.reject(new Error('Stopped.'));
         if (next >= chunks) return Promise.resolve();
         var i = next++;
         return file.slice(i * CHUNK, (i + 1) * CHUNK).arrayBuffer().then(function (buf) {
-          return seal(fk, buf, 'pigeon/chunk/' + i).then(function (box) { return retry(function () { return call('piece?id=' + r.id + '&n=' + i, box, { method: 'PUT' }); }); })
+          return sealPiece(fk, i, buf, z, tryIt).then(function (box) { return retry(function () { return putPiece(r, i, box); }); })
             .then(function () { sent += buf.byteLength; tick(job, sent / Math.max(1, file.size)); return worker(); });
         });
       }
       var w = []; for (var i = 0; i < Math.min(PAR, chunks); i++) w.push(worker());
-      return Promise.all(w).then(function () { return call('finish', { id: r.id }); }, function (e) { call('delete', { ids: [r.id] }).catch(function () {}); throw e; });
-    });
+      return Promise.all(w).then(function () { return call('finish', { id: r.id }).then(function () { return r; }); }, function (e) { call('delete', { ids: [r.id] }).catch(function () {}); throw e; });
+    }).then(function (r) { if (same) job.version = true; return r; });
   }
   function retry(fn, n) { n = n || 3; return fn().catch(function (e) { if (n <= 1 || /room|too big|log in/i.test(e.message)) throw e; return new Promise(function (r) { setTimeout(r, 900); }).then(function () { return retry(fn, n - 1); }); }); }
   function guessType(n) { var e = (n.split('.').pop() || '').toLowerCase(); return { md: 'text/markdown', txt: 'text/plain', py: 'text/x-python', js: 'text/javascript', json: 'application/json', csv: 'text/csv', heic: 'image/heic' }[e] || 'application/octet-stream'; }
@@ -1428,6 +1924,7 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
   var viewing = null, viewUrl = null;
   function preview(f) {
     viewing = f;
+    $('vSave').hidden = false;
     $('vTitle').textContent = f.m.name;
     $('vStage').innerHTML = '<div class="small">Unlocking… <span id="vPct"></span></div>';
     if (!$('viewerDlg').open) $('viewerDlg').showModal();
@@ -1484,8 +1981,24 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
           '<td style="padding:.45em 0;text-align:right;white-space:nowrap">' + (n.owner ? '' : '<button class="btn" data-lim="' + esc(n.nest) + '">Room…</button> <button class="btn danger" data-rm="' + esc(n.nest) + '">Remove</button>') + '</td></tr>';
       }).join('') + '</table></div>' +
       '<label class="check" style="margin:14px 0 0;color:var(--ink)"><input type="checkbox" data-open' + (r.signups !== 'closed' ? ' checked' : '') + '> Anyone can make a nest on this site</label><div class="small">' + (r.signups !== 'closed' ? 'New people can make their own nest from the sign-in page.' : 'Only the nests already here can sign in.') + '</div>' +
+      '<div class="owner-part"><b>Room</b><div id="barnBox" class="small">Loading…</div></div>' +
+      '<div class="owner-part"><b>Developer console</b><div class="small">' + (r.console ? 'On. Sign in with its password from any computer to see requests and errors as they happen.' : 'Off. Set a password to see this site\'s requests and errors from your laptop.') + '</div>' +
+        '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn" data-console="set">' + (r.console ? 'Change its password…' : 'Set a password…') + '</button>' + (r.console ? '<a class="btn" href="' + esc(SITE + '/console') + '" target="_blank" rel="noopener">Open the console</a><button class="btn danger" data-console="off">Turn off</button>' : '') + '</div>' +
+        '<div class="small" style="margin-top:6px">From Terminal: <code>pigeon console</code></div></div>' +
+      '<label class="check" style="margin:14px 0 0;color:var(--ink)"><input type="checkbox" data-sealed' + (r.sealedOnly ? ' checked' : '') + '> Only take sealed requests</label><div class="small">Every request from pigeon 3 is sealed. Turn this on once all your devices have pigeon 3, so older ones can\'t talk to the site in the open.</div>' +
       '<div class="acts"><button class="btn primary" data-x>Done</button></div>';
     body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
+    body.querySelector('[data-sealed]').onchange = function () { call('people', { do: 'sealed', on: this.checked }).then(function (x) { toast(x.sealedOnly ? 'Only sealed requests from now on.' : 'Older apps can talk to the site again.'); }, alertErr); };
+    body.querySelectorAll('[data-console]').forEach(function (b) {
+      b.onclick = function () {
+        if (b.dataset.console === 'off') return call('console_set', { password: null }).then(function () { toast('The console is off.'); peopleSheet(); }, alertErr);
+        passwordBox('Console password', 'At least 8 characters. Anyone with it can see this site\'s requests and errors (never what\'s in anyone\'s files).').then(function (pw) {
+          if (pw === null) return peopleSheet();
+          call('console_set', { password: pw }).then(function () { toast('Console password set.'); peopleSheet(); }, function (e) { alertErr(e); peopleSheet(); });
+        });
+      };
+    });
+    loadBarns();
     body.querySelector('[data-open]').onchange = function () { call('people', { do: 'signups', open: this.checked }).then(function (x) { toast(x.signups === 'open' ? 'Anyone can make a nest now.' : 'No new nests for now.'); peopleSheet(x); }, alertErr); };
     body.querySelectorAll('[data-lim]').forEach(function (b) {
       b.onclick = function () {
@@ -1508,6 +2021,62 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
     });
     if (!$('dlg').open) $('dlg').showModal();
   }
+  // ── storage barns: free buckets that give the site much more room ──
+  var BARN_GUIDE = {
+    b2: { name: 'Backblaze B2', free: '10 GB free. Needs an email, and a phone that can get one text message (a parent\'s works). No card.',
+      endpoint: 'Endpoint (on the bucket\'s page, like s3.us-east-005.backblazeb2.com)', key: 'keyID', secret: 'applicationKey',
+      steps: ['Make an account at backblaze.com/sign-up/cloud-storage, and turn on B2 (it texts a code to a phone).', 'Buckets › Create a Bucket: a name nobody has used, Private. Copy its Endpoint.', 'Application Keys › Add a New Application Key: just this bucket, Read and Write. Copy the keyID and applicationKey (shown once).'] },
+    r2: { name: 'Cloudflare R2', free: '10 GB free each month. Needs an email and a payment method on the account (nothing is charged if you stay under 10 GB, and pigeon does).',
+      endpoint: 'Account ID (32 letters and numbers, on the R2 page)', key: 'Access Key ID', secret: 'Secret Access Key',
+      steps: ['Make an account at dash.cloudflare.com, open R2 Object Storage, add a payment method if asked.', 'Create bucket: any name, Location Automatic. Copy your Account ID.', 'Manage R2 API Tokens › Create API token: Object Read & Write, just this bucket. Copy both keys (the secret is shown once).'] },
+    s3: { name: 'Another S3 bucket', free: 'Any S3-compatible storage works.', endpoint: 'Endpoint (https://…)', key: 'Access key ID', secret: 'Secret key', steps: [] },
+  };
+  function loadBarns() {
+    call('barns', {}).then(function (r) {
+      var box = $('barnBox');
+      if (!box) return;
+      var row = function (label, used, cap, ok, note) {
+        var pct = cap ? Math.min(1, used / cap) : 0;
+        return '<div class="barn"><span class="dot' + (ok ? '' : ' off') + '"></span><span class="nm">' + label + (note ? '<small>' + esc(note) + '</small>' : '') + '</span><span>' + size(used) + ' of ' + size(cap) + '</span><div class="meter"><i style="width:' + Math.round(pct * 100) + '%"></i></div></div>';
+      };
+      box.innerHTML = '<div>' + size(r.capacity) + ' in all, for everyone. Files go to whichever has the most room.</div>' +
+        row('This server', r.disk.used, r.disk.quota, true) +
+        r.barns.map(function (b) { return row(esc(b.bucket) + ' · ' + esc((BARN_GUIDE[b.kind] || BARN_GUIDE.s3).name), b.used, b.cap, b.state === 'ok', b.state === 'ok' ? '' : (b.note || 'Not set up yet: on your computer, run  pigeon barn fix ' + b.id)); }).join('') +
+        '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn" data-barn="add">' + icon('plus') + 'Add a storage barn…</button></div>';
+      box.querySelector('[data-barn]').onclick = barnSheet;
+    }, function (e) { var box = $('barnBox'); if (box) box.textContent = e.message; });
+  }
+  function barnSheet() {
+    var body = $('dlgBody'), kind = 'b2';
+    var draw = function () {
+      var g = BARN_GUIDE[kind];
+      body.innerHTML = '<form method="dialog"><h3>Add a storage barn</h3><div class="sub">A free bucket that gives this site far more room. Files go straight from your devices to it, locked; the bucket only ever sees scrambled pieces.</div>' +
+        '<div class="seg" role="group">' + ['b2', 'r2', 's3'].map(function (k) { return '<button type="button" data-k="' + k + '" aria-pressed="' + (k === kind) + '">' + esc(BARN_GUIDE[k].name.replace('Another S3 bucket', 'Other')) + '</button>'; }).join('') + '</div>' +
+        '<div class="small" style="margin:-8px 0 12px">' + esc(g.free) + '</div>' +
+        (g.steps.length ? '<details class="get" style="margin:0 0 14px;padding-top:0;border:0"><summary>How to get the four things below</summary><ol style="padding-left:20px;margin:8px 0 0">' + g.steps.map(function (x) { return '<li style="margin-bottom:4px">' + esc(x) + '</li>'; }).join('') + '</ol><div class="small" style="margin-top:6px">In Terminal, <code>pigeon barn guide</code> has every click.</div></details>' : '') +
+        '<label class="field"><span>' + esc(g.endpoint) + '</span><input id="bEnd" autocapitalize="none" spellcheck="false"></label>' +
+        (kind === 's3' ? '<label class="field"><span>Region</span><input id="bReg" placeholder="us-east-1"></label>' : '') +
+        '<label class="field"><span>Bucket name</span><input id="bBucket" autocapitalize="none" spellcheck="false"></label>' +
+        '<label class="field"><span>' + esc(g.key) + '</span><input id="bKey" autocapitalize="none" spellcheck="false" autocomplete="off"></label>' +
+        '<label class="field"><span>' + esc(g.secret) + '</span><input id="bSecret" type="password" autocomplete="off"></label>' +
+        '<label class="field"><span>How many GB pigeon may use</span><input id="bGb" type="number" min="0.1" step="0.1" value="9"><small>9 stays inside the free 10 GB.</small></label>' +
+        '<div class="acts"><button class="btn" type="button" data-x>Cancel</button><button class="btn primary">Add it</button></div><div class="msg" id="bMsg"></div></form>';
+      body.querySelectorAll('[data-k]').forEach(function (b) { b.onclick = function () { kind = b.dataset.k; draw(); }; });
+      body.querySelector('[data-x]').onclick = function () { peopleSheet(); };
+      body.querySelector('form').onsubmit = function (e) {
+        e.preventDefault();
+        $('bMsg').className = 'msg'; $('bMsg').textContent = 'Adding…';
+        call('barns', { do: 'add', kind: kind, endpoint: $('bEnd').value.trim(), region: $('bReg') ? $('bReg').value.trim() : '', bucket: $('bBucket').value.trim(), akid: $('bKey').value.trim(), secret: $('bSecret').value.trim(), gb: Number($('bGb').value) || 9 })
+          .then(function (r) {
+            body.innerHTML = '<h3>One last step, on your computer</h3><div class="sub">A browser isn\'t allowed to finish setting up a bucket (it has to tell the bucket that browsers may use it). In Terminal, type:</div><code class="cmd">pigeon barn fix ' + esc(r.id) + '</code><div class="small">It sets the bucket up, sends a tiny test file, and turns the barn on. Until then, files keep going to this server.</div><div class="acts"><button class="btn primary" data-x>Done</button></div>';
+            body.querySelector('[data-x]').onclick = function () { peopleSheet(); };
+          }, function (err) { $('bMsg').className = 'msg err'; $('bMsg').textContent = err.message; });
+      };
+    };
+    draw();
+    if (!$('dlg').open) $('dlg').showModal();
+  }
+
   // ── every way to open your nest: the same page, from different places ──
   function waysSheet() {
     var body = $('dlgBody');
@@ -1551,6 +2120,18 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
       $('dlg').showModal();
       var dot = input.value.lastIndexOf('.');
       input.focus(); input.setSelectionRange(0, dot > 0 ? dot : input.value.length);
+    });
+  }
+  function passwordBox(title, sub) {
+    return new Promise(function (resolve) {
+      var body = $('dlgBody');
+      body.innerHTML = '<form method="dialog"><h3>' + esc(title) + '</h3><div class="sub">' + esc(sub) + '</div><label class="field"><input id="pwIn" type="password" autocomplete="new-password" minlength="8"></label><div class="acts"><button class="btn" type="button" data-x>Cancel</button><button class="btn primary">Save</button></div></form>';
+      var done = false;
+      body.querySelector('[data-x]').onclick = function () { done = true; resolve(null); };
+      body.querySelector('form').onsubmit = function (e) { e.preventDefault(); done = true; resolve($('pwIn').value); };
+      $('dlg').addEventListener('close', function once() { $('dlg').removeEventListener('close', once); if (!done) resolve(null); });
+      if (!$('dlg').open) $('dlg').showModal();
+      $('pwIn').focus();
     });
   }
   function confirmBox(title, sub, ok) {

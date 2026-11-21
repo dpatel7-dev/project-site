@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>pigeon console</title>
+<style>
+/* The console: what the site is doing right now, for whoever runs it. A dense
+   log on a calm page, the same paper and pixel strip as the app. */
+:root {
+  --canvas: #f6f6f4; --bg: #fff; --ink: #1e1f22; --dim: #676a71; --faint: #a4a7ad; --border: #e6e6e2; --panel: #f6f6f4; --hover: rgba(30, 31, 34, .045);
+  --accent: #f26b1d; --ok: #1d8a52; --warn: #b7791f; --bad: #d63a5a; --violet: #6a4fd8; --teal: #11968a;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --stripes: linear-gradient(90deg, #11968a 0 12.5%, #3a7bd5 12.5% 25%, #6a4fd8 25% 37.5%, #b8459c 37.5% 50%, #e5484d 50% 62.5%, #f26b1d 62.5% 75%, #f9a826 75% 87.5%, #ffd23f 87.5%);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --canvas: #141417; --bg: #1b1b1f; --ink: #ececee; --dim: #9d9ea6; --faint: #5f6068; --border: #2b2b31; --panel: #222227; --hover: rgba(255, 255, 255, .05);
+    --accent: #ff8a3d; --ok: #3ccf8a; --warn: #f2c14e; --bad: #ff6b88; --violet: #9b82ff; --teal: #2bc4b2; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body { background: var(--canvas); color: var(--ink); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+button, input { font: inherit; color: inherit; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.strip { height: 6px; background: var(--stripes); }
+.btn { border: 1px solid var(--border); background: var(--bg); border-radius: 8px; padding: 6px 12px; cursor: pointer; font-weight: 500; }
+.btn:hover { background: var(--hover); }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); font-weight: 600; }
+
+/* sign in */
+.gate { min-height: calc(100vh - 6px); display: grid; place-items: center; padding: 24px; }
+.gate form { width: min(380px, 100%); background: var(--bg); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+.gate h1 { margin: 0 0 4px; font-size: 1.25rem; letter-spacing: -.01em; }
+.gate p { margin: 0 0 16px; color: var(--dim); }
+.gate input { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); margin-bottom: 12px; }
+.gate .msg { min-height: 1.4em; margin-top: 10px; color: var(--bad); }
+
+/* the log */
+header.top { display: flex; align-items: center; gap: 14px; padding: 14px 22px; flex-wrap: wrap; }
+header.top h1 { margin: 0; font-size: 1.05rem; letter-spacing: -.01em; }
+header.top .site { color: var(--dim); font-family: var(--mono); font-size: .86em; }
+.live { display: inline-flex; align-items: center; gap: 6px; color: var(--ok); font-weight: 600; font-size: .86em; }
+.live i { width: 8px; height: 8px; background: currentColor; display: block; }
+.live.paused { color: var(--faint); }
+.tools { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.tools input { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; background: var(--bg); width: 200px; }
+.seg { display: inline-flex; padding: 3px; background: var(--panel); border-radius: 9px; gap: 2px; }
+.seg button { border: 0; background: none; padding: 4px 10px; border-radius: 6px; color: var(--dim); cursor: pointer; font-weight: 500; }
+.seg button[aria-pressed=true] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1px; margin: 0 22px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.figures div { background: var(--bg); padding: 10px 14px; }
+.figures b { display: block; font-size: 1.35rem; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.figures span { color: var(--dim); font-size: .84em; }
+.figures .bad b { color: var(--bad); }
+
+main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; padding: 18px 22px 40px; align-items: start; }
+@media (max-width: 1000px) { main { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.panel h2 { margin: 0; padding: 10px 14px; font-size: .9rem; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; }
+.panel h2 small { color: var(--dim); font-weight: 400; }
+table { width: 100%; border-collapse: collapse; font: .84em/1.45 var(--mono); }
+th { text-align: left; color: var(--dim); font: 600 .78rem var(--sans); padding: 7px 10px; background: var(--panel); position: sticky; top: 0; }
+td { padding: 5px 10px; border-top: 1px solid var(--border); white-space: nowrap; vertical-align: top; }
+td.e { white-space: normal; color: var(--bad); font-family: var(--sans); }
+tr.fresh td { background: color-mix(in srgb, var(--accent) 8%, var(--bg)); }
+tr:hover td { background: var(--hover); }
+tr.pick td { cursor: pointer; }
+.wrap { max-height: calc(100vh - 230px); overflow: auto; }
+.st { display: inline-block; min-width: 34px; text-align: center; font-weight: 700; padding: 0 5px; border-radius: 4px; color: #fff; }
+.s2 { background: var(--ok); } .s4 { background: var(--warn); } .s5 { background: var(--bad); } .s0 { background: var(--faint); }
+.ms { display: inline-flex; align-items: center; gap: 6px; }
+.ms i { display: block; height: 6px; background: var(--teal); min-width: 1px; }
+.ms.slow i { background: var(--bad); }
+.dim { color: var(--dim); }
+.err { padding: 10px 14px; border-top: 1px solid var(--border); }
+.err:first-of-type { border-top: 0; }
+.err .what { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.err .what b { color: var(--bad); }
+.err pre { margin: 8px 0 0; padding: 8px 10px; background: var(--panel); border-radius: 8px; overflow: auto; font: .78em/1.5 var(--mono); max-height: 260px; white-space: pre; }
+.empty { padding: 28px 14px; text-align: center; color: var(--dim); }
+dialog { border: 1px solid var(--border); border-radius: 14px; padding: 0; background: var(--bg); color: var(--ink); width: min(720px, calc(100vw - 24px)); }
+dialog::backdrop { background: rgba(10, 10, 15, .4); }
+dialog .in { padding: 18px 20px; }
+dialog dl { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 14px; margin: 10px 0 0; font-size: .9em; }
+dialog dt { color: var(--dim); }
+dialog dd { margin: 0; font-family: var(--mono); overflow-wrap: anywhere; }
+dialog pre { background: var(--panel); padding: 10px; border-radius: 8px; overflow: auto; font: .78em/1.5 var(--mono); max-height: 320px; }
+</style>
+</head>
+<body>
+<div class="strip"></div>
+
+<section class="gate" id="gate">
+  <form id="gateForm">
+    <h1>pigeon console</h1>
+    <p>Requests and errors on this pigeon site, as they happen. Ask the site's owner for the password.</p>
+    <input type="password" id="pw" placeholder="Console password" autocomplete="current-password" aria-label="Console password">
+    <button class="btn primary" style="width:100%">Open the console</button>
+    <div class="msg" id="gateMsg" role="status"></div>
+  </form>
+</section>
+
+<div id="app" hidden>
+  <header class="top">
+    <h1>pigeon console</h1>
+    <span class="site" id="site"></span>
+    <span class="live" id="live"><i></i><span>Live</span></span>
+    <div class="tools">
+      <div class="seg" role="group" aria-label="Show">
+        <button data-f="all" aria-pressed="true">All</button><button data-f="bad" aria-pressed="false">Problems</button><button data-f="slow" aria-pressed="false">Slow</button>
+      </div>
+      <input type="search" id="q" placeholder="Filter: nest, action, address" aria-label="Filter">
+      <button class="btn" id="pause">Pause</button>
+      <button class="btn" id="out">Sign out</button>
+    </div>
+  </header>
+  <section class="figures" id="figures"></section>
+  <main>
+    <section class="panel">
+      <h2>Requests <small id="count"></small></h2>
+      <div class="wrap"><table><thead><tr><th>Time</th><th>Status</th><th>What</th><th>Took</th><th>Nest</th><th>From</th><th>Size</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+        <div class="empty" id="none" hidden>Nothing yet. Requests show up here as they happen.</div></div>
+    </section>
+    <section class="panel">
+      <h2>Errors <small>server problems, newest first</small></h2>
+      <div id="errors"><div class="empty">No server errors. Good.</div></div>
+    </section>
+  </main>
+</div>
+<dialog id="dlg"><div class="in" id="dlgIn"></div></dialog>
+
+<script>/*PIGEON_WIRE*/</script>
+<script>
+(function () {
+  'use strict';
+  var C = /*PIGEON_CONFIG*/{};
+  var $ = function (id) { return document.getElementById(id); };
+  var wire = new PigeonWire.Wire({ url: (C.base || '') + '/api/w', serverKey: C.wire });
+  var token = null, since = 0, rows = [], errors = [], paused = false, filter = 'all', fresh = new Set(), timer = null;
+  try { token = sessionStorage.getItem('pigeon-console'); } catch (e) { /* private mode */ }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function size(n) { n = n || 0; var u = ['B', 'KB', 'MB', 'GB']; var i = 0; while (n >= 1024 && i < 3) { n /= 1024; i++; } return (i ? n.toFixed(n < 10 ? 1 : 0) : n) + ' ' + u[i]; }
+  function time(t) { return new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }); }
+  function call(what, m) { return wire.call(what, m, {}).then(function (r) { return r.result; }); }
+  $('site').textContent = (C.origin || location.origin) + (C.base || '');
+
+  $('gateForm').onsubmit = function (e) {
+    e.preventDefault();
+    $('gateMsg').textContent = '';
+    call('console_login', { password: $('pw').value }).then(function (r) {
+      token = r.token;
+      try { sessionStorage.setItem('pigeon-console', token); } catch (x) { /* fine */ }
+      $('pw').value = '';
+      start();
+    }, function (err) { $('gateMsg').textContent = err.message; });
+  };
+  function start() { $('gate').hidden = true; $('app').hidden = false; since = 0; rows = []; tick(); }
+  function stop(msg) { clearTimeout(timer); token = null; try { sessionStorage.removeItem('pigeon-console'); } catch (e) { /* fine */ } $('app').hidden = true; $('gate').hidden = false; $('gateMsg').textContent = msg || ''; $('pw').focus(); }
+  $('out').onclick = function () { stop(''); };
+  $('pause').onclick = function () { paused = !paused; this.textContent = paused ? 'Resume' : 'Pause'; $('live').classList.toggle('paused', paused); $('live').lastChild.textContent = paused ? 'Paused' : 'Live'; if (!paused) tick(); };
+  document.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { filter = b.dataset.f; document.querySelectorAll('[data-f]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); draw(); }; });
+  $('q').oninput = draw;
+
+  function tick() {
+    clearTimeout(timer);
+    if (!token || paused) return;
+    call('console', { token: token, since: since }).then(function (v) {
+      if (v.rows.length) {
+        if (since) v.rows.forEach(function (r) { fresh.add(r.t + '|' + r.a + '|' + r.ms); });
+        rows = rows.concat(v.rows).slice(-1500);
+        since = v.rows[v.rows.length - 1].t;
+      }
+      if (v.errors.length || !since) errors = v.errors.length ? mergeErrors(v.errors) : errors;
+      v.rows.forEach(function (r) { if (r.tb || r.s >= 500) errors = mergeErrors([r]); });
+      figures(v.stats, v.version);
+      draw();
+      setTimeout(function () { fresh.clear(); }, 1600);
+    }, function (e) {
+      if (e.status === 401) return stop('Signed out. Open it again with the password.');
+    }).then(function () { timer = setTimeout(tick, document.hidden ? 10000 : 2000); });
+  }
+  function mergeErrors(list) {
+    var seen = new Set(errors.map(function (x) { return x.t + '|' + x.p + '|' + x.a; }));
+    return errors.concat(list.filter(function (x) { return !seen.has(x.t + '|' + x.p + '|' + x.a); })).slice(-60);
+  }
+  function figures(s, version) {
+    var f = [['Requests', s.hour, 'in the last hour'], ['Errors', s.errorsHour, 'in the last hour', s.errorsHour ? 'bad' : ''], ['Slow', s.slowHour, 'over 2 seconds'],
+      ['Nests', s.nests, 'people on the site'], ['Stored', size(s.used), 'of ' + size(s.capacity)], ['Barns', s.barns, s.chores ? s.chores + ' pieces to clean up' : 'storage buckets'], ['Version', version, 'pigeon on the site']];
+    $('figures').innerHTML = f.map(function (x) { return '<div class="' + (x[3] || '') + '"><b>' + esc(x[1]) + '</b><span>' + esc(x[0]) + ' · ' + esc(x[2]) + '</span></div>'; }).join('');
+  }
+  function shown() {
+    var q = $('q').value.trim().toLowerCase();
+    return rows.filter(function (r) {
+      if (filter === 'bad' && !(r.s >= 400)) return false;
+      if (filter === 'slow' && !(r.ms > 2000)) return false;
+      if (q && [r.a, r.p, r.n, r.ip, r.e].join(' ').toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    }).slice(-400).reverse();
+  }
+  function draw() {
+    var list = shown();
+    var top = Math.max(200, Math.max.apply(null, list.map(function (r) { return r.ms || 0; }).concat([1])));
+    $('count').textContent = list.length + ' shown';
+    $('none').hidden = !!list.length;
+    $('rows').innerHTML = list.map(function (r, i) {
+      var st = r.s || 0, k = st >= 500 ? 's5' : st >= 400 ? 's4' : st ? 's2' : 's0';
+      var w = Math.max(1, Math.round(((r.ms || 0) / top) * 60));
+      return '<tr class="pick' + (fresh.has(r.t + '|' + r.a + '|' + r.ms) ? ' fresh' : '') + '" data-i="' + i + '"><td class="dim">' + time(r.t) + '</td><td><span class="st ' + k + '">' + (st || '…') + '</span></td><td>' + esc(r.a || r.p) + '</td>' +
+        '<td><span class="ms' + (r.ms > 2000 ? ' slow' : '') + '"><i style="width:' + w + 'px"></i>' + (r.ms || 0) + ' ms</span></td><td>' + esc(r.n || '–') + '</td><td class="dim">' + esc(r.ip || '') + '</td><td class="dim">' + size(r.in) + ' / ' + size(r.out) + '</td>' +
+        '<td class="e">' + esc(r.e ? String(r.e).slice(0, 90) : '') + '</td></tr>';
+    }).join('');
+    $('rows').querySelectorAll('tr').forEach(function (tr) { tr.onclick = function () { detail(list[Number(tr.dataset.i)]); }; });
+    var errs = errors.slice().reverse();
+    $('errors').innerHTML = errs.length ? errs.map(function (e) {
+      return '<div class="err"><div class="what"><b>' + esc(e.s || 500) + '</b><span>' + esc(e.a || e.p) + '</span><span class="dim">' + time(e.t) + (e.n ? ' · ' + esc(e.n) : '') + '</span></div>' + (e.e ? '<div>' + esc(e.e) + '</div>' : '') + (e.tb ? '<pre>' + esc(e.tb.trim().split('\n').slice(-12).join('\n')) + '</pre>' : '') + '</div>';
+    }).join('') : '<div class="empty">No server errors. Good.</div>';
+  }
+  function detail(r) {
+    if (!r) return;
+    var rowsHtml = [['When', new Date(r.t).toLocaleString()], ['What', r.a || '–'], ['Address', (r.m || '') + ' ' + (r.p || '')], ['Status', r.s], ['Took', (r.ms || 0) + ' ms'], ['Nest', r.n || '–'], ['Device', r.d ? r.d + '…' : '–'], ['From', r.ip || '–'], ['In / out', size(r.in) + ' / ' + size(r.out)]];
+    if (r.e) rowsHtml.push(['Said', r.e]);
+    $('dlgIn').innerHTML = '<h3 style="margin:0">' + esc(r.a || r.p) + '</h3><dl>' + rowsHtml.map(function (x) { return '<dt>' + esc(x[0]) + '</dt><dd>' + esc(x[1]) + '</dd>'; }).join('') + '</dl>' + (r.tb ? '<pre>' + esc(r.tb) + '</pre>' : '') +
+      '<p class="dim" style="font-size:.86em">The console sees what was asked and how it went, never what is inside anyone\'s files: those stay locked.</p><div style="text-align:right"><button class="btn primary" id="dlgX">Done</button></div>';
+    $('dlgX').onclick = function () { $('dlg').close(); };
+    $('dlg').showModal();
+  }
+  if (token) start(); else $('pw').focus();
+})();
+</script>
+</body>
+</html>

@@ -62,7 +62,7 @@ PROJECTS = [
 
 APPS = ('gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph', 'shoo')
 # newest news first: the order "what's new" lists the apps in (move an app up when it changes)
-NEWS_ORDER = ('shoo', 'morph', 'scout', 'den', 'pigeon', 'pca', 'roomy', 'hey', 'tidy', 'tot', 'gossip')
+NEWS_ORDER = ('pigeon', 'shoo', 'morph', 'scout', 'den', 'pca', 'roomy', 'hey', 'tidy', 'tot', 'gossip')
 NAMES = {'gossip': 'gossip', 'tot': 'Tree of Thought', 'pigeon': 'pigeon', 'pca': 'Project CLI Access', 'tidy': 'tidy',
          'den': 'den', 'scout': 'scout', 'roomy': 'roomy', 'hey': 'hey', 'morph': 'morph', 'shoo': 'shoo'}
 
@@ -359,7 +359,7 @@ def application(environ, start_response):
         body = json.dumps({app: version(app) for app in APPS if version(app) != '?'})
         return _send(start_response, '200 OK', body, 'application/json')
     if path == '/robots.txt':
-        return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /api\nDisallow: /__check\n', 'text/plain; charset=utf-8')
+        return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /pigeon/d/\nDisallow: /pigeon/console\nDisallow: /api\nDisallow: /__check\n', 'text/plain; charset=utf-8')
     return _send(start_response, '404 Not Found', with_nav(_read('pages', '404.html') or 'not found', ''))
 
 

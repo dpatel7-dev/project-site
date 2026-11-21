@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.0.0
+- **Much more room: storage barns.** The site's owner can add free buckets (Backblaze B2 or Cloudflare R2, 10 GB each) with `pigeon barn add`. Files then go from your devices straight into the bucket, locked as always: the site only hands out permission slips that work for one piece, for an hour. Everyone's room grows from 400 MB to 10 GB or more. Step by step: `pigeon barn guide`.
+- **Squeezing.** Text, code and other squeezable files are packed smaller on your device before they're locked, often to a tenth of the size. Photos, videos and zips are left alone.
+- **No doubles.** Send something your nest already has and nothing is uploaded: you get a new entry for the bytes that are there. (Each file gets a fingerprint keyed with your password, so the site only learns "these two of yours match".)
+- **Every request is sealed.** Your device and your site agree on fresh keys (Diffie-Hellman) and every request goes to one address as one locked blob: which file, which device, even the login. Anything that opens up HTTPS along the way, or keeps logs, sees nothing useful. Device names are locked too. The site's key is remembered the first time, like SSH. Older apps still work until the owner ticks "Only take sealed requests".
+- **Rewind.** Send a file with the same name to the same folder and the old one is kept as a version (the last 20, for 90 days). See them with `pigeon rewind essay.md`, see what changed with `--diff 2`, bring one back with `--restore 2`. In the browser: right-click › Versions, with a side-by-side Compare. Sync keeps versions too, instead of trashing old copies.
+- **Homing, better.** Send to every device at once (`--to all`). Things land by themselves even with no pigeon window open (`pigeon roost on`), go where your rules say (photos in Pictures, PDFs in Documents: `pigeon rules`), show a notification, can open when they land (`--open`; never apps or scripts), and give up after a while if a device never comes for them (`--expires 2d`). Send text or links with `pigeon text "…"` or `pigeon clip`: they land on the other device's clipboard. `pigeon sent` (and Devices › Sent lately) shows where things landed.
+- **Drop boxes.** A link anyone can send you files through, with no account: `pigeon box new "Homework"`, or Drop boxes in the browser. Their browser locks each file with the box's key, so only you can open it. Files show up in Drop boxes › Homework.
+- **A developer console.** The site's owner sets a password (People and space › Developer console, or `pigeon console --set`). Then `pigeon console` (or `<site>/console` in a browser) shows every request as it happens, how long it took, and every server error with its traceback. It never sees what's inside anyone's files.
+
 
 
 ## 2.5.0
