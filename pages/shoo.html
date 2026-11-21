@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>shoo - block ads on your whole Mac, YouTube included</title>
-<meta name="description" content="shoo blocks ads on your whole Mac: Google's full-page ads, banners, pop-ups and trackers in every browser and app, and the ads on YouTube. An app, not a browser extension.">
+<title>shoo - block ads, YouTube included, no administrator needed</title>
+<meta name="description" content="shoo blocks Google's full-page ads, banners, pop-ups, trackers and the ads on YouTube, with no administrator needed. An app, not a browser extension.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
@@ -70,7 +70,7 @@
 <main class="wrap">
   <header class="hero">
     <canvas id="who" aria-hidden="true"></canvas>
-    <div><h1>shoo</h1><p class="tagline">Ads, shooed off your whole Mac.</p><p class="lede">Google's full-page ads that cover the page, the banners, the pop-ups, the trackers that follow you around, <b>and the ads on YouTube</b>. shoo blocks them for every browser and app on your Mac. It's an app, not an extension, and Bramble the hedgehog keeps watch from a little pixel forest.</p></div>
+    <div><h1>shoo</h1><p class="tagline">Ads, shooed away. No admin needed.</p><p class="lede">Google's full-page ads that cover the page, the banners, the pop-ups, the trackers that follow you around, <b>and the ads on YouTube</b>. shoo blocks them in Chrome, Edge or Brave, with <b>no administrator needed</b>, and in every app and Safari too once an administrator approves it. It's an app, not an extension, and Bramble the hedgehog keeps watch from a little hedgerow.</p></div>
   </header>
   <section class="demo" aria-label="What it looks like"><style>
   .shoo-mock { display: grid; gap: 12px; }
@@ -85,11 +85,11 @@
   .cmd code { background: none; border: 0; }
 </style>
 <div class="mock shoo-mock">
-  <p class="today">Today Bramble kept <b>23</b> ads out of YouTube, and <b>128,431</b> ad and tracker addresses are blocked on this Mac.</p>
+  <p class="today">Today Bramble kept <b>23</b> ads out of YouTube, and stopped <b>412</b> ads and trackers on websites.</p>
   <div class="parts">
-    <div class="part"><i style="background:#3d8a52"></i><span><b>Websites and apps</b><small>Ads, Google's full-page ads, pop-ups, trackers</small></span><em>On</em></div>
+    <div class="part"><i style="background:#3d8a52"></i><span><b>Websites</b><small>Ads, Google's full-page ads, pop-ups, trackers</small></span><em>On</em></div>
     <div class="part"><i style="background:#c2413b"></i><span><b>YouTube</b><small>Video ads, and the ads in the feed, search and Shorts</small></span><em>On</em></div>
-    <div class="part"><i style="background:#5b6b82"></i><span><b>Starts when you log in</b><small>A small helper in the background</small></span><em>Yes</em></div>
+    <div class="part"><i style="background:#6b4630"></i><span><b>Chrome with shoo</b><small>Keep it in your Dock: it opens Chrome with ad blocking</small></span><em>On</em></div>
   </div>
 </div></section>
 
@@ -108,12 +108,12 @@
 
   <section aria-labelledby="use-title">
     <h2 id="use-title">Using it</h2>
-    <table><tr><td><code>shoo</code></td><td>opens shoo's window (the first time, it sets itself up)</td></tr><tr><td><code>shoo off</code></td><td>turns it off and puts every setting back</td></tr><tr><td><code>shoo allow example.com</code></td><td>lets a site through if blocking it broke something</td></tr><tr><td><code>shoo status</code></td><td>what shoo is doing</td></tr><tr><td><code>shoo list</code></td><td>gets the newest list of ad addresses</td></tr><tr><td><code>shoo update</code></td><td>gets the newest shoo</td></tr></table>
+    <table><tr><td><code>shoo</code></td><td>opens shoo's window (the first time, it sets itself up). The shoo app in Applications does the same</td></tr><tr><td><code>shoo chrome</code></td><td>opens Chrome with shoo (the Chrome with shoo app does too)</td></tr><tr><td><code>shoo off</code></td><td>turns it off</td></tr><tr><td><code>shoo allow example.com</code></td><td>lets a site through if blocking it broke something</td></tr><tr><td><code>shoo status</code></td><td>what shoo is doing</td></tr><tr><td><code>shoo list</code></td><td>gets the newest list of ad addresses</td></tr><tr><td><code>shoo update</code></td><td>gets the newest shoo</td></tr></table>
   </section>
 
   <section aria-labelledby="safe-title">
     <h2 id="safe-title">Safe by design</h2>
-    <ul class="rules"><li>An administrator of the Mac approves it once, in macOS's own password box. On a family Mac, that's whoever owns it.</li><li>It <b>won't change a Mac a school or company manages</b>, and it won't go around a filter that's already set up.</li><li>Only YouTube passes through shoo; everything else goes straight to the internet. If shoo stops, YouTube still works.</li><li>Its certificate works for YouTube only and never leaves your Mac. <code>shoo off</code> puts everything back.</li><li>Mac only for now. No ad blocker catches every single ad: YouTube changes often, so update shoo now and then.</li></ul>
+    <ul class="rules"><li><b>No administrator needed</b> for Chrome, Edge or Brave. macOS may ask for your own password once. Every app and Safari needs an administrator to approve it.</li><li>It <b>won't change a Mac a school or company manages</b>, and it won't go around a filter that's already set up.</li><li>If shoo stops, your browser just goes straight to every site, so nothing breaks.</li><li>Its certificate works for YouTube only and never leaves your Mac. <code>shoo uninstall</code> removes everything.</li><li>Mac only for now. No ad blocker catches every single ad: YouTube changes often, so update shoo now and then.</li></ul>
   </section>
 
   <footer><a href="/new">What's new</a> · <a href="https://github.com/dpatel7-dev/shoo">Source code</a> · <a href="/">All the apps</a></footer>

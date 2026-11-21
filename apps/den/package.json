@@ -1,6 +1,6 @@
 {
   "name": "den",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "description": "A code editor that opens in your browser, made for learning: files, search, git, terminals, split view, live previews, and Ember the fox, who explains things and can change your code (showing you exactly what changes first).",
   "bin": { "den": "bin/den.js" },
   "scripts": { "test": "node --test", "start": "node bin/den.js" },
