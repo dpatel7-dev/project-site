@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.0
+- New: **magpie** (Pica the magpie): remembers everything you copy. Press ⌃⌥V in any app, type a word, and something you copied earlier is back on your clipboard. Skips passwords. Mac only.
+- New: **medic** (Lotl the axolotl): a checkup for your Mac. Why it's slow, hot or low on battery, in plain words, with safe fixes, and a battery diary that finds what drains it. Mac only.
+- New: **flash** (Blink the firefly): study cards that come back just before you'd forget them. Give it your test date and it plans your days. Flip, pick one of four, type it, or the match game; cards pasted from anywhere or made by AI from your notes.
+
 ## 1.8.0
 - New: **shoo** (Bramble the hedgehog): blocks ads on your whole Mac. Google's full-page ads, banners, pop-ups and trackers in every browser and app, and the ads on YouTube. It asks an administrator first and won't change a Mac a school manages.
 

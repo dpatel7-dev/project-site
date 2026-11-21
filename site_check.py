@@ -144,7 +144,7 @@ def pass_cookie(secure):
 
 
 def mascot_for(path):
-    for name in ('gossip', 'tot', 'pigeon', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph', 'shoo'):
+    for name in ('gossip', 'tot', 'pigeon', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph', 'shoo', 'magpie', 'medic', 'flash'):
         if path == '/' + name or path.startswith('/' + name + '/'):
             return name
     return ''

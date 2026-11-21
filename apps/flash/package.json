@@ -1,0 +1,11 @@
+{
+  "name": "flash",
+  "version": "1.0.0",
+  "description": "Study cards that come back just before you'd forget them: spaced repetition, test-date planning, four ways to study, and cards made from your notes. Blink the firefly keeps you company.",
+  "bin": { "flash": "bin/flash.js" },
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=18" },
+  "license": "MIT",
+  "repository": "github:dpatel7-dev/flash",
+  "files": ["bin", "src", "web", "assets", "install.sh", "install.ps1", "README.md", "CHANGELOG.md"]
+}
