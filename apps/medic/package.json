@@ -1,6 +1,6 @@
 {
   "name": "medic",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A checkup for your Mac: why it's slow, hot or low on battery, in plain words, with safe fixes. Lotl the axolotl does the checking.",
   "bin": { "medic": "bin/medic.js" },
   "scripts": { "test": "node --test" },

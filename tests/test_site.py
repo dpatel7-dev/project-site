@@ -80,7 +80,7 @@ class Site(unittest.TestCase):
         self.assertIn(b'psnav', body)
 
     def test_new_apps_and_guides(self):
-        for app, mascot in (('scout', 'Pip'), ('roomy', 'Shelly'), ('hey', 'Biscuit'), ('morph', 'Luma'), ('shoo', 'Bramble'), ('magpie', 'Pica'), ('medic', 'Lotl'), ('flash', 'Blink')):
+        for app, mascot in (('scout', 'Pip'), ('roomy', 'Shelly'), ('hey', 'Biscuit'), ('morph', 'Luma'), ('shoo', 'Bramble'), ('magpie', 'Pica'), ('medic', 'Lotl'), ('flash', 'Blink'), ('hum', 'Bumble'), ('usual', 'Rocco'), ('locket', 'Dilly')):
             text = self.page('/' + app, app)
             self.assertIn('https://djp7.pythonanywhere.com/%s/install.sh' % app, text)
             self.assertIn('"%s":{"name":"%s"' % (app, mascot), text)
@@ -100,7 +100,7 @@ class Site(unittest.TestCase):
         self.assertIn('href="/start"', home)
         self.assertIn('class="news"', home)
         v = json.loads(call('/versions.json')[2])
-        for app in ('scout', 'roomy', 'hey', 'morph', 'shoo', 'magpie', 'medic', 'flash', 'tidy', 'pigeon'):
+        for app in ('scout', 'roomy', 'hey', 'morph', 'shoo', 'magpie', 'medic', 'flash', 'hum', 'usual', 'locket', 'tidy', 'pigeon'):
             self.assertIn(app, v)
 
     def test_installers_remember_this_site(self):
@@ -152,7 +152,7 @@ class Site(unittest.TestCase):
         code, h, body = call('/versions.json')
         self.assertEqual(code, 200)
         v = json.loads(body)
-        self.assertEqual(set(v), {'gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph', 'shoo', 'magpie', 'medic', 'flash'})
+        self.assertEqual(set(v), {'gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph', 'shoo', 'magpie', 'medic', 'flash', 'hum', 'usual', 'locket'})
         self.assertTrue(all(isinstance(x, str) and x.count('.') == 2 for x in v.values()))
 
     def test_only_get_for_our_pages(self):

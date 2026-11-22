@@ -1,0 +1,13 @@
+# Changelog
+
+## 1.0.0
+- locket keeps your passwords, locked with one master password (scrypt, then AES-256-GCM). The master password is never saved.
+- Logins and notes. Copy a username or password with one click; copied passwords are marked secret (clipboard keepers skip them) and clear themselves after 30 seconds.
+- Make a password: random characters, or words that are easy to type.
+- 2-step codes: paste a website's 2-step key and locket shows the codes.
+- Check-up: passwords that are leaked (Have I Been Pwned, sending only 5 characters of a fingerprint), used more than once, or easy to guess.
+- Bring passwords in from Chrome, Safari, Firefox, Edge, Bitwarden (CSV or JSON), 1Password and LastPass, with step-by-step instructions. Take them out again as a CSV.
+- Unlock with Touch ID (Apple's own check; a photo can't fool it), or your Mac's password on Macs without Touch ID.
+- Locks itself after 15 quiet minutes. Recently deleted, for second thoughts. Old passwords kept with each login.
+- A side panel from the menu bar armadillo (or ⌃⌥L) for quick copying. `locket get`, `locket make` in Terminal.
+- A desert along the bottom: mesas striped yellow to red, cacti, a tumbleweed. Dilly the armadillo walks about while it's unlocked and curls into a ball when it locks.

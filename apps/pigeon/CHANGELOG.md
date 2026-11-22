@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.1.0
+- The developer console is one command for the site's owner: `pigeon console` asks for Touch ID (or your Mac's password), then opens the console in your browser already signed in. No console password needed. `pigeon console --here` shows it in Terminal instead.
+- In the app: People and space › Developer console › **Open the console** does the same.
+- The browser link signs in once and only works for two minutes.
+
 ## 3.0.0
 - **Much more room: storage barns.** The site's owner can add free buckets (Backblaze B2 or Cloudflare R2, 10 GB each) with `pigeon barn add`. Files then go from your devices straight into the bucket, locked as always: the site only hands out permission slips that work for one piece, for an hour. Everyone's room grows from 400 MB to 10 GB or more. Step by step: `pigeon barn guide`.
 - **Squeezing.** Text, code and other squeezable files are packed smaller on your device before they're locked, often to a tenth of the size. Photos, videos and zips are left alone.

@@ -1,0 +1,11 @@
+{
+  "name": "hum",
+  "version": "1.0.0",
+  "description": "Your music in a little panel at the side of the screen: your own music files and YouTube links (played in YouTube's own player), playlists, a queue, shuffle, a sleep timer and an equalizer. Bumble the bumblebee keeps you company.",
+  "bin": { "hum": "bin/hum.js" },
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=18" },
+  "license": "MIT",
+  "repository": "github:dpatel7-dev/hum",
+  "files": ["bin", "src", "web", "assets", "install.sh", "install.ps1", "README.md", "CHANGELOG.md"]
+}

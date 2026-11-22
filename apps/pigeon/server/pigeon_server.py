@@ -1273,9 +1273,35 @@ class Pigeon:
         if not ok:
             self.q('INSERT INTO fails VALUES (?, ?)', key, _now())
             raise Err('403 Forbidden', 'Wrong console password.')
+        return {'token': self._console_token()}
+
+    def _console_token(self):
         token = secrets.token_hex(32)
         self.q('INSERT INTO consoles VALUES (?, ?, ?)', hashlib.sha256(token.encode()).hexdigest(), _now(), _now())
-        return {'token': token}
+        return token
+
+    def console_owner(self, nest):
+        """The site's owner, signed in to pigeon, gets into the console without its password."""
+        self._must_own(nest)
+        return {'token': self._console_token()}
+
+    def console_link(self, nest):
+        """A one-time code for the owner's browser (it works once, for two minutes)."""
+        self._must_own(nest)
+        code = secrets.token_urlsafe(18)
+        self.q('INSERT INTO consoles VALUES (?, ?, ?)', 'link:' + hashlib.sha256(code.encode()).hexdigest(), _now(), _now())
+        return {'code': code}
+
+    def console_redeem(self, m, ip):
+        key = 'console|' + ip
+        self._slow_down(key, 6)
+        h = 'link:' + hashlib.sha256(str(m.get('code') or '').encode()).hexdigest()
+        r = self.one('SELECT made FROM consoles WHERE hash = ?', h)
+        self.q('DELETE FROM consoles WHERE hash = ?', h)
+        if not r or _now() - r['made'] > 120000:
+            self.q('INSERT INTO fails VALUES (?, ?)', key, _now())
+            raise Err('403 Forbidden', 'That console link has been used or is too old. Run pigeon console again.')
+        return {'token': self._console_token()}
 
     def console_view(self, m):
         token = m.get('token')
@@ -1478,6 +1504,8 @@ class Pigeon:
             return self.console_login(m, ip), b''
         if a == 'console':
             return self.console_view(m), b''
+        if a == 'console_redeem':
+            return self.console_redeem(m, ip), b''
         nest, th, did = who or self.auth_token(token)
         rec['n'] = nest
         rec['d'] = did[:6]
@@ -1497,7 +1525,7 @@ class Pigeon:
             'deliver': lambda: self.deliver(nest, did, m), 'people': lambda: self.people(nest, m), 'where': lambda: self.where(nest, m),
             'where_get': lambda: self.where(nest, dict(m, op='get')), 'versions': lambda: self.versions(nest, m), 'sent': lambda: self.sent(nest, did, m),
             'boxes': lambda: self.boxes(nest, m), 'adopt': lambda: self.adopt(nest, m), 'barns': lambda: self.barns(nest, m),
-            'chores': lambda: self.chores(nest, m), 'chores_done': lambda: self.chores_done(nest, m), 'console_set': lambda: self.console_set(nest, m),
+            'chores': lambda: self.chores(nest, m), 'chores_done': lambda: self.chores_done(nest, m), 'console_set': lambda: self.console_set(nest, m), 'console_owner': lambda: self.console_owner(nest), 'console_link': lambda: self.console_link(nest),
         }
         if a not in handlers:
             raise Err('404 Not Found', 'pigeon on this site is older than the one you have (it doesn\'t know "%s"). Ask its owner to update it.' % a[:40])

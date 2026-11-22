@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.0
+- New: **hum** (Bumble the bumblebee): your music in a little panel at the side of the screen. Your own music files and YouTube links (played in YouTube's own player), playlists, a queue, shuffle, a sleep timer and an equalizer. Mac first.
+- New: **usual** (Rocco the raccoon): order the usual. Keeps your details, who you're ordering for and your regular orders, prints each as a receipt with who owes what, and helps you order it online, by phone or by email.
+- New: **locket** (Dilly the armadillo): a password manager that's easy to use. One master password, Touch ID, a password maker, 2-step codes, and a check-up for weak, reused and leaked passwords.
+
+## 1.9.1
+- When an app stops with a problem, or finishes so fast you couldn't read it, pca now keeps it on screen until you press Enter, instead of jumping straight back with "Back from …".
+
 ## 1.9.0
 - New: **magpie** (Pica the magpie): remembers everything you copy. Press ⌃⌥V in any app, type a word, and something you copied earlier is back on your clipboard. Skips passwords. Mac only.
 - New: **medic** (Lotl the axolotl): a checkup for your Mac. Why it's slow, hot or low on battery, in plain words, with safe fixes, and a battery diary that finds what drains it. Mac only.

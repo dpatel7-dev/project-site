@@ -1982,16 +1982,20 @@ dialog::backdrop { background: rgba(15, 15, 20, .4); }
       }).join('') + '</table></div>' +
       '<label class="check" style="margin:14px 0 0;color:var(--ink)"><input type="checkbox" data-open' + (r.signups !== 'closed' ? ' checked' : '') + '> Anyone can make a nest on this site</label><div class="small">' + (r.signups !== 'closed' ? 'New people can make their own nest from the sign-in page.' : 'Only the nests already here can sign in.') + '</div>' +
       '<div class="owner-part"><b>Room</b><div id="barnBox" class="small">Loading…</div></div>' +
-      '<div class="owner-part"><b>Developer console</b><div class="small">' + (r.console ? 'On. Sign in with its password from any computer to see requests and errors as they happen.' : 'Off. Set a password to see this site\'s requests and errors from your laptop.') + '</div>' +
-        '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn" data-console="set">' + (r.console ? 'Change its password…' : 'Set a password…') + '</button>' + (r.console ? '<a class="btn" href="' + esc(SITE + '/console') + '" target="_blank" rel="noopener">Open the console</a><button class="btn danger" data-console="off">Turn off</button>' : '') + '</div>' +
-        '<div class="small" style="margin-top:6px">From Terminal: <code>pigeon console</code></div></div>' +
+      '<div class="owner-part"><b>Developer console</b><div class="small">This site\'s requests and errors as they happen. You\'re the owner, so you go straight in.' + (r.console ? ' A password is set too, for signing in where you aren\'t signed in to pigeon.' : '') + '</div>' +
+        '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn primary" data-console="open">Open the console</button><button class="btn" data-console="set">' + (r.console ? 'Change its password…' : 'Add a password…') + '</button>' + (r.console ? '<button class="btn danger" data-console="off">Remove the password</button>' : '') + '</div>' +
+        '<div class="small" style="margin-top:6px">From Terminal: <code>pigeon console</code> (asks for Touch ID, then opens it)</div></div>' +
       '<label class="check" style="margin:14px 0 0;color:var(--ink)"><input type="checkbox" data-sealed' + (r.sealedOnly ? ' checked' : '') + '> Only take sealed requests</label><div class="small">Every request from pigeon 3 is sealed. Turn this on once all your devices have pigeon 3, so older ones can\'t talk to the site in the open.</div>' +
       '<div class="acts"><button class="btn primary" data-x>Done</button></div>';
     body.querySelector('[data-x]').onclick = function () { $('dlg').close(); };
     body.querySelector('[data-sealed]').onchange = function () { call('people', { do: 'sealed', on: this.checked }).then(function (x) { toast(x.sealedOnly ? 'Only sealed requests from now on.' : 'Older apps can talk to the site again.'); }, alertErr); };
     body.querySelectorAll('[data-console]').forEach(function (b) {
       b.onclick = function () {
-        if (b.dataset.console === 'off') return call('console_set', { password: null }).then(function () { toast('The console is off.'); peopleSheet(); }, alertErr);
+        if (b.dataset.console === 'open') {
+          var w = window.open('about:blank', '_blank');
+          return call('console_link', {}).then(function (x) { var u = SITE + '/console#c=' + x.code; if (w) w.location = u; else location.href = u; }, function (e) { if (w) w.close(); alertErr(e); });
+        }
+        if (b.dataset.console === 'off') return call('console_set', { password: null }).then(function () { toast('The console password is removed.'); peopleSheet(); }, alertErr);
         passwordBox('Console password', 'At least 8 characters. Anyone with it can see this site\'s requests and errors (never what\'s in anyone\'s files).').then(function (pw) {
           if (pw === null) return peopleSheet();
           call('console_set', { password: pw }).then(function () { toast('Console password set.'); peopleSheet(); }, function (e) { alertErr(e); peopleSheet(); });

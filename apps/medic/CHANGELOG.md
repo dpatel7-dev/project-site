@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.1
+- The moving scene behind the window can no longer stumble on its very first frame.
+
 ## 1.0.0
 - medic is a checkup for your Mac: why it's slow, hot or low on battery, in plain words, with the biggest problem first.
 - Looks at memory (and the disk standing in for memory), heat and slowing down to cool off, apps working hard, what's keeping the Mac awake, the battery's health, cycles and temperature, disk space, days since a restart, Wi-Fi and the internet, and what starts by itself.

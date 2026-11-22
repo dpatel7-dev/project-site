@@ -228,7 +228,17 @@ dialog pre { background: var(--panel); padding: 10px; border-radius: 8px; overfl
     $('dlgX').onclick = function () { $('dlg').close(); };
     $('dlg').showModal();
   }
-  if (token) start(); else $('pw').focus();
+  // opened by `pigeon console` (or the owner's button in the app): a one-time code signs you in
+  var m = /[#&]c=([A-Za-z0-9_-]+)/.exec(location.hash);
+  if (m) {
+    history.replaceState(null, '', location.pathname + location.search);
+    $('gateMsg').textContent = 'Signing you in…';
+    call('console_redeem', { code: m[1] }).then(function (r) {
+      token = r.token;
+      try { sessionStorage.setItem('pigeon-console', token); } catch (x) { /* fine */ }
+      start();
+    }, function (err) { $('gateMsg').textContent = err.message; $('pw').focus(); });
+  } else if (token) start(); else $('pw').focus();
 })();
 </script>
 </body>

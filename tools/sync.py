@@ -44,6 +44,9 @@ COPIES = {
     'magpie': (['magpie'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     'medic': (['medic'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     'flash': (['flash'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'hum': (['hum'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'usual': (['usual'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'locket': (['locket'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
 }
 
 ART = r"""
