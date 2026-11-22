@@ -1,11 +1,11 @@
 {
   "name": "locket",
-  "version": "1.0.0",
-  "description": "A password manager that's easy to use: your passwords locked with one master password (scrypt + AES-256-GCM), Touch ID unlock, a password maker, 2-step codes, a check-up for weak, reused and leaked passwords, and a side panel for quick copying. Dilly the armadillo curls up when it's locked.",
+  "version": "1.1.0",
+  "description": "A password manager that's easy to use: your passwords locked with one master password (scrypt + AES-256-GCM), Touch ID unlock, a password maker, 2-step codes, a check-up for weak, reused and leaked passwords, and a side panel for quick copying. Bastion the armadillo curls up when it's locked.",
   "bin": { "locket": "bin/locket.js" },
   "scripts": { "test": "node --test" },
   "engines": { "node": ">=18" },
   "license": "MIT",
   "repository": "github:dpatel7-dev/locket",
-  "files": ["bin", "src", "web", "assets", "install.sh", "install.ps1", "README.md", "CHANGELOG.md"]
+  "files": ["bin", "src", "web", "extension", "assets", "install.sh", "install.ps1", "README.md", "CHANGELOG.md"]
 }

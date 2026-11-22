@@ -6,21 +6,26 @@
 <title>djp7 · gossip, Tree of Thought, pigeon, tidy, den</title>
 <meta name="description" content="Terminal tools by djp7: gossip (encrypted chat), Tree of Thought (many AI models), pigeon (your own locked drive), tidy (an AI that tidies folders), den (a beginner-friendly code editor) and pca, which installs them all.">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#000000">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<script>try{var l=localStorage.getItem('djp7-look');if(l==='light'||l==='dark')document.documentElement.setAttribute('data-look',l)}catch(e){}</script>
 <style>
   /* One moment on a black backdrop: a mascot doing its thing while the page
      checks you're a person. Then straight through. */
-  html, body { margin: 0; height: 100%; background: #000; color: #8a8f98; }
+  :root { --bg: #ffffff; --dim: #6b6f78; --ink: #17181c; --off: #ececf0; --floor: #e4e4ea; }
+  @media (prefers-color-scheme: dark) { :root:not([data-look=light]) { --bg: #000; --dim: #8a8f98; --ink: #e8eaee; --off: #1b1d22; --floor: #111317; } }
+  :root[data-look=dark] { --bg: #000; --dim: #8a8f98; --ink: #e8eaee; --off: #1b1d22; --floor: #111317; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--dim); }
   body { display: grid; place-items: center; font: 14px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; overflow: hidden; }
   main { display: grid; justify-items: center; gap: 22px; }
   canvas { image-rendering: pixelated; display: block; }
   #stage { width: 320px; height: 240px; }
   .bar { display: flex; gap: 4px; }
-  .bar i { width: 10px; height: 10px; background: #1b1d22; display: block; }
+  .bar i { width: 10px; height: 10px; background: var(--off); display: block; }
   .bar i.on { background: var(--c, #8fd16a); }
   #say { min-height: 1.5em; letter-spacing: .02em; text-align: center; padding: 0 20px; }
-  #say b { color: #e8eaee; font-weight: 400; }
-  noscript p { color: #e8eaee; max-width: 40ch; text-align: center; margin: 0 20px; }
+  #say b { color: var(--ink); font-weight: 400; }
+  noscript p { color: var(--ink); max-width: 40ch; text-align: center; margin: 0 20px; }
   @media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
 </style>
 </head>
@@ -68,11 +73,12 @@
   // what each one is doing: Pebble waddles in the snow, Rowan drops blossoms,
   // Coo hops while letters fly past, Hazel juggles an acorn
   var bits = [];
+  var LIGHT = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() === '#ffffff';
   function spawn() {
     if (still) return;
-    if (who === 'gossip') bits.push({ x: Math.random() * 320, y: -4, vx: (Math.random() - .5) * .3, vy: .5 + Math.random() * .6, c: '#e8f1ff', s: 3 });
+    if (who === 'gossip') bits.push({ x: Math.random() * 320, y: -4, vx: (Math.random() - .5) * .3, vy: .5 + Math.random() * .6, c: LIGHT ? '#9fc2ee' : '#e8f1ff', s: 3 });
     else if (who === 'tot') bits.push({ x: 110 + Math.random() * 100, y: 30 + Math.random() * 40, vx: (Math.random() - .3) * .6, vy: .35 + Math.random() * .4, c: Math.random() < .5 ? '#f2a7c3' : '#ffd6e5', s: 4 });
-    else if (who === 'pigeon') bits.push({ x: -16, y: 30 + Math.random() * 120, vx: 1.6 + Math.random(), vy: (Math.random() - .5) * .3, c: '#f3efe2', s: 0, env: true });
+    else if (who === 'pigeon') bits.push({ x: -16, y: 30 + Math.random() * 120, vx: 1.6 + Math.random(), vy: (Math.random() - .5) * .3, c: LIGHT ? '#e2dac4' : '#f3efe2', s: 0, env: true });
   }
   var t0 = performance.now();
   function frame(now) {
@@ -89,7 +95,7 @@
       else if (who === 'den') { y -= Math.max(0, Math.sin(t * 2.2)) * 3; }
     }
     // a soft shadow on the ground
-    g.fillStyle = '#111317';
+    g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--floor').trim() || '#111317';
     g.fillRect(160 - gw * S / 2 + 8, 204, gw * S - 16, 4);
     sprite(x, y, flip);
     if (who === 'tidy' && !still) { // the acorn goes up and comes down

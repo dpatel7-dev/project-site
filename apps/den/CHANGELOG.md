@@ -1,6 +1,9 @@
 # What's new in den
 
 
+## 2.3.0
+- **Light or dark, set once for every app:** press **L** in pca (or `pca look light`, `pca look dark`, `pca look auto`). When it's light, den uses Daylight; when it's dark, Ember (your own colours come back on auto).
+
 ## 2.1.0
 - **A living pixel forest behind den.** With the dark colours (Ember, Dusk, Moss) it's night: stars twinkle, the moon glows, fireflies drift and a shooting star goes by now and then. With the light colours (Daylight, Frost) it's day: the sun, clouds drifting past, falling leaves and butterflies. The trees sway in the wind, birds fly off, and sometimes a fox (or a deer, or a rabbit) wanders through.
 - It holds still while you type, so typing stays quick, and it's hidden when glass is turned off.

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.0
+- **Light or dark, set once for every app:** press **L** in pca (or `pca look light`, `pca look dark`, `pca look auto`). medic's window follows it.
+
 ## 1.0.1
 - The moving scene behind the window can no longer stumble on its very first frame.
 

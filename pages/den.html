@@ -21,6 +21,12 @@
     --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
   }
+  /* by day (or when Day is picked in All apps) */
+  @media (prefers-color-scheme: light) { :root:not([data-look=dark]) { --night: #fffaf4; --burrow: #f8efe4; --wood: #efe3d4; --line: #e3d3c0; --cream: #2a2018; --dim: #6e5f4f; --faint: #a3927f; --fox-hi: #c4581a; --moss: #4e8a2e; --sky: #2f6fc4; --sun: #a87a10; --berry: #b8457a; --err: #c8402e; --teal: #23857d; } }
+  :root[data-look=light] { --night: #fffaf4; --burrow: #f8efe4; --wood: #efe3d4; --line: #e3d3c0; --cream: #2a2018; --dim: #6e5f4f; --faint: #a3927f; --fox-hi: #c4581a; --moss: #4e8a2e; --sky: #2f6fc4; --sun: #a87a10; --berry: #b8457a; --err: #c8402e; --teal: #23857d; }
+  /* den itself, and Terminal, look the way they really do */
+  .term, .den, .card pre, .card code { --night: #17120e; --burrow: #211a14; --wood: #2d241c; --line: #3d3127; --cream: #f3e9dc; --dim: #ad9c86; --faint: #6d5f50; --fox-hi: #ffb07a; --moss: #9ccf7a; --sky: #82b8ff; --sun: #f2c86b; --berry: #e88aa8; --err: #ff7b6b; --teal: #6cc7c0; color: var(--cream); }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body { background: var(--night); color: var(--cream); font: 400 1.0625rem/1.6 var(--body); }

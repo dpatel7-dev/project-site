@@ -4,141 +4,117 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>locket - a password manager that's easy to use</title>
-<meta name="description" content="locket keeps all your passwords locked with one master password: copy them with one click, make strong ones, see 2-step codes, check for weak, reused and leaked passwords, and unlock with Touch ID.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<meta name="description" content="locket keeps all your passwords locked with one master password: copy them with one click, sort them by email, fill them in on websites with locket in Chrome, make strong ones, see 2-step codes, check for weak, reused and leaked passwords, and unlock with Touch ID.">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #161618; --panel: #222226; --ink: #ececee; --muted: #a3a2a9; --line: #36363c; --accent: #ef6a1f; --accent-ink: #ff9a5a; --dark: #0f0f11; --dark-ink: #ececee; --soft: #1d1d20;
-    --display: "Space Grotesk", system-ui, sans-serif;
-    --sans: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; }
-  body { background: var(--bg); color: var(--ink); font: 400 1.08rem/1.6 var(--sans); }
-  a { color: var(--accent-ink); }
-  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 22px; }
-  .hero { padding: 60px 0 30px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px 40px; align-items: center; }
-  .hero canvas { image-rendering: pixelated; display: block; }
-  h1 { font: 700 clamp(2.8rem, 8vw, 5rem)/.95 var(--display); margin: 0; letter-spacing: -.02em; }
-  .tagline { font: 500 clamp(1.3rem, 3vw, 1.8rem)/1.2 var(--display); color: var(--accent-ink); margin: 8px 0 14px; }
-  .lede { color: var(--muted); margin: 0; max-width: 36em; font-size: 1.15rem; }
-  .lede b { color: var(--ink); }
-  .demo { padding: 20px 0 10px; }
-  .mock { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; box-shadow: 0 24px 60px -36px rgba(0, 0, 0, .55); max-width: 760px; }
-  .term { background: var(--dark); color: var(--dark-ink); font: .92rem/1.55 var(--mono); overflow-x: auto; }
-  .term .row { white-space: pre; min-height: 1.55em; }
-  .term .dim { color: var(--muted); }
-  .scout-mock .q { font: 650 1.6rem/1.2 var(--display); margin-bottom: 12px; }
-  .scout-mock .srcs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-  .scout-mock .srcs span { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: .88rem; color: var(--muted); }
-  .scout-mock i, .scout-mock em { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 6px; color: #fff; font: 700 .72rem var(--sans); font-style: normal; padding: 0 5px; vertical-align: 2px; }
-  .scout-mock p { margin: 0 0 8px; font-size: 1.1rem; }
-  .scout-mock ul { margin: 0 0 10px; padding-left: 1.2em; }
-  .scout-mock li::marker { color: var(--accent); }
-  .scout-mock .more { border-top: 1px solid var(--line); padding-top: 10px; color: var(--muted); font-size: .85rem; display: flex; flex-direction: column; gap: 6px; }
-  .scout-mock .more span { color: var(--ink); font-size: 1rem; }
-  section { padding: 40px 0 0; }
-  h2 { font: 700 clamp(1.6rem, 4vw, 2.2rem)/1.15 var(--display); margin: 0 0 14px; }
-  .get { background: var(--soft); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; }
-  .get ol { margin: 0; padding-left: 1.3em; }
-  .get li { margin: 8px 0; }
-  .cmd { display: flex; align-items: center; gap: 10px; background: var(--dark); border-radius: 12px; padding: 6px 6px 6px 16px; margin: 8px 0 4px; max-width: 680px; }
-  .cmd code { flex: 1; color: var(--dark-ink); font: .95rem/1.5 var(--mono); overflow-x: auto; white-space: nowrap; padding: 6px 0; }
-  .cmd button { font: 700 1rem/1 var(--sans); background: var(--accent); color: #111; border: 0; border-radius: 9px; padding: 12px 18px; cursor: pointer; }
-  .os { display: inline-flex; gap: 4px; margin-bottom: 10px; }
-  .os button { font: 700 .9rem/1 var(--sans); background: none; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; cursor: pointer; }
-  .os button[aria-pressed=true] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-  table { width: 100%; border-collapse: collapse; }
-  td { padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  td:first-child { white-space: nowrap; width: 1%; }
-  code { font: .92em var(--mono); background: var(--soft); border: 1px solid var(--line); padding: 2px 7px; border-radius: 6px; }
-  .rules { padding-left: 1.2em; max-width: 46em; }
-  .rules li { margin: 10px 0; color: var(--muted); }
-  .rules li b { color: var(--ink); }
-  footer { padding: 50px 0 46px; color: var(--muted); font-size: .95rem; }
-  footer a { color: var(--ink); }
-  @media (max-width: 640px) {
-    .hero { grid-template-columns: 1fr; padding-top: 36px; }
-    td:first-child { white-space: normal; }
-    .mock { padding: 16px; }
-  }
+  /* locket: the site's plain white (or black at night) with locket's own colour and
+     typeface, and the picture of locket in the colours it really has. */
+  .page { --c: #ef6a1f; --display: "Space Grotesk", system-ui, sans-serif; }
+  .screen { --bg: #161618; --panel: #222226; --ink: #ececee; --muted: #a3a2a9; --line: #36363c; --accent: #ef6a1f; --accent-ink: #ff9a5a; --dark: #0f0f11; --dark-ink: #ececee; --soft: #1d1d20; }
 </style>
 </head>
 <body>
-<main class="wrap">
-  <header class="hero">
-    <canvas id="who" aria-hidden="true"></canvas>
-    <div><h1>locket</h1><p class="tagline">One password to remember.</p><p class="lede">locket keeps all your passwords locked up with one <b>master password</b> (or Touch ID), and makes them easy to use: copy one with a click, make strong new ones, see 2-step codes, and find out which passwords are weak, used twice, or leaked. Dilly the armadillo walks about the desert while it's unlocked, and curls up into a ball when it locks.</p></div>
+<main class="page">
+  <header class="ahero wrap">
+    <div>
+      <h1>locket</h1>
+      <p class="tagline">One password to remember.</p>
+      <p class="lede">locket keeps all your passwords locked up with one <b>master password</b> (or Touch ID), and makes them easy to use: copy one with a click, make strong new ones, see 2-step codes, and find out which ones are weak, used twice, or leaked. <b>Accounts</b> sorts them by the email you signed up with, and <b>locket in Chrome</b> fills them in on websites and offers to save new ones when you sign in or sign up. Bastion the armadillo walks about the desert while it's unlocked, and curls up into a ball when it locks.</p>
+      <p class="ahero-go"><a class="btn" href="#get">Get locket</a><span>Free. Version {{locket_version}}.</span></p>
+    </div>
+    <div class="stage" id="stage" role="img" aria-label="Bastion the armadillo" style="--c:#ef6a1f"><canvas class="stage-bg"></canvas><canvas class="stage-who"></canvas></div>
   </header>
-  <section class="demo" aria-label="What it looks like"><style>
-  .lk { max-width: 520px; display: grid; gap: 10px; }
+
+  <section class="wrap demo" aria-label="What locket looks like">
+    <div class="window"><div class="wbar" aria-hidden="true"><i></i><i></i><i></i><span>locket</span></div><div class="screen"><style>
+  .lk { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 290px); gap: 24px; align-items: start; width: min(700px, 100%); }
+  .lk h4 { margin: 0 0 8px; font: 700 .8rem var(--read); color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .lk h4 i { width: 22px; height: 22px; border-radius: 7px; background: #ffae1a; display: grid; place-items: center; color: #1a1206; font: 700 .7rem var(--read); font-style: normal; }
   .lk .row { display: grid; grid-template-columns: 34px 1fr auto; gap: 0 12px; align-items: center; padding: 9px 10px; border-radius: 12px; }
   .lk .row.on { background: rgba(239,106,31,.16); }
-  .lk .row i { grid-row: span 2; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; font: 700 .9rem var(--sans); font-style: normal; }
+  .lk .row > i { grid-row: span 2; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; color: #fff; font: 700 .9rem var(--read); font-style: normal; }
   .lk .row b { font-weight: 650; }
   .lk .row small { grid-column: 2; color: var(--muted); }
-  .lk .row em { grid-row: span 2; font: 700 .7rem var(--sans); font-style: normal; color: #ef6a1f; background: rgba(239,106,31,.16); border-radius: 6px; padding: 1px 6px; }
-  .lk .pw { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-family: var(--mono); }
-  .lk .pw button { font: 650 .8rem var(--sans); border: 1px solid var(--line); background: #2b2b30; color: var(--ink); border-radius: 8px; padding: 4px 10px; }
-  .lk .m { display: flex; gap: 3px; align-items: center; }
+  .lk .row em { grid-row: span 2; font: 700 .7rem var(--read); font-style: normal; color: #ef6a1f; background: rgba(239,106,31,.16); border-radius: 6px; padding: 1px 6px; }
+  .lk .pw { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; font-family: var(--mono); font-size: .92rem; }
+  .lk .pw button { font: 650 .8rem var(--read); border: 1px solid var(--line); background: #2b2b30; color: var(--ink); border-radius: 8px; padding: 4px 10px; }
+  .lk .m { display: flex; gap: 3px; align-items: center; margin-top: 10px; }
   .lk .m span { width: 18px; height: 8px; }
-  .lk .m b { margin-left: 8px; font: 650 .85rem var(--sans); }
+  .lk .m b { margin-left: 8px; font: 650 .85rem var(--read); }
+  .lk .pop { background: #ffffff; color: #1d1d20; border-radius: 16px; padding: 14px 16px 16px; box-shadow: 0 18px 40px -16px rgba(0,0,0,.7); font-size: .95rem; }
+  .lk .pop .from { display: flex; align-items: center; gap: 8px; font: 700 .78rem var(--read); color: #6b6b72; margin-bottom: 8px; }
+  .lk .pop .from i { width: 18px; height: 18px; border-radius: 5px; background: #ef6a1f; }
+  .lk .pop b { display: block; font-size: 1.02rem; margin-bottom: 2px; }
+  .lk .pop small { color: #6b6b72; }
+  .lk .pop div { display: flex; gap: 8px; margin-top: 12px; }
+  .lk .pop button { font: 700 .85rem var(--read); border-radius: 9px; padding: 8px 14px; border: 0; background: #ececef; color: #1d1d20; }
+  .lk .pop button.go { background: #ef6a1f; color: #fff; }
+  .lk .site { margin-top: 10px; font: .8rem var(--read); color: var(--muted); text-align: center; }
+  @media (max-width: 700px) { .lk { grid-template-columns: 1fr; } }
 </style>
 <div class="mock lk">
-  <div class="row on"><i style="background:#2f9e6b">G</i><b>GitHub</b><span></span><small>dpatel7-dev</small></div>
-  <div class="row"><i style="background:#e0a020">D</i><b>Discord</b><em>reused</em><small>dhruv</small></div>
-  <div class="pw"><span>R7#qv2!LmZp9@xWc4tY8</span><button type="button">Copy</button></div>
-  <div class="m"><span style="background:#ffd23f"></span><span style="background:#ffae1a"></span><span style="background:#ff8a1f"></span><span style="background:#f2541b"></span><span style="background:#e10500"></span><b>Very strong</b></div>
-</div></section>
+  <div>
+    <h4><i>D</i>dpatel7-dev, used by 2 logins</h4>
+    <div class="row on"><i style="background:#2f9e6b">G</i><b>GitHub</b><span></span><small>dpatel7-dev</small></div>
+    <div class="row"><i style="background:#e0a020">D</i><b>Discord</b><em>reused</em><small>dpatel7-dev</small></div>
+    <div class="pw"><span>R7#qv2!LmZp9@xWc4tY8</span><button type="button">Copy</button></div>
+    <div class="m"><span style="background:#ffd23f"></span><span style="background:#ffae1a"></span><span style="background:#ff8a1f"></span><span style="background:#f2541b"></span><span style="background:#e10500"></span><b>Very strong</b></div>
+  </div>
+  <div>
+    <div class="pop"><p class="from"><i></i>locket</p><b>Save this password in locket?</b><small>github.com, dpatel7-dev</small><div><button type="button" class="go">Save</button><button type="button">Not now</button></div></div>
+    <p class="site">locket in Chrome, after you sign in</p>
+  </div>
+</div></div></div>
+  </section>
 
-  <section aria-labelledby="get-title">
-    <div class="get">
-      <h2 id="get-title">Get locket</h2>
-      <div class="os" role="group" aria-label="Your computer"><button type="button" data-os="sh" aria-pressed="true">Mac or Linux</button><button type="button" data-os="ps1" aria-pressed="false">Windows</button></div>
-      <ol>
-        <li>Open <span class="where">Terminal</span> (<a href="/start">not sure how? the picture guide shows you</a>).</li>
-        <li>Copy this, paste it in, and press Enter:<div class="cmd"><code id="cmd">curl -fsSL {{origin}}/locket/install.sh | sh</code><button type="button" id="copy">Copy</button></div></li>
-        <li>Then type <code>locket</code> and press Enter.</li>
-      </ol>
-      <p style="margin:12px 0 0;color:var(--muted)">Already have <b>pca</b>? Open it and pick this card instead. Version {{locket_version}}.</p>
+  <section class="wrap" id="get" aria-labelledby="get-title">
+    <div class="gethead"><h2 id="get-title">Get locket</h2><div class="os" role="group" aria-label="Your computer"><button type="button" data-os="sh" aria-pressed="true">Mac or Linux</button><button type="button" data-os="ps1" aria-pressed="false">Windows</button></div></div>
+    <div class="getbox">
+    <ol class="steps3">
+      <li><b>Open <span class="where">Terminal</span></b><p>Not sure how? <a href="/start">The picture guide shows you.</a></p></li>
+      <li><b>Copy the line below, paste it in, press Enter</b><p>Press Copy, then click in <span class="where">Terminal</span> and paste.</p></li>
+      <li><b>Type <code>locket</code> and press Enter</b><p>Already have pca? Pick locket there instead.</p></li>
+    </ol>
+    <div class="cmd"><code id="cmd">curl -fsSL {{origin}}/locket/install.sh | sh</code><button type="button" id="copy">Copy</button></div>
     </div>
   </section>
 
-  <section aria-labelledby="use-title">
+  <section class="wrap" aria-labelledby="use-title">
     <h2 id="use-title">Using it</h2>
-    <table><tr><td><code>locket</code></td><td>open locket and make your vault (your master password: long, used nowhere else, written down somewhere safe at home)</td></tr><tr><td><code>Bring passwords in</code></td><td>step by step for Chrome, Safari, Firefox, Bitwarden, 1Password and LastPass</td></tr><tr><td><code>Copy</code></td><td>a username or password with one click. Copied passwords clear themselves after 30 seconds</td></tr><tr><td><code>Make one for me</code></td><td>a strong new password: random characters, or words that are easy to type</td></tr><tr><td><code>Check-up</code></td><td>leaked, used more than once, or easy to guess</td></tr><tr><td><code>locket on</code></td><td>once: an armadillo in the menu bar and ⌃⌥L for a side panel, for quick copying</td></tr><tr><td><code>locket get github</code></td><td>copy a password from Terminal</td></tr><tr><td><code>locket make</code></td><td>a strong password, from Terminal</td></tr></table>
+    <dl class="uses">
+      <dt><code>locket</code></dt><dd>open locket and make your vault (your master password: long, used nowhere else, written down somewhere safe at home)</dd>
+      <dt><code>Bring passwords in</code></dt><dd>step by step for Chrome, Safari, Firefox, Bitwarden, 1Password and LastPass</dd>
+      <dt><code>Copy</code></dt><dd>a username or password with one click. Copied passwords clear themselves after 30 seconds</dd>
+      <dt><code>Accounts</code></dt><dd>your logins sorted by the email (or username) you signed up with, so you can see everything one email is used for</dd>
+      <dt><code>locket in Chrome</code></dt><dd>once: follow the six steps on that page. Then Chrome fills in your passwords, suggests strong ones when you sign up, and asks to save new ones when you sign in</dd>
+      <dt><code>Make one for me</code></dt><dd>a strong new password: random characters, or words that are easy to type</dd>
+      <dt><code>Check-up</code></dt><dd>leaked, used more than once, or easy to guess</dd>
+      <dt><code>locket on</code></dt><dd>once: an armadillo in the menu bar and ⌃⌥L for a side panel, for quick copying</dd>
+      <dt><code>locket get github</code></dt><dd>copy a password from Terminal</dd>
+      <dt><code>locket make</code></dt><dd>a strong password, from Terminal</dd>
+    </dl>
   </section>
 
-  <section aria-labelledby="safe-title">
+  <section class="wrap" aria-labelledby="safe-title">
     <h2 id="safe-title">How your passwords are kept safe</h2>
-    <ul class="rules"><li>Your master password goes through <b>scrypt</b> (slow on purpose, so guessing takes a very long time), which unlocks a random key that locks your passwords with <b>AES-256-GCM</b>. Your master password is never saved anywhere.</li><li><b>If you forget your master password, nobody can get your passwords back</b>, not even locket. Write it down and keep it somewhere safe.</li><li>Touch ID is Apple's own check, so a photo or a video can't fool it. (Mac only.)</li><li>The leak check (Have I Been Pwned) never sends your passwords: only the first 5 characters of each one's fingerprint leave your computer.</li><li>Copied passwords are marked secret, so clipboard keepers like magpie skip them.</li><li>Your vault stays on your computer, in <code>~/.locket</code>. Works on Mac, Windows and Linux.</li></ul>
+    <ul class="rules">
+      <li>Your master password goes through <b>scrypt</b> (slow on purpose, so guessing takes a very long time), which unlocks a random key that locks your passwords with <b>AES-256-GCM</b>. Your master password is never saved anywhere.</li>
+      <li><b>If you forget your master password, nobody can get your passwords back</b>, not even locket. Write it down and keep it somewhere safe.</li>
+      <li>Touch ID is Apple's own check, so a photo or a video can't fool it. (Mac only.)</li>
+      <li>The leak check (Have I Been Pwned) never sends your passwords: only the first 5 characters of each one's fingerprint leave your computer.</li>
+      <li><b>locket in Chrome</b> only talks to locket on your own computer, after you pair it with a 6-digit code. It only fills in on secure (https) websites, and only on the website a password was saved for, so a look-alike website gets nothing.</li>
+      <li>Copied passwords are marked secret, so clipboard keepers like magpie skip them.</li>
+      <li>Your vault stays on your computer, in <code>~/.locket</code>. Works on Mac, Windows and Linux.</li>
+    </ul>
   </section>
 
-  <footer><a href="/new">What's new</a> · <a href="https://github.com/dpatel7-dev/locket">Source code</a> · <a href="/">All the apps</a></footer>
+  {{neighbours}}
+  <footer class="wrap foot"><a href="https://github.com/dpatel7-dev/locket">locket's source code</a><a href="/new">What's new in every app</a></footer>
 </main>
 <script>
 {{art}}
-(function () {
-  const m = ART.mascots['locket'];
-  if (m) drawPixels(document.getElementById('who'), trimGrid(m.grid), m.ink, innerWidth < 640 ? 6 : 9);
-  const ORIGIN = location.origin;
-  const cmds = { sh: 'curl -fsSL ' + ORIGIN + '/locket/install.sh | sh', ps1: 'irm ' + ORIGIN + '/locket/install.ps1 | iex' };
-  function pick(os) {
-    document.getElementById('cmd').textContent = cmds[os];
-    document.querySelectorAll('.where').forEach((w) => { w.textContent = os === 'sh' ? 'Terminal' : 'PowerShell'; });
-    document.querySelectorAll('.os button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.os === os)));
-  }
-  document.querySelectorAll('.os button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.os)));
-  pick(/Win/.test(navigator.platform || navigator.userAgent) ? 'ps1' : 'sh');
-  const copy = document.getElementById('copy');
-  copy.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(document.getElementById('cmd').textContent); } catch (e) { /* select it instead */ }
-    copy.textContent = 'Copied!';
-    setTimeout(() => { copy.textContent = 'Copy'; }, 1600);
-  });
-})();
+drawStage(document.getElementById('stage'), 'locket');
+setupGet('locket');
 </script>
 </body>
 </html>

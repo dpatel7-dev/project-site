@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.0
+- **Light or dark, set once for every app:** press **L** in pca (or `pca look light`, `pca look dark`, `pca look auto`). The picker panel and the window follow it.
+
 ## 1.1.0
 - The moving scene behind the window can no longer stumble on its very first frame.
 - The picker is now a side panel: a narrow strip of frosted glass at the right of the screen that floats over your work without taking it over. The app you were in stays the active one.

@@ -1,6 +1,9 @@
 # Changelog
 
 
+## 2.4.0
+- **Light or dark, set once for every app:** press **L** in pca (or `pca look light`, `pca look dark`, `pca look auto`). When it's light, Tree of Thought uses Meadow; when it's dark, Grove.
+
 ## 2.3.0
 - **A new sidebar.** It's now a calm panel of its own beside the chat instead of a cramped box: a big **New chat** button at the top, one tidy line per AI model (the one answering is softly highlighted, with "free" or "this Mac" beside it), and your chats grouped into Today, Yesterday, This week and Earlier with how long ago each was. Long names end in "…" instead of being chopped. How much free AI is left today sits quietly at the bottom.
 - The big tree no longer squeezes the sidebar; Rowan still greets you on the welcome screen.

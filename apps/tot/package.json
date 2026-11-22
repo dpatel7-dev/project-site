@@ -1,6 +1,6 @@
 {
   "name": "tree-of-thought",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Many AI models in one terminal garden. Every answer is a branch.",
   "bin": { "tot": "bin/tot.js" },
   "scripts": { "test": "node --test", "start": "node bin/tot.js" },

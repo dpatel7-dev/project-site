@@ -31,7 +31,7 @@ PARENT = os.path.dirname(SITE)
 
 COPIES = {
     'gossip': (['gossip'], ['hub/gossip_hub.py', 'site/index.html', 'install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
-    'pigeon': (['pigeon'], ['server/pigeon_server.py', 'web/index.html', 'web/console.html', 'src/qr.js', 'src/wire.js', 'src/diff.js', 'install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    'pigeon': (['pigeon'], ['server/pigeon_server.py', 'web/index.html', 'src/qr.js', 'src/wire.js', 'src/diff.js', 'install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     'tot': (['Tree-Of-Thought', 'tree-of-thought'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     'pca': (['Project-CLI-Access', 'project-cli-access'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     'tidy': (['tidy', 'Tidy'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),

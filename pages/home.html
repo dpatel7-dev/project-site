@@ -4,304 +4,406 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>djp7 - little apps you open by typing one word</title>
-<meta name="description" content="Small, friendly apps that run in your Mac's Terminal: ask anything (scout), chat (gossip), many AIs (Tree of Thought), your own drive (pigeon), tidy a folder (tidy), free up space (roomy), learn to code (den), get any command in plain words (hey), convert any file (morph), block ads, YouTube's too (shoo), keep everything you copy (magpie), check up on your Mac (medic), study with cards (flash), play your music (hum), order the usual (usual) and keep your passwords (locket). One command installs them all.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<meta name="description" content="Small, friendly apps that run in your computer's Terminal: ask anything (scout), chat (gossip), many AIs (Tree of Thought), your own drive (pigeon), tidy a folder (tidy), free up space (roomy), learn to code (den), get any command in plain words (hey), convert any file (morph), block ads (shoo), keep everything you copy (magpie), check up on your Mac (medic), study with cards (flash), play your music (hum), order the usual (usual) and keep your passwords (locket). One command installs them all.">
 <style>
-  /* A pixel meadow at dawn where the mascots live, then plain, roomy reading
-     below it. Pixel type for names and headings, Atkinson Hyperlegible (made
-     to be easy to read) for everything else. */
-  :root {
-    --sky-top: #a9c3ea; --sky: #cddcf2; --sky-low: #e6eefa;
-    --grass: #74a85a; --grass-dark: #5a8a45; --soil: #8a6446; --soil-dark: #6c4c34;
-    --paper: #f2f4f8; --card: #ffffff; --ink: #1a1d29; --muted: #5a6175; --line: #dde1ea;
-    --night: #1a1d29; --night-2: #262a3a; --night-ink: #eef0f6; --night-dim: #aab0c3;
-    --go: #74a85a;
-    --pixel: "Pixelify Sans", ui-monospace, monospace;
-    --sans: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
-    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; }
-  html { scroll-behavior: smooth; }
-  body { background: var(--paper); color: var(--ink); font: 400 1.0625rem/1.6 var(--sans); }
-  a { color: inherit; }
-  :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
-  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 22px; }
+  /* The front door: a pixel world where the mascots live (blue sky by day,
+     stars by night) with a glass Terminal floating in it that you can type in.
+     Below it, plain white (or black) and easy reading. */
+  .world { position: relative; margin: 12px; border-radius: 34px; overflow: hidden; min-height: min(820px, calc(100svh - 128px)); display: flex; flex-direction: column;
+    background: #8fbfff; box-shadow: inset 0 0 0 1px var(--line); isolation: isolate; }
+  .world canvas.sky { position: absolute; inset: 0; z-index: -1; }
+  .world-in { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 560px); gap: 32px 48px; align-items: center; padding-top: clamp(40px, 9vh, 96px); padding-bottom: 28px; }
+  .hello h1 { font: 700 clamp(2.7rem, 6.2vw, 5rem)/.98 var(--pixel); margin: 0; letter-spacing: -.02em; color: var(--sky-ink); }
+  .hello .lede { margin: 22px 0 0; color: var(--sky-dim); font-size: 1.2rem; max-width: 30em; }
+  .hello .lede b { color: var(--sky-ink); }
+  .go { display: flex; flex-wrap: wrap; gap: 10px; margin: 30px 0 0; }
+  .go .btn { background: var(--sky-ink); color: var(--sky-btn-ink); }
+  .go .btn:hover { background: color-mix(in oklab, var(--sky-ink) 85%, #7cc4ff); }
+  .go .btn.ghost { position: relative; background: var(--glass); color: var(--ink); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); box-shadow: inset 0 0 0 1px var(--line); }
+  .go .btn.ghost:hover { background: var(--bg); }
 
-  /* ── the meadow ── */
-  .meadow { position: relative; overflow: hidden; padding: 64px 12px 0; background: linear-gradient(var(--sky-top), var(--sky) 55%, var(--sky-low)); }
-  .meadow canvas.sky { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
-  .crew { position: relative; z-index: 1; display: flex; justify-content: center; align-items: flex-end; gap: clamp(6px, 2.6vw, 40px); margin-bottom: -6px; flex-wrap: nowrap; }
-  .mascot { display: flex; flex-direction: column; align-items: center; gap: 8px; text-decoration: none; border-radius: 8px; padding: 4px; }
-  .mascot canvas { display: block; image-rendering: pixelated; }
-  .mascot .tag { font: 700 .92rem/1 var(--pixel); background: var(--ink); color: #fff; padding: 6px 8px 7px; border-radius: 4px; white-space: nowrap; }
-  .mascot .tag i { display: inline-block; width: 8px; height: 8px; background: var(--c); margin-right: 6px; }
-  .crew.tight { gap: clamp(4px, 1vw, 14px); }
-  .crew.tight .tag { font-size: .74rem; padding: 5px 6px 6px; }
-  .crew.tight .tag i { width: 6px; height: 6px; margin-right: 4px; }
-  .crew.notags { gap: clamp(4px, 1.4vw, 18px); }
-  .crew.notags .tag { display: none; }
-  .mascot:hover canvas, .mascot:focus-visible canvas { animation: hop .42s steps(4) 1; }
-  .ground { height: 58px; margin: 0 -12px; image-rendering: pixelated; background-size: 96px 72px; position: relative; z-index: 0; }
-  @keyframes hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-12px); } }
-  @keyframes land { from { transform: translateY(-90px); opacity: 0; } 70% { transform: translateY(3px); opacity: 1; } to { transform: translateY(0); } }
-  .crew .mascot { animation: land .55s cubic-bezier(.3, 1.4, .6, 1) both; animation-delay: calc(var(--n) * 70ms); }
-  .crew .mascot.floaty canvas { margin-bottom: 12px; animation: drift 5s ease-in-out infinite; }
-  @keyframes drift { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-  @media (prefers-reduced-motion: reduce) { .crew .mascot, .crew .mascot.floaty canvas, .mascot:hover canvas, .mascot:focus-visible canvas { animation: none; } html { scroll-behavior: auto; } }
+  /* the Terminal you can type in */
+  .term { border-radius: 22px; overflow: hidden; font: .98rem/1.55 var(--mono); color: var(--ink); cursor: text; }
+  .tbar { position: relative; display: flex; gap: 8px; padding: 13px 16px; }
+  .tbar i { width: 12px; height: 12px; border-radius: 50%; background: #ff5f57; }
+  .tbar i + i { background: #febc2e; }
+  .tbar i + i + i { background: #28c840; }
+  .tbar span { position: absolute; left: 50%; top: 11px; transform: translateX(-50%); font: 600 .84rem/1.2 var(--read); color: var(--muted); }
+  .tlog { padding: 4px 20px 0; min-height: 11.5em; display: flex; flex-direction: column; justify-content: flex-end; }
+  .tlog p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tlog .me::before, .tline .pr { color: var(--muted); }
+  .tlog .me::before { content: "~ % "; }
+  .tlog .out { padding-left: 1.2em; text-indent: -1.2em; margin-bottom: .55em; color: var(--muted); }
+  .tlog .out b { color: var(--ink); font-weight: 700; }
+  .tlog .out b::before { content: ""; display: inline-block; width: .62em; height: .62em; margin-right: .58em; background: var(--c); vertical-align: .04em; }
+  .tline { display: flex; gap: .6em; padding: 0 20px; align-items: baseline; }
+  .tline input { all: unset; flex: 1; min-width: 0; font: inherit; color: var(--ink); caret-color: var(--caret, #28c840); }
+  .thint { margin: 10px 0 0; padding: 12px 20px 16px; border-top: 1px solid var(--line); font: .95rem/1.45 var(--read); color: var(--muted); min-height: 3.4em; }
+  .thint b { color: var(--ink); }
+  .thint i { font-style: normal; display: inline-block; width: 9px; height: 9px; background: var(--c); margin: 0 6px 0 2px; }
+  .term:focus-within { box-shadow: inset 0 0 0 2px var(--ink), var(--shadow); }
 
-  /* ── the first thing you read ── */
-  .intro { padding: 52px 0 10px; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 40px; align-items: start; }
-  h1 { font: 700 clamp(2.5rem, 6.4vw, 4.1rem)/1 var(--pixel); margin: 6px 0 18px; letter-spacing: -.01em; }
-  .lede { font-size: 1.2rem; color: var(--muted); margin: 0 0 20px; max-width: 30em; }
-  .lede b { color: var(--ink); }
-  .newbie { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; background: #fff6d6; border: 2px solid #f0d77a; border-radius: 12px; padding: 12px 16px; font-weight: 700; }
-  .newbie small { display: block; font-weight: 400; color: var(--muted); }
-  .newbie:hover { background: #ffefb5; }
-  .newbie canvas { image-rendering: pixelated; flex: none; }
+  /* the mascots, standing on the grass */
+  .crew { position: relative; display: flex; justify-content: center; align-items: flex-end; gap: clamp(4px, 1.6vw, 26px); padding: 0 16px; margin-bottom: -4px; }
+  .mate { position: relative; display: block; padding: 2px; border-radius: 8px; text-decoration: none; }
+  .mate canvas { display: block; }
+  .mate .tag { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%) scale(.9); transform-origin: 50% 100%; opacity: 0; pointer-events: none; white-space: nowrap;
+    font: 700 .95rem/1 var(--pixel); color: #141416; background: var(--c); padding: 6px 9px 7px; border-radius: 8px; transition: opacity .15s, transform .15s; }
+  .mate .tag::after { content: ""; position: absolute; left: 50%; top: 100%; margin-left: -4px; border: 4px solid transparent; border-top-color: var(--c); }
+  .mate:hover .tag, .mate:focus-visible .tag, .mate.say .tag { opacity: 1; transform: translateX(-50%) scale(1); }
+  .mate:focus-visible { outline: 3px solid var(--sky-ink); }
+  .ground { height: 64px; image-rendering: pixelated; background-size: 96px 72px; }
 
-  /* the three steps, on the dark card */
-  .steps { background: var(--night); color: var(--night-ink); border-radius: 16px; padding: 22px 22px 18px; }
-  .steps h2 { font: 700 1.35rem/1.2 var(--pixel); margin: 0 0 14px; }
-  .os { display: flex; gap: 6px; margin-bottom: 16px; }
-  .os button { font: 700 .9rem/1 var(--sans); color: var(--night-dim); background: none; border: 1px solid #3a3e4f; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
-  .os button[aria-pressed=true] { color: var(--ink); background: var(--night-ink); border-color: var(--night-ink); }
-  .step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 4px 12px; padding: 10px 0; border-top: 1px solid #2f3446; }
-  .step:first-of-type { border-top: 0; }
-  .step .n { width: 30px; height: 30px; display: grid; place-items: center; font: 700 1rem/1 var(--pixel); color: var(--ink); background: var(--c); border-radius: 6px; }
-  .step > div > b { display: block; font-size: 1.05rem; }
-  .step p { margin: 2px 0 0; color: var(--night-dim); font-size: .98rem; }
-  kbd { font: 700 .82rem/1 var(--sans); display: inline-block; min-width: 1.9em; text-align: center; background: #f3f4f8; color: var(--ink); border-radius: 6px; padding: 5px 7px 6px; box-shadow: 0 2px 0 #9aa0b3; margin: 0 1px; }
-  .cmd { display: flex; align-items: center; gap: 10px; background: #0f1119; border-radius: 10px; padding: 6px 6px 6px 14px; margin-top: 8px; }
-  .cmd code { flex: 1; font: .9rem/1.5 var(--mono); overflow-x: auto; white-space: nowrap; padding: 6px 0; scrollbar-width: thin; }
-  .cmd button { font: 700 .95rem/1 var(--sans); background: var(--go); color: #0f1119; border: 0; border-radius: 8px; padding: 11px 16px; cursor: pointer; flex: none; }
-  .cmd button:hover { filter: brightness(1.1); }
+  /* plain reading from here down */
+  .band { padding-top: 92px; }
+  .band > h2, .band .gethead h2 { font: 700 clamp(1.9rem, 4.4vw, 2.8rem)/1.08 var(--pixel); margin: 0; letter-spacing: -.01em; }
+  .band .sub { color: var(--muted); margin: 10px 0 30px; font-size: 1.12rem; max-width: 40em; }
+  .band .gethead { margin-bottom: 10px; }
+  #get .getbox { margin-top: 26px; }
 
-  /* ── "what do you want to do?" ── */
-  section { padding: 54px 0 0; }
-  h2.big { font: 700 clamp(1.7rem, 4vw, 2.3rem)/1.1 var(--pixel); margin: 0 0 6px; }
-  .sub { color: var(--muted); margin: 0 0 22px; }
-  .wants { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
-  .want { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 2px solid var(--line); background: var(--card); font: 700 1.02rem/1.25 var(--sans); text-align: left; cursor: pointer; color: var(--ink); text-decoration: none; }
-  .want:hover { border-color: var(--c); }
-  .want canvas { image-rendering: pixelated; flex: none; }
-  .want small { display: block; font-weight: 400; color: var(--muted); font-size: .86rem; }
+  .group { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 18px 32px; padding: 30px 0; border-top: 1px solid var(--line); }
+  .group h3 { font: 700 1.35rem/1.15 var(--pixel); margin: 6px 0 0; }
+  .group h3 small { display: block; margin-top: 8px; font: 400 .98rem/1.45 var(--read); color: var(--muted); }
+  .plots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 26px; }
+  .plot { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 16px; align-items: center; padding: 8px; margin: -8px; border-radius: 24px; text-decoration: none; }
+  .plot:hover { background: color-mix(in oklab, var(--c) 11%, var(--bg)); }
+  .patch { position: relative; height: 88px; border-radius: 18px; overflow: hidden; display: grid; place-items: end center; background:
+      linear-gradient(transparent 74%, color-mix(in oklab, var(--c) 70%, #fff) 74% 77%, var(--c) 77%), color-mix(in oklab, var(--c) 22%, var(--bg)); }
+  .patch canvas { margin-bottom: 14px; }
+  .plot b { font: 700 1.4rem/1.1 var(--pixel); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 9px; }
+  .plot b small { font: 400 .82rem/1 var(--read); color: var(--muted); }
+  .plot b em { font: 700 .72rem/1 var(--read); font-style: normal; color: #141416; background: var(--c); padding: 4px 6px; border-radius: 6px; }
+  .plot > span > span { display: block; margin-top: 4px; color: var(--muted); font-size: .98rem; line-height: 1.45; }
 
-  /* ── the apps: each one a little diorama ── */
-  .apps { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
-  .app { display: flex; flex-direction: column; border-radius: 16px; overflow: hidden; background: var(--card); border: 2px solid var(--line); text-decoration: none; color: var(--ink); scroll-margin-top: 80px; }
-  .app:hover { border-color: var(--c); }
-  .app.lit { border-color: var(--c); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 35%, transparent); }
-  .app .scene { position: relative; height: 128px; display: grid; place-items: end center; background: color-mix(in srgb, var(--c) 16%, #fff); }
-  .app .scene canvas.who { image-rendering: pixelated; position: relative; z-index: 1; margin-bottom: 10px; }
-  .app .scene canvas.floor { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 14px; image-rendering: pixelated; }
-  .app .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
-  .app h3 { font: 700 1.4rem/1.1 var(--pixel); margin: 0; display: flex; align-items: baseline; gap: 8px; }
-  .app h3 span { font: 400 .8rem var(--sans); color: var(--muted); }
-  .app p { margin: 0; color: var(--muted); font-size: .98rem; }
-  .app .more { margin-top: auto; padding-top: 10px; font-weight: 700; font-size: .95rem; }
-  .app .badge { position: absolute; top: 10px; left: 10px; z-index: 2; font: 700 .75rem/1 var(--pixel); background: var(--ink); color: #fff; padding: 5px 7px; border-radius: 4px; }
-
-  /* ── what's new ── */
-  .newsbox { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-  .news { background: var(--card); border: 2px solid var(--line); border-radius: 14px; padding: 14px 16px; }
-  .news header { font: 700 1.15rem/1.2 var(--pixel); margin-bottom: 6px; }
+  .newsbox { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: 12px; }
+  .news { padding: 18px 20px 20px; border-radius: 24px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
+  .news header { display: flex; align-items: center; gap: 10px; font: 700 1.2rem/1.2 var(--pixel); margin-bottom: 8px; }
   .news header a { text-decoration: none; }
-  .news header span { font: 400 .8rem var(--sans); color: var(--muted); margin-left: 6px; }
-  .news p, .news ul { margin: 0; color: var(--muted); font-size: .95rem; }
+  .news header span { font: 400 .8rem var(--read); color: var(--muted); }
+  .news header canvas { flex: none; }
+  .news p, .news ul { margin: 0; color: var(--muted); font-size: .96rem; }
   .news ul { padding-left: 1.1em; }
-  .news code { font: .85em var(--mono); background: var(--paper); padding: 1px 5px; border-radius: 4px; }
-  .seeall { display: inline-block; margin-top: 16px; font-weight: 700; }
+  .news code { font-size: .84em; }
+  .seeall { display: inline-block; margin-top: 18px; font-weight: 700; }
+  footer.site { padding: 80px 0 30px; color: var(--muted); font-size: .94rem; max-width: 52em; }
+  footer.site a { color: var(--ink); }
 
-  footer { padding: 56px 0 48px; color: var(--muted); font-size: .92rem; }
-  footer a { color: var(--ink); }
+  /* the sky's colours, for the words that sit on it */
+  .world { --sky-ink: #0c1733; --sky-dim: #22355f; --sky-btn-ink: #ffffff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-look=light]) .world { --sky-ink: #ffffff; --sky-dim: #c2cbe6; --sky-btn-ink: #0c1733; background: #050817; } }
+  :root[data-look=dark] .world { --sky-ink: #ffffff; --sky-dim: #c2cbe6; --sky-btn-ink: #0c1733; background: #050817; }
 
-  @media (max-width: 860px) {
-    .intro { grid-template-columns: minmax(0, 1fr); gap: 26px; padding-top: 36px; }
+  @media (max-width: 980px) {
+    .world-in { grid-template-columns: minmax(0, 1fr); padding-top: 44px; }
+    .group { grid-template-columns: 1fr; gap: 14px; }
   }
-  @media (max-width: 620px) {
-    .meadow { padding-top: 34px; }
-    .mascot .tag { display: none; }
-    .mascot { padding: 4px 0; }
-    .crew { gap: 6px; }
-    .apps { grid-template-columns: 1fr 1fr; gap: 10px; }
-    .app .scene { height: 96px; }
-    .app .body { padding: 10px 12px 12px; }
-    .app p { font-size: .9rem; }
-    .app h3 { font-size: 1.15rem; flex-wrap: wrap; }
+  @media (max-width: 700px) {
+    .world { margin: 8px; border-radius: 26px; }
+    .plots { grid-template-columns: 1fr; }
+    .plot { grid-template-columns: 92px minmax(0, 1fr); }
+    .patch { height: 76px; }
+    .tlog { min-height: 8.5em; }
+    .crew { gap: 3px; padding: 0 8px; }
   }
 </style>
 </head>
 <body>
-<header class="meadow" aria-label="The apps">
+<header class="world" id="world">
   <canvas class="sky" aria-hidden="true"></canvas>
-  <div class="crew" id="crew"></div>
+  <div class="world-in wrap">
+    <div class="hello">
+      <h1>Little apps you open by typing one word</h1>
+      <p class="lede">Ask anything, chat with friends, play your music, keep your passwords, free up space. <b>Each one is a word you type in Terminal</b>, and one menu installs them all and keeps them up to date.</p>
+      <p class="go"><a class="btn" href="#get">Get all of them</a><a class="btn ghost" href="/start">New to Terminal? Start here</a></p>
+    </div>
+    <div class="term glass" id="term">
+      <div class="tbar" aria-hidden="true"><i></i><i></i><i></i><span>Terminal</span></div>
+      <div class="tlog" id="tlog" aria-live="polite"></div>
+      <label class="tline"><span class="pr" aria-hidden="true">~ %</span><input id="tin" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Type what you want to do, or an app's name, then press Enter" aria-describedby="thint"></label>
+      <p class="thint" id="thint">Try it: type what you want to do, like <b>music</b>, and press Enter.</p>
+    </div>
+  </div>
+  <nav class="crew" id="crew" aria-label="The apps' mascots"></nav>
   <div class="ground" aria-hidden="true"></div>
 </header>
 
 <main class="wrap">
-  <div class="intro">
-    <div>
-      <h1>Little apps you open by typing one word</h1>
-      <p class="lede">Ask anything and get a clear answer. Chat with friends. Free up space. Tidy a messy folder. Learn to code. <b>Each one is a word you type in Terminal</b>, and one menu installs them all and keeps them up to date.</p>
-      <a class="newbie" href="/start"><canvas id="newbieArt" aria-hidden="true"></canvas><span>Never used Terminal? Start here<small>A picture guide, one step at a time. No experience needed.</small></span></a>
+  <section class="band" id="get" aria-labelledby="get-title">
+    <div class="gethead"><h2 id="get-title">Get every app at once</h2>
+      <div class="os" role="group" aria-label="Your computer"><button type="button" data-os="sh" aria-pressed="true">Mac</button><button type="button" data-os="ps1" aria-pressed="false">Windows</button></div></div>
+    <p class="sub">Three steps, about a minute. After that, everything keeps itself up to date.</p>
+    <div class="getbox">
+    <ol class="steps3">
+      <li><b id="s1">Open Terminal</b><p id="s1p">Hold <kbd>⌘</kbd> and press <kbd>space</kbd>, type <b>Terminal</b>, press <kbd>return</kbd>.</p></li>
+      <li><b>Copy the line below, paste it in, press Enter</b><p>Press Copy, then click in the window that opened and paste.</p></li>
+      <li><b>Type <code>pca</code> and press Enter</b><p>Pick an app with the arrow keys and press Enter. It installs itself and opens.</p></li>
+    </ol>
+    <div class="cmd"><code id="cmd">curl -fsSL {{origin}}/pca/install.sh | sh</code><button type="button" id="copy">Copy</button></div>
     </div>
-    <div class="steps" aria-labelledby="steps-title">
-      <h2 id="steps-title">Get everything in 3 steps</h2>
-      <div class="os" role="group" aria-label="Your computer">
-        <button type="button" data-os="sh" aria-pressed="true">Mac</button>
-        <button type="button" data-os="ps1" aria-pressed="false">Windows</button>
-      </div>
-      <div class="step" style="--c:#7cc4ff"><span class="n">1</span><div><b id="s1">Open Terminal</b><p id="s1p">Hold <kbd>⌘</kbd> and press <kbd>space</kbd>, type <b>Terminal</b>, press <kbd>return</kbd>.</p></div></div>
-      <div class="step" style="--c:#8fd16a"><span class="n">2</span><div><b>Copy this, paste it in, press Enter</b><div class="cmd"><code id="cmd">curl -fsSL {{origin}}/pca/install.sh | sh</code><button type="button" id="copy">Copy</button></div></div></div>
-      <div class="step" style="--c:#f2c14e"><span class="n">3</span><div><b>Type <kbd>pca</kbd> and press Enter</b><p>Use the arrow keys to pick an app, then press Enter. It installs itself and opens.</p></div></div>
-    </div>
-  </div>
-
-  <section aria-labelledby="want-title">
-    <h2 class="big" id="want-title">What do you want to do?</h2>
-    <p class="sub">Pick one and you'll see which app does it.</p>
-    <div class="wants" id="wants"></div>
   </section>
 
-  <section aria-labelledby="apps-title">
-    <h2 class="big" id="apps-title">The apps</h2>
-    <p class="sub">Each one has a friendly mascot, works with your keyboard, and explains itself as you go.</p>
-    <div class="apps" id="apps"></div>
+  <section class="band" id="apps" aria-labelledby="apps-title">
+    <h2 id="apps-title">Every app</h2>
+    <p class="sub">Pick one to see what it looks like and how to get just that one. Or, on any page, just start typing what you want to do.</p>
+    <div id="groups"></div>
   </section>
 
-  <section aria-labelledby="news-title">
-    <h2 class="big" id="news-title">What's new</h2>
-    <p class="sub">The latest from each app. pca updates everything for you.</p>
-    <div class="newsbox">{{news_short}}</div>
+  <section class="band" aria-labelledby="news-title">
+    <h2 id="news-title">What's new</h2>
+    <p class="sub">The latest from each app. pca brings you every change by itself.</p>
+    <div class="newsbox" id="news">{{news_short}}</div>
     <a class="seeall" href="/new">See everything that's new</a>
   </section>
 
-  <footer>
-    Source code: <a href="https://github.com/dpatel7-dev/gossip">gossip</a>, <a href="https://github.com/dpatel7-dev/Tree-Of-Thought">Tree of Thought</a>, <a href="https://github.com/dpatel7-dev/pigeon">pigeon</a>, <a href="https://github.com/dpatel7-dev/Tidy">tidy</a>, <a href="https://github.com/dpatel7-dev/Den">den</a>, <a href="https://github.com/dpatel7-dev/scout">scout</a>, <a href="https://github.com/dpatel7-dev/roomy">roomy</a>, <a href="https://github.com/dpatel7-dev/hey">hey</a>, <a href="https://github.com/dpatel7-dev/morph">morph</a>, <a href="https://github.com/dpatel7-dev/shoo">shoo</a>, <a href="https://github.com/dpatel7-dev/magpie">magpie</a>, <a href="https://github.com/dpatel7-dev/medic">medic</a>, <a href="https://github.com/dpatel7-dev/flash">flash</a>, <a href="https://github.com/dpatel7-dev/hum">hum</a>, <a href="https://github.com/dpatel7-dev/usual">usual</a>, <a href="https://github.com/dpatel7-dev/locket">locket</a>, <a href="https://github.com/dpatel7-dev/Project-CLI-Access">Project CLI Access</a> and <a href="https://github.com/dpatel7-dev/project-site">this website</a>.
+  <footer class="site">
+    Every app's code is on GitHub: <a href="https://github.com/dpatel7-dev/gossip">gossip</a>, <a href="https://github.com/dpatel7-dev/Tree-Of-Thought">Tree of Thought</a>, <a href="https://github.com/dpatel7-dev/pigeon">pigeon</a>, <a href="https://github.com/dpatel7-dev/Tidy">tidy</a>, <a href="https://github.com/dpatel7-dev/Den">den</a>, <a href="https://github.com/dpatel7-dev/scout">scout</a>, <a href="https://github.com/dpatel7-dev/roomy">roomy</a>, <a href="https://github.com/dpatel7-dev/hey">hey</a>, <a href="https://github.com/dpatel7-dev/morph">morph</a>, <a href="https://github.com/dpatel7-dev/shoo">shoo</a>, <a href="https://github.com/dpatel7-dev/magpie">magpie</a>, <a href="https://github.com/dpatel7-dev/medic">medic</a>, <a href="https://github.com/dpatel7-dev/flash">flash</a>, <a href="https://github.com/dpatel7-dev/hum">hum</a>, <a href="https://github.com/dpatel7-dev/usual">usual</a>, <a href="https://github.com/dpatel7-dev/locket">locket</a>, <a href="https://github.com/dpatel7-dev/Project-CLI-Access">pca</a> and <a href="https://github.com/dpatel7-dev/project-site">this website</a>.
   </footer>
 </main>
 
 <script>
 {{art}}
 (function () {
-  const ORIGIN = location.origin;
-  const APPS = [
-    { id: 'locket', name: 'locket', v: '{{locket_version}}', fresh: true, c: '#ef6a1f', line: 'All your passwords, locked with one master password. Copy them with a click, unlock with Touch ID, and find the weak ones.', want: ['Keep my passwords', 'safe, and easy to use'] },
-    { id: 'usual', name: 'usual', v: '{{usual_version}}', fresh: true, c: '#ff7a5c', line: 'Order the usual: your details, who it\'s for, what to say on the phone, and who owes what.', want: ['Order food', 'the usual, quickly'] },
-    { id: 'hum', name: 'hum', v: '{{hum_version}}', fresh: true, c: '#f5c431', line: 'Your music in a little panel at the side of the screen: your files, YouTube links, playlists.', want: ['Play my music', 'off to one side'] },
-    { id: 'flash', name: 'flash', v: '{{flash_version}}', c: '#d7f07a', line: 'Study cards that come back just before you\'d forget them. Tell it your test date and it plans your days.', want: ['Study for a test', 'cards that plan your days'] },
-    { id: 'medic', name: 'medic', v: '{{medic_version}}', c: '#f6a6b8', line: 'Why your Mac is slow, hot or low on battery, in plain words, with safe fixes.', want: ['Fix a slow Mac', 'or one that runs out of battery'] },
-    { id: 'magpie', name: 'magpie', v: '{{magpie_version}}', c: '#6a9be6', line: 'Remembers everything you copy. Press ⌃⌥V in any app to paste something from earlier.', want: ['Paste something from earlier', 'everything you copied'] },
-    { id: 'scout', name: 'scout', v: '{{scout_version}}', c: '#7c9cff', line: 'Ask anything. It searches the web and explains the answer, with links to every source.', want: ['Ask a question', 'and get a clear answer'] },
-    { id: 'shoo', name: 'shoo', v: '{{shoo_version}}', fresh: true, c: '#d9a877', line: 'Blocks Google\'s full-page ads, banners, trackers and YouTube\'s ads. No administrator needed.', want: ['Block ads', 'on every site, YouTube too'] },
-    { id: 'morph', name: 'morph', v: '{{morph_version}}', c: '#d39cf5', line: 'Turn any file into any other: videos, songs, photos, documents, PDFs. Right on your computer.', want: ['Convert a file', 'photo, video, PDF, anything'] },
-    { id: 'gossip', name: 'gossip', v: '{{gossip_version}}', c: '#7cc4ff', line: 'Private chat with friends: messages, calls and files, locked so only you two can read them.', want: ['Chat with friends', 'messages, calls, files'] },
-    { id: 'tot', name: 'tree of thought', v: '{{tot_version}}', c: '#8fd16a', line: 'Talk to lots of free AIs in one place. Ask one, or all of them at once.', want: ['Talk to AI', 'lots of free ones at once'] },
-    { id: 'pigeon', name: 'pigeon', v: '{{pigeon_version}}', c: '#2bc4b2', line: 'Your own locked drive. Send files to your other computers, keep old versions, and get files from anyone with a drop box.', want: ['Keep and send files', 'your own locked drive'] },
-    { id: 'tidy', name: 'tidy', v: '{{tidy_version}}', c: '#e8913a', line: 'Sorts a messy folder (like Downloads) into neat folders. Shows you first; u puts it all back.', want: ['Tidy a messy folder', 'like Downloads'] },
-    { id: 'roomy', name: 'roomy', v: '{{roomy_version}}', c: '#ff7a59', line: 'Frees up space on your computer, safely. Everything goes to the Trash first.', want: ['Free up space', 'when your disk is full'] },
-    { id: 'den', name: 'den', v: '{{den_version}}', c: '#f0843c', line: 'A friendly code editor in your browser, with a fox who explains things. Made for learning.', want: ['Learn to code', 'with a fox who helps'] },
-    { id: 'hey', name: 'hey', v: '{{hey_version}}', c: '#f2c14e', line: 'Say what you want to do in plain words and get the Terminal command, explained.', want: ['Find a Terminal command', 'in plain words'] },
-  ];
-  const art = (id) => ART.mascots[id];
-  const fits = (id) => trimGrid(art(id).grid);
-  const pageOf = (id) => '/' + id;
+  const APPS = {{apps_json}};
+  const GROUPS = {{groups_json}};
+  const byId = {};
+  APPS.forEach((a) => { byId[a.id] = a; });
+  const crewApps = APPS.filter((a) => ART.mascots[a.id]);
+  const fits = (id) => trimGrid(ART.mascots[id].grid);
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  // the meadow: everyone standing on the grass
+  // ── the world: sky, far hills, sun or moon, the grass ──
+  const world = document.getElementById('world');
+  const sky = world.querySelector('canvas.sky');
+  const rnd = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
+  function drawSky() {
+    const night = isNight();
+    const cell = innerWidth < 700 ? 6 : 8;
+    const W = Math.ceil(world.clientWidth / cell), H = Math.ceil(world.clientHeight / cell);
+    sky.width = W; sky.height = H;
+    sky.style.width = W * cell + 'px'; sky.style.height = H * cell + 'px';
+    const g = sky.getContext('2d');
+    const top = night ? '#02040c' : '#5f9dff', low = night ? '#16255a' : '#d4e8ff';
+    const groundCells = Math.ceil(64 / cell);
+    skyBands(g, W, H, top, low, 9);
+    // keep stars and clouds out from behind the words
+    const wr = world.getBoundingClientRect();
+    const words = ['.hello h1', '.hello .lede', '.hello .go'].map((q) => world.querySelector(q).getBoundingClientRect())
+      .map((r) => [Math.floor((r.left - wr.left) / cell) - 1, Math.floor((r.top - wr.top) / cell) - 1, Math.ceil((r.right - wr.left) / cell) + 1, Math.ceil((r.bottom - wr.top) / cell) + 1]);
+    const clear = (x0, y0, x1, y1) => !words.some(([a, b, c, d]) => x0 < c && x1 > a && y0 < d && y1 > b);
+    // the sun (or moon) goes in the first bit of open sky, top right if there's room
+    const spot = (r) => [[0.88, 0.15], [0.9, 0.07], [0.62, 0.09], [0.84, 0.42], [0.5, 0.5]].map(([fx, fy]) => [Math.round(W * fx), Math.round(H * fy)])
+      .find(([x, y]) => x + r < W && y - r > 0 && clear(x - r - 1, y - r - 1, x + r + 2, y + r + 2)) || [-99, -99];
+    if (night) {
+      for (let y = 0; y < H * 0.72; y++) for (let x = 0; x < W; x++) {
+        const r = rnd(x * 2.3, y * 4.1);
+        if (r > 0.993 && clear(x, y, x + 1, y + 1)) { g.globalAlpha = 0.35 + (r - 0.988) * 55; g.fillStyle = r > 0.997 ? '#fff4c0' : '#ffffff'; g.fillRect(x, y, 1, 1); }
+      }
+      g.globalAlpha = 1;
+      const [mx, my] = spot(6);
+      if (mx >= 0) for (let y = -6; y <= 6; y++) for (let x = -6; x <= 6; x++) {
+        const d = x * x + y * y;
+        if (d <= 17 && !((x + 2) * (x + 2) + (y - 1) * (y - 1) <= 11)) { g.fillStyle = '#f7f1d6'; g.fillRect(mx + x, my + y, 1, 1); }
+      }
+    } else {
+      const [sx, sy] = spot(7);
+      if (sx >= 0) for (let y = -7; y <= 7; y++) for (let x = -7; x <= 7; x++) {
+        const d = x * x + y * y;
+        if (d <= 13) { g.fillStyle = '#ffe27a'; g.fillRect(sx + x, sy + y, 1, 1); }
+        else if (d <= 26) { g.fillStyle = '#ffefa6'; g.fillRect(sx + x, sy + y, 1, 1); }
+        else if (d <= 40 && (x + y) % 2 === 0) { g.fillStyle = '#fff4c4'; g.fillRect(sx + x, sy + y, 1, 1); }
+      }
+      const CLOUD = ['.....WWWW.........', '...WWWWWWWW..WWW..', '.WWWWWWWWWWWWWWWWW', 'WWWWWWWWWWWWWWWWWW', '.ssssssssssssssss.'];
+      let made = 0;
+      [[0.03, 0.05], [0.4, 0.04], [0.62, 0.2], [0.86, 0.42], [0.5, 0.6], [0.06, 0.62], [0.3, 0.3], [0.72, 0.68]].forEach(([fx, fy], n) => {
+        const cx = Math.round(W * fx), cy = Math.round(H * fy), wide = n % 2 ? 14 : 18;
+        if (made >= 4 || cx + wide > W || !clear(cx, cy, cx + wide, cy + 5)) return;
+        made++;
+        CLOUD.forEach((row, r) => [...row].forEach((ch, k) => {
+          if (ch === '.' || k >= wide) return;
+          g.fillStyle = ch === 'W' ? 'rgba(255,255,255,.95)' : 'rgba(225,236,252,.9)';
+          g.fillRect(cx + k, cy + r, 1, 1);
+        }));
+      });
+    }
+    // far hills, a little lighter (or darker) than the grass, so the world has some depth
+    const hill = night ? '#0f2a2a' : '#9cc98a', hill2 = night ? '#0b2020' : '#86b874';
+    for (let x = 0; x < W; x++) {
+      const h = Math.round(5 + 3 * Math.sin(x / 9) + 2 * Math.sin(x / 4.3 + 1) + 2 * Math.sin(x / 23));
+      for (let y = H - groundCells - h; y < H; y++) { g.fillStyle = y > H - h + 1 && rnd(x, y) < 0.25 ? hill2 : hill; g.fillRect(x, y, 1, 1); }
+    }
+    if (night) for (let i = 0; i < 26; i++) { // fireflies, Blink's friends
+      const x = Math.round(rnd(i, 3) * W), y = Math.round(H - groundCells - 2 - rnd(i, 9) * H * 0.18);
+      if (!clear(x, y, x + 1, y + 1)) continue;
+      g.fillStyle = rnd(i, 5) < 0.5 ? '#f6ff8a' : '#d7f07a'; g.fillRect(x, y, 1, 1);
+    }
+    const tile = document.createElement('canvas');
+    const T = ['..g.....G.......g...G.....g..G..', 'gGgG.gGGgGg.GgGGgGgG.gGgGGgGgGgG', 'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG', 'gGGgGGGGgGGGgGGGGgGGGgGGGGgGGgGG'];
+    for (let i = 0; i < 20; i++) T.push([...Array(32)].map((_, x) => ((x * 7 + i * 13) % 23 === 0 ? 's' : 'S')).join(''));
+    drawPixels(tile, T, night ? { G: '#2f5a3a', g: '#244a30', S: '#3a2a20', s: '#2c2018' } : { G: '#74a85a', g: '#5a8a45', S: '#8a6446', s: '#6c4c34' }, 3);
+    world.querySelector('.ground').style.backgroundImage = 'url(' + tile.toDataURL() + ')';
+    document.getElementById('term').style.setProperty('--caret', night ? '#d7f07a' : '#28c840');
+  }
+
+  // ── everyone standing on the grass, as big as fits in one row ──
   const crew = document.getElementById('crew');
-  APPS.forEach((a, i) => {
+  crewApps.forEach((a) => {
     const el = document.createElement('a');
-    el.className = 'mascot' + (a.id === 'morph' ? ' floaty' : ''); el.href = pageOf(a.id); el.style.setProperty('--c', a.c); el.style.setProperty('--n', i);
-    el.setAttribute('aria-label', a.name + ': ' + (art(a.id).name || ''));
-    el.innerHTML = '<canvas aria-hidden="true"></canvas><span class="tag"><i></i>' + a.name + '</span>';
+    el.className = 'mate'; el.href = '/' + a.id; el.dataset.id = a.id; el.style.setProperty('--c', a.c);
+    el.setAttribute('aria-label', a.name + (a.mascot ? ', with ' + a.mascot : ''));
+    el.innerHTML = '<span class="tag">' + esc(a.short || a.name) + '</span><canvas aria-hidden="true"></canvas>';
     crew.appendChild(el);
   });
   function drawCrew() {
-    // as big as fits in one row: the widths of everyone, plus the gaps between them. With lots of
-    // apps the name tags are what's wide, so they get smaller first, and on narrow screens go away.
-    const widths = APPS.map((a) => Math.max(...fits(a.id).map((r) => r.length)));
-    const paint = (s, squeeze) => crew.querySelectorAll('.mascot').forEach((el, i) => {
-      const c = drawPixels(el.querySelector('canvas'), fits(APPS[i].id), art(APPS[i].id).ink, s);
-      c.style.width = squeeze ? Math.max(8, Math.floor(widths[i] * squeeze)) + 'px' : '';
+    const widths = crewApps.map((a) => Math.max(...fits(a.id).map((r) => r.length)));
+    const gap = parseFloat(getComputedStyle(crew).columnGap) || 8;
+    const room = crew.clientWidth - 32 - gap * (crewApps.length - 1) - 4 * crewApps.length;
+    const s = Math.max(1, Math.min(5, Math.floor(room / widths.reduce((a, b) => a + b, 0))));
+    crew.querySelectorAll('.mate').forEach((el, i) => {
+      const c = drawPixels(el.querySelector('canvas'), fits(crewApps[i].id), ART.mascots[crewApps[i].id].ink, s);
+      if (s === 1) { // tiny screens: shrink a little more, still in one row
+        const q = Math.min(1, room / widths.reduce((a, b) => a + b, 0));
+        c.style.width = Math.floor(widths[i] * q) + 'px';
+      } else c.style.width = '';
     });
-    const fitsRow = () => crew.scrollWidth <= crew.clientWidth + 1;
-    for (const level of ['', 'tight', 'notags']) {
-      crew.className = 'crew' + (level ? ' ' + level : '');
-      const gap = parseFloat(getComputedStyle(crew).columnGap) || 8;
-      const fit = (crew.clientWidth - gap * (APPS.length - 1) - 8 * APPS.length) / widths.reduce((a, b) => a + b, 0);
-      for (let k = Math.max(2, Math.min(5, Math.floor(fit))); k >= 2; k--) { paint(k); if (fitsRow()) return; }
-    }
-    // small screens: shrink everyone to fit
-    const gap = parseFloat(getComputedStyle(crew).columnGap) || 6;
-    let q = (crew.clientWidth - gap * (APPS.length - 1) - 8 * APPS.length) / widths.reduce((a, b) => a + b, 0);
-    for (let tries = 0; tries < 12; tries++) { paint(2, Math.max(0.4, q)); if (fitsRow() || q <= 0.4) return; q *= 0.94; }
   }
-  drawCrew();
-  addEventListener('resize', drawCrew);
 
-  // dawn: a few rows of coloured pixels low in the sky, and two clouds
-  function drawSky() {
-    const c = document.querySelector('canvas.sky');
-    const W = Math.ceil(c.clientWidth / 8), H = Math.ceil(c.clientHeight / 8);
-    c.width = W; c.height = H;
-    const g = c.getContext('2d');
-    const hue = ['#ffd9a8', '#ffc9b5', '#f8d2e4', '#dcd6f7'];
-    const n = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
-    for (let y = Math.floor(H * 0.55); y < H; y++) for (let x = 0; x < W; x++) {
-      const t = (y - H * 0.55) / (H * 0.45);
-      if (n(x, y) < t * 0.4) { g.fillStyle = hue[Math.min(3, Math.floor(n(y, x) * 4))]; g.globalAlpha = 0.45; g.fillRect(x, y, 1, 1); }
-    }
-    g.globalAlpha = 1;
-    const CLOUD = ['....WWWW......', '..WWWWWWWW.WW.', '.WWWWWWWWWWWWW', 'WWWWWWWWWWWWWW', '.wwwwwwwwwwww.'];
-    [[0.07, 2], [0.74, 4], [0.42, 1]].forEach(([fx, y]) => CLOUD.forEach((row, r) => [...row].forEach((ch, k) => { if (ch !== '.') { g.fillStyle = ch === 'W' ? '#f4f7fd' : '#e2e9f6'; g.fillRect(Math.floor(W * fx) + k, y + r, 1, 1); } })));
+  // ── the Terminal ──
+  const log = document.getElementById('tlog');
+  const tin = document.getElementById('tin');
+  const hint = document.getElementById('thint');
+  const term = document.getElementById('term');
+  function score(a, q) {
+    const words = q.split(/\s+/).filter(Boolean);
+    let s = 0;
+    if (a.id === q || a.name.toLowerCase() === q) s += 200;
+    else if (a.id.startsWith(q) || a.name.toLowerCase().startsWith(q)) s += 120;
+    if ((a.mascot || '').toLowerCase().startsWith(q)) s += 70;
+    const hay = (a.words + ' ' + a.line).toLowerCase();
+    words.forEach((w) => {
+      const plain = w.replace(/[^a-z0-9]/g, '');
+      if (plain && new RegExp('(^|[^a-z])' + plain).test(hay)) s += 30;
+      else if (w.length > 2 && hay.includes(w)) s += 10;
+    });
+    return s;
   }
-  drawSky();
-  addEventListener('resize', drawSky);
+  function best(q) {
+    q = q.trim().toLowerCase();
+    if (!q) return null;
+    let top = null, ts = 0;
+    APPS.forEach((a) => { const s = score(a, q); if (s > ts) { ts = s; top = a; } });
+    return top;
+  }
+  function say(html, cls) {
+    const p = document.createElement('p');
+    p.className = cls; p.innerHTML = html;
+    log.appendChild(p);
+    while (log.children.length > 8) log.firstChild.remove();
+  }
+  let saying = 0;
+  function cheer(id) {
+    crew.querySelectorAll('.mate.say').forEach((m) => m.classList.remove('say'));
+    const m = crew.querySelector('.mate[data-id="' + id + '"]');
+    if (!m) return;
+    m.classList.add('say');
+    clearTimeout(saying);
+    saying = setTimeout(() => m.classList.remove('say'), 2600);
+  }
+  function answer(text, typedByYou) {
+    const q = text.trim().toLowerCase();
+    say(esc(text), 'me');
+    if (!q) return;
+    if (q === 'help' || q === 'ls') {
+      say('every app here:' + APPS.map((a) => ' <span style="color:' + a.c + '">' + esc(a.id) + '</span>').join(''), 'out');
+      return;
+    }
+    if (q === 'clear') { log.textContent = ''; return; }
+    const a = best(q);
+    if (!a) { say('no app for that yet. Try music, files, study or passwords.', 'out'); return; }
+    say('<b style="--c:' + a.c + '">' + esc(a.short || a.name) + '</b> ' + esc(a.line), 'out');
+    cheer(a.id);
+    if (typedByYou) { hint.innerHTML = 'Opening <b>' + esc(a.name) + '</b>…'; setTimeout(() => { location.href = '/' + a.id; }, 450); }
+  }
+  function hintFor(text) {
+    const a = best(text);
+    if (!text.trim()) hint.innerHTML = 'Try it: type what you want to do, like <b>music</b>, and press Enter.';
+    else if (a) hint.innerHTML = 'Press Enter for <i style="--c:' + a.c + '"></i><b>' + esc(a.name) + '</b>: ' + esc(a.line);
+    else hint.innerHTML = 'Nothing called that yet. Try <b>music</b>, <b>files</b>, <b>study</b> or <b>passwords</b>.';
+  }
 
-  // a strip of pixel grass and soil, drawn once and tiled
-  const tile = document.createElement('canvas');
-  const T = ['..g.....G.......g...G.....g..G..', 'gGgG.gGGgGg.GgGGgGgG.gGgGGgGgGgG', 'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG', 'gGGgGGGGgGGGgGGGGgGGGgGGGGgGGgGG'];
-  for (let i = 0; i < 20; i++) T.push([...Array(32)].map((_, x) => ((x * 7 + i * 13) % 23 === 0 ? 's' : 'S')).join(''));
-  drawPixels(tile, T, { G: '#74a85a', g: '#5a8a45', S: '#8a6446', s: '#6c4c34' }, 3);
-  document.querySelector('.ground').style.backgroundImage = 'url(' + tile.toDataURL() + ')';
+  // it types by itself until you click in it
+  const DEMO = ['scout', 'hum', 'locket', 'flash', 'shoo', 'pigeon', 'medic', 'gossip', 'magpie', 'tidy', 'morph', 'usual', 'roomy', 'den', 'hey', 'tot'];
+  let demoOn = !still, timer = 0, n = 0;
+  function stopDemo() { demoOn = false; clearTimeout(timer); }
+  function demoStep() {
+    if (!demoOn) return;
+    const word = DEMO[n++ % DEMO.length];
+    let i = 0;
+    (function key() {
+      if (!demoOn) return;
+      tin.value = word.slice(0, ++i);
+      if (i < word.length) { timer = setTimeout(key, 90 + Math.random() * 70); return; }
+      timer = setTimeout(() => {
+        if (!demoOn) return;
+        tin.value = '';
+        answer(word, false);
+        timer = setTimeout(demoStep, 2300);
+      }, 420);
+    })();
+  }
+  if (still) { ['scout', 'hum', 'locket'].forEach((w) => answer(w, false)); crew.querySelectorAll('.say').forEach((m) => m.classList.remove('say')); }
+  else timer = setTimeout(demoStep, 900);
+  tin.addEventListener('focus', () => { if (demoOn) { stopDemo(); tin.value = ''; } hintFor(tin.value); });
+  tin.addEventListener('input', () => hintFor(tin.value));
+  tin.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); const v = tin.value; tin.value = ''; answer(v, true); if (!best(v)) hintFor(''); }
+  });
+  term.addEventListener('click', () => tin.focus());
+  // typing anywhere on this page (with nothing else picked) goes into the Terminal while you can see it
+  window.DOCK_TYPE = (key) => {
+    const r = term.getBoundingClientRect();
+    if (r.bottom < 60 || r.top > innerHeight - 60) return false;
+    tin.focus();
+    tin.value += key;
+    hintFor(tin.value);
+    return true;
+  };
 
-  // "never used Terminal?": a tiny terminal window
-  drawPixels(document.getElementById('newbieArt'), ['KKKKKKKKKK', 'KRYGKKKKKK', 'KKKKKKKKKK', 'K.........K'.slice(0, 10), 'K.>.......', 'K..>......', 'K.>.WWW...', 'K.........', 'KKKKKKKKKK'], { K: '#1a1d29', R: '#ff6b6b', Y: '#f2c14e', G: '#8fd16a', '>': '#8fd16a', W: '#eef0f6', '.': '#2b3042' }, 4);
-
-  // the apps, each on its own patch of ground
-  const apps = document.getElementById('apps');
-  APPS.forEach((a) => {
-    const el = document.createElement('a');
-    el.className = 'app'; el.id = 'app-' + a.id; el.href = pageOf(a.id); el.style.setProperty('--c', a.c);
-    const ver = a.v && a.v !== '?' ? 'v' + a.v : 'coming soon';
-    el.innerHTML = '<div class="scene">' + (a.fresh ? '<span class="badge">new</span>' : '') + '<canvas class="who" aria-hidden="true"></canvas><canvas class="floor" aria-hidden="true"></canvas></div><div class="body"><h3>' + a.name + ' <span>' + ver + '</span></h3><p>' + a.line + '</p><span class="more">See how it works</span></div>';
-    apps.appendChild(el);
-    drawPixels(el.querySelector('canvas.who'), fits(a.id), art(a.id).ink, innerWidth < 620 ? 3 : 4);
-    const floor = el.querySelector('canvas.floor');
-    const row = (k) => [...Array(48)].map((_, x) => ((x * 5 + k * 3) % 7 === 0 ? 'd' : 'g')).join('');
-    drawPixels(floor, [row(0), row(1), row(2).replace(/g/g, 'G')], { g: a.c, d: '#00000022', G: '#00000014' }, 1);
+  // ── every app, by what it's for ──
+  const groups = document.getElementById('groups');
+  GROUPS.forEach(([g, title, about]) => {
+    const apps = APPS.filter((a) => a.group === g);
+    const box = document.createElement('div');
+    box.className = 'group';
+    box.innerHTML = '<h3>' + esc(title) + '<small>' + esc(about) + '</small></h3><div class="plots"></div>';
+    const plots = box.querySelector('.plots');
+    apps.forEach((a) => {
+      const el = document.createElement('a');
+      el.className = 'plot'; el.href = '/' + a.id; el.style.setProperty('--c', a.c);
+      const v = a.v && a.v !== '?' ? 'v' + a.v : '';
+      el.innerHTML = '<span class="patch"><canvas aria-hidden="true"></canvas></span><span><b>' + esc(a.name) + (v ? ' <small>' + v + '</small>' : '') + (a.fresh ? ' <em>new</em>' : '') + '</b><span>' + esc(a.line) + '</span></span>';
+      plots.appendChild(el);
+      const art = ART.mascots[a.id];
+      const cv = el.querySelector('canvas');
+      if (art) drawPixels(cv, trimGrid(art.grid), art.ink, innerWidth < 700 ? 2 : 3);
+      else if (a.icon) { const img = new Image(); img.src = a.icon; img.alt = ''; img.className = 'pix'; img.onload = () => { img.width = img.naturalWidth * 3; }; cv.replaceWith(img); img.style.marginBottom = '14px'; }
+    });
+    groups.appendChild(box);
   });
 
-  // what do you want to do?
-  const wants = document.getElementById('wants');
-  APPS.forEach((a) => {
-    const b = document.createElement('a');
-    b.className = 'want'; b.href = '#app-' + a.id; b.style.setProperty('--c', a.c);
-    b.innerHTML = '<canvas aria-hidden="true"></canvas><span>' + a.want[0] + '<small>' + a.want[1] + ' · ' + a.name + '</small></span>';
-    wants.appendChild(b);
-    drawPixels(b.querySelector('canvas'), fits(a.id), art(a.id).ink, 2);
-    b.addEventListener('click', () => {
-      document.querySelectorAll('.app.lit').forEach((x) => x.classList.remove('lit'));
-      const card = document.getElementById('app-' + a.id);
-      card.classList.add('lit');
-      setTimeout(() => card.classList.remove('lit'), 2600);
-    });
+  // ── what's new: each app's mascot beside its news ──
+  document.querySelectorAll('#news .news').forEach((n) => {
+    const a = byId[n.dataset.app];
+    if (!a || !ART.mascots[a.id]) return;
+    n.style.setProperty('--c', a.c);
+    const c = document.createElement('canvas');
+    c.setAttribute('aria-hidden', 'true');
+    drawPixels(c, fits(a.id), ART.mascots[a.id].ink, 2);
+    n.querySelector('header').prepend(c);
   });
 
-  // install command and first step for this computer
+  // ── the three steps, for a Mac or Windows ──
+  const ORIGIN = location.origin;
   const cmds = { sh: 'curl -fsSL ' + ORIGIN + '/pca/install.sh | sh', ps1: 'irm ' + ORIGIN + '/pca/install.ps1 | iex' };
   const first = {
     sh: ['Open Terminal', 'Hold <kbd>⌘</kbd> and press <kbd>space</kbd>, type <b>Terminal</b>, press <kbd>return</kbd>.'],
@@ -317,14 +419,26 @@
   pick(/Win/.test(navigator.platform || navigator.userAgent) ? 'ps1' : 'sh');
   const copy = document.getElementById('copy');
   copy.addEventListener('click', async () => {
-    const text = document.getElementById('cmd').textContent;
-    try { await navigator.clipboard.writeText(text); } catch (e) {
-      const r = document.createRange(); r.selectNodeContents(document.getElementById('cmd'));
-      getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy');
+    const cmd = document.getElementById('cmd');
+    try { await navigator.clipboard.writeText(cmd.textContent); } catch (e) {
+      const r = document.createRange(); r.selectNodeContents(cmd); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy');
     }
-    copy.textContent = 'Copied!';
+    copy.textContent = 'Copied';
     setTimeout(() => { copy.textContent = 'Copy'; }, 1600);
   });
+
+  function drawAll() { drawSky(); drawCrew(); }
+  drawAll();
+  // redraw when the world changes size (the window, or the fonts arriving and the words reflowing)
+  let wait = 0, seen = '';
+  new ResizeObserver(() => {
+    const now = world.clientWidth + 'x' + world.clientHeight;
+    if (now === seen) return;
+    seen = now;
+    clearTimeout(wait); wait = setTimeout(drawAll, 60);
+  }).observe(world);
+  if (document.fonts) document.fonts.ready.then(drawSky);
+  addEventListener('djp7look', drawSky);
 })();
 </script>
 </body>

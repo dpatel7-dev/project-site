@@ -4,6 +4,7 @@
 """
 import io
 import json
+import re
 import os
 import shutil
 import sys
@@ -47,7 +48,9 @@ class Site(unittest.TestCase):
         self.assertEqual(code, 200, path)
         self.assertTrue(h['Content-Type'].startswith('text/html'), path)
         text = body.decode()
-        self.assertEqual(text.count('class="psnav"'), 1, path)
+        self.assertEqual(len(re.findall(r'<nav class="dk[" ]', text)), 1, path)  # the dock along the bottom
+        self.assertNotIn('psnav', text, path)  # the old bar across the top is gone
+        self.assertIn("localStorage.getItem('djp7-look')", text, path)  # day or night, before anything is drawn
         for link in ('href="/gossip"', 'href="/tot"', 'href="/pigeon"', 'href="/tidy"', 'href="/den"', 'href="/pca"'):
             self.assertIn(link, text, path)
         if here:
@@ -77,14 +80,17 @@ class Site(unittest.TestCase):
         self.assertIn('Content-Security-Policy', call('/pigeon/')[1])
         code, _, body = call('/no/such/page')
         self.assertEqual(code, 404)
-        self.assertIn(b'psnav', body)
+        self.assertIn(b'<nav class="dk"', body)
 
     def test_new_apps_and_guides(self):
-        for app, mascot in (('scout', 'Pip'), ('roomy', 'Shelly'), ('hey', 'Biscuit'), ('morph', 'Luma'), ('shoo', 'Bramble'), ('magpie', 'Pica'), ('medic', 'Lotl'), ('flash', 'Blink'), ('hum', 'Bumble'), ('usual', 'Rocco'), ('locket', 'Dilly')):
+        for app, mascot in (('scout', 'Pip'), ('roomy', 'Shelly'), ('hey', 'Biscuit'), ('morph', 'Luma'), ('shoo', 'Bramble'), ('magpie', 'Pica'), ('medic', 'Lotl'), ('flash', 'Blink'), ('hum', 'Bumble'), ('usual', 'Rocco'), ('locket', 'Bastion')):
             text = self.page('/' + app, app)
             self.assertIn('https://djp7.pythonanywhere.com/%s/install.sh' % app, text)
             self.assertIn('"%s":{"name":"%s"' % (app, mascot), text)
             self.page('/%s/' % app, app)
+            self.assertIn('class="getbox"', text, app)
+            self.assertIn('<nav class="wrap pn"', text, app)  # the apps before and after this one
+            self.assertNotIn('Dilly', text)
             code, _, body = call('/%s/install.sh' % app)
             self.assertEqual(code, 200)
             self.assertIn(('%s_HUB="${%s_HUB:-https://djp7.pythonanywhere.com}"' % (app.upper(), app.upper())).encode(), body)
@@ -154,6 +160,33 @@ class Site(unittest.TestCase):
         v = json.loads(body)
         self.assertEqual(set(v), {'gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph', 'shoo', 'magpie', 'medic', 'flash', 'hum', 'usual', 'locket'})
         self.assertTrue(all(isinstance(x, str) and x.count('.') == 2 for x in v.values()))
+
+    def test_the_dock(self):
+        import base64
+        import site_shell
+        home = self.page('/', None)
+        self.assertRegex(home, r'href="/"[^>]*aria-current="page"')
+        for a in site_shell.APPS:  # every app is in the dock, with its picture
+            self.assertRegex(home, r'<a class="dk-i dk-app[^"]*" href="/%s" data-id="%s"' % (a['id'], a['id']))
+        # the pictures are real PNG images
+        for uri, w, h in site_shell.icons().values():
+            data = base64.b64decode(uri.split(',', 1)[1])
+            self.assertEqual(data[:8], b'\x89PNG\r\n\x1a\n')
+            self.assertGreater(w, 8)
+        # pigeon fills the window, so it leaves room for the dock itself; the dock never loads anything from elsewhere
+        pigeon = self.page('/pigeon/', 'pigeon')
+        self.assertIn('<nav class="dk dk-onapp"', pigeon)
+        dock = pigeon[pigeon.index('<nav class="dk dk-onapp"'):]
+        self.assertNotRegex(dock, r'src="(https?:)?//')
+        # the shared styles come before a page's own, so the page can change them
+        hum = self.page('/hum', 'hum')
+        self.assertLess(hum.index('--dk-glass'), hum.index('.page { --c:'))
+        # pages with a look all their own still get the dock, and day and night
+        for path in ('/tot', '/tidy', '/den', '/pca'):
+            text = self.page(path, path[1:])
+            self.assertIn('data-look=light', text.replace('"', ''), path)
+        self.assertIn('Bastion the armadillo', home + self.page('/locket', 'locket'))
+        self.assertNotIn('console', call('/robots.txt')[2].decode())
 
     def test_only_get_for_our_pages(self):
         self.assertEqual(call('/tot', 'POST', b'x')[0], 405)

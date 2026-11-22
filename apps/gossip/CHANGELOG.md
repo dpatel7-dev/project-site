@@ -3,6 +3,9 @@
 See this any time with `gossip changelog`, or in the chat: Tab, then "What's new".
 
 
+## 0.11.0
+- **Light or dark, set once for every app:** press **L** in pca (or `pca look light`, `pca look dark`, `pca look auto`). When it's light, gossip uses Daylight; when it's dark, Arctic (Terminal and Mono stay as they are).
+
 ## 0.10.1
 - No more emoji in gossip's own screens: files show ▤, reminders show ◷, and the dashboard and call window use small drawn icons. Call reactions (thumbs up, love, laugh, party, wave) are drawn icons too, and still understand reactions sent by older versions. Emoji you type yourself (like :fire:) still work.
 ## 0.10.0

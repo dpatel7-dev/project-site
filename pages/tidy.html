@@ -19,6 +19,13 @@
     --acorn: #e8913a; --acorn-ink: #a9561a; --moss: #5f8232; --sky: #3f7aa0; --berry: #b8324f;
     --light: #f3e6cd; --light-dim: #b9a68a;
   }
+  /* by day (or when Day is picked in All apps) */
+  @media (prefers-color-scheme: light) { :root:not([data-look=dark]) { --desk: #f7f0e4; --desk-2: #efe5d4; --grain: #e3d4bb; --light: #2a1f16; --light-dim: #6b5a45; --card-paper: #fffbf2; --acorn: #cf7420; } }
+  :root[data-look=light] { --desk: #f7f0e4; --desk-2: #efe5d4; --grain: #e3d4bb; --light: #2a1f16; --light-dim: #6b5a45; --card-paper: #fffbf2; --acorn: #cf7420; }
+  @media (prefers-color-scheme: light) { :root:not([data-look=dark]) .desk { background: var(--desk) repeating-linear-gradient(179deg, transparent 0 46px, rgba(160, 120, 70, .05) 46px 49px, transparent 49px 118px, rgba(120, 90, 50, .07) 118px 119px); } }
+  :root[data-look=light] .desk { background: var(--desk) repeating-linear-gradient(179deg, transparent 0 46px, rgba(160, 120, 70, .05) 46px 49px, transparent 49px 118px, rgba(120, 90, 50, .07) 118px 119px); }
+  .term { --light: #f3e6cd; --light-dim: #b9a68a; --grain: #33261b; --desk: #231a13; color: var(--light); }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body { background: var(--desk); color: var(--light); font: 400 1.0625rem/1.6 var(--sans); font-variation-settings: "CASL" .25; }
@@ -66,7 +73,7 @@
   h2 { font-size: clamp(1.7rem, 3.4vw, 2.3rem); line-height: 1.1; font-weight: 800; letter-spacing: -.02em; margin: 0 0 8px; font-variation-settings: "CASL" 1; color: var(--light); }
   .sub { color: var(--light-dim); margin: 0 0 30px; max-width: 40em; }
   .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 30px 20px; list-style: none; margin: 0; padding: 0; }
-  .card { position: relative; background: var(--light); color: var(--ink); border-radius: 3px; padding: 20px 18px 18px; box-shadow: 0 14px 30px -22px #000; background-image: linear-gradient(transparent 0 46px, #e8a4a4 46px 47px, transparent 47px), repeating-linear-gradient(transparent 0 25px, #cfdcec 25px 26px); background-position: 0 0, 0 22px; }
+  .card { position: relative; background: var(--card-paper, var(--light)); color: var(--ink); border-radius: 3px; padding: 20px 18px 18px; box-shadow: 0 14px 30px -22px #000; background-image: linear-gradient(transparent 0 46px, #e8a4a4 46px 47px, transparent 47px), repeating-linear-gradient(transparent 0 25px, #cfdcec 25px 26px); background-position: 0 0, 0 22px; }
   .card:nth-child(2n) { transform: rotate(.6deg); }
   .card:nth-child(3n) { transform: rotate(-.5deg); }
   .card h3 { margin: 0 0 12px; font-size: 1.08rem; font-weight: 800; font-variation-settings: "CASL" 1; line-height: 1.3; }

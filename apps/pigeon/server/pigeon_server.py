@@ -100,7 +100,7 @@ P = int('FFFFFFFFFFFFFFFFC90FDAA22168C234C4C6628B80DC1CD129024E088A67CC74020BBEA
 WIRE_SKEW = 15 * 60 * 1000
 # asking things doesn't change anything, so a replayed copy is harmless: only the rest are checked for repeats
 READ_ONLY = {'hello', 'list', 'devices', 'inbox', 'links', 'shared', 'shared_piece', 'piece_get', 'versions', 'sent',
-             'console', 'box_info', 'chores', 'where_get'}
+             'box_info', 'chores', 'where_get'}
 
 
 class Rewire(Exception):
@@ -287,53 +287,6 @@ def barn_parts(kind, endpoint, region):
     return u.scheme, host, (region or 'us-east-1').strip()
 
 
-# ── the developer console: recent requests and errors, for the site's owner ──
-
-class Console:
-    """Requests and errors, one JSON line each, in <data>/console.jsonl (kept to about 2 MB)."""
-    LIMIT = 2 * MB
-
-    def __init__(self, data_dir):
-        self.path = os.path.join(data_dir, 'console.jsonl')
-        self.lock = threading.Lock()
-
-    def add(self, rec):
-        line = json.dumps(rec, separators=(',', ':'), default=str) + '\n'
-        with self.lock:
-            try:
-                with open(self.path, 'a', encoding='utf-8') as f:
-                    f.write(line)
-                if os.path.getsize(self.path) > self.LIMIT:
-                    with open(self.path, 'rb') as f:
-                        f.seek(-self.LIMIT // 2, os.SEEK_END)
-                        keep = f.read()
-                    keep = keep[keep.find(b'\n') + 1:]
-                    with open(self.path + '.part', 'wb') as f:
-                        f.write(keep)
-                    os.replace(self.path + '.part', self.path)
-            except OSError:
-                pass
-
-    def tail(self, since=0, limit=400):
-        try:
-            with open(self.path, 'rb') as f:
-                f.seek(0, os.SEEK_END)
-                size = f.tell()
-                f.seek(max(0, size - 900 * 1024))
-                data = f.read()
-        except OSError:
-            return []
-        out = []
-        for line in data.split(b'\n'):
-            try:
-                r = json.loads(line)
-            except ValueError:
-                continue
-            if isinstance(r, dict) and r.get('t', 0) > since:
-                out.append(r)
-        return out[-limit:] if limit else out
-
-
 def _mask(ip):
     if re.match(r'^\d+\.\d+\.\d+\.\d+$', ip or ''):
         return '.'.join(ip.split('.')[:3]) + '.x'
@@ -380,8 +333,15 @@ class Pigeon:
                 made INTEGER, got INTEGER DEFAULT 0, gone TEXT, meta TEXT, wrapped TEXT, size INTEGER);
             CREATE TABLE IF NOT EXISTS boxes (code TEXT PRIMARY KEY, nest TEXT, title TEXT, note TEXT, pub TEXT, priv TEXT,
                 made INTEGER, expires INTEGER, max INTEGER, files INTEGER DEFAULT 0, used INTEGER DEFAULT 0, open INTEGER DEFAULT 1);
-            CREATE TABLE IF NOT EXISTS consoles (hash TEXT PRIMARY KEY, made INTEGER, seen INTEGER);
         ''')
+        # pigeon 3.0 and 3.1 had a developer console; its sign-ins, password and request log go
+        self.db.execute('DROP TABLE IF EXISTS consoles')
+        self.db.execute("DELETE FROM settings WHERE key IN ('console_hash', 'console_salt')")
+        for f in ('console.jsonl', 'console.jsonl.part'):
+            try:
+                os.remove(os.path.join(data_dir, f))
+            except OSError:
+                pass
         # newer columns (older pigeon sites get them added in place)
         for table, col, kind in [('nests', 'owner', 'INTEGER DEFAULT 0'), ('nests', 'quota', 'INTEGER DEFAULT 0'), ('tokens', 'did', 'TEXT'), ('files', 'kind', "TEXT DEFAULT 'file'"),
                                  ('files', 'trashed', 'INTEGER DEFAULT 0'), ('files', 'to_did', 'TEXT'), ('files', 'from_did', 'TEXT'),
@@ -409,7 +369,6 @@ class Pigeon:
         self._swept = 0
         self._pages = {}
         self.wire = Wire(data_dir, self)
-        self.console = Console(data_dir)
 
     def _setting(self, key):
         r = self.db.execute('SELECT value FROM settings WHERE key = ?', (key,)).fetchall()
@@ -512,7 +471,6 @@ class Pigeon:
         self.q('DELETE FROM fails WHERE at < ?', ms - 3600000)
         self.q('DELETE FROM wires WHERE seen < ?', ms - 24 * 3600000)
         self.q('DELETE FROM wnonce WHERE at < ?', ms - 2 * WIRE_SKEW)
-        self.q('DELETE FROM consoles WHERE seen < ?', ms - 12 * 3600000)
         self.q('DELETE FROM receipts WHERE made < ?', ms - RECEIPT_DAYS * 86400000)
         for r in self.q('SELECT id FROM files WHERE trashed > 0 AND trashed < ?', ms - TRASH_DAYS * 86400000):
             self._drop(r['id'])
@@ -675,7 +633,6 @@ class Pigeon:
         # server's disk, not your own allowance, so it would only mislead)
         return {'nests': rows, 'used': self.used(), 'quota': self.capacity(), 'disk': {'used': self.disk_used(), 'quota': self.quota},
                 'nestDefault': self.nest_default, 'signups': self.signups, 'sealedOnly': bool(self._setting('sealed_only')),
-                'console': bool(self._setting('console_hash') or os.environ.get('PIGEON_CONSOLE_PASSWORD')),
                 'barns': len(self.barns_ok())}
 
     def _row(self, r, vers=None):
@@ -1240,87 +1197,6 @@ class Pigeon:
             self.q('DELETE FROM chores WHERE id = ?', i)
         return {'ok': True}
 
-    # ── the developer console ──────────────────────────────────────────────
-    def console_set(self, nest, m):
-        self._must_own(nest)
-        pw = m.get('password')
-        if pw is None:
-            self._set('console_hash', None)
-            self._set('console_salt', None)
-            self.q('DELETE FROM consoles')
-            return {'console': False}
-        if not isinstance(pw, str) or len(pw) < 8:
-            raise Err('400 Bad Request', 'Use a console password of at least 8 characters.')
-        salt = secrets.token_hex(16)
-        self._set('console_salt', salt)
-        self._set('console_hash', hashlib.pbkdf2_hmac('sha256', pw.encode(), bytes.fromhex(salt), 200000).hex())
-        self.q('DELETE FROM consoles')
-        return {'console': True}
-
-    def console_login(self, m, ip):
-        key = 'console|' + ip
-        self._slow_down(key, 6)
-        pw = str(m.get('password') or '')
-        salt, want = self._setting('console_salt'), self._setting('console_hash')
-        env = os.environ.get('PIGEON_CONSOLE_PASSWORD')
-        ok = False
-        if salt and want:
-            ok = hmac.compare_digest(hashlib.pbkdf2_hmac('sha256', pw.encode(), bytes.fromhex(salt), 200000).hex(), want)
-        elif env:
-            ok = hmac.compare_digest(pw.encode(), env.encode())
-        else:
-            raise Err('403 Forbidden', "The console is off on this site. Its owner can turn it on in the app: People and space > Developer console.")
-        if not ok:
-            self.q('INSERT INTO fails VALUES (?, ?)', key, _now())
-            raise Err('403 Forbidden', 'Wrong console password.')
-        return {'token': self._console_token()}
-
-    def _console_token(self):
-        token = secrets.token_hex(32)
-        self.q('INSERT INTO consoles VALUES (?, ?, ?)', hashlib.sha256(token.encode()).hexdigest(), _now(), _now())
-        return token
-
-    def console_owner(self, nest):
-        """The site's owner, signed in to pigeon, gets into the console without its password."""
-        self._must_own(nest)
-        return {'token': self._console_token()}
-
-    def console_link(self, nest):
-        """A one-time code for the owner's browser (it works once, for two minutes)."""
-        self._must_own(nest)
-        code = secrets.token_urlsafe(18)
-        self.q('INSERT INTO consoles VALUES (?, ?, ?)', 'link:' + hashlib.sha256(code.encode()).hexdigest(), _now(), _now())
-        return {'code': code}
-
-    def console_redeem(self, m, ip):
-        key = 'console|' + ip
-        self._slow_down(key, 6)
-        h = 'link:' + hashlib.sha256(str(m.get('code') or '').encode()).hexdigest()
-        r = self.one('SELECT made FROM consoles WHERE hash = ?', h)
-        self.q('DELETE FROM consoles WHERE hash = ?', h)
-        if not r or _now() - r['made'] > 120000:
-            self.q('INSERT INTO fails VALUES (?, ?)', key, _now())
-            raise Err('403 Forbidden', 'That console link has been used or is too old. Run pigeon console again.')
-        return {'token': self._console_token()}
-
-    def console_view(self, m):
-        token = m.get('token')
-        th = hashlib.sha256(str(token or '').encode()).hexdigest()
-        r = self.one('SELECT made FROM consoles WHERE hash = ?', th)
-        if not r or _now() - r['made'] > 12 * 3600000:
-            raise Err('401 Unauthorized', 'Sign in to the console again.')
-        self.q('UPDATE consoles SET seen = ? WHERE hash = ?', _now(), th)
-        since = m.get('since') if isinstance(m.get('since'), (int, float)) else 0
-        hour = _now() - 3600000
-        recent = self.console.tail(hour, 0)
-        rows = [x for x in recent if x.get('t', 0) > since][-500:] if since >= hour else self.console.tail(since, 500)
-        errors = [x for x in (recent if since else self.console.tail(0, 0)) if x.get('s', 0) >= 500 or x.get('tb')][-60:]
-        return {'rows': rows, 'errors': errors, 'now': _now(), 'version': VERSION,
-                'stats': {'hour': len(recent), 'errorsHour': len([x for x in recent if x.get('s', 0) >= 500]),
-                          'slowHour': len([x for x in recent if x.get('ms', 0) > 2000]), 'nests': self.one('SELECT COUNT(*) AS n FROM nests')['n'],
-                          'used': self.used(), 'capacity': self.capacity(), 'files': self.one('SELECT COUNT(*) AS n FROM files')['n'],
-                          'barns': len(self.barns_ok()), 'chores': self.one('SELECT COUNT(*) AS n FROM chores')['n']}}
-
     # ── pages ───────────────────────────────────────────────────────────────
     def _read(self, *parts):
         path = os.path.join(REPO_DIR, *parts)
@@ -1418,10 +1294,6 @@ class Pigeon:
                     if html is None:
                         return send('200 OK', 'pigeon v%s\n' % VERSION, 'text/plain; charset=utf-8')
                     return send('200 OK', html, 'text/html; charset=utf-8', [('Content-Security-Policy', self.csp())])
-                if path in ('/console', '/console/'):
-                    html = self.page(environ, base, 'console.html')
-                    if html is not None:
-                        return send('200 OK', html, 'text/html; charset=utf-8', [('Content-Security-Policy', self.csp())])
                 if path in ('/install.sh', '/install.ps1'):
                     text = self.installer(path.rsplit('.', 1)[1], environ, base)
                     if text is not None:
@@ -1431,7 +1303,7 @@ class Pigeon:
                 return send('404 Not Found', {'error': 'not found'})
             except Err as e:
                 return send(e.status, {'error': e.msg})
-            except Exception as e:  # never show a traceback to the world (it goes to the error log, and the console)
+            except Exception as e:  # never show a traceback to the world (it goes to the error log)
                 import traceback
                 tb = traceback.format_exc()
                 sys.stderr.write('pigeon: %s\n' % tb)
@@ -1439,8 +1311,6 @@ class Pigeon:
                 return send('500 Internal Server Error', {'error': 'Something went wrong on the server (%s). Its error log has the details.' % type(e).__name__})
         finally:
             rec['ms'] = int((time.time() - began) * 1000)
-            if not path.startswith('/healthz'):
-                self.console.add(rec)
 
     def sealed(self, environ, ip, send, rec):
         """POST /api/w: one sealed request in, one sealed answer out (src/wire.js)."""
@@ -1500,12 +1370,6 @@ class Pigeon:
             return self._where_put(self._ticketed(m), n('n'), m.get('len')), b''
         if a == 'box_finish':
             return self.box_finish(m), b''
-        if a == 'console_login':
-            return self.console_login(m, ip), b''
-        if a == 'console':
-            return self.console_view(m), b''
-        if a == 'console_redeem':
-            return self.console_redeem(m, ip), b''
         nest, th, did = who or self.auth_token(token)
         rec['n'] = nest
         rec['d'] = did[:6]
@@ -1525,7 +1389,7 @@ class Pigeon:
             'deliver': lambda: self.deliver(nest, did, m), 'people': lambda: self.people(nest, m), 'where': lambda: self.where(nest, m),
             'where_get': lambda: self.where(nest, dict(m, op='get')), 'versions': lambda: self.versions(nest, m), 'sent': lambda: self.sent(nest, did, m),
             'boxes': lambda: self.boxes(nest, m), 'adopt': lambda: self.adopt(nest, m), 'barns': lambda: self.barns(nest, m),
-            'chores': lambda: self.chores(nest, m), 'chores_done': lambda: self.chores_done(nest, m), 'console_set': lambda: self.console_set(nest, m), 'console_owner': lambda: self.console_owner(nest), 'console_link': lambda: self.console_link(nest),
+            'chores': lambda: self.chores(nest, m), 'chores_done': lambda: self.chores_done(nest, m),
         }
         if a not in handlers:
             raise Err('404 Not Found', 'pigeon on this site is older than the one you have (it doesn\'t know "%s"). Ask its owner to update it.' % a[:40])

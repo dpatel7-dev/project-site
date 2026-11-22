@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+- **locket in Chrome**: a Chrome extension. Click a username or password box on a website and your saved logins drop down (like Chrome's own). On sign-up pages it fills in a strong password. After you sign in or up, it asks **Save this password in locket?** (or **Update**). It only talks to locket on this computer, only fills on https pages, and only for the website each login was saved for. Set it up from **locket in Chrome**, or `locket chrome`.
+- **Accounts**: your logins sorted by the email (or username) you signed up with, with what needs fixing for each one.
+- A new side menu: every section has its own colour from the yellow-to-red stripes, with pixel icons, a big **Add a password** button at the top, and **Lock** at the bottom. The other pages match it.
+- The armadillo is now called **Bastion**.
+- **Light or dark, set once for every app:** press **L** in pca (or `pca look light`, `pca look dark`, `pca look auto`). The side panel follows it too.
+
 ## 1.0.0
 - locket keeps your passwords, locked with one master password (scrypt, then AES-256-GCM). The master password is never saved.
 - Logins and notes. Copy a username or password with one click; copied passwords are marked secret (clipboard keepers skip them) and clear themselves after 30 seconds.

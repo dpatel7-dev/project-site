@@ -13,7 +13,13 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 | `/pca` | [Project CLI Access](https://github.com/dpatel7-dev/Project-CLI-Access), plus `/pca/install.sh` and `/pca/install.ps1` |
 | `/versions.json` | the newest version of each project: pca checks it to keep everything up to date |
 
-A bar across the top of every page links them together.
+A dock along the bottom of every page links them together: each app's mascot
+with its name under it, plus Home, All apps, Start here and What's new. **All
+apps** opens a sheet of every app that you can search by typing what you want
+to do ("music", "passwords"). On this site's own pages you can just start
+typing, and on the front page the typing goes into the Terminal in the sky.
+Day or night follows your computer, or pick **Day** or **Night** at the bottom
+of All apps.
 
 ## The "checking you're a person" screen
 
@@ -95,6 +101,18 @@ cd ~/project-site && git pull
 
 Then **Reload** on the Web tab.
 
+To check it worked, open `/versions.json` on the site: it should list the same
+versions as the apps' GitHub pages. If `git pull` stops with *"Your local
+changes would be overwritten"*, the copy on PythonAnywhere was changed by hand.
+Throw those changes away and take GitHub's version (gossip's and pigeon's data
+live outside this folder, so nothing of yours is lost):
+
+```sh
+cd ~/project-site && git fetch && git reset --hard origin/main
+```
+
+Then **Reload** on the Web tab again.
+
 ## Start over
 
 Delete the web app on the Web tab, then in a Bash console:
@@ -123,6 +141,8 @@ python3 -m unittest discover tests
 `apps/` holds copies of the parts of each project the site serves: gossip's
 hub, page and installers; pigeon's server, web app and installers; and the
 Tree of Thought, tidy, den and pca installers. `pages/art.js` holds the mascots' pixel art.
+`site_shell.py` and `pages/shell/` are the parts every page shares: the dock,
+the All apps sheet, day and night, and the shared look of the site's own pages.
 With the projects cloned next to this folder, refresh all of it with:
 
 ```sh

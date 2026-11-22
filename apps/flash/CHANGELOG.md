@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.0
+- **Light or dark, set once for every app:** press **L** in pca (or `pca look light`, `pca look dark`, `pca look auto`). flash's window follows it.
+
 ## 1.1.0
 - The moving scene behind the window can no longer stumble on its very first frame.
 - **Learn mode**: rounds of seven cards until you know every one. Each card starts as pick-one-of-four, then you type it from memory; a miss sends it back a step and it comes up again later in the round. Your progress is kept between sessions.

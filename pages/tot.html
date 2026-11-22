@@ -24,6 +24,10 @@
     --sans: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
     --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   }
+  /* by day (or when Day is picked in All apps) */
+  @media (prefers-color-scheme: light) { :root:not([data-look=dark]) { --soil: #ffffff; --moss: #f1f6ed; --moss-2: #e6efe0; --line: #d3e1cc; --text: #16221a; --dim: #56685a; --leaf: #3b8826; --blossom: #c24a80; --bark: #8a5a32; --sun: #9c7608; } }
+  :root[data-look=light] { --soil: #ffffff; --moss: #f1f6ed; --moss-2: #e6efe0; --line: #d3e1cc; --text: #16221a; --dim: #56685a; --leaf: #3b8826; --blossom: #c24a80; --bark: #8a5a32; --sun: #9c7608; }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body { background: var(--soil); color: var(--text); font: 400 1.0625rem/1.65 var(--sans); }

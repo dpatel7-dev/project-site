@@ -1,6 +1,6 @@
 {
   "name": "hum",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Your music in a little panel at the side of the screen: your own music files and YouTube links (played in YouTube's own player), playlists, a queue, shuffle, a sleep timer and an equalizer. Bumble the bumblebee keeps you company.",
   "bin": { "hum": "bin/hum.js" },
   "scripts": { "test": "node --test" },

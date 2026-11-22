@@ -5,17 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Nothing here - djp7</title>
 <style>
-  html, body { margin: 0; }
-  body { background: #f1f3f7; color: #1a1d29; font: 1.05rem/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  main { max-width: 640px; margin: 0 auto; padding: 80px 22px; }
-  h1 { font: 700 2.2rem/1.1 ui-monospace, Menlo, Consolas, monospace; margin: 0 0 12px; }
-  a { color: inherit; font-weight: 700; }
+  .lost { min-height: calc(100svh - 140px); display: grid; place-items: center; text-align: center; padding: 40px 0; }
+  .lost canvas { display: block; margin: 0 auto 26px; }
+  .lost h1 { font: 700 clamp(2rem, 5vw, 3rem)/1.1 var(--pixel); margin: 0 0 12px; }
+  .lost p { color: var(--muted); margin: 0 auto; max-width: 30em; font-size: 1.12rem; }
+  .lost p + p { margin-top: 22px; }
 </style>
 </head>
 <body>
-<main>
-  <h1>Nothing lives at this address.</h1>
-  <p>Pick a project from the bar above, or go back to the <a href="/">front page</a>.</p>
+<main class="wrap lost">
+  <div>
+    <canvas id="owl" aria-hidden="true"></canvas>
+    <h1>Nothing lives at this address</h1>
+    <p>Pip looked everywhere. Pick an app from the dock at the bottom, or just start typing what you want to do.</p>
+    <p><a class="btn" href="/">Go to the front page</a></p>
+  </div>
 </main>
+<script>
+{{art}}
+(function () {
+  const m = ART.mascots.scout;
+  if (m) drawPixels(document.getElementById('owl'), trimGrid(m.grid), m.ink, 7);
+})();
+</script>
 </body>
 </html>

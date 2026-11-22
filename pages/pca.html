@@ -20,6 +20,10 @@
     --term-faint: #4c5160;
     --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
+  /* at night (or when Night is picked in All apps) */
+  @media (prefers-color-scheme: dark) { :root:not([data-look=light]) { --paper: #000000; --ink: #ffffff; --grey: #a3a3a8; --rule: #2b2b2f; --term: #16171b; } }
+  :root[data-look=dark] { --paper: #000000; --ink: #ffffff; --grey: #a3a3a8; --rule: #2b2b2f; --term: #16171b; }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body { background: var(--paper); color: var(--ink); font: 400 1rem/1.65 var(--mono); }

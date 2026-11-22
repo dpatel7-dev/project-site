@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.0
+- **Light or dark, set once for every app:** press **L** in pca (or `pca look light`, `pca look dark`, `pca look auto`). When it's light, tidy uses Linen; when it's dark, Walnut.
+
 ## 1.3.0
 Enter works every time.
 - **Fixed: pressing Enter on an AI plan sometimes did nothing.** Two causes. First, if Project CLI Access updated itself while tidy was open, both programs read your keys and some presses went to the wrong one (fixed in pca 1.5.0). Second, some AIs answer in a slightly different shape (a name instead of a number, the file name on the end of a folder, thinking out loud first); tidy now understands those instead of quietly dropping every move.

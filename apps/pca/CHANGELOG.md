@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.11.0
+- **Light or dark for every app**: press **L** to switch between light, dark and following your Mac. pca itself, every app's window and side panel, and the apps with their own colours (gossip, Tree of Thought, tidy, roomy, den) all follow it. Or: `pca look light`, `pca look dark`, `pca look auto`.
+- locket's armadillo is now called Bastion.
+
 ## 1.10.0
 - New: **hum** (Bumble the bumblebee): your music in a little panel at the side of the screen. Your own music files and YouTube links (played in YouTube's own player), playlists, a queue, shuffle, a sleep timer and an equalizer. Mac first.
 - New: **usual** (Rocco the raccoon): order the usual. Keeps your details, who you're ordering for and your regular orders, prints each as a receipt with who owes what, and helps you order it online, by phone or by email.

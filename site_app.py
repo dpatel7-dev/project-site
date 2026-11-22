@@ -41,6 +41,7 @@ def _load(name, *parts):
 
 sys.path.insert(0, HERE)
 import site_check  # noqa: E402  (the quick "are you a person?" check)
+import site_shell  # noqa: E402  (the dock along the bottom of every page)
 
 gossip = _load('gossip_hub', 'gossip', 'hub', 'gossip_hub.py')
 pigeon = _load('pigeon_server', 'pigeon', 'server', 'pigeon_server.py')
@@ -71,6 +72,9 @@ APPS = ('gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey'
 NEWS_ORDER = ('locket', 'usual', 'hum', 'flash', 'medic', 'magpie', 'pigeon', 'pca', 'shoo', 'morph', 'scout', 'den', 'roomy', 'hey', 'tidy', 'tot', 'gossip')
 NAMES = {'gossip': 'gossip', 'tot': 'Tree of Thought', 'pigeon': 'pigeon', 'pca': 'Project CLI Access', 'tidy': 'tidy',
          'den': 'den', 'scout': 'scout', 'roomy': 'roomy', 'hey': 'hey', 'morph': 'morph', 'shoo': 'shoo', 'magpie': 'magpie', 'medic': 'medic', 'flash': 'flash', 'hum': 'hum', 'usual': 'usual', 'locket': 'locket'}
+
+# pages with a look all their own (they still get the dock)
+OWN_LOOK = {'tot', 'tidy', 'den', 'pca'}  # (each has its own day and night colours)
 
 _cache = {}
 
@@ -133,6 +137,7 @@ def _lead(point):
     out = parts[0]
     if len(out) < 40 and len(parts) > 1:
         out += ' ' + parts[1]
+    out = out.rstrip(':').rstrip()
     return out if len(out) <= 220 else out[:217].rsplit(' ', 1)[0] + '…'
 
 
@@ -163,55 +168,9 @@ def origin(environ):
     return ('https://' if secure else 'http://') + host
 
 
-# ── the bar across the top of every page ───────────────────────────────────
-
-NAV_CSS = """<style>
-.psnav,.psnav *{all:unset;box-sizing:border-box}
-:root{--site-nav:40px}
-.psnav{display:flex;align-items:center;gap:4px;height:40px;padding:0 max(12px,env(safe-area-inset-left));background:#17151d;color:#bdb8cb;
-  font:500 14px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-x:auto;white-space:nowrap;position:relative;z-index:50;scrollbar-width:none}
-.psnav::-webkit-scrollbar{display:none}
-.psnav a{display:inline-flex;align-items:center;gap:7px;padding:8px 10px;border-radius:6px;color:#bdb8cb;cursor:pointer;text-decoration:none}
-.psnav a:hover{color:#fff;background:#25222e}
-.psnav a:focus-visible{outline:2px solid #fff;outline-offset:-2px}
-.psnav .psnav-home{font-weight:700;color:#fff;letter-spacing:.02em;margin-right:6px}
-.psnav .psnav-guide{color:#e9e4f5}
-.psnav .psnav-last{margin-right:auto}
-.psnav .psnav-dot{width:8px;height:8px;background:var(--c);display:inline-block}
-.psnav a[aria-current=page]{color:#fff;box-shadow:inset 0 -2px 0 var(--c)}
-.psnav .psnav-short{display:none}
-@media (max-width:1480px){.psnav a{padding:8px 7px;gap:6px}.psnav .psnav-full{display:none}.psnav .psnav-short{display:inline}}
-@media (max-width:1380px){.psnav{font-size:13px;gap:2px}.psnav a{padding:8px 5px;gap:5px}.psnav .psnav-home{margin-right:2px}}
-@media (max-width:1180px){.psnav .psnav-dot{width:6px;height:6px}}
-@media (max-width:520px){.psnav{gap:0}.psnav a{padding:8px 7px;gap:6px}.psnav .psnav-full{display:none}.psnav .psnav-short{display:inline}.psnav .psnav-last{margin-right:8px}}
-</style>"""
-
-
-def _label(name):
-    full, _, short = name.partition('|')
-    if not short:
-        return full
-    return '<span class="psnav-full">%s</span><span class="psnav-short">%s</span>' % (full, short)
-
-
-def nav(here):
-    links = ''.join(
-        '<a href="%s" style="--c:%s"%s><span class="psnav-dot"></span>%s</a>'
-        % (path, colour, ' aria-current="page"' if pid == here else '', _label(name))
-        for pid, path, name, colour in PROJECTS)
-    guides = ''.join('<a class="psnav-guide%s" href="%s"%s>%s</a>' % (' psnav-last' if i else '', path, ' aria-current="page" style="--c:#fff"' if here == pid else '', label)
-                     for i, (pid, path, label) in enumerate((('start', '/start', 'Start here'), ('new', '/new', "What's new"))))
-    return NAV_CSS + '<nav class="psnav" aria-label="Projects"><a class="psnav-home" href="/"%s>djp7</a>%s%s</nav>' % (
-        ' aria-current="page" style="--c:#fff"' if here == 'home' else '', guides, links)
-
-
-def with_nav(page, here):
-    return re.sub(r'(<body[^>]*>)', lambda m: m.group(1) + nav(here), page, count=1)
-
-
 # ── our own pages ──────────────────────────────────────────────────────────
 
-def fill(page, environ, extra=None):
+def fill(page, environ, extra=None, here=''):
     o = origin(environ) or ''
     values = dict(extra or {})
     values.update({
@@ -237,6 +196,13 @@ def fill(page, environ, extra=None):
         'art': _read('pages', 'art.js') or '',
     })
     raw = {'art'}
+    if '{{apps_json}}' in page:
+        values['apps_json'] = site_shell.apps_json(version, NEWS_ORDER[:3])
+        values['groups_json'] = site_shell.groups_json()
+        raw.update(('apps_json', 'groups_json'))
+    if '{{neighbours}}' in page:
+        values['neighbours'] = site_shell.neighbours(here)
+        raw.add('neighbours')
     if '{{news}}' in page:
         values['news'] = news_html()
         raw.add('news')
@@ -270,8 +236,8 @@ def _send(start_response, status, body, ctype='text/html; charset=utf-8'):
     return [data]
 
 
-def _navved(app, environ, start_response, here):
-    """Run another app; if it answers with a web page, add the bar across the top."""
+def _docked(app, environ, start_response, here, kind):
+    """Run another app; if it answers with a web page, add the dock along the bottom."""
     got = {}
 
     def capture(status, headers, exc_info=None):
@@ -289,7 +255,7 @@ def _navved(app, environ, start_response, here):
     finally:
         if hasattr(body, 'close'):
             body.close()
-    data = with_nav(page, here).encode('utf-8')
+    data = site_shell.inject(page, here, kind).encode('utf-8')
     headers = [(k, v) for k, v in headers if k.lower() != 'content-length'] + [('Content-Length', str(len(data)))]
     start_response(got['status'], headers)
     return [data]
@@ -298,7 +264,7 @@ def _navved(app, environ, start_response, here):
 MASCOTS = {'gossip': 'Pebble the penguin', 'tot': 'Rowan the tree', 'pigeon': 'Coo the pigeon', 'tidy': 'Hazel the squirrel', 'den': 'Ember the fox',
            'scout': 'Pip the owl', 'roomy': 'Shelly the hermit crab', 'hey': 'Biscuit the dog', 'morph': 'Luma the jellyfish', 'shoo': 'Bramble the hedgehog',
            'magpie': 'Pica the magpie', 'medic': 'Lotl the axolotl', 'flash': 'Blink the firefly',
-           'hum': 'Bumble the bumblebee', 'usual': 'Rocco the raccoon', 'locket': 'Dilly the armadillo'}
+           'hum': 'Bumble the bumblebee', 'usual': 'Rocco the raccoon', 'locket': 'Bastion the armadillo'}
 
 
 def check_page(environ, start_response, path):
@@ -345,11 +311,11 @@ def application(environ, start_response):
     if path in ('/api', '/install.sh', '/install.ps1', '/healthz', '/favicon.ico'):
         return gossip.application(environ, start_response)
     if path in ('/gossip', '/gossip/'):
-        return _navved(gossip.application, dict(environ, PATH_INFO='/'), start_response, 'gossip')
+        return _docked(gossip.application, dict(environ, PATH_INFO='/'), start_response, 'gossip', 'scroll')
 
     if path == '/pigeon' or path.startswith('/pigeon/'):
         env = dict(environ, SCRIPT_NAME=environ.get('SCRIPT_NAME', '') + '/pigeon', PATH_INFO=path[7:] or '/')
-        return _navved(pigeon.application, env, start_response, 'pigeon')
+        return _docked(pigeon.application, env, start_response, 'pigeon', 'fit')
 
     if method not in ('GET', 'HEAD'):
         return _send(start_response, '405 Method Not Allowed', 'not allowed\n', 'text/plain; charset=utf-8')
@@ -371,13 +337,13 @@ def application(environ, start_response):
         name, here = pages[path]
         page = _read('pages', name + '.html')
         if page is not None:
-            return _send(start_response, '200 OK', with_nav(fill(page, environ), here))
+            return _send(start_response, '200 OK', site_shell.inject(fill(page, environ, here=here), here, 'page', name not in OWN_LOOK))
     if path == '/versions.json':  # what pca compares against to keep everything up to date
         body = json.dumps({app: version(app) for app in APPS if version(app) != '?'})
         return _send(start_response, '200 OK', body, 'application/json')
     if path == '/robots.txt':
-        return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /pigeon/d/\nDisallow: /pigeon/console\nDisallow: /api\nDisallow: /__check\n', 'text/plain; charset=utf-8')
-    return _send(start_response, '404 Not Found', with_nav(_read('pages', '404.html') or 'not found', ''))
+        return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /pigeon/d/\nDisallow: /api\nDisallow: /__check\n', 'text/plain; charset=utf-8')
+    return _send(start_response, '404 Not Found', site_shell.inject(fill(_read('pages', '404.html') or 'not found', environ), ''))
 
 
 def main(argv):

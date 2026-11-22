@@ -1,6 +1,6 @@
 {
   "name": "flash",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Study cards that come back just before you'd forget them: spaced repetition, test-date planning, four ways to study, and cards made from your notes. Blink the firefly keeps you company.",
   "bin": { "flash": "bin/flash.js" },
   "scripts": { "test": "node --test" },
