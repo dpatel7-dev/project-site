@@ -18,6 +18,7 @@ PythonAnywhere imports `application` from here. To try it on your own computer:
     python3 site_app.py --port 8080
 """
 
+import glob
 import html
 import importlib.util
 import json
@@ -227,6 +228,58 @@ def installer(app, kind, environ):
     return "if (-not $env:%s) { $env:%s = '%s' }\n%s" % (var, var, o, text)
 
 
+# ── staying in step with the files after a git pull ────────────────────────
+# PythonAnywhere keeps running the code it loaded until the website is reloaded,
+# so after a `git pull` the old program would carry on serving the new pages (and
+# an old pigeon). The first visit after a pull notices the code changed and asks
+# PythonAnywhere to reload, the same as the Reload button: by touching the WSGI
+# file in /var/www that points here.
+
+CODE = [os.path.join(HERE, 'site_app.py'), os.path.join(HERE, 'site_shell.py'), os.path.join(HERE, 'site_check.py'),
+        os.path.join(HERE, 'apps', 'gossip', 'hub', 'gossip_hub.py'), os.path.join(HERE, 'apps', 'pigeon', 'server', 'pigeon_server.py')]
+WSGI_FILES = '/var/www/*_wsgi.py'
+
+
+def _mtime(path):
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return None
+
+
+_loaded = {p: _mtime(p) for p in CODE}
+_reload = {'asked': False}
+
+
+def code_changed():
+    """True when the code on disk is newer than the code running. Asks for a reload once."""
+    if all(_mtime(p) == t for p, t in _loaded.items()):
+        return False
+    if not _reload['asked']:
+        _reload['asked'] = True
+        for wsgi in glob.glob(WSGI_FILES):
+            try:
+                with open(wsgi, encoding='utf-8') as f:
+                    if HERE not in f.read():
+                        continue
+                os.utime(wsgi)
+            except OSError:
+                pass
+    return True
+
+
+NOTICE = ('<div role="status" style="position:sticky;top:0;z-index:2147483002;margin:0;padding:10px 16px;background:#f2c14e;color:#141416;'
+          'font:600 15px/1.4 system-ui,-apple-system,sans-serif;text-align:center">This website was just updated and is restarting. '
+          'Refresh the page in a few seconds. (Still showing this after a minute? On PythonAnywhere, open the Web tab and click Reload.)</div>')
+
+
+def _noticed(page):
+    """A page, with a note at the top while the new code is still starting."""
+    if not code_changed():
+        return page
+    return re.sub(r'(<body[^>]*>)', lambda m: m.group(1) + NOTICE, page, count=1)
+
+
 # ── the dispatcher ─────────────────────────────────────────────────────────
 
 def _send(start_response, status, body, ctype='text/html; charset=utf-8'):
@@ -255,7 +308,7 @@ def _docked(app, environ, start_response, here, kind):
     finally:
         if hasattr(body, 'close'):
             body.close()
-    data = site_shell.inject(page, here, kind).encode('utf-8')
+    data = _noticed(site_shell.inject(page, here, kind)).encode('utf-8')
     headers = [(k, v) for k, v in headers if k.lower() != 'content-length'] + [('Content-Length', str(len(data)))]
     start_response(got['status'], headers)
     return [data]
@@ -337,13 +390,13 @@ def application(environ, start_response):
         name, here = pages[path]
         page = _read('pages', name + '.html')
         if page is not None:
-            return _send(start_response, '200 OK', site_shell.inject(fill(page, environ, here=here), here, 'page', name not in OWN_LOOK))
+            return _send(start_response, '200 OK', _noticed(site_shell.inject(fill(page, environ, here=here), here, 'page', name not in OWN_LOOK)))
     if path == '/versions.json':  # what pca compares against to keep everything up to date
         body = json.dumps({app: version(app) for app in APPS if version(app) != '?'})
         return _send(start_response, '200 OK', body, 'application/json')
     if path == '/robots.txt':
         return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /pigeon/d/\nDisallow: /api\nDisallow: /__check\n', 'text/plain; charset=utf-8')
-    return _send(start_response, '404 Not Found', site_shell.inject(fill(_read('pages', '404.html') or 'not found', environ), ''))
+    return _send(start_response, '404 Not Found', _noticed(site_shell.inject(fill(_read('pages', '404.html') or 'not found', environ), '')))
 
 
 def main(argv):

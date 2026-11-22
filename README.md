@@ -96,10 +96,15 @@ When any project changes, its copy here gets refreshed. To put the newest
 version online, in a Bash console:
 
 ```sh
-cd ~/project-site && git pull
+cd ~/project-site && git pull && touch /var/www/djp7_pythonanywhere_com_wsgi.py
 ```
 
-Then **Reload** on the Web tab.
+The `touch` part does the same as the green **Reload** button on the Web tab:
+PythonAnywhere keeps running the old program until the website is reloaded,
+even after `git pull` has changed the files. (The site also notices by itself:
+the first visit after a pull shows "This website was just updated and is
+restarting" and reloads it. If that note stays for more than a minute, click
+**Reload** on the Web tab.)
 
 To check it worked, open `/versions.json` on the site: it should list the same
 versions as the apps' GitHub pages. If `git pull` stops with *"Your local
@@ -108,10 +113,8 @@ Throw those changes away and take GitHub's version (gossip's and pigeon's data
 live outside this folder, so nothing of yours is lost):
 
 ```sh
-cd ~/project-site && git fetch && git reset --hard origin/main
+cd ~/project-site && git fetch && git reset --hard origin/main && touch /var/www/djp7_pythonanywhere_com_wsgi.py
 ```
-
-Then **Reload** on the Web tab again.
 
 ## Start over
 

@@ -188,6 +188,30 @@ class Site(unittest.TestCase):
         self.assertIn('Bastion the armadillo', home + self.page('/locket', 'locket'))
         self.assertNotIn('console', call('/robots.txt')[2].decode())
 
+    def test_reloads_itself_after_a_git_pull(self):
+        # pretend PythonAnywhere's WSGI file lives here, and the code on disk just changed
+        wsgi = os.path.join(DATA, 'djp7_pythonanywhere_com_wsgi.py')
+        with open(wsgi, 'w') as f:
+            f.write("path = '%s'\n" % site_app.HERE)
+        other = os.path.join(DATA, 'someone_else_wsgi.py')
+        with open(other, 'w') as f:
+            f.write("path = '/home/someone/else'\n")
+        os.utime(wsgi, (1, 1))
+        os.utime(other, (1, 1))
+        old = (site_app.WSGI_FILES, dict(site_app._loaded), dict(site_app._reload))
+        try:
+            site_app.WSGI_FILES = os.path.join(DATA, '*_wsgi.py')
+            self.assertNotIn('just updated', call('/hum')[2].decode())
+            site_app._loaded[site_app.CODE[0]] = 1.0  # as if site_app.py changed after it started
+            page = call('/hum')[2].decode()
+            self.assertIn('This website was just updated and is restarting', page)
+            self.assertGreater(os.path.getmtime(wsgi), 1, 'asked PythonAnywhere to reload')
+            self.assertEqual(os.path.getmtime(other), 1, "someone else's site is left alone")
+            self.assertIn('just updated', call('/pigeon/')[2].decode())
+            self.assertNotIn(b'just updated', call('/versions.json')[2])
+        finally:
+            site_app.WSGI_FILES, site_app._loaded, site_app._reload = old[0], old[1], old[2]
+
     def test_only_get_for_our_pages(self):
         self.assertEqual(call('/tot', 'POST', b'x')[0], 405)
 
