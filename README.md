@@ -5,6 +5,7 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 | Address | What's there |
 | --- | --- |
 | `/` | the front door: two doors, Dice or the Terminal apps. "Made by Dhruv" goes to `/me` |
+| `/dice/try` | the Dice emulator: Dice with your settings on a pretend Pi or PC, in the browser |
 | `/me` | Dhruv's own page: what he's made, the animals, and his GitHub |
 | `/apps` | every Terminal app, and the one command that installs them all |
 | `/dice` | [Dice](https://github.com/dpatel7-dev/Dice): set it up first, then put it on a Raspberry Pi (microSD card or NVMe drive) or a PC (USB stick) |

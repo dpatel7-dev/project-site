@@ -6,59 +6,40 @@
   const D = window.Dice, G = D.G, S = D.S, M = D.M, L = D.L, Nav = D.nav;
   const $ = D.$, $$ = D.$$, esc = D.esc, h = D.h;
 
-  const NEWS = [
-    { app: 'pca', title: 'pca 1.12: delete everything', text: 'One command takes every app off your computer, with no traces left.' },
-    { app: 'hum', title: 'hum 1.2: dancing flowers', text: 'The garden dances to the beat of whatever is playing. And a mini mode.' },
-    { app: 'files', title: 'Dice for PCs', text: 'Dice now runs on a PC from a USB stick, as well as on a Raspberry Pi.' },
-    { app: 'locket', title: 'locket: fills in passwords', text: 'Your passwords, filled in on websites, locked with one.' },
-  ];
 
   // ---- The world behind everything ----------------------------------------------
-  const Hero = D.hero = { app: null, world: null, old: null, fadeAt: 0, last: 0, paused: false };
+  const Hero = D.hero = { app: null, world: null, last: 0, paused: false };
   const cv = $('#hero'), hg = cv.getContext('2d');
+  // how many screen pixels make one pixel of the landscapes (smaller numbers, more detail)
+  D.scapeCell = () => Math.max(2, Math.round(Math.max(innerWidth, innerHeight * 1.6) / 440));
+  // Behind Big screen: the world you picked, as a calm landscape across the top of the screen.
+  // It stays the same as you move between apps; only the accent colour follows what's focused.
   Hero.size = function () {
-    const vw = innerWidth, vh = innerHeight;
-    const cell = Math.max(5, Math.round(Math.max(vw, vh * 1.5) / 168));
-    const W = Math.ceil(vw / cell), H = Math.ceil(vh / cell);
+    const cell = D.scapeCell(), vh = Math.round(innerHeight * 0.66);
+    const W = Math.ceil(innerWidth / cell), H = Math.ceil(vh / cell);
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
     cv.style.width = W * cell + 'px'; cv.style.height = H * cell + 'px';
     return { W, H };
   };
   Hero.set = function (app, force) {
-    if (!app) return;
-    if (!force && Hero.app && Hero.app.id === app.id) return;
+    if (app) { Hero.app = app; document.documentElement.style.setProperty('--c', app.c); }
     const { W, H } = Hero.size();
-    if (Hero.world && !D.reduced()) { // keep the old picture to dissolve away from
-      Hero.old = G.canvas(W, H); Hero.old.getContext('2d').drawImage(cv, 0, 0);
-      Hero.fadeAt = performance.now();
+    const world = D.WORLDS && D.WORLDS[D.state.world] ? D.state.world : 'hills';
+    if (force || !Hero.world || Hero.world.W !== W || Hero.world.H !== H || Hero.world.night !== D.night() || Hero.world.world !== world) {
+      Hero.world = new G.Scape({ world, night: D.night(), W, H, seed: 'big' });
+      Hero.draw(performance.now(), true);
     }
-    Hero.app = app;
-    Hero.world = new G.World({ land: app.land, c: app.c, who: app.who === undefined ? app.id : app.who, night: D.night(), W, H, layout: 'hero', seed: app.id, ground: Hero.ground });
-    document.documentElement.style.setProperty('--c', app.c);
-    Hero.draw(performance.now(), true);
   };
   Hero.draw = function (now, force) {
     if (!Hero.world || (Hero.paused && !force)) return;
-    const fps = D.state.fps, still = D.reduced();
-    if (!force && fps && now - Hero.last < 1000 / fps - 2) return;
-    if (!force && still && !Hero.old) return;
+    const still = D.reduced();
+    if (!force && (still || now - Hero.last < 1000 / Math.min(20, D.state.fps || 60) - 2)) return;
     Hero.last = now;
-    const t = now / 1000;
-    if (Hero.old) {
-      const k = Math.min(1, (now - Hero.fadeAt) / 320);
-      const step = Math.round(k * 16);
-      const tmp = Hero.tmp || (Hero.tmp = G.canvas(cv.width, cv.height));
-      if (tmp.width !== cv.width || tmp.height !== cv.height) { tmp.width = cv.width; tmp.height = cv.height; }
-      const tg = tmp.getContext('2d');
-      tg.globalCompositeOperation = 'source-over'; tg.clearRect(0, 0, tmp.width, tmp.height);
-      Hero.world.draw(tg, t, still);
-      tg.globalCompositeOperation = 'destination-in'; tg.drawImage(G.mask(cv.width, cv.height, step), 0, 0);
-      hg.drawImage(Hero.old, 0, 0); hg.drawImage(tmp, 0, 0);
-      if (k >= 1) Hero.old = null;
-    } else Hero.world.draw(hg, t, still);
+    Hero.world.draw(hg, now / 1000, still);
   };
-  addEventListener('resize', () => { clearTimeout(Hero.rt); Hero.rt = setTimeout(() => { Hero.old = null; Hero.set(Hero.app, true); }, 120); });
-  D.on('look', () => { Hero.old = null; Hero.set(Hero.app, true); if (Shell.view) Shell.render(true); Shell.chrome(); });
+  addEventListener('resize', () => { clearTimeout(Hero.rt); Hero.rt = setTimeout(() => Hero.set(null), 120); });
+  D.on('look', () => { Hero.set(null, true); if (Shell.view) Shell.render(true); Shell.chrome(); });
+  D.on('state', (k) => { if (k === 'world') { Hero.set(null, true); if (D.desk) D.desk.world = null; } });
 
   // ---- The top bar -------------------------------------------------------------------
   const Shell = D.shell = { stack: [], view: null };
@@ -165,10 +146,6 @@
     $('#app').dataset.view = view.v;
     $('#where').textContent = view.v === 'page' ? (D.app(view.arg) || {}).name || '' : TITLES[view.v];
     if (restore && view.scroll) page.scrollTop = view.scroll;
-    // the world's horizon sits just above the row of tiles, wherever that ends up
-    const row = page.querySelector('#recent');
-    const g = row ? Math.max(0.22, Math.min(0.45, (row.getBoundingClientRect().top + page.scrollTop - 6) / innerHeight)) : 0.37;
-    if (Math.abs(g - (Hero.ground || 0.37)) > 0.01) { Hero.ground = g; if (Hero.app) { Hero.old = null; Hero.set(Hero.app, true); } }
     const want = restore && view.focusKey ? page.querySelector('[data-key="' + CSS.escape(view.focusKey) + '"]') : null;
     if (want) Nav.focus(want, { scroll: false }); else Nav.first(page);
     if (!Nav.el || !page.contains(Nav.el)) { const fallback = D.app(view.v === 'page' ? view.arg : (D.state.recent[0] || 'music')); if (fallback) Hero.set(fallback); }
@@ -204,7 +181,7 @@
     const ids = [];
     if (run) ids.push(run.id);
     D.state.recent.forEach((id) => { if (!ids.includes(id) && D.app(id)) ids.push(id); });
-    ['music', 'files', 'terminal', 'notes', 'browser', 'pca', 'pigeon', 'scout', 'hum'].forEach((id) => { if (ids.length < 9 && !ids.includes(id)) ids.push(id); });
+    ['music', 'files', 'browser', 'terminal', 'notes', 'calendar', 'calculator'].forEach((id) => { if (ids.length < 7 && D.app(id) && !ids.includes(id)) ids.push(id); });
     ids.forEach((id, i) => {
       const app = D.app(id);
       const live = run && run.id === id;
@@ -221,33 +198,12 @@
     all.onclick = () => Shell.go('library');
     recent.appendChild(all);
 
-    // friends
-    const fr = h('<section class="shelf" data-block><h2>Friends <small>' + D.friends.filter((f) => f.status !== 'Snoozing').length + ' around</small></h2><div class="row" data-row id="friends"></div></section>');
-    const frow = fr.querySelector('#friends');
-    D.friends.slice().sort((a, b) => (statusClass(b.status) === 'play') - (statusClass(a.status) === 'play')).forEach((f) => {
-      const c = h('<button class="card" data-nav data-key="f:' + f.id + '" data-hero="' + f.id + '" data-a="Say hi"><span><b>' + esc(f.name) + '</b><span class="status ' + statusClass(f.status) + '">' + esc(f.status) + '</span></span></button>');
-      c.prepend(face(f.id, 56));
-      c.onclick = () => D.sayHi(f.id);
-      frow.appendChild(c);
-    });
-    page.appendChild(fr);
-
     // for your computer: ones you haven't looked at yet first
     const unseen = CATALOG.suite.filter((a) => !D.state.seen[a.id]).concat(CATALOG.suite.filter((a) => D.state.seen[a.id]));
     const rec = h('<section class="shelf" data-block><h2>For your computer <small>One line in Terminal and it\'s yours</small></h2><div class="row" data-row id="suite"></div></section>');
-    unseen.slice(0, 10).forEach((a) => rec.querySelector('#suite').appendChild(tile(D.app(a.id), { size: 'wide', key: 's', sub: a.blurb })));
+    unseen.slice(0, 8).forEach((a) => rec.querySelector('#suite').appendChild(tile(D.app(a.id), { size: 'wide', key: 's', sub: a.blurb })));
     page.appendChild(rec);
 
-    // what's new
-    const nw = h('<section class="shelf" data-block><h2>What\'s new</h2><div class="row" data-row id="news"></div></section>');
-    NEWS.forEach((n, i) => {
-      const app = D.app(n.app);
-      const c = h('<button class="card" data-nav data-key="n:' + i + '" data-hero="' + app.id + '" data-a="Open"><span><b>' + esc(n.title) + '</b><span>' + esc(n.text) + '</span></span></button>');
-      const pic = D.coverEl(app, 'square'); pic.className = 'pic art'; c.prepend(pic);
-      c.onclick = () => Shell.go('page', app.id);
-      nw.querySelector('#news').appendChild(c);
-    });
-    page.appendChild(nw);
     return page;
   };
   // the big words over the world follow what's focused
@@ -1041,7 +997,7 @@
   function piWelcome(w) {
     D.state.welcomed = w.at; D.save();
     D.sys.saveSettings({ welcome: null });
-    const lines = (w.done || []).concat((w.problems || []).map((p) => 'Heads up: ' + p));
+    const lines = (w.done || []).concat((w.problems || []).map((p) => 'Heads up: ' + p)).map((l) => String(l).replace(/\.+$/, ''));
     D.ask({ who: D.state.avatar, title: w.name ? 'Dice is ready, ' + w.name : 'Dice is ready', text: lines.length ? lines.join('. ') + '.' : 'Everything is set up.', buttons: [{ label: 'Let\'s go', value: true, go: true }] });
   }
 

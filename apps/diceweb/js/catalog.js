@@ -1,7 +1,7 @@
 // Everything DiceWeb knows about: its own apps, the apps for your computer,
 // and the friends (the mascots). The suite list matches the website's.
 window.CATALOG = {
-  version: '1.1.0',
+  version: '1.2.0',
   site: 'https://djp7.pythonanywhere.com',
 
   // Cubby: DiceWeb's own mascot, a die with feet.
@@ -42,6 +42,14 @@ window.CATALOG = {
       line: 'Your folders and files. On a computer running Dice, your real ones, and any USB stick you plug in.', words: 'folders documents finder explorer usb' },
     { id: 'browser', name: 'Web', kind: 'app', c: '#7c9cff', who: 'scout', land: 'mountains', blurb: 'Open websites',
       line: 'Open any website, or your Home Assistant dashboard.', words: 'browser internet chrome website home assistant' },
+    { id: 'calculator', name: 'Calculator', kind: 'app', c: '#5d6b8a', who: null, land: 'gears', blurb: 'Work out sums',
+      line: 'Type a sum or press the keys. It keeps your last few answers.', words: 'calc maths math sum add numbers' },
+    { id: 'calendar', name: 'Calendar', kind: 'app', c: '#ff707a', who: null, land: 'paper', blurb: 'Days, and what\'s on',
+      line: 'A month at a time. Pick a day to add what\'s on.', words: 'date diary schedule events month plan' },
+    { id: 'clock', name: 'Clock', kind: 'app', c: '#2bc4b2', who: null, land: 'hills', blurb: 'World clocks, a timer and a stopwatch',
+      line: 'The time here and in other cities, a timer that rings, and a stopwatch with laps.', words: 'time timer stopwatch alarm world cities' },
+    { id: 'monitor', name: 'System Monitor', kind: 'system', c: '#4fc16b', who: null, land: 'screen', blurb: 'How busy the computer is',
+      line: 'How busy it is, memory and storage, and what\'s open.', words: 'task manager activity cpu memory processes performance' },
     { id: 'store', name: 'Store', kind: 'system', c: '#2bc4b2', who: 'cubby', land: 'market', blurb: 'Every app for your computer',
       line: 'Every app in the suite, with the line to paste to get it.', words: 'shop get install download apps suite' },
     { id: 'settings', name: 'Settings', kind: 'system', c: '#7c9cff', who: null, land: 'gears', blurb: 'Look, sound, controllers and more',

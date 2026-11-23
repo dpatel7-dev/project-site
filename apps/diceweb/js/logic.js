@@ -318,7 +318,48 @@
     return hits ? 20 + 10 * hits / qs.length : 0;
   }
 
-  const api = { clockNight, pickNext, newDisk, resolve, walk, writeFile, makeDir, remove, tokens, parseDice, run, HELP, score };
+  // ---- Calculator: reads the sum itself (no eval), with × ÷ − and % ----------------------
+  function calc(src) {
+    if (/[^0-9.\s+\-*/%()×÷−–,eE]/.test(String(src))) throw new Error('not a sum');
+    const toks = String(src).replace(/×/g, '*').replace(/÷/g, '/').replace(/[−–]/g, '-').replace(/,/g, '').match(/\d*\.?\d+(?:e[+-]?\d+)?|[-+*/%()]/gi) || [];
+    if (!toks.length) throw new Error('empty');
+    let i = 0;
+    const peek = () => toks[i], next = () => toks[i++];
+    function expr() { let v = term(); while (peek() === '+' || peek() === '-') { const op = next(), r = term(); v = op === '+' ? v + r : v - r; } return v; }
+    function term() { let v = factor(); while (peek() === '*' || peek() === '/') { const op = next(), r = factor(); v = op === '*' ? v * r : v / r; } return v; }
+    function factor() {
+      if (peek() === '-') { next(); return -factor(); }
+      if (peek() === '+') { next(); return factor(); }
+      let v;
+      if (peek() === '(') { next(); v = expr(); if (peek() === ')') next(); } else { const t = next(); if (t === undefined || isNaN(+t)) throw new Error('bad'); v = +t; }
+      while (peek() === '%') { next(); v /= 100; }
+      return v;
+    }
+    const v = expr();
+    if (i < toks.length) throw new Error('bad');
+    return v;
+  }
+  function calcText(v) {
+    if (!isFinite(v)) return 'Can\'t divide by zero';
+    if (v !== 0 && (Math.abs(v) >= 1e15 || Math.abs(v) < 1e-9)) return v.toExponential(6).replace(/\.?0+e/, 'e');
+    const s = String(+v.toPrecision(12));
+    const [a, b] = s.split('.');
+    return a.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (b ? '.' + b : '');
+  }
+
+  // ---- Calendar: the 6 weeks shown for a month, Sunday first --------------------------
+  function monthGrid(year, month) {
+    const first = new Date(year, month, 1), start = new Date(year, month, 1 - first.getDay());
+    const out = [];
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      out.push({ y: d.getFullYear(), m: d.getMonth(), d: d.getDate(), inMonth: d.getMonth() === month, key: dayKey(d) });
+    }
+    return out;
+  }
+  function dayKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+  const api = { clockNight, pickNext, newDisk, calc, calcText, monthGrid, dayKey, resolve, walk, writeFile, makeDir, remove, tokens, parseDice, run, HELP, score };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DiceLogic = api;
 })(this);

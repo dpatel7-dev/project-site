@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dice emulator - try your settings before you install</title>
+<meta name="description" content="Try Dice with your settings on a pretend Raspberry Pi or PC, right in your browser: the start-up screen, your dice.json being applied, and the whole desktop.">
+<style>
+  /* The Dice emulator. The computer sits on a dark desk in the middle; what
+     happened when it started is written down the side. */
+  body { height: 100svh; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0 !important; }
+  .dtop { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 18px; padding: 12px clamp(16px, 3vw, 30px); box-shadow: 0 1px 0 var(--line); background: var(--bg); }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font: 700 1.35rem/1 var(--pixel); text-decoration: none; }
+  .brand canvas { width: 30px; height: 30px; image-rendering: pixelated; }
+  .brand small { font: 600 .95rem/1 var(--read); color: var(--muted); margin-left: 4px; }
+  .dtop nav { margin-left: auto; display: flex; gap: 6px; }
+  .dtop nav a { padding: 8px 12px; border-radius: 10px; text-decoration: none; font-weight: 700; font-size: .92rem; color: var(--muted); }
+  .dtop nav a:hover { color: var(--ink); background: var(--soft); }
+  main { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 360px; min-height: 0; }
+  main > * { min-height: 0; }
+  /* the desk */
+  .desk { position: relative; display: flex; flex-direction: column; min-height: 520px; background: radial-gradient(120% 90% at 50% 0%, #2d3038, #15161a 70%); color: #e9e9ee; }
+  .room { flex: 1; position: relative; display: grid; place-items: center; padding: 26px; min-height: 0; }
+  .device { position: relative; transition: opacity .3s; }
+  .bezel { position: relative; background: #0b0b0d; box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .8), inset 0 0 0 1px rgba(255, 255, 255, .06); }
+  .device[data-frame=tablet] .bezel { padding: 22px 26px; border-radius: 22px; }
+  .device[data-frame=tv] .bezel, .device[data-frame=monitor] .bezel { padding: 12px; border-radius: 10px; }
+  .device[data-frame=laptop] .bezel { padding: 14px 14px 18px; border-radius: 14px 14px 4px 4px; }
+  .device[data-frame=tv]::after, .device[data-frame=monitor]::after { content: ""; display: block; margin: 0 auto; width: 22%; height: 26px; background: linear-gradient(#26272c, #1b1c20); clip-path: polygon(30% 0, 70% 0, 100% 100%, 0 100%); }
+  .device[data-frame=monitor]::after { height: 40px; }
+  .device[data-frame=laptop]::after { content: ""; display: block; height: 14px; margin: 0 -7%; border-radius: 0 0 14px 14px; background: linear-gradient(#3a3c43, #222328); }
+  .screen { position: relative; overflow: hidden; background: #000; }
+  .screen iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: #000; }
+  .splash, .offscreen { position: absolute; inset: 0; display: grid; place-items: center; background: #000; transition: opacity .45s; }
+  .splash[hidden], .offscreen[hidden] { display: grid; opacity: 0; pointer-events: none; }
+  .splash .in { display: grid; justify-items: center; gap: 14px; }
+  .splash canvas { image-rendering: pixelated; }
+  .splash b { font: 700 28px/1 var(--pixel); color: #f3f3f5; letter-spacing: .02em; }
+  .bar { display: flex; gap: 4px; }
+  .bar i { width: 16px; height: 8px; background: #3a3a42; }
+  .bar i.on { background: #f3f3f5; }
+  .offscreen p { margin: 0; color: #6b6d76; font-size: .95rem; text-align: center; padding: 0 20px; }
+  .led { position: absolute; right: 12px; bottom: 7px; width: 6px; height: 6px; border-radius: 3px; background: #2a2b30; }
+  .device.on .led { background: #4fc16b; box-shadow: 0 0 8px #4fc16b; }
+  .device.booting .led { background: #f5c431; box-shadow: 0 0 8px #f5c431; animation: blink .5s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .3; } }
+  /* the controls under the computer */
+  .controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 0 16px 18px; }
+  .ctl { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: 12px; border: 0; font: 700 .95rem/1 var(--read); color: #e9e9ee; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); cursor: pointer; }
+  .ctl:hover { background: rgba(255, 255, 255, .14); }
+  .ctl:focus-visible, .side :focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+  .ctl.power { background: #e9e9ee; color: #141416; }
+  .ctl.power.off { background: #ff5d6c; color: #fff; }
+  .ctl[disabled] { opacity: .4; cursor: default; }
+  select.ctl { appearance: none; padding-right: 30px; background-image: linear-gradient(45deg, transparent 50%, #e9e9ee 50%), linear-gradient(135deg, #e9e9ee 50%, transparent 50%); background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size: 5px 5px; background-repeat: no-repeat; }
+  select.ctl option { color: #141416; }
+  /* the side: what's being tried, and what happened */
+  .side { padding: 20px 20px 30px; overflow-y: auto; overflow-x: hidden; box-shadow: inset 1px 0 0 var(--line); display: flex; flex-direction: column; gap: 22px; }
+  .side h2 { font: 700 1.25rem/1.1 var(--pixel); margin: 0 0 10px; }
+  .side p { margin: 0; color: var(--muted); font-size: .92rem; }
+  .src { display: grid; gap: 6px; }
+  .src label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: start; padding: 10px 12px; border-radius: 12px; cursor: pointer; box-shadow: inset 0 0 0 1px var(--line); }
+  .src label:has(input:checked) { background: var(--soft); box-shadow: inset 0 0 0 2px var(--ink); }
+  .src input[type=radio] { margin: 3px 0 0; accent-color: var(--ink); }
+  .src b { font-size: .95rem; }
+  .src small { grid-column: 2; color: var(--muted); font-size: .84rem; }
+  .src .more { grid-column: 2; display: flex; gap: 6px; margin-top: 4px; }
+  .src .more input[type=text] { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 9px; border: 0; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); font: 700 .95rem/1 var(--read); color: var(--ink); text-transform: uppercase; letter-spacing: .06em; }
+  .mini { padding: 8px 12px; border-radius: 9px; border: 0; font: 700 .86rem/1 var(--read); background: var(--ink); color: var(--bg); cursor: pointer; }
+  .drop { grid-column: 2; margin-top: 4px; padding: 12px; border-radius: 10px; text-align: center; color: var(--muted); font-size: .86rem; box-shadow: inset 0 0 0 1px var(--line); background: var(--bg); }
+  .drop.over { box-shadow: inset 0 0 0 2px var(--ink); color: var(--ink); }
+  .log { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; font-size: .88rem; }
+  .log li { display: grid; grid-template-columns: 8px 38px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 4px 0; line-height: 1.4; }
+  .log li::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: #9a9aa4; transform: translateY(-1px); }
+  .log li.ok::before { background: #4fc16b; }
+  .log li.warn::before { background: #f0a43a; }
+  .log li.bad::before { background: #ff5d6c; }
+  .log li.warn { color: var(--ink); }
+  .log .t { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .8rem; }
+  .log li.empty { display: block; color: var(--muted); font-size: .9rem; }
+  .log li.empty::before { display: none; }
+  .relink { font-size: .86rem; color: var(--ink); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; font-weight: 700; }
+  .note { font-size: .84rem !important; }
+  @media (max-width: 960px) { body { height: auto; overflow: visible; } main { grid-template-columns: 1fr; } .side { box-shadow: inset 0 1px 0 var(--line); overflow: visible; } .desk { min-height: 420px; } .room { min-height: 360px; } }
+  @media (prefers-reduced-motion: reduce) { .device.booting .led { animation: none; } }
+</style>
+</head>
+<body style="--c:#ff707a">
+<header class="dtop">
+  <a class="brand" href="/dice"><canvas id="logo" width="32" height="32" aria-hidden="true"></canvas>Dice<small>Emulator</small></a>
+  <nav aria-label="Elsewhere"><a href="/dice#make">Set it up</a><a href="/dice#card">Put it on your computer</a></nav>
+</header>
+<main>
+  <section class="desk" aria-label="The pretend computer">
+    <div class="room" id="room">
+      <div class="device" id="device" data-frame="tablet">
+        <div class="bezel">
+          <div class="screen" id="screen">
+            <iframe id="os" title="Dice, running in the emulator" tabindex="0"></iframe>
+            <div class="splash" id="splash" hidden><div class="in"><canvas id="die" width="64" height="64" aria-hidden="true"></canvas><b>Dice</b><div class="bar" id="bar"></div></div></div>
+            <div class="offscreen" id="off"><p>Off. Press the power button to start Dice.</p></div>
+          </div>
+          <span class="led" aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="ctl power" id="power" type="button">Power on</button>
+      <button class="ctl" id="restart" type="button" disabled>Restart</button>
+      <select class="ctl" id="dev" aria-label="Which computer"></select>
+    </div>
+  </section>
+
+  <aside class="side">
+    <section>
+      <h2>Settings to try</h2>
+      <div class="src" role="radiogroup" aria-label="Settings to try">
+        <label><input type="radio" name="src" value="page" checked><b>The ones from the Dice page</b><small id="page-sum">What you picked on the Dice page.</small></label>
+        <label><input type="radio" name="src" value="file"><b>A dice.json file</b><small>Like plugging in the card or a USB stick with it on.</small>
+          <div class="drop" id="drop">Drop dice.json here, or <button class="relink" type="button" id="pick">choose it</button></div><input type="file" id="file" accept=".json,application/json" hidden></label>
+        <label><input type="radio" name="src" value="code"><b>A setup code</b><small>The code from Get a setup code.</small>
+          <span class="more"><input type="text" id="code" maxlength="12" placeholder="Code" aria-label="Setup code" autocomplete="off" spellcheck="false"><button class="mini" type="button" id="getcode">Load</button></span></label>
+        <label><input type="radio" name="src" value="none"><b>None</b><small>No dice.json: Dice asks its questions on the screen.</small></label>
+      </div>
+    </section>
+    <section>
+      <h2>What happened</h2>
+      <ol class="log" id="log"><li class="empty">Start the computer to see what Dice does with your settings.</li></ol>
+    </section>
+    <section>
+      <p class="note">This runs the real Dice desktop with a pretend computer underneath, so Wi-Fi, sound, restart and shut down all work, but nothing on your computer changes. It can't try drivers or the disk image itself. The image is started in a real emulator each time it's built (Test the images, on GitHub).</p>
+      <p class="note" style="margin-top:8px"><button class="relink" type="button" id="fresh">Wipe the pretend computer</button> to start as if Dice was just installed.</p>
+    </section>
+  </aside>
+</main>
+
+<script src="/diceweb/js/die3d.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const DEVICES = {
+    pi7: { name: 'Raspberry Pi 5, 7" touch screen', w: 800, h: 480, frame: 'tablet', model: 'Raspberry Pi 5 Model B Rev 1.0', pi: true, backlight: true, mem: 8e9, disk: 64e9 },
+    pitv: { name: 'Raspberry Pi 5 on a TV', w: 1920, h: 1080, frame: 'tv', model: 'Raspberry Pi 5 Model B Rev 1.0', pi: true, mem: 8e9, disk: 128e9 },
+    laptop: { name: 'A PC laptop', w: 1366, h: 768, frame: 'laptop', model: 'PC laptop', backlight: true, battery: true, mem: 16e9, disk: 512e9 },
+    pc: { name: 'A PC and a monitor', w: 1920, h: 1080, frame: 'monitor', model: 'PC', mem: 16e9, disk: 1e12 },
+  };
+  // the keys Dice keeps (the same list as dice-boot), and the ones it reads once
+  const KEEP = ['name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh'];
+  const KNOWN = KEEP.concat(['dice', 'password', 'wifi']);
+  const st = { dev: 'pi7', power: 'off', file: null, fileName: '', code: null, used: {}, t0: 0, timers: [], version: '1.2.0' };
+  try { const d = localStorage.getItem('dice-emu-device'); if (DEVICES[d]) st.dev = d; } catch (e) { /* fine */ }
+  fetch('/versions.json').then((r) => r.json()).then((v) => { const a = v.apps || v; if (a && a.dice) st.version = a.dice.version || a.dice; }).catch(() => {});
+
+  // ---- the logo, and the die on the start-up screen (the same pictures Dice draws) ----
+  const night = typeof djp7Night === 'function' ? djp7Night() : matchMedia('(prefers-color-scheme: dark)').matches;
+  function paint(canvas, img) { const g = canvas.getContext('2d'); g.putImageData(new ImageData(img.data, img.w, img.h), 0, 0); }
+  paint($('#logo'), DiceDie.render(32, null, { ss: 3, outline: night ? [60, 60, 70] : null }));
+  const FRAMES = [];
+  for (let i = 0; i < 32; i++) FRAMES.push(DiceDie.render(64, DiceDie.pose([0, 1, 0], (i / 32) * Math.PI * 2), { ss: 3, outline: [44, 44, 52] }));
+  for (let i = 0; i < 12; i++) $('#bar').appendChild(document.createElement('i'));
+
+  // ---- the computer on the desk ----
+  const sel = $('#dev');
+  Object.entries(DEVICES).forEach(([k, d]) => { const o = document.createElement('option'); o.value = k; o.textContent = d.name; sel.appendChild(o); });
+  sel.value = st.dev;
+  sel.onchange = () => { st.dev = sel.value; try { localStorage.setItem('dice-emu-device', st.dev); } catch (e) { /* fine */ } fit(); if (st.power !== 'off') boot(true); };
+  function rotation() { const s = current().cfg; return ((s && s.screen && +s.screen.rotate) || 0) % 360; }
+  function size() { const d = DEVICES[st.dev], r = rotation(); return r === 90 || r === 270 ? { w: d.h, h: d.w } : { w: d.w, h: d.h }; }
+  function fit() {
+    const d = DEVICES[st.dev], { w, h } = size(), room = $('#room').getBoundingClientRect();
+    $('#device').dataset.frame = d.frame;
+    const pad = d.frame === 'tablet' ? 52 : 28, extra = d.frame === 'monitor' ? 40 : d.frame === 'tv' ? 26 : d.frame === 'laptop' ? 14 : 0;
+    const s = Math.min((room.width - 52 - pad) / w, (room.height - 52 - pad - extra) / h, 1);
+    const sc = $('#screen');
+    sc.style.width = Math.round(w * s) + 'px'; sc.style.height = Math.round(h * s) + 'px';
+    const f = $('#os');
+    f.style.width = w + 'px'; f.style.height = h + 'px'; f.style.transform = 'scale(' + s + ')';
+    const k = Math.max(1, Math.floor(Math.min(w * s, h * s) / 220));
+    $('#die').style.width = $('#die').style.height = 64 * k + 'px';
+  }
+  new ResizeObserver(fit).observe($('#room'));
+
+  // ---- which settings ----
+  const flags = (() => { try { return JSON.parse(sessionStorage.getItem('dice-emu-flags') || '{}'); } catch (e) { return {}; } })();
+  function fromPage() {
+    try {
+      const s = JSON.parse(localStorage.getItem('dice-setup') || 'null');
+      if (!s) return null;
+      // the Dice page never stores passwords; it only says whether you typed them
+      if (flags.password) s.password = '(set)';
+      if (s.wifi && flags.wifiPassword) s.wifi.password = '(set)';
+      if (s.wifi && !s.wifi.ssid) delete s.wifi;
+      for (const k of ['name', 'computer', 'homeassistant']) if (!s[k]) delete s[k];
+      return s;
+    } catch (e) { return null; }
+  }
+  const page = fromPage();
+  $('#page-sum').textContent = page ? [page.name ? 'For ' + page.name : '', page.world ? page.world.replace(/^\w/, (c) => c.toUpperCase()) : '', page.wifi ? 'Wi-Fi ' + page.wifi.ssid : 'no Wi-Fi'].filter(Boolean).join(', ') + '.' : 'Nothing picked yet: set Dice up on the Dice page first.';
+  if (!page) document.querySelector('input[value=none]').checked = true;
+  if (/[?&]src=file/.test(location.search)) document.querySelector('input[value=file]').checked = true;
+  function current() {
+    const src = document.querySelector('input[name=src]:checked').value;
+    if (src === 'page') return { src, cfg: page, where: 'from the Dice page' };
+    if (src === 'file') return { src, cfg: st.file, where: st.fileName, raw: st.raw, err: st.fileErr };
+    if (src === 'code') return { src, cfg: st.code, where: 'setup code ' + ($('#code').value || '').toUpperCase() };
+    return { src, cfg: null };
+  }
+  document.querySelectorAll('input[name=src]').forEach((r) => r.addEventListener('change', () => { st.used = {}; fit(); }));
+  // a dice.json: read here, never sent anywhere, its passwords only ever held in this page
+  function readFile(f) {
+    if (!f) return;
+    document.querySelector('input[value=file]').checked = true;
+    f.text().then((text) => {
+      st.fileName = f.name; st.raw = text; st.fileErr = null; st.file = null; st.used = {};
+      try { const v = JSON.parse(text.replace(/^﻿/, '')); if (v && typeof v === 'object' && !Array.isArray(v)) st.file = v; else st.fileErr = 'It isn\'t a list of settings.'; }
+      catch (e) { st.fileErr = 'It isn\'t valid JSON (' + e.message.replace(/^JSON\.parse: /, '') + ').'; }
+      $('#drop').innerHTML = '<b>' + f.name.replace(/[<>&]/g, '') + '</b>' + (st.fileErr ? ' can\'t be read.' : ' is plugged in.') + ' <button class="relink" type="button" id="pick2">Change</button>';
+      $('#pick2').onclick = () => $('#file').click();
+      fit();
+      if (st.power !== 'off') say('A new dice.json is plugged in. Restart to use it.', 'warn');
+    });
+  }
+  $('#pick').onclick = () => $('#file').click();
+  $('#file').onchange = (e) => readFile(e.target.files[0]);
+  const drop = $('#drop');
+  ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('over')));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); readFile(e.dataTransfer.files[0]); });
+  $('#getcode').onclick = () => {
+    const c = ($('#code').value || '').trim().toUpperCase();
+    document.querySelector('input[value=code]').checked = true;
+    if (!/^[A-Z0-9]{4,12}$/.test(c)) { say('That doesn\'t look like a setup code.', 'bad'); return; }
+    fetch('/dice/setup/' + c + '.json').then((r) => (r.ok ? r.json() : Promise.reject(new Error(r.status === 404 ? 'No setup code ' + c + ' (they last 30 days).' : 'The website didn\'t answer.')))).then((v) => {
+      st.code = v; st.used = {}; $('#getcode').textContent = 'Loaded'; fit();
+      if (st.power !== 'off') say('Setup code ' + c + ' loaded. Restart to use it.', 'warn');
+    }).catch((e) => say(e.message, 'bad'));
+  };
+
+  // ---- what dice-boot would do with them (the same checks, in the same order) ----
+  function check(cfg) {
+    const done = [], problems = [], notes = [];
+    const settings = {};
+    KEEP.forEach((k) => { if (k in cfg) settings[k] = cfg[k]; });
+    Object.keys(cfg).filter((k) => !KNOWN.includes(k)).forEach((k) => notes.push('Dice doesn\'t know "' + k + '", so it leaves it alone.'));
+    const host = String(cfg.computer || '').trim().toLowerCase();
+    if (host) { if (/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(host)) done.push('Named this computer ' + host); else problems.push('The computer name "' + host + '" has letters it can\'t use, so it wasn\'t changed.'); }
+    if (cfg.password) done.push('Set your password');
+    const wifi = cfg.wifi || {};
+    if (wifi.country && !/^[A-Z]{2}$/i.test(wifi.country)) notes.push('The Wi-Fi country "' + wifi.country + '" isn\'t two letters, so it was skipped.');
+    if (wifi.ssid) done.push('Joined the Wi-Fi network ' + wifi.ssid + (wifi.password ? '' : ' (no password)'));
+    const tz = String(cfg.timezone || '');
+    if (tz) { let ok = !tz.includes('..'); try { new Intl.DateTimeFormat('en', { timeZone: tz }); } catch (e) { ok = false; } if (ok) done.push('Set the time zone to ' + tz); else problems.push('Didn\'t recognise the time zone ' + tz); }
+    const kb = String(cfg.keyboard || '');
+    if (/^[a-z]{2,3}(\([\w-]+\))?$/.test(kb)) done.push('Set the keyboard to ' + kb); else if (kb) notes.push('The keyboard "' + kb + '" wasn\'t recognised, so it stayed as it was.');
+    if ('ssh' in cfg) { if (cfg.ssh && cfg.password) done.push('Turned on SSH'); else if (cfg.ssh) problems.push('SSH stayed off because no password was set. Set one first.'); }
+    if ('updates' in cfg) notes.push('Automatic updates ' + (cfg.updates ? 'on' : 'off'));
+    const WORLDS = ['hills', 'mountains', 'beach', 'city', 'forest', 'autumn', 'desert', 'garden', 'ice', 'deep', 'meadow', 'pond'];
+    if (cfg.world && !WORLDS.includes(cfg.world)) notes.push('There\'s no world called "' + cfg.world + '", so it starts with hills.');
+    if (cfg.look && !['auto', 'day', 'night'].includes(cfg.look)) notes.push('"' + cfg.look + '" isn\'t day, night or auto.');
+    if (cfg.start && !['desktop', 'gaming'].includes(cfg.start)) notes.push('"' + cfg.start + '" isn\'t desktop or gaming, so it opens on the desktop.');
+    const suite = (cfg.suite || []).filter((a) => /^[a-z]{2,10}$/.test(String(a)));
+    if (suite.length) notes.push('Will install ' + suite.join(', ') + ' once it\'s online');
+    settings.welcome = { name: cfg.name || '', done, problems, at: Math.floor(Date.now() / 1000) };
+    return { settings, done, problems, notes, host: host && /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(host) ? host : 'dice' };
+  }
+
+  // ---- the log down the side ----
+  const log = $('#log');
+  function say(text, kind) {
+    if (log.querySelector('.empty')) log.innerHTML = '';
+    const li = document.createElement('li');
+    li.className = kind || '';
+    const t = document.createElement('span'); t.className = 't'; t.textContent = st.t0 ? ((performance.now() - st.t0) / 1000).toFixed(1) + 's' : '';
+    const m = document.createElement('span'); m.textContent = text;
+    li.append(t, m);
+    log.appendChild(li);
+    li.scrollIntoView({ block: 'nearest' });
+  }
+  const later = (ms, fn) => st.timers.push(setTimeout(fn, ms));
+  const stop = () => { st.timers.forEach(clearTimeout); st.timers = []; clearInterval(st.spin); };
+
+  // ---- power ----
+  function setPower(p) {
+    st.power = p;
+    const dev = $('#device');
+    dev.classList.toggle('on', p === 'on'); dev.classList.toggle('booting', p === 'booting');
+    $('#power').textContent = p === 'off' ? 'Power on' : 'Shut down';
+    $('#power').classList.toggle('off', p !== 'off');
+    $('#restart').disabled = p === 'off';
+    $('#off').hidden = p !== 'off';
+  }
+  function boot(again) {
+    stop();
+    const d = DEVICES[st.dev], cur = current();
+    setPower('booting');
+    st.t0 = performance.now();
+    log.innerHTML = '';
+    $('#os').src = 'about:blank';
+    const splash = $('#splash'); splash.hidden = false;
+    // the die turns while it starts, like Plymouth on the real thing
+    let f = 0;
+    const g = $('#die').getContext('2d');
+    st.spin = setInterval(() => { g.putImageData(new ImageData(FRAMES[f % 32].data, 64, 64), 0, 0); f++; }, 60);
+    const segs = [...$('#bar').children];
+    segs.forEach((s) => s.classList.remove('on'));
+    const step = (n) => segs.forEach((s, i) => s.classList.toggle('on', i < n));
+    say((again ? 'Restarting: ' : 'Switched on: ') + d.name + ', ' + size().w + ' × ' + size().h);
+    let r = null;
+    const key = cur.src + (cur.where || '');
+    later(500, () => { step(2); say('dice-boot is looking for dice.json'); });
+    later(1100, () => {
+      step(4);
+      const place = d.pi ? 'the card\'s bootfs drive' : cur.src === 'code' ? '/etc/dice (from the setup code)' : 'a USB stick';
+      if (cur.src === 'none') { say('No dice.json, so Dice will ask on the screen'); return; }
+      if (cur.err) { say(cur.where + ' was found on ' + place + ', but ' + cur.err, 'bad'); return; }
+      if (!cur.cfg) { say(cur.src === 'file' ? 'No dice.json plugged in yet' : 'No settings to use yet', 'warn'); return; }
+      if (st.used[key]) { say('dice.json was already used (it\'s now dice-applied.json), so nothing new to set up'); return; }
+      say('Found dice.json on ' + place, 'ok');
+      r = check(cur.cfg);
+    });
+    later(1600, () => {
+      step(7);
+      if (!r) return;
+      r.done.forEach((x) => say(x, 'ok'));
+      r.problems.forEach((x) => say(x, 'warn'));
+      r.notes.forEach((x) => say(x));
+    });
+    later(2300, () => {
+      step(9);
+      if (r) { say('Wiped the passwords out of dice.json and renamed it dice-applied.json', 'ok'); st.used[key] = true; }
+      say('Starting the desktop' + (cur.cfg && cur.cfg.name ? ' for ' + cur.cfg.name : ''));
+      const prev = (() => { try { return JSON.parse(sessionStorage.getItem('dice-emu') || '{}'); } catch (e) { return {}; } })();
+      const settings = r ? r.settings : Object.assign({}, prev.settings || {}, { welcome: null });
+      sessionStorage.setItem('dice-emu', JSON.stringify({ device: { model: d.model, pi: !!d.pi, backlight: !!d.backlight, battery: !!d.battery, mem: d.mem, disk: d.disk },
+        settings, wifi: cur.cfg && cur.cfg.wifi && r ? { ssid: cur.cfg.wifi.ssid } : prev.wifi || null, host: r ? r.host : prev.host || 'dice', user: 'dice', version: st.version }));
+      $('#os').src = '/diceweb/?emu=1&t=' + Date.now();
+    });
+    later(9000, () => { if (st.power === 'booting') { say('Dice is taking a while to start. Is this browser up to date?', 'warn'); } });
+  }
+  function ready() {
+    if (st.power !== 'booting') return;
+    const left = Math.max(0, 3200 - (performance.now() - st.t0));
+    later(left, () => {
+      [...$('#bar').children].forEach((s) => s.classList.add('on'));
+      later(250, () => { $('#splash').hidden = true; clearInterval(st.spin); setPower('on'); say('Dice is running', 'ok'); $('#os').focus(); });
+    });
+  }
+  function shutdown(quiet) {
+    stop();
+    if (!quiet) say('Shutting down');
+    $('#splash').hidden = true;
+    setPower('off');
+    later(400, () => { $('#os').src = 'about:blank'; });
+  }
+  $('#power').onclick = () => (st.power === 'off' ? boot() : shutdown());
+  $('#restart').onclick = () => boot(true);
+  $('#fresh').onclick = () => {
+    try { localStorage.removeItem('diceweb-emu'); sessionStorage.removeItem('dice-emu'); } catch (e) { /* fine */ }
+    st.used = {};
+    say('Wiped the pretend computer: it\'s like Dice was just installed', 'ok');
+    if (st.power !== 'off') boot(true);
+  };
+  addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data || e.data.dice !== 'emu') return;
+    const m = e.data;
+    if (m.event === 'ready') ready();
+    else if (m.event === 'log') say(m.text);
+    else if (m.event === 'power') {
+      if (m.action === 'shutdown') shutdown();
+      else if (m.action === 'reboot') boot(true);
+      else if (m.action === 'restart-desktop') { say('Restarting the desktop'); setPower('booting'); $('#os').src = '/diceweb/?emu=1&t=' + Date.now(); later(300, () => {}); st.t0 = performance.now() - 3000; }
+    } else if (m.event === 'brightness') $('#screen').style.filter = 'brightness(' + (0.35 + 0.65 * m.level) + ')';
+  });
+  setPower('off');
+  fit();
+})();
+</script>
+</body>
+</html>

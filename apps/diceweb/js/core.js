@@ -35,10 +35,11 @@
   Dice.origin = Dice.onSite ? location.origin : CATALOG.site;
 
   // ---- What DiceWeb remembers ------------------------------------------------------
-  const KEY = 'diceweb';
+  // the emulator on the website keeps its own pretend computer, apart from your DiceWeb
+  const KEY = window.DICE_SYS && window.DICE_SYS.emulated ? 'diceweb-emu' : 'diceweb';
   const DEFAULTS = {
     v: 2, name: 'player', avatar: 'cubby', look: 'auto', volume: 0.7, ui: true, musicVol: 0.8, motion: 'full', boot: 'full', start: 'desk',
-    perf: 0, fps: 30, bright: 1, friendPops: true, recent: [], played: {}, last: {}, seen: {}, notifs: [], said: {},
+    perf: 0, fps: 30, bright: 1, friendPops: false, deskIcons: 'home', recent: [], played: {}, last: {}, seen: {}, notifs: [], said: {},
     stats: { cmds: 0 }, disk: null, hist: [],
   };
   function load() {
@@ -95,8 +96,37 @@
   // A two-colour icon: the ink, plus a colour of its own.
   Dice.icon = (name, accent, scale) => G.img(name, accent, scale);
 
-  // A picture element for an app's world.
+  // A picture element for an app. The suite's apps have their own little world with
+  // their animal in it; DiceWeb's built-in apps get a clean cover made from their icon.
+  const clean = new Map();
+  function cleanCover(app, layout) {
+    const night = Dice.night(), key = app.id + layout + night;
+    if (!clean.has(key)) {
+      const [w, h] = layout === 'cover' ? [240, 360] : layout === 'wide' ? [384, 216] : [256, 256];
+      const c = G.canvas(w, h), g = c.getContext('2d'), tile = G.TILES[app.id];
+      const grad = g.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, G.mix(tile, night ? '#000000' : '#ffffff', night ? 0.42 : 0.62));
+      grad.addColorStop(1, G.mix(tile, night ? '#000000' : '#ffffff', night ? 0.62 : 0.3));
+      g.fillStyle = grad; g.fillRect(0, 0, w, h);
+      g.fillStyle = night ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.22)';
+      for (let y = 6; y < h; y += 12) for (let x = 6 + ((y / 12) % 2) * 6; x < w; x += 12) g.fillRect(x, y, 2, 2);
+      const isz = Math.round(Math.min(w, h) * 0.44), cy = layout === 'cover' ? h * 0.36 : h * 0.42;
+      const glow = g.createRadialGradient(w / 2, cy, 0, w / 2, cy, isz);
+      glow.addColorStop(0, night ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.5)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = glow; g.fillRect(0, 0, w, h);
+      const dpr = Math.min(3, Math.max(1, Math.round(window.devicePixelRatio || 1)));
+      const ic = G.appIcon(app.id, isz / dpr);
+      g.shadowColor = 'rgba(0,0,0,.22)'; g.shadowBlur = 18; g.shadowOffsetY = 8;
+      g.drawImage(ic, Math.round((w - ic.width) / 2), Math.round(cy - ic.height / 2));
+      clean.set(key, c);
+    }
+    const src = clean.get(key), img = document.createElement('canvas');
+    img.width = src.width; img.height = src.height; img.className = 'art smooth';
+    img.getContext('2d').drawImage(src, 0, 0);
+    return img;
+  }
   Dice.coverEl = function (app, layout) {
+    if (!app.suite && G.TILES && G.TILES[app.id]) return cleanCover(app, layout);
     const c = G.cover(app, layout, Dice.night());
     const img = document.createElement('canvas');
     img.width = c.width; img.height = c.height; img.className = 'art';

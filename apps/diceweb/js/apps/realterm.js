@@ -3,7 +3,7 @@
 (function () {
   'use strict';
   const D = window.Dice;
-  if (!D.sys) return;
+  if (!D.sys || D.sys.info.emulated) return; // the emulator keeps the pretend Terminal
   D.register({ id: 'terminal', mount(root, ctx) {
     root.classList.add('rterm');
     root.innerHTML = '<div class="rterm-in" tabindex="-1"></div><textarea class="rterm-keys" aria-label="Terminal: type here" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>';

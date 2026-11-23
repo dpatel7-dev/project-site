@@ -84,19 +84,21 @@
         pane.appendChild(h('<p class="note">Light by day and dark at night, worked out from the time of sunrise and sunset. Or pick one to keep.</p>'));
         pane.appendChild(row('Day or night', D.state.look === 'auto' ? 'It\'s ' + (D.night() ? 'night' : 'day') + ' now.' : '', seg([['auto', 'Follow the clock'], ['day', 'Day'], ['night', 'Night']], D.state.look, (v) => { D.set('look', v); D.applyLook(true); }, 'look')));
         pane.appendChild(row('Brightness', 'Dims the whole screen.', ui.slider(D.state.bright, 0.3, 1, (v) => { D.set('bright', v); D.applyBright(); }, 'look:bright', 'Brightness')));
-        const worlds = h('<div class="avatars" data-row></div>');
+        const worlds = h('<div class="worlds" data-row></div>');
+        const NAMES = { hills: 'Hills', mountains: 'Mountains', beach: 'Beach', city: 'City', forest: 'Forest', autumn: 'Autumn', desert: 'Desert', garden: 'Garden', ice: 'Ice', deep: 'Under the sea', meadow: 'Meadow', pond: 'Pond' };
         Object.keys(D.WORLDS).forEach((w) => {
-          const b = h('<button data-nav data-key="look:w:' + w + '" aria-label="' + w + '" title="' + w + '" aria-pressed="' + ((D.state.world || 'hills') === w) + '"></button>');
-          const c = G.cover({ id: 'w-' + w, land: w, c: D.WORLDS[w], who: null }, 'square', D.night());
+          const b = h('<button data-nav data-key="look:w:' + w + '" aria-label="' + (NAMES[w] || w) + '" aria-pressed="' + ((D.state.world || 'hills') === w) + '"><span>' + (NAMES[w] || w) + '</span></button>');
+          const c = G.Scape.preview(w, D.night(), 160, 100);
           const cv = document.createElement('canvas'); cv.width = c.width; cv.height = c.height; cv.getContext('2d').drawImage(c, 0, 0); cv.className = 'art';
-          b.appendChild(cv);
+          b.prepend(cv);
           b.onclick = () => { D.set('world', w); if (D.sys) D.sys.saveSettings({ world: w }); worlds.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); };
           worlds.appendChild(b);
         });
-        const wr = row('Desktop world', 'The picture behind Desktop mode, where the friends wander about.', null);
+        const wr = row('Background', 'The moving landscape behind the desktop and Big screen.', null);
         wr.style.cssText = 'flex-direction:column;align-items:stretch';
         wr.appendChild(worlds);
         pane.appendChild(wr);
+        pane.appendChild(row('Home on the desktop', 'The Home folder in the top corner of the desktop.', sw(D.state.deskIcons !== 'none', (v) => D.set('deskIcons', v ? 'home' : 'none'), 'look:icons', 'Home on the desktop')));
         pane.appendChild(row('Less motion', 'Calmer screens: no dissolves, no flying tiles.', sw(D.state.motion === 'less', (v) => { D.set('motion', v ? 'less' : 'full'); document.documentElement.dataset.motion = v ? 'less' : 'full'; }, 'look:motion', 'Less motion')));
       },
       sound() {
@@ -128,7 +130,7 @@
       perf() {
         pane.appendChild(h('<h2>Performance</h2>'));
         pane.appendChild(row('Overlay', 'Frames a second in the corner of the screen.', seg([[0, 'Off'], [1, 'FPS'], [2, 'Graph'], [3, 'All']], D.state.perf, (v) => { D.set('perf', v); D.perf.show(); }, 'perf:o')));
-        pane.appendChild(row('Frame limit for worlds', 'The moving pictures. Lower saves battery.', seg([[15, '15'], [30, '30'], [60, '60'], [0, 'None']], D.state.fps, (v) => D.set('fps', v), 'perf:f')));
+        pane.appendChild(row('Frame limit for backgrounds', 'The moving pictures. Lower saves battery.', seg([[15, '15'], [30, '30'], [60, '60'], [0, 'None']], D.state.fps, (v) => D.set('fps', v), 'perf:f')));
       },
       start() {
         pane.appendChild(h('<h2>Starting up</h2>'));

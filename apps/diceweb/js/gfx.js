@@ -160,6 +160,116 @@
   };
 
   // ---- Die faces (Roll and the boot screen) --------------------------------
+  // ---- App icons: a white picture on a rounded tile of the app's colour -----------------
+  // Clean and flat, so they read at a glance in the dock and the app grid.
+  const TILES = { files: '#e39a32', home: '#e39a32', browser: '#3b8ee0', terminal: '#2b2f3a', notes: '#e8913a', music: '#a862dc', store: '#ef5f74',
+    settings: '#66789c', calculator: '#4a5568', calendar: '#e5534b', clock: '#2f9e8f', monitor: '#3a9d68', gaming: '#2a2a32' };
+  function glyph(id, day) {
+    const g = [];
+    for (let i = 0; i < 16; i++) g.push(new Array(16).fill(''));
+    const set = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < 16 && y < 16) g[y][x] = c; };
+    const rect = (x, y, w, h, c) => { for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) set(x + i, y + j, c); };
+    const disc = (cx, cy, r, c) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (Math.hypot(x - cx, y - cy) <= r) set(x, y, c); };
+    const line = (x0, y0, x1, y1, c) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let i = 0; i <= n; i++) set(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n, c); };
+    const DIG = { 0: '111101101101111', 1: '010110010010111', 2: '111001111100111', 3: '111001111001111', 4: '101101111001001', 5: '111100111001111', 6: '111100111101111', 7: '111001010010010', 8: '111101111101111', 9: '111101111001111' };
+    const text = (s, x, y, c) => [...s].forEach((ch, k) => [...DIG[ch]].forEach((b, i) => { if (b === '1') set(x + k * 4 + (i % 3), y + Math.floor(i / 3), c); }));
+    switch (id) {
+      case 'home': case 'files':
+        rect(2, 3, 5, 1, 'w'); rect(1, 4, 14, 10, 'w'); rect(1, 6, 14, 8, 'W');
+        if (id === 'home') { rect(6, 9, 4, 4, 'A'); line(5, 9, 8, 6, 'A'); line(10, 9, 8, 7, 'A'); rect(7, 11, 2, 2, 'W'); }
+        break;
+      case 'browser':
+        disc(7.5, 7.5, 6.6, 'W');
+        for (let y = 2; y <= 13; y++) { const dx = 3.2 * Math.sqrt(Math.max(0, 1 - Math.pow((y - 7.5) / 6.6, 2))); set(7.5 - dx, y, 'A'); set(7.5 + dx, y, 'A'); }
+        for (let x = 2; x <= 13; x++) { set(x, 7, 'A'); if (Math.hypot(x - 7.5, 4 - 7.5) < 6) set(x, 4, 'A'); if (Math.hypot(x - 7.5, 11 - 7.5) < 6) set(x, 11, 'A'); }
+        rect(7, 1, 2, 14, 'A'); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (g[y][x] === 'A' && Math.hypot(x - 7.5, y - 7.5) > 6.6) g[y][x] = '';
+        break;
+      case 'terminal':
+        rect(1, 2, 14, 12, 'W'); rect(2, 4, 12, 9, 'D'); rect(3, 2, 1, 1, 'w'); rect(5, 2, 1, 1, 'w');
+        line(4, 6, 6, 8, 'G'); line(6, 8, 4, 10, 'G'); rect(8, 10, 4, 1, 'W');
+        break;
+      case 'notes':
+        rect(3, 1, 10, 14, 'W'); for (const y of [5, 8, 11]) rect(5, y, 6, 1, 'A'); rect(5, 13, 3, 1, 'A'); for (const x of [5, 8, 11]) rect(x, 0, 1, 2, 'w');
+        break;
+      case 'music':
+        rect(5, 3, 1, 9, 'W'); rect(11, 2, 1, 9, 'W'); line(5, 3, 11, 2, 'W'); line(5, 4, 11, 3, 'W'); line(5, 5, 11, 4, 'W');
+        disc(3.6, 12, 1.9, 'W'); disc(9.6, 11, 1.9, 'W');
+        break;
+      case 'store':
+        rect(2, 5, 12, 10, 'W'); rect(5, 2, 1, 4, 'w'); rect(10, 2, 1, 4, 'w'); rect(5, 1, 6, 1, 'w'); rect(5, 8, 1, 2, 'A'); rect(10, 8, 1, 2, 'A'); line(5, 10, 7, 12, 'A'); line(10, 10, 8, 12, 'A'); rect(7, 12, 2, 1, 'A');
+        break;
+      case 'settings':
+        disc(7.5, 7.5, 5.2, 'W');
+        for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; rect(Math.round(7.5 + Math.cos(a) * 6.3 - 1), Math.round(7.5 + Math.sin(a) * 6.3 - 1), 2, 2, 'W'); }
+        disc(7.5, 7.5, 2.2, 'A');
+        break;
+      case 'calculator':
+        rect(3, 1, 10, 14, 'W'); rect(4, 2, 8, 3, 'A'); rect(8, 3, 3, 1, 'G');
+        for (const y of [7, 10, 13]) for (const x of [4, 7, 10]) rect(x, y, 2, y === 13 ? 1 : 2, x === 10 ? 'O' : 'A');
+        break;
+      case 'calendar': {
+        rect(1, 2, 14, 13, 'W'); rect(1, 2, 14, 3, 'R'); rect(4, 1, 1, 3, 'w'); rect(11, 1, 1, 3, 'w');
+        const d = String(new Date().getDate());
+        text(d, d.length === 1 ? 6 : 4, 7, 'A');
+        break;
+      }
+      case 'clock': {
+        disc(7.5, 7.5, 6.8, 'W');
+        for (const [x, y] of [[7.5, 1.6], [13.4, 7.5], [7.5, 13.4], [1.6, 7.5]]) set(x, y, 'A');
+        line(7.5, 7.5, 7.5, 3.5, 'A'); line(7.5, 7.5, 10.5, 9.5, 'A'); set(7.5, 7.5, 'R');
+        break;
+      }
+      case 'monitor':
+        rect(1, 2, 14, 10, 'W'); rect(2, 3, 12, 8, 'D');
+        [[2, 9], [4, 8], [5, 9], [7, 5], [9, 7], [11, 4], [13, 6]].reduce((p, q) => { line(p[0], p[1], q[0], q[1], 'G'); return q; });
+        rect(6, 12, 4, 1, 'w'); rect(4, 13, 8, 1, 'w');
+        break;
+      default:
+        disc(7.5, 7.5, 5, 'W');
+    }
+    return g;
+  }
+  const appIcons = new Map();
+  G.TILES = TILES;
+  G.appIcon = function (id, size, c) {
+    const dpr = Math.min(3, Math.max(1, Math.round(window.devicePixelRatio || 1)));
+    const day = new Date().getDate();
+    const key = id + size + dpr + (id === 'calendar' ? day : '') + (c || '');
+    if (appIcons.has(key)) return appIcons.get(key);
+    const S = size * dpr, cv = G.canvas(S, S), g = cv.getContext('2d');
+    const tile = TILES[id] || c || '#7c9cff';
+    // the tile: rounded, a gentle light-to-dark fall, a soft top edge
+    const r = Math.round(S * 0.24);
+    const path = () => { g.beginPath(); g.moveTo(r, 0); g.arcTo(S, 0, S, S, r); g.arcTo(S, S, 0, S, r); g.arcTo(0, S, 0, 0, r); g.arcTo(0, 0, S, 0, r); g.closePath(); };
+    const grad = g.createLinearGradient(0, 0, 0, S);
+    grad.addColorStop(0, mix(tile, '#ffffff', 0.16)); grad.addColorStop(1, mix(tile, '#000000', 0.06));
+    path(); g.fillStyle = grad; g.fill();
+    g.save(); path(); g.clip();
+    g.fillStyle = 'rgba(255,255,255,.22)'; g.fillRect(0, 0, S, Math.max(1, dpr));
+    g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, S - Math.max(1, dpr), S, Math.max(1, dpr));
+    g.restore();
+    if (id === 'gaming') {
+      const n = Math.round(S * 0.7), d = G.die(Math.max(16, Math.min(64, Math.round(n / dpr))), null, { key: 'appicon', outline: [70, 70, 82] });
+      g.imageSmoothingEnabled = false; g.drawImage(d, Math.round((S - n) / 2), Math.round((S - n) / 2), n, n);
+    } else {
+      const gl = glyph(id), cell = Math.max(1, Math.floor((S * 0.64) / 16)), off = Math.round((S - cell * 16) / 2);
+      const pal = { W: '#ffffff', w: 'rgba(255,255,255,.72)', A: mix(tile, '#000000', 0.12), D: '#1d2028', G: '#8fe07a', R: '#e5534b', O: '#f0a43a' };
+      // a soft shadow under the picture, one cell down
+      g.fillStyle = 'rgba(0,0,0,.14)';
+      gl.forEach((row, y) => row.forEach((ch, x) => { if (ch === 'W' || ch === 'w') g.fillRect(off + x * cell, off + (y + 1) * cell, cell, cell); }));
+      gl.forEach((row, y) => row.forEach((ch, x) => { if (ch) { g.fillStyle = pal[ch]; g.fillRect(off + x * cell, off + y * cell, cell, cell); } }));
+    }
+    cv.style.width = cv.style.height = size + 'px';
+    appIcons.set(key, cv);
+    return cv;
+  };
+  // a fresh copy (a canvas can only be in one place on the page at a time)
+  G.appIconEl = function (id, size, c) {
+    const src = G.appIcon(id, size, c), cv = G.canvas(src.width, src.height);
+    cv.getContext('2d').drawImage(src, 0, 0); cv.style.width = cv.style.height = size + 'px'; cv.className = 'appicon';
+    return cv;
+  };
+
   G.PIPS = { 1: [[1, 1]], 2: [[0, 0], [2, 2]], 3: [[0, 0], [1, 1], [2, 2]], 4: [[0, 0], [2, 0], [0, 2], [2, 2]], 5: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]], 6: [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]] };
 
   // ---- The worlds -----------------------------------------------------------------

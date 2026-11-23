@@ -217,6 +217,18 @@ class Site(unittest.TestCase):
         for page in (door, dice):
             self.assertLess(page.index('/diceweb/js/die3d.js'), page.index('/diceweb/js/gfx.js'))
 
+    def test_emulator(self):
+        code, h, body = call('/dice/try')
+        page = body.decode()
+        self.assertEqual(code, 200)
+        self.assertNotIn('<nav class="dk', page)
+        self.assertIn("'/diceweb/?emu=1&t='", page)
+        self.assertIn('/diceweb/js/die3d.js', page)
+        self.assertNotRegex(page, r'\{\{\w+\}\}')
+        # its pretend computer and the setting-up page point at each other
+        self.assertIn('href="/dice/try"', call('/dice')[2].decode())
+        self.assertEqual(call('/diceweb/js/emu.js')[0], 200)
+
     def test_personal_page(self):
         code, h, body = call('/')
         self.assertIn('<a class="me" href="/me">Made by Dhruv</a>', body.decode())

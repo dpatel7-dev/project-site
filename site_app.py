@@ -537,8 +537,8 @@ def application(environ, start_response):
             if text is not None:
                 return _send(start_response, '200 OK', text, 'text/plain; charset=utf-8')
 
-    if path in ('/', '/index.html', '/dice', '/dice/', '/me', '/me/'):
-        name = 'door' if path in ('/', '/index.html') else path.strip('/')
+    if path in ('/', '/index.html', '/dice', '/dice/', '/me', '/me/', '/dice/try', '/dice/try/'):
+        name = 'door' if path in ('/', '/index.html') else 'emulator' if path.startswith('/dice/try') else path.strip('/')
         page = _read('pages', name + '.html')
         if page is not None:
             return _send(start_response, '200 OK', _noticed(site_shell.inject(fill(page, environ, here=name), name, 'page', True, dock=False)))

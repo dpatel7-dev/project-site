@@ -24,6 +24,7 @@
   .btn.main:hover { background: color-mix(in oklab, var(--c) 86%, #fff); }
   .btn.soft { background: var(--soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
   .btn.soft:hover { background: var(--bg); }
+  .go2 { display: flex; flex-wrap: wrap; gap: 8px; }
   .stage { border-radius: 30px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); aspect-ratio: 16 / 10; background: var(--soft); }
   .stage canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
   section > h2, .h2 { font: 700 clamp(1.9rem, 3.4vw, 2.7rem)/1.05 var(--pixel); margin: 0 0 10px; letter-spacing: -.01em; }
@@ -211,7 +212,7 @@
     <div class="out glass">
       <h3>Your Dice</h3>
       <p>Save your settings as <b>dice.json</b>. On a Pi, drop it onto the card's <b>bootfs</b> drive after writing Dice. On a PC, put it on a USB stick.</p>
-      <button class="btn main" type="button" id="save">Save dice.json</button>
+      <div class="go2"><button class="btn main" type="button" id="save">Save dice.json</button><button class="btn soft" type="button" id="try">Try it in the emulator</button></div>
       <p class="warn" id="warn" hidden></p>
       <p>Installing onto a computer that already runs Raspberry Pi OS, Debian or Ubuntu? A setup code carries everything except the passwords.</p>
       <button class="btn soft" type="button" id="getcode">Get a setup code</button>
@@ -304,6 +305,7 @@
     <div><dt>Home Assistant</dt><dd>Keep it on its own card or drive and it stays exactly as it is. Put its address above for a dashboard button.</dd></div>
     <div><dt>The password</dt><dd>The user is dice, password dice, until you set one above or in Settings, You.</dd></div>
     <div><dt>Your passwords</dt><dd>They never leave this computer. After the first start, Dice wipes them out of dice.json and renames it dice-applied.json.</dd></div>
+    <div><dt>Trying it first</dt><dd>The <a href="/dice/try">emulator</a> starts Dice with your settings on a pretend Pi or PC, right here in the browser, and shows what it did with them.</dd></div>
     <div><dt>Changing things later</dt><dd>Use Settings in Dice, or drop a new dice.json onto the card or a USB stick and restart.</dd></div>
     <div><dt>Just curious?</dt><dd><a href="/diceweb/">DiceWeb</a> is the same thing in your browser: the desktop, Music, Notes, Files and a pretend Terminal.</dd></div>
   </dl>
@@ -314,6 +316,7 @@
 <script src="/diceweb/js/catalog.js"></script>
 <script src="/diceweb/js/die3d.js"></script>
 <script src="/diceweb/js/gfx.js"></script>
+<script src="/diceweb/js/scape.js"></script>
 <script>
 (function () {
   const G = window.DiceGfx, $ = (s) => document.querySelector(s);
@@ -413,10 +416,11 @@
   const wall = $('#wall'), wg = wall.getContext('2d');
   function paintWall(now, force) {
     const r = wall.getBoundingClientRect();
-    const cell = Math.max(3, Math.round(r.width / 110));
-    const W = Math.max(40, Math.round(r.width / cell)), H = Math.max(25, Math.round(r.height / cell));
+    // the same calm landscape Dice draws behind its desktop
+    const cell = Math.max(2, Math.round(r.width / 220));
+    const W = Math.max(60, Math.round(r.width / cell)), H = Math.max(36, Math.round(r.height / cell));
     const key = cfg.world + previewNight() + W + 'x' + H;
-    if (key !== wallKey) { wallKey = key; wall.width = W; wall.height = H; world = new G.World({ land: cfg.world, c: WORLDS[cfg.world], who: null, night: previewNight(), W, H, layout: 'wall', gang: true, seed: 'preview' }); force = true; }
+    if (key !== wallKey) { wallKey = key; wall.width = W; wall.height = H; world = new G.Scape({ world: cfg.world, night: previewNight(), W, H, seed: 'desk' }); force = true; }
     if (!force && now - lastDraw < 60) return;
     lastDraw = now;
     world.draw(wg, now / 1000, still);
@@ -431,7 +435,7 @@
     $('#pv-wifi').textContent = cfg.wifi.ssid ? 'On ' + cfg.wifi.ssid : 'No Wi-Fi yet';
     const shelf = $('#pv-shelf');
     shelf.innerHTML = '';
-    ['#ff707a', '#5aa9e6', '#7c9cff', '#8fd16a', '#e8913a', '#d39cf5', '#f5c431'].forEach((c) => { const i = document.createElement('i'); i.style.background = c; shelf.appendChild(i); });
+    ['files', 'browser', 'terminal', 'notes', 'music', 'store', 'settings'].forEach((id) => { const i = document.createElement('i'); i.style.background = 'url(' + G.appIcon(id, 24).toDataURL() + ') center / cover'; shelf.appendChild(i); });
     $('#pv-wf').textContent = cfg.wifi.ssid ? '▂▄▆' : '';
     $('#pv-time').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '');
     document.body.style.setProperty('--c', WORLDS[cfg.world]);
@@ -472,6 +476,12 @@
     for (const k of ['name', 'computer', 'homeassistant']) if (!c[k]) delete c[k];
     return c;
   }
+  // the emulator reads what you've picked from this browser; passwords stay here, it's only told whether you typed them
+  $('#try').addEventListener('click', () => {
+    remember();
+    try { sessionStorage.setItem('dice-emu-flags', JSON.stringify({ password: !!cfg.password, wifiPassword: !!(cfg.wifi && cfg.wifi.password) })); } catch (e) { /* fine */ }
+    location.href = '/dice/try';
+  });
   $('#save').addEventListener('click', () => {
     const p = problems();
     if (p.length) { $('#warn').hidden = false; $('#warn').textContent = p.join(' '); $('#warn').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
@@ -523,7 +533,7 @@
     hw = new G.World({ land: 'hills', c: '#ff707a', who: null, night: isNight(), W, H, layout: 'wide', seed: 'dice-hero' });
     // the screen's own world has finer pixels than the world around it
     const iw = Math.round(W * 0.42), ih = Math.round(W * 0.42 * 0.6);
-    inner = new G.World({ land: 'mountains', c: '#7c9cff', who: null, night: isNight(), W: iw * 2, H: ih * 2, layout: 'wall', gang: true, seed: 'dice-mini' });
+    inner = new G.Scape({ world: 'mountains', night: isNight(), W: iw * 2, H: ih * 2, seed: 'dice-mini' });
     inner.sw = iw; inner.sh = ih;
     inner.canvas = G.canvas(iw * 2, ih * 2);
   }

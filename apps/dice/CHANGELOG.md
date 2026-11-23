@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+
+- DiceWeb 1.2: calm, detailed moving landscapes with no mascots behind the desktop, a cleaner desktop (just Home, a small dock of favourites, all apps in a grid), smaller clock corner, and new built-in apps: Calculator, Calendar, Clock and System Monitor (which shows this computer's real load, memory, storage and temperature).
+- Try Dice before installing it: the emulator on the website (djp7.pythonanywhere.com/dice/try) starts Dice with your settings on a pretend Pi or PC, and shows what dice-boot did with them.
+- A new workflow, Test the images in an emulator, starts the PC image in QEMU after each build and keeps pictures of the screen (image/test-pc.sh).
+- On the Pi's 7 inch screen the dock no longer runs into the clock.
+
 ## 1.1.0
 
 - Dice runs on PCs too. dice-amd64.iso is a Debian 13 live system with Dice in it: write it to a USB stick, start the PC from it, and pick Install to keep it. Or run the same one-line install on a PC with Debian or Ubuntu.

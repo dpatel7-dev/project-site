@@ -34,6 +34,8 @@ body { font: 400 1rem/1.5 var(--read); font-variant-ligatures: no-common-ligatur
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
 input, textarea { font: inherit; color: inherit; user-select: text; -webkit-user-select: text; }
 canvas, .art { image-rendering: pixelated; image-rendering: crisp-edges; }
+.art.smooth, canvas.appicon { image-rendering: auto; }
+.art.smooth { object-fit: cover; }
 a { color: inherit; }
 :focus { outline: none; }
 :focus-visible { outline: none; }

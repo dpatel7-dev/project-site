@@ -11,7 +11,7 @@
 
   // the same few things, for the real disk and the pretend one
   function source() {
-    if (D.sys) {
+    if (D.sys && !D.sys.info.emulated) {
       return {
         real: true,
         list: (p) => D.sys.get('/api/files?path=' + encodeURIComponent(p)).then((r) => (r.error ? Promise.reject(new Error(r.error)) : r)),
