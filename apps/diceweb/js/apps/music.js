@@ -40,7 +40,7 @@
         const on = now && now.kind === 'song' && now.i === i;
         const b = h('<button class="qrow ' + (on ? 'on' : '') + '" data-nav data-key="mu:s' + i + '" data-x="Remove"><span class="pic" style="background:var(--soft-2);display:grid;place-items:center">' + D.glyph('music', 2) + '</span><span><b>' + esc(s.name) + '</b><span>Your song</span></span>' + (on ? '<span class="eqmini ' + (now.playing ? '' : 'still') + '"><i></i><i></i><i></i></span>' : '') + '</button>');
         b.onclick = () => (on ? M.toggle() : M.play('song', i));
-        b._x = () => D.ask({ title: 'Remove ' + s.name + '?', text: 'It comes out of DiceWeb. The file on your computer stays where it is.', buttons: [{ label: 'Remove', value: true, go: true, danger: true }, { label: 'Keep it', value: false }] }).then((ok) => { if (ok) M.remove(s.id); });
+        b._x = () => D.ask({ title: 'Remove ' + s.name + '?', text: 'It comes out of ' + D.brand + '. The file on your computer stays where it is.', buttons: [{ label: 'Remove', value: true, go: true, danger: true }, { label: 'Keep it', value: false }] }).then((ok) => { if (ok) M.remove(s.id); });
         songs.appendChild(b);
       });
       root.querySelector('#mu-name').textContent = now ? now.name : 'Nothing playing';

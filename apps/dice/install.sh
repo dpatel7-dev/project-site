@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Dice for a Raspberry Pi (64-bit Raspberry Pi OS) or a PC (64-bit Debian or Ubuntu).
+# DiceOS for a Raspberry Pi (64-bit Raspberry Pi OS) or a PC (64-bit Debian or Ubuntu).
 #
 # On a Pi that already runs Raspberry Pi OS, or a PC that runs Debian or Ubuntu:
 #   curl -fsSL https://djp7.pythonanywhere.com/dice/install.sh | sudo bash
 # With your settings from the website (the setup code it gave you):
 #   curl -fsSL https://djp7.pythonanywhere.com/dice/install.sh | sudo bash -s -- K7Q2XM
 #
-# The Dice images are built with this same script (image/build.sh for the Pi,
+# The DiceOS images are built with this same script (image/build.sh for the Pi,
 # image/build-pc.sh for PCs).
-# To take Dice off again:  sudo /opt/dice/bin/dice-uninstall
+# To take DiceOS off again:  sudo /opt/dice/bin/dice-uninstall
 set -euo pipefail
 
 SITE="${DICE_SITE:-https://djp7.pythonanywhere.com}"
@@ -17,12 +17,12 @@ IMAGE="${DICE_IMAGE:-}"
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 fail() { printf '\n\033[1;31m%s\033[0m\n' "$*" >&2; exit 1; }
 
-[ "$(id -u)" = 0 ] || fail "Dice needs to be installed with sudo:  curl -fsSL $SITE/dice/install.sh | sudo bash"
+[ "$(id -u)" = 0 ] || fail "DiceOS needs to be installed with sudo:  curl -fsSL $SITE/dice/install.sh | sudo bash"
 [ -f /etc/os-release ] && . /etc/os-release
-case " ${ID:-} ${ID_LIKE:-} " in *debian*|*raspbian*|*ubuntu*) ;; *) fail "Dice needs Raspberry Pi OS, Debian or Ubuntu.";; esac
+case " ${ID:-} ${ID_LIKE:-} " in *debian*|*raspbian*|*ubuntu*) ;; *) fail "DiceOS needs Raspberry Pi OS, Debian or Ubuntu.";; esac
 if [ -n "$CODE" ] && ! printf '%s' "$CODE" | grep -Eq '^[A-Za-z0-9]{4,12}$'; then fail "That setup code doesn't look right: $CODE"; fi
 ARCH=$(dpkg --print-architecture)
-case "$ARCH" in arm64|amd64) ;; *) say "Note: Dice is made for 64-bit computers (arm64 or amd64). This is $ARCH, so it may not work.";; esac
+case "$ARCH" in arm64|amd64) ;; *) say "Note: DiceOS is made for 64-bit computers (arm64 or amd64). This is $ARCH, so it may not work.";; esac
 
 # a Raspberry Pi, or a PC?
 # (DICE_IMAGE=pi or pc says so when building an image, where the build machine is neither)
@@ -30,10 +30,10 @@ PI=0
 if grep -qi 'raspberry pi' /proc/device-tree/model 2>/dev/null || [ -f /boot/firmware/config.txt ]; then PI=1; fi
 case "$IMAGE" in pi) PI=1;; pc) PI=0;; esac
 BOOT=/boot/firmware; [ -d "$BOOT" ] || BOOT=/boot
-# where the settings from the website go: the Pi's card, or Dice's own folder on a PC
+# where the settings from the website go: the Pi's card, or DiceOS's own folder on a PC
 if [ "$PI" = 1 ]; then SETTINGS_FILE="$BOOT/dice.json"; THIS="the Pi"; else SETTINGS_FILE=/etc/dice/dice.json; THIS="the computer"; fi
 
-say "1 of 5: Getting what Dice needs. This takes a while..."
+say "1 of 5: Getting what DiceOS needs. This takes a while..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 CHROME=chromium
@@ -46,7 +46,7 @@ fi
 # shellcheck disable=SC2086
 apt-get install -y --no-install-recommends $PKGS
 
-say "2 of 5: Putting Dice in /opt/dice..."
+say "2 of 5: Putting DiceOS in /opt/dice..."
 if [ -n "${DICE_SRC:-}" ]; then
   SRC="$DICE_SRC"
 else
@@ -54,7 +54,7 @@ else
   curl -fsSL "$SITE/dice/dice.tar.gz" | tar -xz -C "$TMP"
   SRC="$TMP/dice"
 fi
-[ -f "$SRC/daemon/diced.py" ] || fail "The Dice download wasn't right. Nothing was changed."
+[ -f "$SRC/daemon/diced.py" ] || fail "The DiceOS download wasn't right. Nothing was changed."
 rm -rf /opt/dice.new
 cp -r "$SRC" /opt/dice.new
 rm -rf /opt/dice.new/.git /opt/dice.new/dist
@@ -64,11 +64,11 @@ chmod +x /opt/dice/bin/*
 mkdir -p /etc/dice /var/lib/dice
 [ -f /etc/dice/settings.json ] || echo '{}' > /etc/dice/settings.json
 
-say "3 of 5: Setting Dice to start with $THIS..."
+say "3 of 5: Setting DiceOS to start with $THIS..."
 cp /opt/dice/system/*.service /opt/dice/system/*.timer /etc/systemd/system/
 systemctl daemon-reload 2>/dev/null || true
 systemctl enable dice.service dice-boot.service dice-update.timer
-# Dice takes the screen, so the usual desktop (if there is one) steps aside
+# DiceOS takes the screen, so the usual desktop (if there is one) steps aside
 for dm in lightdm gdm3 sddm; do
   if systemctl is-enabled "$dm" >/dev/null 2>&1; then echo "$dm" >> /var/lib/dice/display-managers; systemctl disable "$dm"; fi
 done
@@ -91,7 +91,7 @@ if [ -n "$IMAGE" ] && [ "$PI" = 1 ]; then
   echo 'dice:dice' | chpasswd
   echo 'dice ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/010_dice-nopasswd
   chmod 440 /etc/sudoers.d/010_dice-nopasswd
-  # no first-boot questions on the screen: Dice asks its own, nicely
+  # no first-boot questions on the screen: DiceOS asks its own, nicely
   systemctl disable userconfig.service 2>/dev/null || true
   rm -f /etc/ssh/sshd_config.d/rename_user.conf
 fi
@@ -108,7 +108,7 @@ if [ "$PI" = 1 ] && [ -f "$BOOT/cmdline.txt" ]; then
   done
   printf '%s\n' "$LINE" > "$BOOT/cmdline.txt"
 fi
-if [ "$PI" = 1 ] && [ -f "$BOOT/config.txt" ] && ! grep -q '^disable_splash=1' "$BOOT/config.txt"; then printf '\n# Dice\ndisable_splash=1\n' >> "$BOOT/config.txt"; fi
+if [ "$PI" = 1 ] && [ -f "$BOOT/config.txt" ] && ! grep -q '^disable_splash=1' "$BOOT/config.txt"; then printf '\n# DiceOS\ndisable_splash=1\n' >> "$BOOT/config.txt"; fi
 # on a PC the splash needs "quiet splash" on the GRUB line instead
 if [ "$PI" = 0 ] && [ -f /etc/default/grub ]; then
   if ! grep -q 'splash' /etc/default/grub; then
@@ -123,13 +123,13 @@ if [ -n "$CODE" ]; then
     [ "$PI" = 0 ] && chmod 600 "$SETTINGS_FILE"  # it can hold your Wi-Fi password
     echo "Got your settings ($CODE). They'll be used when $THIS restarts."
   else
-    echo "Couldn't get the settings for $CODE (codes last 30 days). Dice will ask instead."
+    echo "Couldn't get the settings for $CODE (codes last 30 days). DiceOS will ask instead."
   fi
 else
-  echo "No setup code, so Dice will ask the questions on the screen."
+  echo "No setup code, so DiceOS will ask the questions on the screen."
 fi
 
 if [ -z "$IMAGE" ]; then
-  say "Dice is installed. Restart $THIS to start it:  sudo reboot"
-  echo "(To take Dice off again later:  sudo /opt/dice/bin/dice-uninstall)"
+  say "DiceOS is installed. Restart $THIS to start it:  sudo reboot"
+  echo "(To take DiceOS off again later:  sudo /opt/dice/bin/dice-uninstall)"
 fi

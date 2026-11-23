@@ -278,7 +278,7 @@ def dock(here):
         parts.append(_item('/' + a['id'], a.get('short', a['name']), ic[a['id']], here == a['id'], a['id'], a['c'],
                            ' dk-app' + (' dk-here' if here == a['id'] else '')))
     parts += ['</span><span class="dk-sep" aria-hidden="true"></span>',
-              _item('/dice', 'Dice', ic['dice'], here == 'dice', 'dice', '#8a8a96', ' dk-side'),
+              _item('/dice', 'DiceOS', ic['dice'], here == 'dice', 'dice', '#8a8a96', ' dk-side'),
               _item('/start', 'Start here', ic['start'], here == 'start', 'start', '#8fd16a', ' dk-side'),
               _item('/new', "What's new", ic['new'], here == 'new', 'new', '#d39cf5', ' dk-side dk-new'),
               '</div></nav>']

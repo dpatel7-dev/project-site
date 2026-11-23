@@ -9,7 +9,7 @@ dice-boot: runs at every start-up, as root, before the desktop.
    only happens once. Drop a new dice.json on the card to change things again.
    Only USB sticks and other removable drives are looked at, never the
    computer's own disks, and they're opened read-only until a dice.json turns up.
-2. Starts the Dice desktop for the person who uses this computer.
+2. Starts the DiceOS desktop for the person who uses this computer.
 """
 import glob
 import hashlib
@@ -57,7 +57,7 @@ def read(path):
 
 
 def mounted():
-    """Devices that are already in use (the computer's own disks, the live USB Dice started from)."""
+    """Devices that are already in use (the computer's own disks, the live USB DiceOS started from)."""
     out = set()
     for line in read('/proc/mounts').splitlines():
         dev = line.split(' ')[0]
@@ -77,7 +77,7 @@ def usb_parts(sys_block='/sys/block'):
             continue
         parts = sorted(os.path.basename(p) for p in glob.glob(os.path.join(blk, name + '*')) if os.path.basename(p)[len(name):].isdigit())
         devs = ['/dev/' + p for p in parts] or ['/dev/' + name]
-        # a stick with anything of it already in use is the one Dice started from: leave it alone
+        # a stick with anything of it already in use is the one DiceOS started from: leave it alone
         if any(d in busy for d in devs + ['/dev/' + name]):
             continue
         out += devs

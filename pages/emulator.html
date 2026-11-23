@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dice emulator - try your settings before you install</title>
-<meta name="description" content="Try Dice with your settings on a pretend Raspberry Pi or PC, right in your browser: the start-up screen, your dice.json being applied, and the whole desktop.">
+<title>Dice Emulator - try DiceOS with your settings before you install</title>
+<meta name="description" content="Try DiceOS with your settings on a pretend Raspberry Pi or PC, right in your browser: the start-up screen, your dice.json being applied, and the whole desktop.">
 <style>
-  /* The Dice emulator. The computer sits on a dark desk in the middle; what
+  /* The DiceOS emulator. The computer sits on a dark desk in the middle; what
      happened when it started is written down the side. */
   body { height: 100svh; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0 !important; }
   .dtop { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 18px; padding: 12px clamp(16px, 3vw, 30px); box-shadow: 0 1px 0 var(--line); background: var(--bg); }
@@ -96,9 +96,9 @@
       <div class="device" id="device" data-frame="tablet">
         <div class="bezel">
           <div class="screen" id="screen">
-            <iframe id="os" title="Dice, running in the emulator" tabindex="0"></iframe>
-            <div class="splash" id="splash" hidden><div class="in"><canvas id="die" width="64" height="64" aria-hidden="true"></canvas><b>Dice</b><div class="bar" id="bar"></div></div></div>
-            <div class="offscreen" id="off"><p>Off. Press the power button to start Dice.</p></div>
+            <iframe id="os" title="DiceOS, running in the emulator" tabindex="0"></iframe>
+            <div class="splash" id="splash" hidden><div class="in"><canvas id="die" width="64" height="64" aria-hidden="true"></canvas><b>DiceOS</b><div class="bar" id="bar"></div></div></div>
+            <div class="offscreen" id="off"><p>Off. Press the power button to start DiceOS.</p></div>
           </div>
           <span class="led" aria-hidden="true"></span>
         </div>
@@ -115,21 +115,21 @@
     <section>
       <h2>Settings to try</h2>
       <div class="src" role="radiogroup" aria-label="Settings to try">
-        <label><input type="radio" name="src" value="page" checked><b>The ones from the Dice page</b><small id="page-sum">What you picked on the Dice page.</small></label>
+        <label><input type="radio" name="src" value="page" checked><b>The ones from the DiceOS page</b><small id="page-sum">What you picked on the DiceOS page.</small></label>
         <label><input type="radio" name="src" value="file"><b>A dice.json file</b><small>Like plugging in the card or a USB stick with it on.</small>
           <div class="drop" id="drop">Drop dice.json here, or <button class="relink" type="button" id="pick">choose it</button></div><input type="file" id="file" accept=".json,application/json" hidden></label>
         <label><input type="radio" name="src" value="code"><b>A setup code</b><small>The code from Get a setup code.</small>
           <span class="more"><input type="text" id="code" maxlength="12" placeholder="Code" aria-label="Setup code" autocomplete="off" spellcheck="false"><button class="mini" type="button" id="getcode">Load</button></span></label>
-        <label><input type="radio" name="src" value="none"><b>None</b><small>No dice.json: Dice asks its questions on the screen.</small></label>
+        <label><input type="radio" name="src" value="none"><b>None</b><small>No dice.json: DiceOS asks its questions on the screen.</small></label>
       </div>
     </section>
     <section>
       <h2>What happened</h2>
-      <ol class="log" id="log"><li class="empty">Start the computer to see what Dice does with your settings.</li></ol>
+      <ol class="log" id="log"><li class="empty">Start the computer to see what DiceOS does with your settings.</li></ol>
     </section>
     <section>
-      <p class="note">This runs the real Dice desktop with a pretend computer underneath, so Wi-Fi, sound, restart and shut down all work, but nothing on your computer changes. It can't try drivers or the disk image itself. The image is started in a real emulator each time it's built (Test the images, on GitHub).</p>
-      <p class="note" style="margin-top:8px"><button class="relink" type="button" id="fresh">Wipe the pretend computer</button> to start as if Dice was just installed.</p>
+      <p class="note">This runs the real DiceOS desktop with a pretend computer underneath, so Wi-Fi, sound, restart and shut down all work, but nothing on your computer changes. It can't try drivers or the disk image itself. The image is started in a real emulator each time it's built (Test the images, on GitHub).</p>
+      <p class="note" style="margin-top:8px"><button class="relink" type="button" id="fresh">Wipe the pretend computer</button> to start as if DiceOS was just installed.</p>
     </section>
   </aside>
 </main>
@@ -145,14 +145,14 @@
     laptop: { name: 'A PC laptop', w: 1366, h: 768, frame: 'laptop', model: 'PC laptop', backlight: true, battery: true, mem: 16e9, disk: 512e9 },
     pc: { name: 'A PC and a monitor', w: 1920, h: 1080, frame: 'monitor', model: 'PC', mem: 16e9, disk: 1e12 },
   };
-  // the keys Dice keeps (the same list as dice-boot), and the ones it reads once
+  // the keys DiceOS keeps (the same list as dice-boot), and the ones it reads once
   const KEEP = ['name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh'];
   const KNOWN = KEEP.concat(['dice', 'password', 'wifi']);
   const st = { dev: 'pi7', power: 'off', file: null, fileName: '', code: null, used: {}, t0: 0, timers: [], version: '1.2.0' };
   try { const d = localStorage.getItem('dice-emu-device'); if (DEVICES[d]) st.dev = d; } catch (e) { /* fine */ }
   fetch('/versions.json').then((r) => r.json()).then((v) => { const a = v.apps || v; if (a && a.dice) st.version = a.dice.version || a.dice; }).catch(() => {});
 
-  // ---- the logo, and the die on the start-up screen (the same pictures Dice draws) ----
+  // ---- the logo, and the die on the start-up screen (the same pictures DiceOS draws) ----
   const night = typeof djp7Night === 'function' ? djp7Night() : matchMedia('(prefers-color-scheme: dark)').matches;
   function paint(canvas, img) { const g = canvas.getContext('2d'); g.putImageData(new ImageData(img.data, img.w, img.h), 0, 0); }
   paint($('#logo'), DiceDie.iso(32, { outline: night ? [60, 60, 70] : null }));
@@ -187,7 +187,7 @@
     try {
       const s = JSON.parse(localStorage.getItem('dice-setup') || 'null');
       if (!s) return null;
-      // the Dice page never stores passwords; it only says whether you typed them
+      // the DiceOS page never stores passwords; it only says whether you typed them
       if (flags.password) s.password = '(set)';
       if (s.wifi && flags.wifiPassword) s.wifi.password = '(set)';
       if (s.wifi && !s.wifi.ssid) delete s.wifi;
@@ -196,12 +196,12 @@
     } catch (e) { return null; }
   }
   const page = fromPage();
-  $('#page-sum').textContent = page ? [page.name ? 'For ' + page.name : '', page.world ? page.world.replace(/^\w/, (c) => c.toUpperCase()) : '', page.wifi ? 'Wi-Fi ' + page.wifi.ssid : 'no Wi-Fi'].filter(Boolean).join(', ') + '.' : 'Nothing picked yet: set Dice up on the Dice page first.';
+  $('#page-sum').textContent = page ? [page.name ? 'For ' + page.name : '', page.world ? page.world.replace(/^\w/, (c) => c.toUpperCase()) : '', page.wifi ? 'Wi-Fi ' + page.wifi.ssid : 'no Wi-Fi'].filter(Boolean).join(', ') + '.' : 'Nothing picked yet: set DiceOS up on the DiceOS page first.';
   if (!page) document.querySelector('input[value=none]').checked = true;
   if (/[?&]src=file/.test(location.search)) document.querySelector('input[value=file]').checked = true;
   function current() {
     const src = document.querySelector('input[name=src]:checked').value;
-    if (src === 'page') return { src, cfg: page, where: 'from the Dice page' };
+    if (src === 'page') return { src, cfg: page, where: 'from the DiceOS page' };
     if (src === 'file') return { src, cfg: st.file, where: st.fileName, raw: st.raw, err: st.fileErr };
     if (src === 'code') return { src, cfg: st.code, where: 'setup code ' + ($('#code').value || '').toUpperCase() };
     return { src, cfg: null };
@@ -242,7 +242,7 @@
     const done = [], problems = [], notes = [];
     const settings = {};
     KEEP.forEach((k) => { if (k in cfg) settings[k] = cfg[k]; });
-    Object.keys(cfg).filter((k) => !KNOWN.includes(k)).forEach((k) => notes.push('Dice doesn\'t know "' + k + '", so it leaves it alone.'));
+    Object.keys(cfg).filter((k) => !KNOWN.includes(k)).forEach((k) => notes.push('DiceOS doesn\'t know "' + k + '", so it leaves it alone.'));
     const host = String(cfg.computer || '').trim().toLowerCase();
     if (host) { if (/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(host)) done.push('Named this computer ' + host); else problems.push('The computer name "' + host + '" has letters it can\'t use, so it wasn\'t changed.'); }
     if (cfg.password) done.push('Set your password');
@@ -258,7 +258,7 @@
     const WORLDS = ['hills', 'mountains', 'beach', 'city', 'forest', 'autumn', 'desert', 'garden', 'ice', 'deep', 'meadow', 'pond'];
     if (cfg.world && !WORLDS.includes(cfg.world)) notes.push('There\'s no world called "' + cfg.world + '", so it starts with hills.');
     if (cfg.look && !['auto', 'day', 'night'].includes(cfg.look)) notes.push('"' + cfg.look + '" isn\'t day, night or auto.');
-    if (cfg.start && !['desktop', 'gaming'].includes(cfg.start)) notes.push('"' + cfg.start + '" isn\'t desktop or gaming, so it opens on the desktop.');
+    if (cfg.start && !['desktop', 'gaming', 'home'].includes(cfg.start)) notes.push('"' + cfg.start + '" isn\'t desktop, gaming or home, so it opens on the desktop.');
     const suite = (cfg.suite || []).filter((a) => /^[a-z]{2,10}$/.test(String(a)));
     if (suite.length) notes.push('Will install ' + suite.join(', ') + ' once it\'s online');
     settings.welcome = { name: cfg.name || '', done, problems, at: Math.floor(Date.now() / 1000) };
@@ -312,7 +312,7 @@
     later(1100, () => {
       step(4);
       const place = d.pi ? 'the card\'s bootfs drive' : cur.src === 'code' ? '/etc/dice (from the setup code)' : 'a USB stick';
-      if (cur.src === 'none') { say('No dice.json, so Dice will ask on the screen'); return; }
+      if (cur.src === 'none') { say('No dice.json, so DiceOS will ask on the screen'); return; }
       if (cur.err) { say(cur.where + ' was found on ' + place + ', but ' + cur.err, 'bad'); return; }
       if (!cur.cfg) { say(cur.src === 'file' ? 'No dice.json plugged in yet' : 'No settings to use yet', 'warn'); return; }
       if (st.used[key]) { say('dice.json was already used (it\'s now dice-applied.json), so nothing new to set up'); return; }
@@ -336,14 +336,14 @@
         settings, wifi: cur.cfg && cur.cfg.wifi && r ? { ssid: cur.cfg.wifi.ssid } : prev.wifi || null, host: r ? r.host : prev.host || 'dice', user: 'dice', version: st.version }));
       $('#os').src = '/diceweb/?emu=1&t=' + Date.now();
     });
-    later(9000, () => { if (st.power === 'booting') { say('Dice is taking a while to start. Is this browser up to date?', 'warn'); } });
+    later(9000, () => { if (st.power === 'booting') { say('DiceOS is taking a while to start. Is this browser up to date?', 'warn'); } });
   }
   function ready() {
     if (st.power !== 'booting') return;
     const left = Math.max(0, 3200 - (performance.now() - st.t0));
     later(left, () => {
       [...$('#bar').children].forEach((s) => s.classList.add('on'));
-      later(250, () => { $('#splash').hidden = true; clearInterval(st.spin); setPower('on'); say('Dice is running', 'ok'); $('#os').focus(); });
+      later(250, () => { $('#splash').hidden = true; clearInterval(st.spin); setPower('on'); say('DiceOS is running', 'ok'); $('#os').focus(); });
     });
   }
   function shutdown(quiet) {
@@ -358,7 +358,7 @@
   $('#fresh').onclick = () => {
     try { localStorage.removeItem('diceweb-emu'); sessionStorage.removeItem('dice-emu'); } catch (e) { /* fine */ }
     st.used = {};
-    say('Wiped the pretend computer: it\'s like Dice was just installed', 'ok');
+    say('Wiped the pretend computer: it\'s like DiceOS was just installed', 'ok');
     if (st.power !== 'off') boot(true);
   };
   addEventListener('message', (e) => {

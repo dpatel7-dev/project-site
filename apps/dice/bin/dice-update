@@ -1,5 +1,5 @@
 #!/bin/sh
-# dice-update: gets the newest Dice from the website and swaps it in.
+# dice-update: gets the newest DiceOS from the website and swaps it in.
 #   dice-update          update now
 #   dice-update --auto   only if automatic updates are on (the weekly timer uses this)
 set -e
@@ -10,8 +10,8 @@ fi
 HAVE=$(cat /opt/dice/VERSION 2>/dev/null || echo 0)
 NEW=$(curl -fsSL "$SITE/versions.json" | python3 -c "import json,sys;print(json.load(sys.stdin).get('dice',''))")
 if [ -z "$NEW" ]; then echo "Couldn't reach $SITE to check for updates."; exit 1; fi
-if [ "$NEW" = "$HAVE" ] && [ "$1" != "--force" ]; then echo "Dice $HAVE is the newest."; exit 0; fi
-echo "Updating Dice $HAVE to $NEW..."
+if [ "$NEW" = "$HAVE" ] && [ "$1" != "--force" ]; then echo "DiceOS $HAVE is the newest."; exit 0; fi
+echo "Updating DiceOS $HAVE to $NEW..."
 TMP=$(mktemp -d)
 curl -fsSL "$SITE/dice/dice.tar.gz" | tar -xz -C "$TMP"
 [ -f "$TMP/dice/daemon/diced.py" ] || { echo "The download wasn't right; nothing changed."; rm -rf "$TMP"; exit 1; }
@@ -21,4 +21,4 @@ mv "$TMP/dice" /opt/dice
 chmod +x /opt/dice/bin/*
 rm -rf "$TMP"
 systemctl restart dice.service
-echo "Done. Dice $NEW is in. Restart the desktop to see it (Settings, Power, Restart desktop)."
+echo "Done. DiceOS $NEW is in. Restart the desktop to see it (Settings, Power, Restart desktop)."

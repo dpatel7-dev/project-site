@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.4.0
+
+- The Dice family. DiceOS is the operating system; with it come DiceWeb (this, in a browser tab), DiceTV (Big screen's new name), Dice Home, Dice Cloud and the Dice Emulator, each with its own mark (the logo die inside a window, a TV, a house, a cloud, a screen).
+- Dice Home, for a screen on the wall: a big clock and the date, the weather, the day's Axiom tasks, and buttons for Home Assistant lights, switches, fans and scenes (on DiceOS, through its helper, which keeps the token). It moves a few pixels each minute so the screen doesn't burn in. Open it from the app grid, the menu, or start in it.
+- Dice Cloud: notes, Axiom, SereneTab's shortcuts and a few settings stay the same on every computer. Everything is locked with your Dice Cloud code (AES-GCM) on your computer before it goes to the website. Settings, Dice Cloud.
+- On a computer running it, it calls itself DiceOS (the start-up word, the welcome, About, the menu); in a browser tab it's DiceWeb.
+- SereneTab: suggestions under the address bar as you type (your shortcuts, sites you've been to, or a search), History (Ctrl+H, from the new ⋯ menu), reopen a closed tab (Ctrl+Shift+T), a focus timer on the glass clock (click it for 25 minutes; the ring fills as you go), and Axiom's tasks for today on the new tab page. The shortcut cubes, site tiles, buttons and menus are liquid glass now, like the rest.
+- Games is gone.
+- Links can open DiceWeb in a place: ?start=tv, ?start=home or ?open=settings:cloud.
+
 ## 1.3.0
 
 - Sharper graphics. The backgrounds have about twice the detail, with smooth skies and a soft sun glow instead of dotted ones, and no fine speckle on the land. The covers on Big screen are plain, with no dot pattern.

@@ -3,7 +3,7 @@
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, esc = D.esc, h = D.h;
   const SECTIONS = [['you', 'You', 'person', '#ff707a'], ['look', 'Look', 'sun', '#f5c431'], ['sound', 'Sound', 'volume', '#d39cf5'], ['pads', 'Controllers', 'pad', '#7c9cff'],
-    ['perf', 'Performance', 'chart', '#8fd16a'], ['start', 'Starting up', 'power', '#ef6a1f'], ['storage', 'Storage', 'lock', '#2bc4b2'], ['about', 'About', 'help', '#96969f']];
+    ['perf', 'Performance', 'chart', '#8fd16a'], ['start', 'Starting up', 'power', '#ef6a1f'], ['cloud', 'Dice Cloud', 'link', '#3a9be8'], ['storage', 'Storage', 'lock', '#2bc4b2'], ['about', 'About', 'help', '#96969f']];
 
   // on a computer running Dice, there's more to set: Wi-Fi, the screen, power and updates
   if (D.sys) {
@@ -58,7 +58,7 @@
           const homes = D.L.walk(D.state.disk, '/home');
           const was = oldHome.split('/').pop();
           if (homes && homes.kids[was] && was !== D.user()) { homes.kids[D.user()] = homes.kids[was]; delete homes.kids[was]; D.save(); }
-          D.toast({ who: D.state.avatar, title: 'Hello, ' + v, text: 'That\'s your name in DiceWeb now.' });
+          D.toast({ who: D.state.avatar, title: 'Hello, ' + v, text: 'That\'s your name in ' + D.brand + ' now.' });
         });
         pane.appendChild(row('Name', 'Shown in the menu and in Terminal.', name));
         const av = h('<div class="avatars" data-row></div>');
@@ -94,7 +94,7 @@
           b.onclick = () => { D.set('world', w); if (D.sys) D.sys.saveSettings({ world: w }); worlds.querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b)); };
           worlds.appendChild(b);
         });
-        const wr = row('Background', 'The moving landscape behind the desktop and Big screen.', null);
+        const wr = row('Background', 'The moving landscape behind the desktop, DiceTV and Dice Home.', null);
         wr.style.cssText = 'flex-direction:column;align-items:stretch';
         wr.appendChild(worlds);
         pane.appendChild(wr);
@@ -105,7 +105,7 @@
         pane.appendChild(h('<h2>Sound</h2>'));
         const sv = D.sys && D.sys.status && D.sys.status.volume;
         if (sv) pane.appendChild(row('Speaker volume', 'This computer\'s own sound output.', ui.slider(sv.level, 0, 1, (v) => { clearTimeout(PANES.vt); PANES.vt = setTimeout(() => D.sys.post('/api/volume', { level: v, muted: false }), 120); }, 'snd:sys', 'Speaker volume')));
-        pane.appendChild(row(sv ? 'Dice sounds' : 'Volume', sv ? 'Clicks, games and Dice Radio, before the speaker.' : 'Everything DiceWeb plays.', ui.slider(D.state.volume, 0, 1, (v) => { D.set('volume', v); S.setVolume(v); }, 'snd:vol', 'Volume')));
+        pane.appendChild(row(sv ? 'Dice sounds' : 'Volume', sv ? 'Clicks and Dice Radio, before the speaker.' : 'Everything ' + D.brand + ' plays.', ui.slider(D.state.volume, 0, 1, (v) => { D.set('volume', v); S.setVolume(v); }, 'snd:vol', 'Volume')));
         pane.appendChild(row('Music volume', 'Dice Radio and your songs.', ui.slider(D.state.musicVol, 0, 1, (v) => { D.set('musicVol', v); S.setMusic(v); }, 'snd:music', 'Music volume')));
         pane.appendChild(row('Interface sounds', 'Clicks and chimes as you move around.', sw(D.state.ui, (v) => { D.set('ui', v); S.setUi(v); if (v) S.play('select'); }, 'snd:ui', 'Interface sounds')));
         const t = h('<button class="b small" data-nav data-key="snd:test">' + D.glyph('volume', 2) + 'Play a test chime</button>');
@@ -134,16 +134,50 @@
       },
       start() {
         pane.appendChild(h('<h2>Starting up</h2>'));
-        pane.appendChild(row('Start-up animation', 'The die that rolls in when DiceWeb opens.', seg([['full', 'Full'], ['quick', 'Quick'], ['off', 'Off']], D.state.boot, (v) => D.set('boot', v), 'st:boot')));
-        pane.appendChild(row('Start in', 'Where DiceWeb opens.', seg([['desk', 'Desktop'], ['game', 'Big screen']], D.state.start, (v) => D.set('start', v), 'st:in')));
+        pane.appendChild(row('Start-up animation', 'The die that rolls in when ' + D.brand + ' opens.', seg([['full', 'Full'], ['quick', 'Quick'], ['off', 'Off']], D.state.boot, (v) => D.set('boot', v), 'st:boot')));
+        pane.appendChild(row('Start in', 'Where ' + D.brand + ' opens.', seg([['desk', 'Desktop'], ['game', 'DiceTV'], ['home', 'Dice Home']], D.state.start, (v) => D.set('start', v), 'st:in')));
         pane.appendChild(row('Friends\' pop-ups', 'When a friend starts playing something.', sw(D.state.friendPops, (v) => D.set('friendPops', v), 'st:pops', 'Friends\' pop-ups')));
         const b = h('<button class="b small" data-nav data-key="st:restart">' + D.glyph('restart', 2) + 'Restart now</button>');
         b.onclick = () => D.restart();
         pane.appendChild(row('Restart', 'See the start-up animation again.', b));
       },
+      cloud() {
+        const C = D.cloud, c = D.state.cloud;
+        const head = h('<div class="cl-head"></div>'); head.append(G.productIcon('cloud', 48), h('<div><h2>Dice Cloud</h2><p class="note">Keeps ' + esc(C.what) + ' the same on every computer with DiceOS or DiceWeb.</p></div>'));
+        pane.appendChild(head);
+        if (!C.on()) {
+          pane.appendChild(h('<p class="note">Everything is locked on this computer with your Dice Cloud code before it leaves, so the website only keeps a box it can\'t open.</p>'));
+          const on = h('<button class="b small go" data-nav data-key="cl:on">Turn on Dice Cloud</button>');
+          on.onclick = async () => { on.disabled = true; on.textContent = 'Turning on…'; await C.turnOn(); show('cloud'); };
+          pane.appendChild(row('New here', 'Makes a Dice Cloud code for you.', on));
+          const join = h('<form class="cl-join"><input data-nav data-key="cl:code" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" aria-label="Your Dice Cloud code" autocomplete="off" spellcheck="false"><button class="b small" data-nav data-key="cl:join">Join</button></form>');
+          join.onsubmit = async (e) => {
+            e.preventDefault();
+            const v = join.querySelector('input').value;
+            if (!C.valid(v)) { D.toast({ icon: 'link', c: '#e5534b', title: 'That isn\'t a Dice Cloud code', text: 'It\'s 20 letters and numbers, like 7K2QM-…' }); return; }
+            join.querySelector('button').disabled = true;
+            const ok = await C.turnOn(v);
+            show('cloud');
+            if (ok) D.toast({ icon: 'link', c: '#3a9be8', title: 'Dice Cloud is on', text: 'This computer now shares with your others.' });
+          };
+          pane.appendChild(row('Already using it', 'Type the code from your other computer.', join));
+        } else {
+          const when = c.last ? D.ago(c.last) : 'not yet';
+          pane.appendChild(h('<div class="cl-code"><span>Your Dice Cloud code</span><b>' + esc(c.code) + '</b><small>Type it on your other computers to share with them. Anyone who has it can open your Dice Cloud, so keep it like a password.</small></div>'));
+          const sync = h('<button class="b small go" data-nav data-key="cl:sync">' + (C.busy ? 'Syncing…' : 'Sync now') + '</button>');
+          sync.onclick = async () => { sync.disabled = true; sync.textContent = 'Syncing…'; await C.sync(); show('cloud'); };
+          pane.appendChild(row('Last synced', C.error ? C.error : when, sync));
+          const off = h('<button class="b small" data-nav data-key="cl:off">Turn off here</button>');
+          off.onclick = () => D.ask({ title: 'Turn off Dice Cloud here?', text: 'This computer stops sharing and forgets the code. What\'s in Dice Cloud stays for your other computers.', buttons: [{ label: 'Turn off', value: true, go: true }, { label: 'Cancel', value: false }] }).then(async (y) => { if (y) { await C.turnOff(false); show('cloud'); } });
+          pane.appendChild(row('This computer', 'Stop sharing on this one.', off));
+          const del = h('<button class="b small danger" data-nav data-key="cl:del">Delete from Dice Cloud</button>');
+          del.onclick = () => D.ask({ title: 'Delete your Dice Cloud?', text: 'The locked box on the website is deleted. Each computer keeps its own copy of everything.', buttons: [{ label: 'Delete it', value: true, go: true }, { label: 'Cancel', value: false }] }).then(async (y) => { if (y) { await C.turnOff(true); show('cloud'); } });
+          pane.appendChild(row('Delete', 'Takes your box off the website.', del));
+        }
+      },
       storage() {
         pane.appendChild(h('<h2>Storage</h2>'));
-        pane.appendChild(h('<p class="note">Everything DiceWeb keeps stays in this browser on this computer. Nothing is sent anywhere.</p>'));
+        pane.appendChild(h('<p class="note">Everything ' + D.brand + ' keeps stays on this computer. Nothing is sent anywhere unless you turn on Dice Cloud.</p>'));
         let bytes = 0; try { bytes = (localStorage.getItem('diceweb') || '').length; } catch (e) { /* ignore */ }
         const used = h('<span class="muted"></span>');
         used.textContent = 'Settings, notes and the disk: ' + (bytes / 1024).toFixed(1) + ' KB. Songs: ' + D.M.songs.length + '.';
@@ -153,10 +187,10 @@
         clr.onclick = () => { D.state.notifs = []; D.save(); D.emit('notifs'); D.toast({ icon: 'bell', title: 'Cleared', text: 'No notifications.' }); };
         pane.appendChild(row('Notifications', D.state.notifs.length + ' kept.', clr));
         const songs = h('<button class="b small" data-nav data-key="sto:songs">Remove all</button>');
-        songs.onclick = () => D.ask({ title: 'Remove all your songs?', text: 'They come out of DiceWeb. The files on your computer stay where they are.', buttons: [{ label: 'Remove them', value: true, go: true, danger: true }, { label: 'Keep them', value: false }] }).then((ok) => { if (ok) { D.M.stop(); D.M.clear(); } });
+        songs.onclick = () => D.ask({ title: 'Remove all your songs?', text: 'They come out of ' + D.brand + '. The files on your computer stay where they are.', buttons: [{ label: 'Remove them', value: true, go: true, danger: true }, { label: 'Keep them', value: false }] }).then((ok) => { if (ok) { D.M.stop(); D.M.clear(); } });
         pane.appendChild(row('Your songs', 'Songs you added to Music.', songs));
-        const reset = h('<button class="b small danger" data-nav data-key="sto:reset">Reset DiceWeb</button>');
-        reset.onclick = () => D.ask({ title: 'Reset DiceWeb?', text: 'Your name, notes, the disk, songs and settings all go. DiceWeb starts fresh, like the first time.', buttons: [{ label: 'Reset everything', value: true, go: true, danger: true, c: '#ff4d5e' }, { label: 'Cancel', value: false }] }).then((ok) => { if (ok) D.reset(); });
+        const reset = h('<button class="b small danger" data-nav data-key="sto:reset">Reset ' + D.brand + '</button>');
+        reset.onclick = () => D.ask({ title: 'Reset ' + D.brand + '?', text: 'Your name, notes, the disk, songs and settings all go. ' + D.brand + ' starts fresh, like the first time.', buttons: [{ label: 'Reset everything', value: true, go: true, danger: true, c: '#ff4d5e' }, { label: 'Cancel', value: false }] }).then((ok) => { if (ok) D.reset(); });
         pane.appendChild(row('Start fresh', 'Takes everything away.', reset));
       },
       wifi() {
@@ -205,7 +239,7 @@
         const up = h('<button class="b small" data-nav data-key="sys:update">' + D.glyph('restart', 2) + 'Check now</button>');
         const log = h('<pre class="uplog" hidden></pre>');
         up.onclick = () => { D.sys.post('/api/update').then(() => { log.hidden = false; log.textContent = 'Checking…'; const t = setInterval(() => D.sys.get('/api/update').then((r) => { log.textContent = r.log || 'Checking…'; if (/newest|Done|Couldn't|wasn't right/.test(r.log || '')) clearInterval(t); }), 1500); }); };
-        pane.appendChild(row('Update Dice', 'Dice ' + esc(D.sys.info.version) + '. Gets the newest Dice from the website.', up));
+        pane.appendChild(row('Update DiceOS', 'DiceOS ' + esc(D.sys.info.version) + '. Gets the newest DiceOS from the website.', up));
         pane.appendChild(log);
         pane.appendChild(row('Automatic updates', 'Checks once a week.', sw(D.sys.settings.updates !== false, (v) => D.sys.saveSettings({ updates: v }), 'sys:auto', 'Automatic updates')));
       },
@@ -213,11 +247,11 @@
         pane.appendChild(h('<h2>About</h2>'));
         const ua = navigator.userAgent;
         const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Your browser';
-        pane.appendChild(h('<div class="srow" style="display:block"><div style="display:flex;gap:16px;align-items:center"><canvas width="64" height="64" style="width:64px;height:64px;border-radius:16px"></canvas><div><b class="pix" style="font-size:1.6rem">' + (D.sys ? 'Dice ' + esc(D.sys.info.version) : 'DiceWeb ' + esc(D.version)) + '</b><span class="muted" style="display:block">' + (D.sys ? 'Your Raspberry Pi\'s own operating system.' : 'A whole console in your browser.') + ' Made by Dhruv, with Cubby the die.</span></div></div></div>'));
+        pane.appendChild(h('<div class="srow" style="display:block"><div style="display:flex;gap:16px;align-items:center"><canvas width="64" height="64" style="width:64px;height:64px;border-radius:16px"></canvas><div><b class="pix" style="font-size:1.6rem">' + (D.sys ? 'DiceOS ' + esc(D.sys.info.version) : 'DiceWeb ' + esc(D.version)) + '</b><span class="muted" style="display:block">' + (D.sys ? 'An operating system for your Raspberry Pi or PC.' : 'The DiceOS desktop, in your browser.') + ' Made by Dhruv.</span></div></div></div>'));
         pane.querySelector('canvas').getContext('2d').drawImage(G.face('cubby', 64, G.hexA('#8a8a96', 0.2)), 0, 0);
         const st = D.sys && D.sys.status;
         const pi = st ? [['Computer', st.model], ['Name on the network', st.host + (st.ip ? ' (' + st.ip + ')' : '')], ['Temperature', st.temp ? st.temp + ' °C' : 'Unknown'],
-          ['Memory', st.mem ? gb(st.mem.used) + ' of ' + gb(st.mem.total) + ' in use' : 'Unknown'], ['Storage', st.disk ? gb(st.disk.used) + ' of ' + gb(st.disk.total) + ' used' : 'Unknown'], ['Dice', D.sys.info.version]] : [];
+          ['Memory', st.mem ? gb(st.mem.used) + ' of ' + gb(st.mem.total) + ' in use' : 'Unknown'], ['Storage', st.disk ? gb(st.disk.used) + ' of ' + gb(st.disk.total) + ' used' : 'Unknown'], ['DiceOS', D.sys.info.version]] : [];
         const facts = pi.concat([['Browser', browser], ['Screen', innerWidth + ' × ' + innerHeight + (devicePixelRatio > 1 ? ' (sharp)' : '')], ['Controllers', D.input.padNames().length ? D.input.padNames().length + ' connected' : 'None connected'], ['Time here', D.mins(Object.values(D.state.played).reduce((a, b) => a + b, 0)) + ' in apps']]);
         facts.forEach(([a, b]) => pane.appendChild(row(a, '', h('<span class="muted">' + esc(b) + '</span>'))));
         const link = h('<a class="b small" data-nav data-key="ab:site" href="' + esc(D.origin) + '" target="_blank" rel="noopener">' + D.glyph('link', 2) + 'The website</a>');
@@ -233,6 +267,7 @@
       ctx.setTitle(SECTIONS.find((s) => s[0] === id)[1] + ' – Settings');
     }
     show(cur);
+    const offCloud = D.on('cloud', () => { if (cur === 'cloud' && !pane.contains(document.activeElement)) show('cloud'); });
     setTimeout(() => { if (ctx.mode !== 'desk') D.nav.focus(listEl.querySelector('[data-key="set:' + cur + '"]')); }, 30);
     return {
       onAction(a) {
@@ -240,7 +275,7 @@
         if (a === 'b' && D.nav.el && pane.contains(D.nav.el)) { D.nav.focus(listEl.querySelector('[data-key="set:' + cur + '"]')); D.S.play('back'); return true; }
         return false;
       },
-      unmount() { cancelAnimationFrame(raf); ro.disconnect(); },
+      unmount() { cancelAnimationFrame(raf); ro.disconnect(); offCloud(); },
     };
   } });
 

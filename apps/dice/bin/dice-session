@@ -1,6 +1,6 @@
 #!/bin/sh
 # dice-session: runs inside cage (the screen's Wayland compositor) as the person
-# using the Pi, and shows the Dice desktop full screen in Chromium.
+# using the Pi, and shows the DiceOS desktop full screen in Chromium.
 SETTINGS=/etc/dice/settings.json
 get() { python3 -c "import json,sys;d=json.load(open('$SETTINGS'));v=d$1;print(v if v is not None else '')" 2>/dev/null; }
 

@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dice - your own operating system for a Raspberry Pi or a PC</title>
-<meta name="description" content="Dice is an operating system for a Raspberry Pi or a PC, made of pixel worlds, with real Wi-Fi, files and Terminal. Set it up here first, then write it onto a microSD card, an NVMe drive or a USB stick.">
+<title>DiceOS - your own operating system for a Raspberry Pi or a PC</title>
+<meta name="description" content="DiceOS is an operating system for a Raspberry Pi or a PC, made of pixel worlds, with real Wi-Fi, files and Terminal. Set it up here first, then write it onto a microSD card, an NVMe drive or a USB stick.">
 <style>
-  /* Dice's own page. The colour comes from the world you pick: everything
+  /* DiceOS's own page. The colour comes from the world you pick: everything
      else is plain white by day and black at night, with glass on top. */
   .dtop { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 18px; padding: 14px clamp(16px, 3vw, 34px); }
   .dtop::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--bg) 82%, transparent); -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%); box-shadow: 0 1px 0 var(--line); }
@@ -27,6 +27,14 @@
   .go2 { display: flex; flex-wrap: wrap; gap: 8px; }
   .stage { border-radius: 30px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); aspect-ratio: 16 / 10; background: var(--soft); }
   .stage canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  .fam { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .prod { display: grid; grid-template-rows: auto auto 1fr auto; gap: 6px; padding: 18px; border-radius: 20px; text-decoration: none; color: var(--ink); background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); transition: box-shadow .15s; }
+  .prod:hover { box-shadow: inset 0 0 0 2px var(--ink); }
+  .prod .pi { width: 52px; height: 52px; margin-bottom: 6px; }
+  .prod .pi canvas { display: block; border-radius: 13px; }
+  .prod b { font: 700 1.3rem/1.1 var(--pixel); }
+  .prod span:not(.pi) { color: var(--muted); line-height: 1.45; }
+  .prod em { font-style: normal; font-weight: 700; margin-top: 6px; }
   section > h2, .h2 { font: 700 clamp(1.9rem, 3.4vw, 2.7rem)/1.05 var(--pixel); margin: 0 0 10px; letter-spacing: -.01em; }
   .lede { color: var(--muted); font-size: 1.1rem; margin: 0 0 26px; max-width: 46em; }
   .make { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 460px); gap: 34px; align-items: start; padding-top: 50px; }
@@ -125,23 +133,23 @@
 </head>
 <body style="--c:#ff707a">
 <header class="dtop">
-  <a class="brand" href="/" aria-label="Back to the start"><canvas id="logo" width="32" height="32" aria-hidden="true"></canvas>Dice</a>
-  <nav aria-label="On this page"><a href="#make" class="keep">Make it yours</a><a href="#card">Put it on your computer</a><a href="/diceweb/">Try it in your browser</a><a href="/apps">The Terminal apps</a></nav>
+  <a class="brand" href="/" aria-label="Back to the start"><canvas id="logo" width="32" height="32" aria-hidden="true"></canvas>DiceOS</a>
+  <nav aria-label="On this page"><a href="#make" class="keep">Make it yours</a><a href="#card">Put it on your computer</a><a href="#family">The Dice family</a><a href="/diceweb/">Try it in your browser</a><a href="/apps">The Terminal apps</a></nav>
 </header>
 
 <section class="wrap hero">
   <div>
-    <h1>Dice</h1>
+    <h1>DiceOS</h1>
     <p>An operating system for your <b>Raspberry Pi</b> or <b>PC</b>, made of the same pixel worlds as everything else here. Set it up on this page, write it onto a microSD card, an NVMe drive or a USB stick, and switch it on. It starts already yours.</p>
     <div class="go"><a class="btn main" href="#make">Make it yours</a><a class="btn soft" href="/diceweb/">Try it in your browser first</a></div>
   </div>
-  <div class="stage"><canvas id="hero" aria-label="A Raspberry Pi running Dice, with the Dice die floating beside it"></canvas></div>
+  <div class="stage"><canvas id="hero" aria-label="A Raspberry Pi running DiceOS, with the Dice die floating beside it"></canvas></div>
 </section>
 
 <section class="wrap make" id="make">
   <div>
     <h2 class="h2">Make it yours</h2>
-    <p class="lede">Everything here is optional: leave something blank and Dice asks on the screen instead. Your passwords stay on this computer. They only go into your file.</p>
+    <p class="lede">Everything here is optional: leave something blank and DiceOS asks on the screen instead. Your passwords stay on this computer. They only go into your file.</p>
     <form class="sets" id="form" autocomplete="off" onsubmit="return false">
       <fieldset>
         <legend>You</legend>
@@ -149,7 +157,7 @@
           <label class="f"><span>Your name</span><input type="text" data-k="name" maxlength="20" placeholder="Your first name"></label>
           <label class="f"><span>The computer's name</span><input type="text" data-k="computer" maxlength="40" placeholder="dice" pattern="[a-z0-9-]+"><small>On your network. Small letters, numbers and dashes.</small></label>
         </div>
-        <label class="f"><span>A password</span><span class="pw"><input type="password" data-k="password" maxlength="64" placeholder="Leave blank to keep: dice"><button type="button" data-show="password">Show</button></span><small>For signing in to Dice (and SSH). The user is called dice.</small></label>
+        <label class="f"><span>A password</span><span class="pw"><input type="password" data-k="password" maxlength="64" placeholder="Leave blank to keep: dice"><button type="button" data-show="password">Show</button></span><small>For signing in to DiceOS (and SSH). The user is called dice.</small></label>
         <div class="f"><span>Your picture</span><div class="picks" id="buddies"></div></div>
       </fieldset>
 
@@ -178,7 +186,7 @@
         <div class="f"><span>Day or night</span><div class="seg" data-seg="look"><button type="button" data-v="auto">Follow the clock</button><button type="button" data-v="day">Always day</button><button type="button" data-v="night">Always night</button></div><small>Following the clock means light by day and dark after sunset.</small></div>
         <div class="f"><span>Your desktop's world</span><div class="picks worlds" id="worlds"></div></div>
         <div class="two">
-          <div class="f"><span>Start in</span><div class="seg" data-seg="start"><button type="button" data-v="desktop">The desktop</button><button type="button" data-v="gaming">Big screen</button></div></div>
+          <div class="f"><span>Start in</span><div class="seg" data-seg="start"><button type="button" data-v="desktop">The desktop</button><button type="button" data-v="gaming">DiceTV</button><button type="button" data-v="home">Dice Home</button></div></div>
           <div class="f"><span>Start-up animation</span><div class="seg" data-seg="boot"><button type="button" data-v="full">Full</button><button type="button" data-v="quick">Quick</button><button type="button" data-v="off">Off</button></div></div>
         </div>
       </fieldset>
@@ -190,28 +198,28 @@
 
       <fieldset>
         <legend>Apps</legend>
-        <label class="f"><span>Your Home Assistant</span><input type="url" data-k="homeassistant" placeholder="http://homeassistant.local:8123"><small>Its address. SereneTab, Dice's browser, gets a shortcut to your dashboard.</small></label>
+        <label class="f"><span>Your Home Assistant</span><input type="url" data-k="homeassistant" placeholder="http://homeassistant.local:8123"><small>Its address. SereneTab, DiceOS's browser, gets a shortcut to your dashboard.</small></label>
         <div class="f"><span>Terminal apps to install too</span><div class="chips" id="suite"></div><small>They install by themselves after the first start, once it's online.</small></div>
       </fieldset>
 
       <fieldset>
         <legend>Access and updates</legend>
-        <label class="sw"><span><b>SSH</b><small class="hint" id="ssh-hint">Sign in to Dice from another computer. Needs a password above.</small></span><input class="toggle" type="checkbox" data-k="ssh" id="ssh"></label>
-        <label class="sw"><span><b>Automatic updates</b><small class="hint">Dice checks for a newer Dice once a week.</small></span><input class="toggle" type="checkbox" data-k="updates"></label>
+        <label class="sw"><span><b>SSH</b><small class="hint" id="ssh-hint">Sign in to DiceOS from another computer. Needs a password above.</small></span><input class="toggle" type="checkbox" data-k="ssh" id="ssh"></label>
+        <label class="sw"><span><b>Automatic updates</b><small class="hint">DiceOS checks for a newer DiceOS once a week.</small></span><input class="toggle" type="checkbox" data-k="updates"></label>
       </fieldset>
     </form>
   </div>
 
   <aside class="side">
-    <div class="screen" id="screen" aria-label="A preview of your Dice desktop">
+    <div class="screen" id="screen" aria-label="A preview of your DiceOS desktop">
       <canvas id="wall"></canvas>
       <div class="win glass"><canvas id="pv-face" width="40" height="40"></canvas><div><b id="pv-hi">Hi there</b><span id="pv-host">dice</span><span id="pv-wifi">No Wi-Fi yet</span></div></div>
       <div class="shelf glass" id="pv-shelf"></div>
       <div class="tray glass"><span id="pv-wf"></span><span id="pv-time"></span></div>
     </div>
     <div class="out glass">
-      <h3>Your Dice</h3>
-      <p>Save your settings as <b>dice.json</b>. On a Pi, drop it onto the card's <b>bootfs</b> drive after writing Dice. On a PC, put it on a USB stick.</p>
+      <h3>Your DiceOS</h3>
+      <p>Save your settings as <b>dice.json</b>. On a Pi, drop it onto the card's <b>bootfs</b> drive after writing DiceOS. On a PC, put it on a USB stick.</p>
       <div class="go2"><button class="btn main" type="button" id="save">Save dice.json</button><button class="btn soft" type="button" id="try">Try it in the emulator</button></div>
       <p class="warn" id="warn" hidden></p>
       <p>Installing onto a computer that already runs Raspberry Pi OS, Debian or Ubuntu? A setup code carries everything except the passwords.</p>
@@ -223,7 +231,7 @@
 
 <section class="wrap card-sec" id="card">
   <h2>Put it on your computer</h2>
-  <p class="lede">Dice runs on a Raspberry Pi or on a PC. Writing Dice erases whatever is on that card, drive or USB stick, so use a different one from Home Assistant's.</p>
+  <p class="lede">DiceOS runs on a Raspberry Pi or on a PC. Writing DiceOS erases whatever is on that card, drive or USB stick, so use a different one from Home Assistant's.</p>
   <div class="devices" role="group" aria-label="Which computer">
     <button type="button" data-dev="pi" aria-pressed="true">Raspberry Pi</button>
     <button type="button" data-dev="pc" aria-pressed="false">PC</button>
@@ -238,24 +246,24 @@
 
     <div class="route on" data-route="imager" role="tabpanel">
       <ol class="steps">
-        <li><div><b>Download Dice</b><span>One file, about a gigabyte: dice-arm64.img.xz.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
+        <li><div><b>Download DiceOS</b><span>One file, about a gigabyte: dice-arm64.img.xz.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-arm64.img.xz">Download DiceOS</a></div></div></li>
         <li><div><b>Open Raspberry Pi Imager</b><span>Get it free from raspberrypi.com/software. On a Mac it asks for an administrator password to write cards.</span></div></li>
-        <li><div><b>Choose your Pi, then the Dice file</b><span>Under Operating System, scroll to the bottom, choose Use custom, and pick the file you downloaded.</span></div></li>
+        <li><div><b>Choose your Pi, then the DiceOS file</b><span>Under Operating System, scroll to the bottom, choose Use custom, and pick the file you downloaded.</span></div></li>
         <li><div><b>Choose where it goes</b><span>The microSD card, or the NVMe drive in a USB adapter. When it asks about OS customisation, choose No: your dice.json does that.</span></div></li>
         <li><div><b>Write, then add your settings</b><span>When it's finished, the card shows up as a drive called bootfs. Drag your dice.json onto it, then eject it.</span></div></li>
-        <li><div><b>Switch the Pi on</b><span>The die turns while it starts, then Dice says hello by name.</span></div></li>
+        <li><div><b>Switch the Pi on</b><span>The die turns while it starts, then DiceOS says hello by name.</span></div></li>
       </ol>
-      <div class="aside"><h3>NVMe drives</h3><p>On a Pi 5 with an NVMe drive, write Dice onto the drive through a USB adapter, or use the Pi itself (the next tab). With no microSD card in, the Pi 5 starts from the NVMe drive.</p></div>
+      <div class="aside"><h3>NVMe drives</h3><p>On a Pi 5 with an NVMe drive, write DiceOS onto the drive through a USB adapter, or use the Pi itself (the next tab). With no microSD card in, the Pi 5 starts from the NVMe drive.</p></div>
     </div>
 
     <div class="route" data-route="pi" role="tabpanel">
       <ol class="steps">
-        <li><div><b>Copy two files onto a USB stick</b><span>The Dice file and your dice.json. Copying files doesn't need an administrator.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
-        <li><div><b>Plug everything into the Pi</b><span>The USB stick, a keyboard, a screen, an Ethernet cable to your router, and the microSD card or NVMe drive for Dice. Take Home Assistant's card out first.</span></div></li>
+        <li><div><b>Copy two files onto a USB stick</b><span>The DiceOS file and your dice.json. Copying files doesn't need an administrator.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-arm64.img.xz">Download DiceOS</a></div></div></li>
+        <li><div><b>Plug everything into the Pi</b><span>The USB stick, a keyboard, a screen, an Ethernet cable to your router, and the microSD card or NVMe drive for DiceOS. Take Home Assistant's card out first.</span></div></li>
         <li><div><b>Start Network Install</b><span>Switch the Pi on. With nothing to start from, it offers Network Install: hold Shift. It downloads Raspberry Pi Imager and opens it right on the Pi.</span></div></li>
-        <li><div><b>Choose the Dice file</b><span>Under Operating System, choose Use custom, and pick the Dice file on the USB stick.</span></div></li>
+        <li><div><b>Choose the DiceOS file</b><span>Under Operating System, choose Use custom, and pick the DiceOS file on the USB stick.</span></div></li>
         <li><div><b>Choose where it goes, and write</b><span>The microSD card or the NVMe drive. Then Write.</span></div></li>
-        <li><div><b>Restart with the USB stick still in</b><span>Dice finds dice.json on the stick and sets everything up.</span></div></li>
+        <li><div><b>Restart with the USB stick still in</b><span>DiceOS finds dice.json on the stick and sets everything up.</span></div></li>
       </ol>
       <div class="aside"><h3>If Use custom isn't there</h3><p>Pick Raspberry Pi OS Lite (64-bit) instead and set your Wi-Fi in Imager's settings. Then follow the last tab with your setup code.</p></div>
     </div>
@@ -263,10 +271,10 @@
     <div class="route" data-route="os" role="tabpanel">
       <ol class="steps">
         <li><div><b>Get a setup code</b><span>Press Get a setup code above. It holds everything except your passwords.</span></div></li>
-        <li><div><b>Paste one line into Terminal on the Pi</b><span>It installs Dice and takes your settings.</span><div class="cmd"><code id="oneline">curl -fsSL {{origin}}/dice/install.sh | sudo bash</code><button type="button" id="copy1">Copy</button></div></div></li>
-        <li><div><b>Restart</b><span>Type sudo reboot. To take Dice off later: sudo /opt/dice/bin/dice-uninstall</span></div></li>
+        <li><div><b>Paste one line into Terminal on the Pi</b><span>It installs DiceOS and takes your settings.</span><div class="cmd"><code id="oneline">curl -fsSL {{origin}}/dice/install.sh | sudo bash</code><button type="button" id="copy1">Copy</button></div></div></li>
+        <li><div><b>Restart</b><span>Type sudo reboot. To take DiceOS off later: sudo /opt/dice/bin/dice-uninstall</span></div></li>
       </ol>
-      <div class="aside"><h3>What it changes</h3><p>It adds Dice in /opt/dice and starts it instead of the usual desktop. Your files stay where they are.</p></div>
+      <div class="aside"><h3>What it changes</h3><p>It adds DiceOS in /opt/dice and starts it instead of the usual desktop. Your files stay where they are.</p></div>
     </div>
   </div>
 
@@ -278,11 +286,11 @@
 
     <div class="route on" data-route="usb" role="tabpanel">
       <ol class="steps">
-        <li><div><b>Download Dice for PCs</b><span>One file, about a gigabyte and a half: dice-amd64.iso.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-amd64.iso">Download Dice for PCs</a></div></div></li>
+        <li><div><b>Download DiceOS for PCs</b><span>One file, about a gigabyte and a half: dice-amd64.iso.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-amd64.iso">Download DiceOS for PCs</a></div></div></li>
         <li><div><b>Write it onto a USB stick</b><span>8 GB or bigger. In Raspberry Pi Imager choose Use custom and pick the file, or use balenaEtcher. Everything on the stick is erased.</span></div></li>
         <li><div><b>Start the PC from the stick</b><span>Plug it in and switch the PC on. Tap its start-up menu key straight away (often F12, F11, F9 or Esc) and pick the USB stick.</span></div></li>
-        <li><div><b>Try it, or install it</b><span>Pick Dice to try it from the stick. Pick Install to put it on the PC's own drive: that erases the drive, and asks for your name and a password.</span></div></li>
-        <li><div><b>Bring your settings</b><span>Put your dice.json on a second USB stick and plug it in too. Dice finds it when it starts.</span></div></li>
+        <li><div><b>Try it, or install it</b><span>Pick DiceOS to try it from the stick. Pick Install to put it on the PC's own drive: that erases the drive, and asks for your name and a password.</span></div></li>
+        <li><div><b>Bring your settings</b><span>Put your dice.json on a second USB stick and plug it in too. DiceOS finds it when it starts.</span></div></li>
       </ol>
       <div class="aside"><h3>If the PC won't start from the stick</h3><p>Look in its settings (often F2 or Del as it starts) for the start-up order, and put USB first. Some PCs also need Secure Boot turned off.</p></div>
     </div>
@@ -290,11 +298,24 @@
     <div class="route" data-route="linux" role="tabpanel">
       <ol class="steps">
         <li><div><b>Get a setup code</b><span>Press Get a setup code above. It holds everything except your passwords.</span></div></li>
-        <li><div><b>Paste one line into Terminal on the PC</b><span>It installs Dice and takes your settings. Debian 12 or newer, or Ubuntu 24.04 or newer, 64-bit.</span><div class="cmd"><code id="oneline2">curl -fsSL {{origin}}/dice/install.sh | sudo bash</code><button type="button" id="copy2">Copy</button></div></div></li>
-        <li><div><b>Restart</b><span>Type sudo reboot. To take Dice off later: sudo /opt/dice/bin/dice-uninstall</span></div></li>
+        <li><div><b>Paste one line into Terminal on the PC</b><span>It installs DiceOS and takes your settings. Debian 12 or newer, or Ubuntu 24.04 or newer, 64-bit.</span><div class="cmd"><code id="oneline2">curl -fsSL {{origin}}/dice/install.sh | sudo bash</code><button type="button" id="copy2">Copy</button></div></div></li>
+        <li><div><b>Restart</b><span>Type sudo reboot. To take DiceOS off later: sudo /opt/dice/bin/dice-uninstall</span></div></li>
       </ol>
-      <div class="aside"><h3>What it changes</h3><p>It adds Dice in /opt/dice and starts it instead of the usual desktop. Your files stay where they are.</p></div>
+      <div class="aside"><h3>What it changes</h3><p>It adds DiceOS in /opt/dice and starts it instead of the usual desktop. Your files stay where they are.</p></div>
     </div>
+  </div>
+</section>
+
+<section class="wrap family" id="family">
+  <h2>The Dice family</h2>
+  <p class="lede">DiceOS is the operating system. These come with it, and most of them work in your browser too.</p>
+  <div class="fam">
+    <a class="prod" href="#make" data-p="os"><span class="pi"></span><b>DiceOS</b><span>The operating system for your Raspberry Pi or PC, made of pixel worlds. This page sets it up.</span><em>Make it yours</em></a>
+    <a class="prod" href="/diceweb/" data-p="web"><span class="pi"></span><b>DiceWeb</b><span>The DiceOS desktop in a browser tab: SereneTab, Axiom, Music, Notes and a pretend Terminal.</span><em>Open DiceWeb</em></a>
+    <a class="prod" href="/diceweb/?start=tv" data-p="tv"><span class="pi"></span><b>DiceTV</b><span>Big covers you move through with a controller or the arrow keys, for the TV across the room.</span><em>Try DiceTV</em></a>
+    <a class="prod" href="/diceweb/?start=home" data-p="home"><span class="pi"></span><b>Dice Home</b><span>For a screen on the wall: a big clock, the weather, today's tasks, and buttons for your Home Assistant lights and switches.</span><em>Try Dice Home</em></a>
+    <a class="prod" href="/diceweb/?open=settings:cloud" data-p="cloud"><span class="pi"></span><b>Dice Cloud</b><span>Your notes, Axiom and shortcuts, the same on every computer. Locked with your own code before they leave, so this website can't read them.</span><em>Turn it on</em></a>
+    <a class="prod" href="/dice/try" data-p="emulator"><span class="pi"></span><b>Dice Emulator</b><span>Start DiceOS with your settings on a pretend Pi or PC, right here, and see what it does with them.</span><em>Open the emulator</em></a>
   </div>
 </section>
 
@@ -304,9 +325,9 @@
     <div><dt>Which computers</dt><dd>A Raspberry Pi 5 or 4 with a screen (the official touch screens work, and can be turned in Settings), or a 64-bit PC that can start from a USB stick.</dd></div>
     <div><dt>Home Assistant</dt><dd>Keep it on its own card or drive and it stays exactly as it is. Put its address above for a dashboard button.</dd></div>
     <div><dt>The password</dt><dd>The user is dice, password dice, until you set one above or in Settings, You.</dd></div>
-    <div><dt>Your passwords</dt><dd>They never leave this computer. After the first start, Dice wipes them out of dice.json and renames it dice-applied.json.</dd></div>
-    <div><dt>Trying it first</dt><dd>The <a href="/dice/try">emulator</a> starts Dice with your settings on a pretend Pi or PC, right here in the browser, and shows what it did with them.</dd></div>
-    <div><dt>Changing things later</dt><dd>Use Settings in Dice, or drop a new dice.json onto the card or a USB stick and restart.</dd></div>
+    <div><dt>Your passwords</dt><dd>They never leave this computer. After the first start, DiceOS wipes them out of dice.json and renames it dice-applied.json.</dd></div>
+    <div><dt>Trying it first</dt><dd>The <a href="/dice/try">emulator</a> starts DiceOS with your settings on a pretend Pi or PC, right here in the browser, and shows what it did with them.</dd></div>
+    <div><dt>Changing things later</dt><dd>Use Settings in DiceOS, or drop a new dice.json onto the card or a USB stick and restart.</dd></div>
     <div><dt>Just curious?</dt><dd><a href="/diceweb/">DiceWeb</a> is the same thing in your browser: the desktop, Music, Notes, Files and a pretend Terminal.</dd></div>
   </dl>
 </section>
@@ -416,7 +437,7 @@
   const wall = $('#wall'), wg = wall.getContext('2d');
   function paintWall(now, force) {
     const r = wall.getBoundingClientRect();
-    // the same calm landscape Dice draws behind its desktop
+    // the same calm landscape DiceOS draws behind its desktop
     const cell = Math.max(2, Math.round(r.width / 220));
     const W = Math.max(60, Math.round(r.width / cell)), H = Math.max(36, Math.round(r.height / cell));
     const key = cfg.world + previewNight() + W + 'x' + H;
@@ -519,7 +540,7 @@
   document.querySelectorAll('.devices button').forEach((b) => b.addEventListener('click', () => pickDev(b.dataset.dev)));
   pickDev((() => { try { return localStorage.getItem('dice-dev'); } catch (e) { return null; } })() || 'pi');
 
-  // ---- the hero: a Pi on a desk, its screen showing Dice, the die beside it ----
+  // ---- the hero: a Pi on a desk, its screen showing DiceOS, the die beside it ----
   const BOARD = ['gggggggggggggggggggggggg', 'gYgYgYgYgYgYgYgYgYgYgYgg', 'gYgYgYgYgYgYgYgYgYgYgYgg', 'gGGGGGGGGGGGGGGGGGGGGGgS', 'gGGGGGGGGGGGGGGGGGGGGGSS',
     'gGGGKKKKKKGGGGGGGGGGGSSS', 'gGGGKMMMMKGGGGkkGGGGGSSS', 'gGGGKMMMMKGGGGkkGGGGGGGg', 'gGGGKMMMMKGGGGGGGGGGGSSS', 'gGGGKKKKKKGGGGGGGGGGGSSS', 'gGGGGGGGGGGGGGGGGGGGGSSS', 'goGGGGGGGGGGGGGGGGGGGGog', 'gggggggggggggggggggggggg'];
   const BINK = { g: '#1f6b42', G: '#2f9a5d', Y: '#e8b83a', K: '#26262c', M: '#b8bcc8', k: '#3a3d4a', S: '#c9ced6', o: '#8a8f99' };
@@ -568,6 +589,9 @@
   }
   new ResizeObserver(() => { clearTimeout(heroSize.t); heroSize.t = setTimeout(() => { heroSize(); heroDraw(performance.now()); }, 60); }).observe(hero);
   heroSize();
+
+  // the Dice family's marks
+  document.querySelectorAll('.prod').forEach((a) => a.querySelector('.pi').appendChild(G.productIcon(a.dataset.p, 52)));
 
   // the die by the name, and as the tab's icon
   (function () {

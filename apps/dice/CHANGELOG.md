@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0
+
+- It's called DiceOS everywhere now: the start-up splash, the installer, the helper's messages, the desktop's welcome and About.
+- DiceWeb 1.4, with the Dice family: DiceTV (Big screen's new name), Dice Home (a wall screen with a clock, weather, Axiom's tasks and Home Assistant buttons), Dice Cloud (notes, Axiom and shortcuts the same on every computer, locked with your code) and the Dice Emulator. SereneTab gets suggestions, History, reopen closed tab and a focus timer. Games is gone.
+- diced talks to Home Assistant for Dice Home (/api/ha: only states and services). The token you give it is kept in its own file (ha-token, beside the settings, readable only by the helper) and never goes back to the page.
+- DiceOS can start straight into Dice Home: "start": "home" in dice.json.
+- Fixed the PC image: Debian 13's live-build only copies config/includes.chroot_after_packages, so DiceOS's files now go there.
+
 ## 1.3.0
 
 - DiceWeb 1.3: sharper backgrounds, and a new logo die drawn flat in the isometric view (the start-up splash now lands in the same pose). SereneTab replaces Web: a real browser with tabs and a calm new tab page (a city skyline under its real sky and weather, a glass clock, shortcuts and a note); sites that won't show inside it open in Chromium on top of Dice, as before. Axiom, the school planner, replaces Calendar and keeps what was on it. Games has the games from dpatel.dev.

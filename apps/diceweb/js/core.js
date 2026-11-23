@@ -5,6 +5,8 @@
   const L = window.DiceLogic, G = window.DiceGfx, S = window.DiceSound, M = window.DiceMusic;
   const Dice = window.Dice = { L, G, S, M, music: M, started: Date.now() };
   Dice.version = CATALOG.version;
+  // on a computer running it (or in the emulator) this is DiceOS; in a browser tab, DiceWeb
+  Dice.brand = window.DICE_SYS ? 'DiceOS' : 'DiceWeb';
   Dice.desk = { on: false, action() {}, frame() {}, enter() {}, exit() {}, open() {} };
 
   // ---- Little helpers -------------------------------------------------------------
@@ -277,7 +279,7 @@
   const Nav = Dice.nav = { el: null, roots: [] };
   // The layer on top decides where focus can go: a dialog, then search, then the side menus, then the page.
   Nav.root = function () {
-    for (const sel of ['#dialog.open', '#search.open', '#qam.open', '#menu.open']) { const r = Dice.$(sel); if (r) return r; }
+    for (const sel of ['#dialog.open', '#wall.on', '#search.open', '#qam.open', '#menu.open']) { const r = Dice.$(sel); if (r) return r; }
     if (Dice.$('#app').classList.contains('running')) return Dice.$('#run');
     return Dice.$('#view');
   };

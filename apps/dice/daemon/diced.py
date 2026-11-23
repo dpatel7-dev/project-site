@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-diced: Dice's system helper. Runs on the Pi or PC as a system service and
-serves the Dice desktop (DiceWeb, in "system" mode) to the screen's browser,
+diced: DiceOS's system helper. Runs on the Pi or PC as a system service and
+serves the DiceOS desktop (DiceWeb, in "system" mode) to the screen's browser,
 plus a small API that does the real things: Wi-Fi, sound, brightness, files,
 a real Terminal, opening the web browser, power, and updates.
 
@@ -30,7 +30,9 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
 import urllib.parse
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 VERSION = '1.0.0'
@@ -130,6 +132,54 @@ def save_settings(path, data):
     with open(tmp, 'w') as f:
         json.dump(data, f, indent=2)
     os.replace(tmp, path)
+
+
+# -- Dice Home's Home Assistant token: its own file, readable only by this helper --
+def ha_token_path(settings_path):
+    return os.path.join(os.path.dirname(settings_path), 'ha-token')
+
+
+def save_ha_token(settings_path, token):
+    path = ha_token_path(settings_path)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fd = os.open(path + '.tmp', os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, 'w') as f:
+        f.write(token.strip())
+    os.replace(path + '.tmp', path)
+
+
+def public_settings(settings_path):
+    """The settings the desktop may see: never the token, just whether there is one."""
+    s = load_settings(settings_path)
+    s.pop('ha_token', None)
+    s['ha_token_set'] = bool(read(ha_token_path(settings_path)).strip())
+    return s
+
+
+HA_PATH = re.compile(r'/api/(states|services/[a-z_]+/[a-z_]+)')
+
+
+def ha_call(settings_path, b):
+    """Dice Home's buttons: asks Home Assistant (on your network) for the desktop, so
+    Home Assistant doesn't need to let other web pages in, and the token stays here."""
+    base = str(load_settings(settings_path).get('homeassistant') or '').rstrip('/')
+    token = read(ha_token_path(settings_path)).strip()
+    if not re.fullmatch(r'https?://[^\s/]+(/\S*)?', base) or not token:
+        return {'ok': False, 'error': 'Add your Home Assistant address and token in Dice Home first.'}
+    path = str(b.get('path') or '')
+    if not HA_PATH.fullmatch(path):
+        return {'ok': False, 'error': 'Not something Dice Home asks for.'}
+    post = path.startswith('/api/services/')
+    body = b.get('body') if isinstance(b.get('body'), dict) else {}
+    req = urllib.request.Request(base + path, data=json.dumps(body).encode() if post else None, method='POST' if post else 'GET',
+                                 headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
+    try:
+        with urllib.request.urlopen(req, timeout=8) as r:
+            return {'ok': True, 'data': json.loads(r.read(4_000_000) or b'null')}
+    except urllib.error.HTTPError as e:
+        return {'ok': False, 'error': 'Home Assistant said no (%d). Check the token in Dice Home.' % e.code if e.code in (401, 403) else 'Home Assistant answered %d.' % e.code}
+    except (urllib.error.URLError, OSError, ValueError):
+        return {'ok': False, 'error': 'Couldn\'t reach Home Assistant at %s.' % base}
 
 
 # ---------------------------------------------------------------------------
@@ -396,7 +446,7 @@ class Files:
         for r in self.roots:
             if real == r or real.startswith(r.rstrip('/') + '/'):
                 return real
-        raise PermissionError('Dice can only open things in your home folder and on plugged-in drives.')
+        raise PermissionError('DiceOS can only open things in your home folder and on plugged-in drives.')
 
     def show(self, real):
         return '~' + real[len(self.home):] if real == self.home or real.startswith(self.home + '/') else real
@@ -452,7 +502,7 @@ class Files:
     def trash(self, path):
         src = self.resolve(path)
         if src == self.home:
-            raise PermissionError('Dice won\'t put your whole home folder in the Trash.')
+            raise PermissionError('DiceOS won\'t put your whole home folder in the Trash.')
         bin_ = os.path.join(self.home, '.local', 'share', 'Trash', 'files')
         os.makedirs(bin_, exist_ok=True)
         name, n = os.path.basename(src), 1
@@ -715,7 +765,7 @@ class Handler(BaseHTTPRequestHandler):
             data = f.read()
         ctype = mimetypes.guess_type(real)[0] or 'application/octet-stream'
         if real.endswith('index.html'):
-            settings = load_settings(self.server.settings_path)
+            settings = public_settings(self.server.settings_path)
             tag = '<script>window.DICE_SYS=%s;</script>' % json.dumps({'token': TOKEN, 'version': VERSION, 'settings': settings,
                                                                         'user': desktop_user(), 'host': socket.gethostname()}).replace('</', '<\\/')
             data = data.replace(b'<head>', b'<head>' + tag.encode(), 1)
@@ -730,7 +780,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/wifi':
             return self.send(200, sysm.wifi_list())
         if path == '/api/settings':
-            return self.send(200, load_settings(self.server.settings_path))
+            return self.send(200, public_settings(self.server.settings_path))
         if path == '/api/files':
             try:
                 return self.send(200, files.list(q.get('path', '~')))
@@ -778,11 +828,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, {'ok': code == 0, 'error': None if code == 0 else out})
         if path == '/api/settings':
             cur = load_settings(self.server.settings_path)
+            if isinstance(b.get('ha_token'), str) and b['ha_token'].strip():
+                save_ha_token(self.server.settings_path, b['ha_token'])
             for k, v in b.items():
-                if k not in ('password', 'wifi'):  # secrets never go in here
+                if k not in ('password', 'wifi', 'ha_token', 'ha_token_set'):  # secrets never go in here
                     cur[k] = v
             save_settings(self.server.settings_path, cur)
-            return self.send(200, {'ok': True, 'settings': cur})
+            return self.send(200, {'ok': True, 'settings': public_settings(self.server.settings_path)})
+        if path == '/api/ha':
+            return self.send(200, ha_call(self.server.settings_path, b))
         if path == '/api/files':
             files, op = Files(desktop_user()), b.get('op')
             if op == 'mkdir':
@@ -835,14 +889,14 @@ def make_server(port, web, settings_path, verbose=False, host='127.0.0.1'):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description='Dice\'s system helper: serves the Dice desktop and does the real things for it.')
+    ap = argparse.ArgumentParser(description='DiceOS\'s system helper: serves the DiceOS desktop and does the real things for it.')
     ap.add_argument('--port', type=int, default=int(os.environ.get('DICE_PORT', DEFAULTS['port'])))
     ap.add_argument('--web', default=os.environ.get('DICE_WEB', DEFAULTS['web']), help='the DiceWeb folder to serve')
     ap.add_argument('--settings', default=os.environ.get('DICE_SETTINGS', DEFAULTS['settings']))
     ap.add_argument('--verbose', action='store_true')
     a = ap.parse_args(argv)
     srv = make_server(a.port, a.web, a.settings, a.verbose)
-    print('diced %s: the Dice desktop is at http://127.0.0.1:%d/' % (VERSION, a.port), flush=True)
+    print('diced %s: the DiceOS desktop is at http://127.0.0.1:%d/' % (VERSION, a.port), flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

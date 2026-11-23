@@ -1,5 +1,5 @@
 #!/bin/sh
-# dice-uninstall: takes Dice off this Pi and gives the screen back.
+# dice-uninstall: takes DiceOS off this Pi and gives the screen back.
 set -e
 [ "$(id -u)" = 0 ] || { echo "Run it with sudo: sudo /opt/dice/bin/dice-uninstall"; exit 1; }
 WHO=$(getent passwd 1000 | cut -d: -f1)
@@ -13,5 +13,5 @@ if [ -f /var/lib/dice/display-managers ]; then
 fi
 plymouth-set-default-theme -R spinner 2>/dev/null || true
 rm -rf /usr/share/plymouth/themes/dice /etc/dice /var/lib/dice /opt/dice.old
-echo "Dice is off this Pi. /opt/dice goes next; restart afterwards: sudo reboot"
+echo "DiceOS is off this Pi. /opt/dice goes next; restart afterwards: sudo reboot"
 rm -rf /opt/dice

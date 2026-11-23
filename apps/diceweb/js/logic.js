@@ -57,7 +57,7 @@
       home: { type: 'dir', kids: {
         [name || 'player']: { type: 'dir', kids: {
           'readme.txt': f('Welcome to DiceWeb.\n\nThis is a pretend disk that lives in your browser.\nType "help" to see what you can do here.\nNotes you write in the Notes app are saved in the notes folder.'),
-          notes: { type: 'dir', kids: { 'first note.txt': f('Things to try:\n- Put a song on in Music\n- Type neofetch in Terminal\n- Plug in a controller\n- Try Big screen from the die menu') } },
+          notes: { type: 'dir', kids: { 'first note.txt': f('Things to try:\n- Put a song on in Music\n- Type neofetch in Terminal\n- Plug in a controller\n- Try DiceTV and Dice Home from the app grid') } },
           music: { type: 'dir', kids: {} },
         } },
       } },
@@ -434,6 +434,27 @@
     if (OWN_WINDOW.some((d) => h === d || h.endsWith('.' + d))) return { how: 'window', url: u.href };
     return { how: 'frame', url: u.href };
   }
+  // ---- SereneTab: history and suggestions -------------------------------------------
+  // the newest visit goes first; the same address only once; at most `max` kept
+  function remember(list, entry, max) {
+    const out = [entry].concat((list || []).filter((x) => x.url !== entry.url));
+    return out.slice(0, max || 300);
+  }
+  // what to offer while you type: where it would go first, then shortcuts and pages you've been to
+  function suggest(text, shortcuts, history, engine) {
+    const v = String(text || '').trim();
+    if (!v) return [];
+    const first = omni(v, engine), e = ENGINES[engine] || ENGINES.ddg, low = v.toLowerCase();
+    const out = [first.search ? { kind: 'search', url: first.url, title: 'Search ' + e.name + ' for \u201c' + v + '\u201d' } : { kind: 'go', url: first.url, title: first.url }];
+    const seen = new Set([first.url]);
+    const hit = (s) => String(s || '').toLowerCase().includes(low);
+    const add = (kind, x) => { if (out.length >= 7 || seen.has(x.url)) return; seen.add(x.url); out.push({ kind, url: x.url, title: x.title || x.name || x.url }); };
+    (shortcuts || []).forEach((s) => { if (hit(s.name) || hit(s.url)) add('shortcut', s); });
+    (history || []).forEach((x) => { if (!x.search && (hit(x.title) || hit(x.url))) add('history', x); });
+    (history || []).forEach((x) => { if (x.search && hit(x.title)) add('history', x); });
+    return out;
+  }
+
   // ---- SereneTab: weather codes (WMO, as Open-Meteo sends them) in words ----------------
   function weatherWords(code) {
     const c = +code;
@@ -472,7 +493,7 @@
   }
 
   const api = { clockNight, pickNext, newDisk, calc, calcText, monthGrid, dayKey, resolve, walk, writeFile, makeDir, remove, tokens, parseDice, run, HELP, score,
-    sunPos, moonPos, cityTime, ENGINES, omni, howToShow, hostOf, weatherWords, addDays, planBuckets, eventsToTasks };
+    sunPos, moonPos, cityTime, ENGINES, omni, howToShow, hostOf, weatherWords, addDays, planBuckets, eventsToTasks, remember, suggest };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DiceLogic = api;
 })(this);

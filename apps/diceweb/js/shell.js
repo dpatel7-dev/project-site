@@ -1,4 +1,4 @@
-// The shell: Big screen. The boot screen, the top bar, Home, Library, Store,
+// The shell: DiceTV (it used to be called Big screen). The boot screen, the top bar, Home, Library, Store,
 // each app's own page, the menu on the left, Quick access on the right,
 // search, and running apps full screen.
 (function () {
@@ -78,7 +78,7 @@
     $('#tb-wifi').title = on ? 'Online' + (navigator.connection && navigator.connection.effectiveType ? ' (' + navigator.connection.effectiveType + ')' : '') : 'Offline';
   }
   addEventListener('online', () => { wifi(); D.toast({ icon: 'wifi', c: '#4fc16b', title: 'Back online', text: 'The internet is back.' }); });
-  addEventListener('offline', () => { wifi(); D.toast({ icon: 'wifi', c: '#96969f', title: 'Offline', text: 'Everything in DiceWeb still works.' }); });
+  addEventListener('offline', () => { wifi(); D.toast({ icon: 'wifi', c: '#96969f', title: 'Offline', text: 'Everything in ' + D.brand + ' still works.' }); });
   wifi();
   D.battery = null;
   if (navigator.getBattery) navigator.getBattery().then((b) => {
@@ -219,7 +219,7 @@
       kick = 'Library'; name = 'Everything'; line = 'All ' + D.all().length + ' apps: the ones built in, and the apps for your computer.';
     } else if (app) {
       const run = D.running();
-      kick = run && run.id === app.id ? 'Running now' : app.suite ? 'App for your computer' : 'Built into DiceWeb';
+      kick = run && run.id === app.id ? 'Running now' : app.suite ? 'App for your computer' : 'Built into ' + D.brand;
       name = app.name; line = app.line;
       if (!app.suite) {
         const p = D.state.played[app.id];
@@ -417,7 +417,7 @@
       '<div class="menu-list">' + (run ? '<button class="mi" data-nav data-key="m:resume" data-first>' + D.icon('play', run.app.c, 2) + 'Resume ' + esc(run.app.name) + '</button><button class="mi" data-nav data-key="m:exit">' + D.icon('close', '#ff4d5e', 3) + 'Close ' + esc(run.app.name) + '</button>' : '') +
       items.map(([id, n, ic, c]) => '<button class="mi ' + (v === id ? 'here' : '') + '" data-nav data-key="m:' + id + '" ' + (!run && v === id ? 'data-first' : '') + '>' + D.icon(ic, c, 2) + n + '</button>').join('') +
       '<button class="mi" data-nav data-key="m:power" aria-expanded="false">' + D.icon('power', '#ff4d5e', 2) + 'Power</button><div class="power" hidden></div></div>' +
-      '<div class="menu-foot"><span>DiceWeb ' + D.version + '</span><span>' + D.glyph(D.night() ? 'moon' : 'sun', 1) + ' ' + (D.night() ? 'Night' : 'Day') + '</span></div>';
+      '<div class="menu-foot"><span>' + D.brand + ' ' + (D.sys ? D.sys.info.version : D.version) + '</span><span>' + D.glyph(D.night() ? 'moon' : 'sun', 1) + ' ' + (D.night() ? 'Night' : 'Day') + '</span></div>';
     menuEl.querySelector('canvas').getContext('2d').drawImage(G.face(D.state.avatar, 58, G.hexA(G.colourOf(D.state.avatar), 0.25)), 0, 0);
     const pick = (k) => menuEl.querySelector('[data-key="m:' + k + '"]');
     pick('me').onclick = () => { Menu.close(true); D.launch('settings', { arg: 'you' }); };
@@ -429,11 +429,12 @@
       p.hidden = false; b.setAttribute('aria-expanded', 'true');
       p.innerHTML = '<button class="mi" data-nav data-key="pw:sleep">' + D.icon('moon', '#a487dd', 2) + 'Sleep</button><button class="mi" data-nav data-key="pw:restart">' + D.icon('restart', '#7cc4ff', 2) + 'Restart</button>' +
         (D.sys ? '<button class="mi" data-nav data-key="pw:off">' + D.icon('power', '#ff4d5e', 2) + 'Shut down</button>' : '') +
-        '<button class="mi" data-nav data-key="pw:desk">' + D.icon('desktop', '#8fd16a', 2) + 'Switch to Desktop</button>' + (D.onSite ? '<button class="mi" data-nav data-key="pw:leave">' + D.icon('exit', '#ef6a1f', 2) + 'Back to the website</button>' : '');
+        '<button class="mi" data-nav data-key="pw:desk">' + D.icon('desktop', '#8fd16a', 2) + 'Switch to Desktop</button><button class="mi" data-nav data-key="pw:wall">' + D.icon('home', '#3f9e6e', 2) + 'Dice Home</button>' + (D.onSite ? '<button class="mi" data-nav data-key="pw:leave">' + D.icon('exit', '#ef6a1f', 2) + 'Back to the website</button>' : '');
       p.querySelector('[data-key="pw:sleep"]').onclick = () => { Menu.close(true); D.sleep(); };
       p.querySelector('[data-key="pw:restart"]').onclick = () => { Menu.close(true); if (D.sys) D.sys.power('reboot'); else D.restart(); };
       const off = p.querySelector('[data-key="pw:off"]'); if (off) off.onclick = () => { Menu.close(true); D.sys.power('shutdown'); };
       p.querySelector('[data-key="pw:desk"]').onclick = () => { Menu.close(true); D.desk.enter(); };
+      p.querySelector('[data-key="pw:wall"]').onclick = () => { Menu.close(true); D.wall.enter(); };
       const lv = p.querySelector('[data-key="pw:leave"]'); if (lv) lv.onclick = () => { location.href = '/'; };
       Nav.focus(p.querySelector('[data-nav]'));
     };
@@ -533,7 +534,7 @@
       else g.appendChild(sliderRow('Volume', s.volume, 0, 1, (v) => { D.set('volume', v); S.setVolume(v); }, 'q:vol', 'volume'));
       g.appendChild(toggleRow('Interface sounds', 'Clicks and chimes as you move around', s.ui, (v) => { D.set('ui', v); S.setUi(v); }, 'q:ui'));
       g.appendChild(toggleRow('Less motion', 'Calmer screens, no dissolves', s.motion === 'less', (v) => { D.set('motion', v ? 'less' : 'full'); document.documentElement.dataset.motion = v ? 'less' : 'full'; }, 'q:motion'));
-      g.appendChild(toggleRow('Full screen', 'Hide the browser around DiceWeb', !!document.fullscreenElement, (v) => { if (v) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen && document.exitFullscreen().catch(() => {}); }, 'q:full'));
+      g.appendChild(toggleRow('Full screen', 'Hide the browser around ' + D.brand, !!document.fullscreenElement, (v) => { if (v) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen && document.exitFullscreen().catch(() => {}); }, 'q:full'));
       body.appendChild(g);
       if (D.sys) {
         const row = h('<div style="display:flex;gap:8px;padding:4px 8px;flex-wrap:wrap"></div>');
@@ -629,8 +630,9 @@
     { name: 'Sleep', words: 'power off screen', icon: 'moon', run: () => D.sleep() },
     { name: 'Restart', words: 'reboot power', icon: 'restart', run: () => D.restart() },
     { name: 'Switch to Desktop', words: 'windows desktop mode', icon: 'desktop', run: () => D.desk.enter() },
+    { name: 'Dice Home', words: 'wall clock weather home assistant lights', icon: 'home', run: () => D.wall.enter() },
     { name: 'Controller test', words: 'gamepad joystick buttons', icon: 'pad', run: () => D.launch('settings', { arg: 'pads' }) },
-    { name: 'Library', words: 'all apps games', icon: 'library', run: () => { D.suspendIfRunning(); Shell.go('library'); } },
+    { name: 'Library', words: 'all apps', icon: 'library', run: () => { D.suspendIfRunning(); Shell.go('library'); } },
   ];
   Search.open = function () {
     Menu.close(true); Qam.close(true);
@@ -807,6 +809,7 @@
   D.input.handler = function (a) {
     if (D.booting) return D.skipBoot();
     if (D.asleep) return D.wake();
+    if (D.wall && D.wall.on && D.wall.action(a)) return;
     if (D.desk.on) return D.desk.action(a);
     if ($('#dialog.open')) {
       if (a === 'b') { Dialog.cancel(); S.play('back'); return; }
@@ -926,7 +929,7 @@
     if (kind === 'off') { el.classList.add('gone'); el.hidden = true; then && then(); return; }
     D.booting = true;
     el.hidden = false; el.classList.remove('gone');
-    el.innerHTML = '<div class="stage"><canvas width="72" height="84"></canvas><div class="word pix" aria-label="DiceWeb"></div><div class="bar">' + '<i></i>'.repeat(12) + '</div></div><div class="skip">Press any key to skip</div>';
+    el.innerHTML = '<div class="stage"><canvas width="72" height="84"></canvas><div class="word pix" aria-label="' + D.brand + '"></div><div class="bar">' + '<i></i>'.repeat(12) + '</div></div><div class="skip">Press any key to skip</div>';
     const c = el.querySelector('canvas'), g = c.getContext('2d'), word = el.querySelector('.word'), bars = el.querySelector('.bar').children;
     g.imageSmoothingEnabled = false;
     const t0 = performance.now(), quick = kind === 'quick' || D.reduced();
@@ -951,7 +954,7 @@
         g.drawImage(G.die(64, null, { key: 'boot-rest' + (night ? 'n' : ''), ss: 3, outline, ray: true }), 4, 10);
       }
       const wk = Math.max(0, Math.min(1, (t - T.word) / 500));
-      const text = 'DiceWeb';
+      const text = D.brand;
       word.textContent = text.slice(0, Math.round(wk * text.length));
       [...bars].forEach((b, i) => b.classList.toggle('on', i < Math.round(Math.min(1, t / T.end) * 12)));
       if (t >= T.end) return finish();
@@ -974,7 +977,7 @@
 
   // ---- First time here -----------------------------------------------------------------
   function welcome(again) {
-    D.ask({ who: 'cubby', title: again ? 'Hello again' : 'Welcome to DiceWeb', text: 'Move with the arrow keys or a controller. Enter picks things, Esc goes back, M opens the menu and Q opens Quick access. The mouse works too.', buttons: [{ label: 'Let\'s go', value: true, go: true }] });
+    D.ask({ who: 'cubby', title: again ? 'Hello again' : 'Welcome to ' + D.brand, text: 'Move with the arrow keys or a controller. Enter picks things, Esc goes back, M opens the menu and Q opens Quick access. The mouse works too.', buttons: [{ label: 'Let\'s go', value: true, go: true }] });
   }
 
   // ---- On Dice: the settings chosen on the website ----------------------------------
@@ -988,7 +991,7 @@
     if (['auto', 'day', 'night'].includes(s.look)) D.state.look = s.look;
     if (s.buddy && (s.buddy === 'cubby' || ART.mascots[s.buddy])) D.state.avatar = s.buddy;
     if (['full', 'quick', 'off'].includes(s.boot)) D.state.boot = s.boot;
-    D.state.start = s.start === 'gaming' ? 'game' : 'desk';
+    D.state.start = s.start === 'gaming' || s.start === 'tv' ? 'game' : s.start === 'home' ? 'home' : 'desk';
     if (WORLDS[s.world]) D.state.world = s.world;
     if (s.homeassistant) D.state.ha = s.homeassistant;
     D.save();
@@ -998,14 +1001,15 @@
     D.state.welcomed = w.at; D.save();
     D.sys.saveSettings({ welcome: null });
     const lines = (w.done || []).concat((w.problems || []).map((p) => 'Heads up: ' + p)).map((l) => String(l).replace(/\.+$/, ''));
-    D.ask({ who: D.state.avatar, title: w.name ? 'Dice is ready, ' + w.name : 'Dice is ready', text: lines.length ? lines.join('. ') + '.' : 'Everything is set up.', buttons: [{ label: 'Let\'s go', value: true, go: true }] });
+    D.ask({ who: D.state.avatar, title: w.name ? 'DiceOS is ready, ' + w.name : 'DiceOS is ready', text: lines.length ? lines.join('. ') + '.' : 'Everything is set up.', buttons: [{ label: 'Let\'s go', value: true, go: true }] });
   }
 
   // ---- Every frame --------------------------------------------------------------------------
   function loop(now) {
     D.input.pollPads(now);
-    if (!D.desk.on && !document.hidden) Hero.draw(now);
-    if (D.desk.on) D.desk.frame(now);
+    if (D.wall && D.wall.on) D.wall.frame(now); // Dice Home covers everything, so nothing else needs drawing
+    else if (!D.desk.on && !document.hidden) Hero.draw(now);
+    if (D.desk.on && !(D.wall && D.wall.on)) D.desk.frame(now);
     Perf.tick(now);
     if (Run.cur && Run.cur.inst.frame && $('#app').classList.contains('running')) Run.cur.inst.frame(now);
     requestAnimationFrame(loop);
@@ -1013,6 +1017,7 @@
 
   // ---- Start up ---------------------------------------------------------------------------
   Shell.start = function () {
+    document.title = D.brand;
     // the tab's icon: the same die, drawn small
     try { const l = document.querySelector('link[rel=icon]'); if (l) l.href = G.die(32, null, { key: 'favicon' }).toDataURL('image/png'); } catch (e) { /* keep the drawn one */ }
     document.documentElement.dataset.motion = D.state.motion;
@@ -1028,11 +1033,16 @@
     Hero.set(D.app(D.state.recent[0] || 'music'));
     Shell.go('home', null, { root: true, quiet: true });
     requestAnimationFrame(loop);
+    // a link can ask for a place to start, just this once: ?start=tv, ?start=home, ?open=settings:cloud
+    const q = new URLSearchParams(location.search), want = q.get('start'), open = q.get('open');
+    const start = want === 'tv' ? 'game' : want === 'home' || want === 'desk' ? want : D.state.start;
     const after = () => {
-      if (D.state.start === 'desk') D.desk.enter(true);
+      if (start === 'desk' || start === 'home') D.desk.enter(true);
+      if (start === 'home') D.wall.enter();
       const wel = D.sys && D.sys.settings.welcome;
       if (wel) setTimeout(() => piWelcome(wel), 700);
-      else if (first) setTimeout(() => welcome(), 600);
+      else if (first && start !== 'home') setTimeout(() => welcome(), 600);
+      if (open) { const [id, arg] = open.split(':'); if (D.app(id)) setTimeout(() => D.launch(id, { arg }), 400); }
     };
     D.boot(first ? 'full' : D.state.boot, after);
     D.save(true);

@@ -71,7 +71,7 @@
       else if (options.length > 1) { line({ s: [[options.join('   '), 'dim']] }); out.scrollTop = out.scrollHeight; }
     }
     root.addEventListener('pointerup', () => { if (!getSelection().toString()) input.focus(); });
-    line({ s: [['DiceWeb ' + D.version + ' Terminal. ', 'hi'], ['Type ', 'out'], ['help', 'hi'], [' to see what you can do.', 'out']] });
+    line({ s: [[D.brand + ' ' + D.version + ' Terminal. ', 'hi'], ['Type ', 'out'], ['help', 'hi'], [' to see what you can do.', 'out']] });
     prompt();
     setTimeout(() => input.focus(), 60);
     ctx.legend([]);

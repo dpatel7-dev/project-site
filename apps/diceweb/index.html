@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#ffffff">
-<meta name="description" content="DiceWeb: a whole console in your browser. Games, music, a Terminal, notes, and every app in the suite.">
+<meta name="description" content="DiceWeb: the DiceOS desktop in your browser. SereneTab, Axiom, music, a Terminal, notes, and every app in the suite.">
 <title>DiceWeb</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect x='6' y='1' width='4' height='1' fill='%233b3b45'/%3E%3Crect x='4' y='2' width='8' height='1' fill='%233b3b45'/%3E%3Crect x='2' y='3' width='12' height='1' fill='%233b3b45'/%3E%3Crect x='1' y='4' width='3' height='1' fill='%233b3b45'/%3E%3Crect x='4' y='4' width='2' height='1' fill='%23f6f6f8'/%3E%3Crect x='6' y='4' width='4' height='1' fill='%233b3b45'/%3E%3Crect x='10' y='4' width='2' height='1' fill='%23f6f6f8'/%3E%3Crect x='12' y='4' width='3' height='1' fill='%233b3b45'/%3E%3Crect x='1' y='5' width='2' height='1' fill='%232a2a32'/%3E%3Crect x='3' y='5' width='2' height='1' fill='%235a5a66'/%3E%3Crect x='5' y='5' width='6' height='1' fill='%233b3b45'/%3E%3Crect x='11' y='5' width='2' height='1' fill='%235a5a66'/%3E%3Crect x='13' y='5' width='2' height='1' fill='%231b1b21'/%3E%3Crect x='1' y='6' width='4' height='1' fill='%232a2a32'/%3E%3Crect x='5' y='6' width='2' height='1' fill='%235a5a66'/%3E%3Crect x='7' y='6' width='2' height='1' fill='%233b3b45'/%3E%3Crect x='9' y='6' width='2' height='1' fill='%235a5a66'/%3E%3Crect x='11' y='6' width='2' height='1' fill='%231b1b21'/%3E%3Crect x='13' y='6' width='2' height='1' fill='%23c4c4cc'/%3E%3Crect x='1' y='7' width='6' height='1' fill='%232a2a32'/%3E%3Crect x='7' y='7' width='2' height='1' fill='%235a5a66'/%3E%3Crect x='9' y='7' width='4' height='1' fill='%231b1b21'/%3E%3Crect x='13' y='7' width='2' height='1' fill='%23c4c4cc'/%3E%3Crect x='1' y='8' width='7' height='1' fill='%232a2a32'/%3E%3Crect x='8' y='8' width='2' height='1' fill='%231b1b21'/%3E%3Crect x='10' y='8' width='2' height='1' fill='%23c4c4cc'/%3E%3Crect x='12' y='8' width='3' height='1' fill='%231b1b21'/%3E%3Crect x='1' y='9' width='3' height='1' fill='%232a2a32'/%3E%3Crect x='4' y='9' width='2' height='1' fill='%23e4e4e9'/%3E%3Crect x='6' y='9' width='2' height='1' fill='%232a2a32'/%3E%3Crect x='8' y='9' width='2' height='1' fill='%231b1b21'/%3E%3Crect x='10' y='9' width='2' height='1' fill='%23c4c4cc'/%3E%3Crect x='12' y='9' width='3' height='1' fill='%231b1b21'/%3E%3Crect x='1' y='10' width='3' height='1' fill='%232a2a32'/%3E%3Crect x='4' y='10' width='2' height='1' fill='%23e4e4e9'/%3E%3Crect x='6' y='10' width='2' height='1' fill='%232a2a32'/%3E%3Crect x='8' y='10' width='7' height='1' fill='%231b1b21'/%3E%3Crect x='1' y='11' width='7' height='1' fill='%232a2a32'/%3E%3Crect x='8' y='11' width='2' height='1' fill='%23c4c4cc'/%3E%3Crect x='10' y='11' width='5' height='1' fill='%231b1b21'/%3E%3Crect x='3' y='12' width='5' height='1' fill='%232a2a32'/%3E%3Crect x='8' y='12' width='2' height='1' fill='%23c4c4cc'/%3E%3Crect x='10' y='12' width='3' height='1' fill='%231b1b21'/%3E%3Crect x='5' y='13' width='3' height='1' fill='%232a2a32'/%3E%3Crect x='8' y='13' width='3' height='1' fill='%231b1b21'/%3E%3Crect x='7' y='14' width='1' height='1' fill='%232a2a32'/%3E%3Crect x='8' y='14' width='1' height='1' fill='%231b1b21'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="css/apps.css">
 <link rel="stylesheet" href="css/serenetab.css">
 <link rel="stylesheet" href="css/axiom.css">
+<link rel="stylesheet" href="css/home.css">
 <script>
   // light or dark before anything is drawn, so nothing flashes
   (function () {
@@ -74,7 +75,8 @@
 <script src="js/apps/notes.js"></script>
 <script src="js/apps/calculator.js"></script>
 <script src="js/apps/axiom.js"></script>
-<script src="js/apps/games.js"></script>
+<script src="js/home.js"></script>
+<script src="js/cloud.js"></script>
 <script src="js/apps/clock.js"></script>
 <script src="js/apps/monitor.js"></script>
 <script src="js/apps/settings.js"></script>

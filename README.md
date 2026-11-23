@@ -5,13 +5,14 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 | Address | What's there |
 | --- | --- |
 | `/` | the front door: two doors, Dice or the Terminal apps. "Made by Dhruv" goes to `/me` |
-| `/dice/try` | the Dice emulator: Dice with your settings on a pretend Pi or PC, in the browser |
+| `/dice/try` | the Dice Emulator: DiceOS with your settings on a pretend Pi or PC, in the browser |
 | `/me` | Dhruv's own page: what he's made, the animals, and his GitHub |
 | `/apps` | every Terminal app, and the one command that installs them all |
 | `/dice` | [Dice](https://github.com/dpatel7-dev/DiceOS): set it up first, then put it on a Raspberry Pi (microSD card or NVMe drive) or a PC (USB stick) |
 | `/diceweb/` | [DiceWeb](https://github.com/dpatel7-dev/DiceWeb), the same desktop, in your browser |
 | `/dice/install.sh`, `/dice/dice.tar.gz` | Dice's installer, and Dice itself (with DiceWeb inside) for the installer and the updater |
-| `/dice/setup` | where the Dice page saves a setup code (never a password); `/dice/setup/CODE.json` gets it back, for 30 days |
+| `/dice/setup` | where the DiceOS page saves a setup code (never a password); `/dice/setup/CODE.json` gets it back, for 30 days |
+| `/dice/cloud/ID` | Dice Cloud's locked boxes (GET, PUT, DELETE). DiceOS and DiceWeb lock everything with the person's code before sending it, so this only ever keeps `{v, iv, ct}` it can't read. Boxes nobody opens for a year are tidied away |
 | `/gossip` | [gossip](https://github.com/dpatel7-dev/gossip)'s page. Its chat hub keeps `/api`, `/install.sh`, `/install.ps1` and `/healthz`, so every gossip already installed keeps working |
 | `/tot` | [Tree of Thought](https://github.com/dpatel7-dev/Tree-Of-Thought), plus `/tot/install.sh` and `/tot/install.ps1` |
 | `/pigeon` | [pigeon](https://github.com/dpatel7-dev/pigeon)'s web app (open it on your phone), its file server and installers |

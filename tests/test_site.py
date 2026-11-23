@@ -212,7 +212,7 @@ class Site(unittest.TestCase):
         # Dice is for PCs too, and every page that draws the die loads it first
         self.assertIn('releases/latest/download/dice-amd64.iso', dice)
         self.assertIn('data-dev="pc"', dice)
-        self.assertIn('>Big screen<', dice)
+        self.assertIn('>DiceTV<', dice); self.assertIn('>Dice Home<', dice); self.assertIn('id="family"', dice)
         self.assertNotIn('Gaming Mode', dice)
         for page in (door, dice):
             self.assertLess(page.index('/diceweb/js/die3d.js'), page.index('/diceweb/js/gfx.js'))
@@ -292,6 +292,31 @@ class Site(unittest.TestCase):
         self.assertEqual(call('/dice/setup')[0], 405)
         self.assertEqual(call('/dice/setup', method='POST', body=b'x' * 9000, headers={'CONTENT_TYPE': 'application/json'})[0], 400)
         self.assertEqual(call('/dice/setup', method='POST', body=b'[1, 2]', headers={'CONTENT_TYPE': 'application/json'})[0], 400)
+
+    def test_dice_cloud_keeps_only_locked_boxes(self):
+        box_id = 'ab' * 16
+        code, h, _ = call('/dice/cloud/' + box_id, method='OPTIONS')
+        self.assertEqual(code, 204)
+        self.assertEqual(h['Access-Control-Allow-Origin'], '*')
+        self.assertIn('PUT', h['Access-Control-Allow-Methods'])
+        self.assertEqual(call('/dice/cloud/' + box_id)[0], 404)
+        box = {'v': 1, 'iv': 'AAAAAAAAAAAAAAAA', 'ct': 'c2NyYW1ibGVkIGJ5dGVzIGhlcmU='}
+        code, h, body = call('/dice/cloud/' + box_id, method='PUT', body=json.dumps(box).encode())
+        self.assertEqual(code, 200, body)
+        self.assertEqual(h['Access-Control-Allow-Origin'], '*')
+        code, _, body = call('/dice/cloud/' + box_id)
+        self.assertEqual((code, json.loads(body)), (200, box))
+        # anything that isn't a locked box is turned away, and so is anything big
+        for bad in ({'notes': 'plain text'}, {'v': 1, 'iv': 'short', 'ct': 'x'}, {'v': 2, 'iv': box['iv'], 'ct': box['ct']}, 'nope'):
+            self.assertEqual(call('/dice/cloud/' + box_id, method='PUT', body=json.dumps(bad).encode())[0], 400, bad)
+        self.assertEqual(call('/dice/cloud/' + box_id, method='PUT', body=json.dumps(dict(box, extra='<script>')).encode())[0], 200)
+        stored = json.load(open(os.path.join(os.environ['SITE_DATA'], 'dice-cloud', box_id + '.json')))
+        self.assertEqual(stored, box, 'only v, iv and ct are kept')
+        big = dict(box, ct='A' * (700 * 1024))
+        self.assertEqual(call('/dice/cloud/' + box_id, method='PUT', body=json.dumps(big).encode())[0], 413)
+        self.assertIn(call('/dice/cloud/not-a-box-name', method='PUT', body=b'{}')[0], (404, 405))
+        self.assertEqual(call('/dice/cloud/' + box_id, method='DELETE')[0], 200)
+        self.assertEqual(call('/dice/cloud/' + box_id)[0], 404)
 
     def test_reloads_itself_after_a_git_pull(self):
         # pretend PythonAnywhere's WSGI file lives here, and the code on disk just changed

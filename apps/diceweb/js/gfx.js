@@ -164,7 +164,7 @@
   // ---- App icons: a white picture on a rounded tile of the app's colour -----------------
   // Clean and flat, so they read at a glance in the dock and the app grid.
   const TILES = { files: '#e39a32', home: '#e39a32', browser: '#3d86d6', terminal: '#2b2f3a', notes: '#e8913a', music: '#a862dc', store: '#ef5f74',
-    settings: '#66789c', calculator: '#4a5568', calendar: '#d4a857', clock: '#2f9e8f', monitor: '#3a9d68', gaming: '#2a2a32', games: '#5b4bc4' };
+    settings: '#66789c', calculator: '#4a5568', calendar: '#d4a857', clock: '#2f9e8f', monitor: '#3a9d68', gaming: '#2a2a32' };
   function glyph(id, day) {
     const g = [];
     for (let i = 0; i < 16; i++) g.push(new Array(16).fill(''));
@@ -214,11 +214,6 @@
         line(7.5, 7.5, 7.5, 3.5, 'A'); line(7.5, 7.5, 10.5, 9.5, 'A'); set(7.5, 7.5, 'R');
         break;
       }
-      case 'games': // an arcade stick and two buttons
-        rect(2, 11, 12, 4, 'W'); rect(3, 10, 10, 1, 'W'); rect(2, 14, 12, 1, 'w');
-        rect(5, 4, 2, 7, 'w'); disc(5.5, 3.5, 2.6, 'R');
-        rect(9, 11, 2, 2, 'O'); rect(12, 11, 1, 2, 'G'); rect(11, 11, 1, 2, 'G');
-        break;
       case 'monitor':
         rect(1, 2, 14, 10, 'W'); rect(2, 3, 12, 8, 'D');
         [[2, 9], [4, 8], [5, 9], [7, 5], [9, 7], [11, 4], [13, 6]].reduce((p, q) => { line(p[0], p[1], q[0], q[1], 'G'); return q; });
@@ -256,6 +251,45 @@
       g.fillStyle = left; P([off(Lf, y0), off(F, y0), off(F, y1), off(Lf, y1)]);
       g.fillStyle = right; P([off(F, y0), off(R, y0), off(R, y1), off(F, y1)]);
     }
+  };
+  // ---- The Dice family's marks: DiceOS, DiceWeb, DiceTV, Dice Home, Dice Cloud, Dice Emulator ----
+  // Each is the logo die inside the thing it is (a window, a TV, a house, a cloud, a screen).
+  const PRODUCTS = { os: '#d3d7e0', web: '#5a6cf0', tv: '#7a4fd8', home: '#2f9e6e', cloud: '#3a9be8', emulator: '#e0753a' };
+  G.PRODUCTS = PRODUCTS;
+  const products = new Map();
+  G.productIcon = function (id, size) {
+    const dpr = Math.min(3, Math.max(1, Math.round((typeof window !== 'undefined' && window.devicePixelRatio) || 1)));
+    const key = id + size + dpr;
+    let src = products.get(key);
+    if (!src) {
+      const S = size * dpr, cv = G.canvas(S, S), g = cv.getContext('2d'), tile = PRODUCTS[id] || PRODUCTS.os, r = Math.round(S * 0.24);
+      const round = (x, y, w, hh, rr) => { g.beginPath(); g.moveTo(x + rr, y); g.arcTo(x + w, y, x + w, y + hh, rr); g.arcTo(x + w, y + hh, x, y + hh, rr); g.arcTo(x, y + hh, x, y, rr); g.arcTo(x, y, x + w, y, rr); g.closePath(); };
+      const grad = g.createLinearGradient(0, 0, 0, S);
+      grad.addColorStop(0, mix(tile, '#ffffff', 0.18)); grad.addColorStop(1, mix(tile, '#000000', 0.08));
+      round(0, 0, S, S, r); g.fillStyle = grad; g.fill();
+      g.save(); round(0, 0, S, S, r); g.clip(); g.fillStyle = 'rgba(255,255,255,.22)'; g.fillRect(0, 0, S, Math.max(1, dpr)); g.restore();
+      const u = S / 64, white = 'rgba(255,255,255,.96)', soft = 'rgba(255,255,255,.35)';
+      g.lineJoin = 'round'; g.lineCap = 'round';
+      // where the die goes, and how big (whole pixels, so it stays sharp)
+      let box = [16, 16, 32];
+      if (id === 'web') { round(9 * u, 12 * u, 46 * u, 40 * u, 7 * u); g.fillStyle = white; g.fill(); g.fillStyle = tile; for (let i = 0; i < 3; i++) { g.beginPath(); g.arc((16 + i * 6) * u, 18 * u, 1.8 * u, 0, 7); g.fill(); } g.fillStyle = mix(tile, '#ffffff', 0.85); g.fillRect(10 * u, 23 * u, 44 * u, 28 * u); box = [21, 24, 22]; }
+      else if (id === 'tv') { round(7 * u, 12 * u, 50 * u, 34 * u, 6 * u); g.fillStyle = white; g.fill(); g.fillStyle = mix(tile, '#000000', 0.35); round(11 * u, 16 * u, 42 * u, 26 * u, 3 * u); g.fill(); g.strokeStyle = white; g.lineWidth = 3 * u; g.beginPath(); g.moveTo(24 * u, 54 * u); g.lineTo(40 * u, 54 * u); g.moveTo(32 * u, 46 * u); g.lineTo(32 * u, 54 * u); g.stroke(); box = [21, 18, 22]; }
+      else if (id === 'home') { g.fillStyle = white; g.beginPath(); g.moveTo(32 * u, 8 * u); g.lineTo(57 * u, 29 * u); g.lineTo(52 * u, 29 * u); g.lineTo(52 * u, 55 * u); g.lineTo(12 * u, 55 * u); g.lineTo(12 * u, 29 * u); g.lineTo(7 * u, 29 * u); g.closePath(); g.fill(); box = [21, 28, 22]; }
+      else if (id === 'cloud') { g.fillStyle = white; g.beginPath(); g.arc(23 * u, 37 * u, 12 * u, 0, 7); g.arc(35 * u, 29 * u, 15 * u, 0, 7); g.arc(46 * u, 38 * u, 11 * u, 0, 7); g.fill(); g.fillRect(14 * u, 37 * u, 36 * u, 12 * u); g.beginPath(); g.arc(14 * u, 43 * u, 6 * u, 0, 7); g.arc(50 * u, 43 * u, 6 * u, 0, 7); g.fill(); box = [22, 22, 20]; }
+      else if (id === 'emulator') { round(6 * u, 14 * u, 52 * u, 36 * u, 6 * u); g.fillStyle = white; g.fill(); g.fillStyle = mix(tile, '#ffffff', 0.82); round(10 * u, 18 * u, 40 * u, 28 * u, 3 * u); g.fill(); g.fillStyle = tile; g.beginPath(); g.arc(54 * u, 32 * u, 1.8 * u, 0, 7); g.fill(); g.setLineDash([3 * u, 3 * u]); g.strokeStyle = soft; g.lineWidth = 1.5 * u; round(2 * u, 10 * u, 60 * u, 44 * u, 9 * u); g.stroke(); g.setLineDash([]); box = [19, 21, 22]; }
+      const want = box[2] * u, k = Math.max(1, Math.floor(want / 16)), n = want < 16 ? Math.max(8, Math.round(want)) : 16 * k;
+      const die = G.die(want < 16 && id !== 'os' ? n : 16, null, { key: 'product' + (want < 16 && id !== 'os' ? n : 16) });
+      g.imageSmoothingEnabled = false;
+      const dx = Math.round(box[0] * u + (want - n) / 2), dy = Math.round(box[1] * u + (want - n) / 2);
+      if (id === 'os') { const k2 = Math.max(1, Math.floor(S * 0.62 / 16)); g.drawImage(die, Math.round((S - 16 * k2) / 2), Math.round((S - 16 * k2) / 2), 16 * k2, 16 * k2); }
+      else g.drawImage(die, dx, dy, n, n);
+      products.set(key, src = cv);
+    }
+    const c = G.canvas(src.width, src.height);
+    c.getContext('2d').drawImage(src, 0, 0);
+    c.style.width = c.style.height = size + 'px';
+    c.className = 'appicon';
+    return c;
   };
   G.sereneSvg = function (size, look) {
     const ink = SERENE_INK[look || 'light'];

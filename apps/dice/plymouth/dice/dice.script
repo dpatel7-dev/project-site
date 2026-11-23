@@ -1,4 +1,4 @@
-// Dice start-up splash: the Dice die turning slowly on black, the word Dice,
+// DiceOS start-up splash: the Dice die turning slowly on black, the word DiceOS,
 // and a bar of twelve pieces that fills up as the computer starts.
 // (The pictures come from tools/make-splash.js.)
 Window.SetBackgroundTopColor(0, 0, 0);

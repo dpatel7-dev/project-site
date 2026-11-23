@@ -72,7 +72,7 @@
         b.onclick = () => go(p);
         places.appendChild(b);
       });
-      if (!fs.real) places.appendChild(h('<p class="muted" style="font-size:.85rem;margin:14px 12px">This is DiceWeb\'s pretend disk. On a computer running Dice, these are your real files.</p>'));
+      if (!fs.real) places.appendChild(h('<p class="muted" style="font-size:.85rem;margin:14px 12px">This is ' + D.brand + '\'s pretend disk. On a computer running DiceOS, these are your real files.</p>'));
     }
     function go(p) {
       cur = p;

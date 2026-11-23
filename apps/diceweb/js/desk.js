@@ -7,7 +7,7 @@
   const D = window.Dice, G = D.G, S = D.S, M = D.M, $ = D.$, esc = D.esc, h = D.h;
   const Desk = D.desk = { on: false, wins: [], z: 10, world: null, last: 0 };
   const SIZES = { files: [900, 600], browser: [1060, 690], music: [880, 580], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [900, 620], pigeon: [1000, 680],
-    calculator: [330, 500], calendar: [1000, 660], games: [960, 640], clock: [560, 520], monitor: [760, 540] };
+    calculator: [330, 500], calendar: [1000, 660], clock: [560, 520], monitor: [760, 540] };
 
   let root, wall, wg;
   function build() {
@@ -94,11 +94,14 @@
       b.onclick = () => { Desk.toggleStart(false); Desk.open(a.suite ? 'web:' + a.id : a.id); };
       return b;
     };
-    const big = h('<button><span>Big screen</span></button>'); big.prepend(G.appIconEl('gaming', 56)); big.title = 'For a TV or a controller';
+    const big = h('<button><span>DiceTV</span></button>'); big.prepend(G.productIcon('tv', 56)); big.title = 'Big covers for a TV or a controller';
     big.onclick = () => { Desk.toggleStart(false); Desk.exit(); };
+    const wall = h('<button><span>Dice Home</span></button>'); wall.prepend(G.productIcon('home', 56)); wall.title = 'For a screen on the wall: the time, the weather and your home';
+    wall.onclick = () => { Desk.toggleStart(false); D.wall.enter(); };
     const g1 = h('<div class="sgroup"></div>');
     builtIn.forEach((a) => g1.appendChild(add(a)));
     if (!q || /big|screen|tv|game|controller/i.test(q)) g1.appendChild(big);
+    if (!q || /home|wall|assistant|lights|weather|clock/i.test(q)) g1.appendChild(wall);
     box.appendChild(g1);
     if (suite.length) {
       box.appendChild(h('<h3 class="shead">On this website</h3>'));
@@ -117,8 +120,8 @@
       fillStart('');
       const row = root.querySelector('.srow2');
       row.innerHTML = '';
-      (D.sys ? [['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.sys.power('reboot')], ['power', 'Shut down', () => D.sys.power('shutdown')], ['die', 'Big screen', () => Desk.exit()]]
-        : [['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.restart()], ['die', 'Big screen', () => Desk.exit()]]).forEach(([ic, n, fn]) => {
+      (D.sys ? [['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.sys.power('reboot')], ['power', 'Shut down', () => D.sys.power('shutdown')], ['die', 'DiceTV', () => Desk.exit()]]
+        : [['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.restart()], ['die', 'DiceTV', () => Desk.exit()]]).forEach(([ic, n, fn]) => {
         if (ic === 'die') return;
         const b = h('<button class="b small">' + D.glyph(ic, 2) + esc(n) + '</button>'); b.onclick = () => { Desk.toggleStart(false); fn(); }; row.appendChild(b);
       });
@@ -237,7 +240,7 @@
     if (Desk.on) return;
     if (D.running()) {
       const r = D.running();
-      const ok = quiet ? true : await D.ask({ title: 'Close ' + r.app.name + '?', text: 'Switching to Desktop closes what\'s running on the big screen.', buttons: [{ label: 'Close it and switch', value: true, go: true }, { label: 'Cancel', value: false }] });
+      const ok = quiet ? true : await D.ask({ title: 'Close ' + r.app.name + '?', text: 'Switching to Desktop closes what\'s running on DiceTV.', buttons: [{ label: 'Close it and switch', value: true, go: true }, { label: 'Cancel', value: false }] });
       if (!ok) return;
       D.closeApp(true);
     }

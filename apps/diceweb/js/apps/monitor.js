@@ -55,7 +55,7 @@
       const dk = (st && st.disk) || disk;
       root.querySelector('.mon-disk').textContent = dk ? GB(dk.used) : '…';
       root.querySelector('.mon-disk-bar').style.width = dk && dk.total ? Math.max(1, Math.round((dk.used / dk.total) * 100)) + '%' : '0';
-      root.querySelector('.mon-disk-sub').textContent = dk ? 'of ' + GB(dk.total) + (dk.browser ? ' this browser lets DiceWeb keep' : ' in your home folder\'s drive') : '';
+      root.querySelector('.mon-disk-sub').textContent = dk ? 'of ' + GB(dk.total) + (dk.browser ? ' this browser lets ' + D.brand + ' keep' : ' in your home folder\'s drive') : '';
       // facts
       const facts = [];
       if (st) { facts.push(['Computer', st.model], ['Name', st.host], ['On for', ago(st.uptime || 0)]); if (st.temp != null) facts.push(['Temperature', st.temp + ' °C']); if (st.ip) facts.push(['Address', st.ip]); }
