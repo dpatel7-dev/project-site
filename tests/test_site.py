@@ -209,6 +209,28 @@ class Site(unittest.TestCase):
         self.assertIn('releases/latest/download/dice-arm64.img.xz', dice)
         self.assertIn('https://djp7.pythonanywhere.com/dice/install.sh', dice)
         self.assertNotRegex(dice, r'\{\{\w+\}\}')
+        # Dice is for PCs too, and every page that draws the die loads it first
+        self.assertIn('releases/latest/download/dice-amd64.iso', dice)
+        self.assertIn('data-dev="pc"', dice)
+        self.assertIn('>Big screen<', dice)
+        self.assertNotIn('Gaming Mode', dice)
+        for page in (door, dice):
+            self.assertLess(page.index('/diceweb/js/die3d.js'), page.index('/diceweb/js/gfx.js'))
+
+    def test_personal_page(self):
+        code, h, body = call('/')
+        self.assertIn('<a class="me" href="/me">Made by Dhruv</a>', body.decode())
+        code, h, body = call('/me')
+        me = body.decode()
+        self.assertEqual(code, 200)
+        self.assertNotIn('<nav class="dk', me)
+        for bit in ('<h1>Dhruv</h1>', 'https://github.com/dpatel7-dev', 'href="/dice"', 'href="/apps"', '/diceweb/js/die3d.js'):
+            self.assertIn(bit, me)
+        # nothing private: no email address, no home town
+        self.assertNotRegex(me, r'[\w.+-]+@[\w-]+\.[\w.]+')
+        self.assertNotIn('New Jersey', me)
+        self.assertNotRegex(me, r'\{\{\w+\}\}')
+        self.assertEqual(call('/me/')[0], 200)
 
     def test_diceweb_is_served(self):
         code, h, _ = call('/diceweb')

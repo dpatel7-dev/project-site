@@ -239,7 +239,6 @@
       M.now = { kind, i: M.songs.indexOf(sng), name: sng.name, by: 'Your songs', c: '#d39cf5', playing: true };
     }
     tell();
-    if (window.Dice) Dice.achieve('dj');
   };
   M.pause = function () {
     if (!M.now) return;

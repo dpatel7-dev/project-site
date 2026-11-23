@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-diced: Dice's system helper. Runs on the Raspberry Pi as a system service and
+diced: Dice's system helper. Runs on the Pi or PC as a system service and
 serves the Dice desktop (DiceWeb, in "system" mode) to the screen's browser,
 plus a small API that does the real things: Wi-Fi, sound, brightness, files,
 a real Terminal, opening the web browser, power, and updates.
 
-Only the Pi itself can reach it (it listens on 127.0.0.1). Every API call
+Only the computer itself can reach it (it listens on 127.0.0.1). Every API call
 needs a secret that changes each time diced starts; only the desktop page
 diced serves is told it. Calls from websites are refused (they can't add the
 secret's header, and the Host and Origin must be this machine).
@@ -135,6 +135,20 @@ def save_settings(path, data):
 # ---------------------------------------------------------------------------
 # the system: what the desktop can see and change
 
+
+def model():
+    """What the computer is: the Pi's own name for itself, or a PC's maker and model."""
+    pi = read('/proc/device-tree/model').strip('\x00 \n')
+    if pi:
+        return pi
+    vendor = read('/sys/class/dmi/id/sys_vendor').strip()
+    name = read('/sys/class/dmi/id/product_name').strip()
+    junk = ('to be filled', 'default string', 'system product name', 'system manufacturer', 'o.e.m.')
+    parts = [p for p in (vendor, name) if p and not any(j in p.lower() for j in junk)]
+    if parts and len(parts) == 2 and parts[1].lower().startswith(parts[0].lower()):
+        parts = parts[1:]
+    return ' '.join(parts) or 'PC'
+
 class System:
     def __init__(self, settings_path):
         self.settings_path = settings_path
@@ -142,7 +156,7 @@ class System:
     # -- status --
     def status(self):
         user = desktop_user()
-        out = {'version': VERSION, 'host': socket.gethostname(), 'user': user, 'model': read('/proc/device-tree/model').strip('\x00 \n') or 'Linux computer',
+        out = {'version': VERSION, 'host': socket.gethostname(), 'user': user, 'model': model(),
                'uptime': self.uptime(), 'ip': self.ip(), 'temp': self.temp(), 'mem': self.mem(), 'disk': self.disk(user), 'load': self.load(),
                'wifi': self.wifi_now(), 'volume': self.volume(), 'brightness': self.brightness(), 'battery': self.battery()}
         return out

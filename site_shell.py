@@ -93,9 +93,9 @@ ICONS = {
     'pca': (['KKKKKKKKKKKKKKKK', 'KRKYKGKKKKKKKKKK', 'KKKKKKKKKKKKKKKK', 'Kddddddddddddddk', 'Kd>dBBBBBBdddddk', 'Kddddddddddddddk',
              'KdddPPPPPPPPdddk', 'Kddddddddddddddk', 'KdddOOOOOddddddk', 'Kddddddddddddddk', 'KdddGGGGGGGddddk', 'Kddddddddddddddk', 'kkkkkkkkkkkkkkkk'],
             {'K': '#3a3d4a', 'k': '#2b2d38', 'd': '#17181f', 'R': '#ff6b6b', 'Y': '#f2c14e', 'G': '#8fd16a', '>': '#8fd16a', 'B': '#7cc4ff', 'P': '#d39cf5', 'O': '#f0843c'}),
-    'dice': (['.KKKKKKKKKK.', 'KWWWWWWWWWWK', 'KWRRWWWWBBWK', 'KWRRWWWWBBWK', 'KWWWWWWWWWWK', 'KWWWWYYWWWWK', 'KWWWWYYWWWWK', 'KWWWWWWWWWWK', 'KWGGWWWWPPWK',
-              'KWGGWWWWPPWK', 'KWWWWWWWWWWK', '.KKKKKKKKKK.'],
-             {'K': '#2a2833', 'W': '#ffffff', 'R': '#ff707a', 'B': '#7cc4ff', 'Y': '#f5c431', 'G': '#8fd16a', 'P': '#d39cf5'}),
+    # the Dice die (drawn by DiceWeb's die3d.js at 16 pixels): the 1 on the left, 2 on top, 3 on the right
+    'dice': (['......c.........', '.....ccbbb......', '....cccbbbbee...', '...cccccbbbee...', '..ccccccbbbbb...', '.ccceecccebbbb..', '..cceccccbbbbb..', '..cccccbaaaabb..', '..ccccbaaaaaaaa.', '...ccbaaaaaddd..', '...cbadaddaaa...', '...baddaaaaa....', '......aaaaa.....', '.........a......'],
+             {'a': '#1f1f25', 'b': '#2f2f35', 'c': '#47474d', 'd': '#aaaaaa', 'e': '#e2e2e2'}),
     'find': (['..KKKK......', '.KbbbbK.....', 'KbWbbbbK....', 'KbWbbbbK....', 'KbbbbbbK....', 'KbbbbbbK....', '.KbbbbK.....', '..KKKKSS....',
               '......SSS...', '.......SSS..', '........SSS.', '.........SS.'],
              {'K': '#55555f', 'b': '#9fd3ff', 'W': '#ffffff', 'S': '#c08a4a'}),
@@ -278,7 +278,7 @@ def dock(here):
         parts.append(_item('/' + a['id'], a.get('short', a['name']), ic[a['id']], here == a['id'], a['id'], a['c'],
                            ' dk-app' + (' dk-here' if here == a['id'] else '')))
     parts += ['</span><span class="dk-sep" aria-hidden="true"></span>',
-              _item('/dice', 'Dice', ic['dice'], here == 'dice', 'dice', '#ff707a', ' dk-side'),
+              _item('/dice', 'Dice', ic['dice'], here == 'dice', 'dice', '#8a8a96', ' dk-side'),
               _item('/start', 'Start here', ic['start'], here == 'start', 'start', '#8fd16a', ' dk-side'),
               _item('/new', "What's new", ic['new'], here == 'new', 'new', '#d39cf5', ' dk-side dk-new'),
               '</div></nav>']

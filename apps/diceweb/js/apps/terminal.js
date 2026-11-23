@@ -41,7 +41,7 @@
       if (res.changed) D.emit('disk');
       if (res.look) { D.set('look', res.look); D.applyLook(true); }
       if (res.rolled) ctx.sound.play('rattle');
-      if (text.trim()) { D.state.stats.cmds = (D.state.stats.cmds || 0) + 1; if (D.state.stats.cmds >= 10) ctx.achieve('terminal-10'); }
+      if (text.trim()) D.state.stats.cmds = (D.state.stats.cmds || 0) + 1;
       D.save();
       prompt();
       out.scrollTop = out.scrollHeight;

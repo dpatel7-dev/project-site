@@ -1,6 +1,6 @@
 [Plymouth Theme]
 Name=Dice
-Description=A pixel die whose dots light up as the Raspberry Pi starts.
+Description=The Dice die turning slowly while the computer starts.
 ModuleName=script
 
 [script]

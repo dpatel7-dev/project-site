@@ -1,4 +1,4 @@
-// Files: your folders. On a Pi running Dice, your real home folder and any
+// Files: your folders. On a computer running Dice, your real home folder and any
 // USB stick you plug in. In a browser, DiceWeb's pretend disk (the same one
 // Terminal and Notes use).
 (function () {
@@ -72,7 +72,7 @@
         b.onclick = () => go(p);
         places.appendChild(b);
       });
-      if (!fs.real) places.appendChild(h('<p class="muted" style="font-size:.85rem;margin:14px 12px">This is DiceWeb\'s pretend disk. On a Pi running Dice, these are your real files.</p>'));
+      if (!fs.real) places.appendChild(h('<p class="muted" style="font-size:.85rem;margin:14px 12px">This is DiceWeb\'s pretend disk. On a computer running Dice, these are your real files.</p>'));
     }
     function go(p) {
       cur = p;
@@ -169,11 +169,11 @@
     };
   } });
 
-  // Web: opens websites in the real browser (on the Pi) or a new tab.
+  // Web: opens websites in the real browser (on Dice) or a new tab.
   D.register({ id: 'browser', mount(root, ctx) {
     root.classList.add('browser');
     const ha = (D.sys && D.sys.settings.homeassistant) || D.state.ha || '';
-    const links = [ha && ['Home Assistant', ha, 'Your home\'s dashboard'], ['The website', D.origin, 'Every app in the suite'], ['Wikipedia', 'https://en.wikipedia.org', 'Look anything up'], ['Raspberry Pi help', 'https://www.raspberrypi.com/documentation/', 'How the Pi works']].filter(Boolean);
+    const links = [ha && ['Home Assistant', ha, 'Your home\'s dashboard'], ['The website', D.origin, 'Every app in the suite'], ['Wikipedia', 'https://en.wikipedia.org', 'Look anything up'], (D.sys && D.sys.status && D.sys.status.model && !/raspberry/i.test(D.sys.status.model) ? ['Debian help', 'https://www.debian.org/doc/', 'How Debian works'] : ['Raspberry Pi help', 'https://www.raspberrypi.com/documentation/', 'How the Pi works'])].filter(Boolean);
     root.innerHTML = '<div class="br-in"><h2 class="pix">Web</h2><p class="muted">' + (D.sys ? 'Websites open in Chromium, on top of Dice. Close it (×) to come back.' : 'Websites open in a new tab.') + '</p>' +
       '<form class="br-go"><input data-nav data-key="br:url" placeholder="Type a web address or search" aria-label="Web address" autocomplete="off" spellcheck="false"><button class="b go" data-nav data-key="br:go" style="--c:#7c9cff">Go</button></form>' +
       '<div class="br-links"></div></div>';

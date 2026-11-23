@@ -1,12 +1,12 @@
 // Desktop mode: a wallpaper where the friends wander about, windows you can
 // drag, resize and stack, a launcher, and a bar along the bottom. The same
-// apps as Gaming Mode run inside the windows.
+// apps as Big screen run inside the windows.
 (function () {
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, M = D.M, $ = D.$, esc = D.esc, h = D.h;
   const Desk = D.desk = { on: false, wins: [], z: 10, world: null, last: 0 };
-  const SIZES = { files: [900, 600], browser: [720, 520], roll: [780, 580], flight: [520, 660], music: [880, 580], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [900, 620], pigeon: [1000, 680] };
-  const ICONS = ['gaming', 'files', 'browser', 'terminal', 'notes', 'music', 'roll', 'flight', 'store', 'settings'];
+  const SIZES = { files: [900, 600], browser: [720, 520], music: [880, 580], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [900, 620], pigeon: [1000, 680] };
+  const ICONS = ['gaming', 'files', 'browser', 'terminal', 'notes', 'music', 'store', 'settings'];
 
   let root, wall, wg;
   function build() {
@@ -33,7 +33,7 @@
     D.on('sys', tray);
   }
   function appIcon(id) {
-    if (id === 'gaming') return { id, name: 'Gaming Mode', c: '#ff707a' };
+    if (id === 'gaming') return { id, name: 'Big screen', c: '#8a8a96' };
     if (id === 'pigeon') return D.app('pigeon');
     return D.app(id);
   }
@@ -53,7 +53,7 @@
       box.appendChild(b);
     });
   }
-  Desk.PINS = ['files', 'browser', 'terminal', 'notes', 'music', 'roll', 'flight', 'settings'];
+  Desk.PINS = ['files', 'browser', 'terminal', 'notes', 'music', 'settings'];
   function pins() {
     const box = root.querySelector('.pins');
     box.innerHTML = '';
@@ -99,8 +99,8 @@
       fillStart('');
       const row = root.querySelector('.srow2');
       row.innerHTML = '';
-      (D.sys ? [['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.sys.power('reboot')], ['power', 'Shut down', () => D.sys.power('shutdown')], ['die', 'Gaming Mode', () => Desk.exit()]]
-        : [['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.restart()], ['die', 'Back to Gaming Mode', () => Desk.exit()]]).forEach(([ic, n, fn]) => {
+      (D.sys ? [['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.sys.power('reboot')], ['power', 'Shut down', () => D.sys.power('shutdown')], ['die', 'Big screen', () => Desk.exit()]]
+        : [['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.restart()], ['die', 'Big screen', () => Desk.exit()]]).forEach(([ic, n, fn]) => {
         const b = h('<button class="b small">' + (ic === 'die' ? D.icon('die', null, 1) : D.glyph(ic, 2)) + esc(n) + '</button>'); b.onclick = () => { Desk.toggleStart(false); fn(); }; row.appendChild(b);
       });
       const input = root.querySelector('.start input'); input.value = ''; setTimeout(() => input.focus(), 30);
@@ -201,8 +201,8 @@
     const app = D.app(base);
     if (id.startsWith('web:')) return D.launch(id);
     if (!app || (!D.apps[id] && !id.startsWith('web:'))) { if (app && app.suite) return Desk.open('store'); return; }
-    // games and settings: one window each
-    const one = ['roll', 'flight', 'music', 'settings', 'store'].includes(id) || id.startsWith('web:');
+    // music, settings and the store: one window each
+    const one = ['music', 'settings', 'store'].includes(id) || id.startsWith('web:');
     const have = one && Desk.wins.find((w) => w.id === id);
     if (have) { Desk.focus(have); return; }
     const w = new Win(id, app, opts);
@@ -216,7 +216,7 @@
     if (Desk.on) return;
     if (D.running()) {
       const r = D.running();
-      const ok = quiet ? true : await D.ask({ title: 'Close ' + r.app.name + '?', text: 'Switching to Desktop closes what\'s running in Gaming Mode.', buttons: [{ label: 'Close it and switch', value: true, go: true }, { label: 'Cancel', value: false }] });
+      const ok = quiet ? true : await D.ask({ title: 'Close ' + r.app.name + '?', text: 'Switching to Desktop closes what\'s running on the big screen.', buttons: [{ label: 'Close it and switch', value: true, go: true }, { label: 'Cancel', value: false }] });
       if (!ok) return;
       D.closeApp(true);
     }
@@ -229,7 +229,6 @@
     icons(); pins(); tray();
     Desk.world = null;
     S.play('open');
-    D.achieve('desktop');
     if (!quiet) D.toast({ icon: 'desktop', c: '#8fd16a', title: 'Desktop', text: 'Drag windows about. The die at the bottom left has everything.' });
   };
   Desk.exit = function (quiet) {

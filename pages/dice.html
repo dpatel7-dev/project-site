@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dice - your own operating system for a Raspberry Pi</title>
-<meta name="description" content="Dice is an operating system for the Raspberry Pi with pixel worlds, games, real Wi-Fi, files and Terminal. Set it up here first, then write it onto a microSD card or an NVMe drive.">
+<title>Dice - your own operating system for a Raspberry Pi or a PC</title>
+<meta name="description" content="Dice is an operating system for a Raspberry Pi or a PC, made of pixel worlds, with real Wi-Fi, files and Terminal. Set it up here first, then write it onto a microSD card, an NVMe drive or a USB stick.">
 <style>
   /* Dice's own page. The colour comes from the world you pick: everything
      else is plain white by day and black at night, with glass on top. */
   .dtop { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 18px; padding: 14px clamp(16px, 3vw, 34px); }
   .dtop::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--bg) 82%, transparent); -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%); box-shadow: 0 1px 0 var(--line); }
   .brand { display: inline-flex; align-items: center; gap: 10px; font: 700 1.45rem/1 var(--pixel); text-decoration: none; }
-  .brand canvas { width: 28px; height: 28px; }
+  .brand canvas { width: 32px; height: 32px; image-rendering: pixelated; }
   .dtop nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
   .dtop nav a { padding: 9px 13px; border-radius: 11px; text-decoration: none; font-weight: 700; font-size: .95rem; color: var(--muted); }
   .dtop nav a:hover { color: var(--ink); background: var(--soft); }
@@ -90,6 +90,12 @@
   .routes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
   .routes button { font: 700 1rem/1 var(--read); border: 0; padding: 13px 18px; border-radius: 14px; background: var(--soft); color: var(--muted); cursor: pointer; box-shadow: inset 0 0 0 1px var(--line); }
   .routes button[aria-selected=true] { background: var(--ink); color: var(--bg); box-shadow: none; }
+  .devices { display: inline-flex; gap: 4px; padding: 4px; margin: 0 0 18px; border-radius: 16px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
+  .devices button { font: 700 1.05rem/1 var(--read); border: 0; padding: 12px 22px; border-radius: 12px; background: none; color: var(--muted); cursor: pointer; }
+  .devices button[aria-pressed=true] { background: var(--bg); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12), inset 0 0 0 1px var(--line); }
+  .devices button:focus-visible, .routes button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .dev { display: none; }
+  .dev.on { display: block; }
   .route { display: none; }
   .route.on { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
   ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 10px; }
@@ -118,17 +124,17 @@
 </head>
 <body style="--c:#ff707a">
 <header class="dtop">
-  <a class="brand" href="/" aria-label="Back to the start"><canvas id="logo" width="12" height="12" aria-hidden="true"></canvas>Dice</a>
-  <nav aria-label="On this page"><a href="#make" class="keep">Make it yours</a><a href="#card">Put it on a card</a><a href="/diceweb/">Play in your browser</a><a href="/apps">The Terminal apps</a></nav>
+  <a class="brand" href="/" aria-label="Back to the start"><canvas id="logo" width="32" height="32" aria-hidden="true"></canvas>Dice</a>
+  <nav aria-label="On this page"><a href="#make" class="keep">Make it yours</a><a href="#card">Put it on your computer</a><a href="/diceweb/">Try it in your browser</a><a href="/apps">The Terminal apps</a></nav>
 </header>
 
 <section class="wrap hero">
   <div>
     <h1>Dice</h1>
-    <p>An operating system for your <b>Raspberry Pi</b>, made of the same pixel worlds as everything else here. Set it up on this page, write it onto a <b>microSD card</b> or an <b>NVMe drive</b>, and switch the Pi on. It starts already yours.</p>
+    <p>An operating system for your <b>Raspberry Pi</b> or <b>PC</b>, made of the same pixel worlds as everything else here. Set it up on this page, write it onto a microSD card, an NVMe drive or a USB stick, and switch it on. It starts already yours.</p>
     <div class="go"><a class="btn main" href="#make">Make it yours</a><a class="btn soft" href="/diceweb/">Try it in your browser first</a></div>
   </div>
-  <div class="stage"><canvas id="hero" aria-label="A Raspberry Pi running Dice, with Cubby the die standing beside it"></canvas></div>
+  <div class="stage"><canvas id="hero" aria-label="A Raspberry Pi running Dice, with the Dice die floating beside it"></canvas></div>
 </section>
 
 <section class="wrap make" id="make">
@@ -142,7 +148,7 @@
           <label class="f"><span>Your name</span><input type="text" data-k="name" maxlength="20" placeholder="Your first name"></label>
           <label class="f"><span>The computer's name</span><input type="text" data-k="computer" maxlength="40" placeholder="dice" pattern="[a-z0-9-]+"><small>On your network. Small letters, numbers and dashes.</small></label>
         </div>
-        <label class="f"><span>A password</span><span class="pw"><input type="password" data-k="password" maxlength="64" placeholder="Leave blank to keep: dice"><button type="button" data-show="password">Show</button></span><small>For signing in to the Pi (and SSH). The user is called dice.</small></label>
+        <label class="f"><span>A password</span><span class="pw"><input type="password" data-k="password" maxlength="64" placeholder="Leave blank to keep: dice"><button type="button" data-show="password">Show</button></span><small>For signing in to Dice (and SSH). The user is called dice.</small></label>
         <div class="f"><span>Your picture</span><div class="picks" id="buddies"></div></div>
       </fieldset>
 
@@ -171,7 +177,7 @@
         <div class="f"><span>Day or night</span><div class="seg" data-seg="look"><button type="button" data-v="auto">Follow the clock</button><button type="button" data-v="day">Always day</button><button type="button" data-v="night">Always night</button></div><small>Following the clock means light by day and dark after sunset.</small></div>
         <div class="f"><span>Your desktop's world</span><div class="picks worlds" id="worlds"></div></div>
         <div class="two">
-          <div class="f"><span>Start in</span><div class="seg" data-seg="start"><button type="button" data-v="desktop">The desktop</button><button type="button" data-v="gaming">Gaming Mode</button></div></div>
+          <div class="f"><span>Start in</span><div class="seg" data-seg="start"><button type="button" data-v="desktop">The desktop</button><button type="button" data-v="gaming">Big screen</button></div></div>
           <div class="f"><span>Start-up animation</span><div class="seg" data-seg="boot"><button type="button" data-v="full">Full</button><button type="button" data-v="quick">Quick</button><button type="button" data-v="off">Off</button></div></div>
         </div>
       </fieldset>
@@ -184,12 +190,12 @@
       <fieldset>
         <legend>Apps</legend>
         <label class="f"><span>Your Home Assistant</span><input type="url" data-k="homeassistant" placeholder="http://homeassistant.local:8123"><small>Its address. Dice's Web app gets a button for your dashboard.</small></label>
-        <div class="f"><span>Terminal apps to install too</span><div class="chips" id="suite"></div><small>They install by themselves after the first start, once the Pi is online.</small></div>
+        <div class="f"><span>Terminal apps to install too</span><div class="chips" id="suite"></div><small>They install by themselves after the first start, once it's online.</small></div>
       </fieldset>
 
       <fieldset>
         <legend>Access and updates</legend>
-        <label class="sw"><span><b>SSH</b><small class="hint" id="ssh-hint">Sign in to the Pi from another computer. Needs a password above.</small></span><input class="toggle" type="checkbox" data-k="ssh" id="ssh"></label>
+        <label class="sw"><span><b>SSH</b><small class="hint" id="ssh-hint">Sign in to Dice from another computer. Needs a password above.</small></span><input class="toggle" type="checkbox" data-k="ssh" id="ssh"></label>
         <label class="sw"><span><b>Automatic updates</b><small class="hint">Dice checks for a newer Dice once a week.</small></span><input class="toggle" type="checkbox" data-k="updates"></label>
       </fieldset>
     </form>
@@ -204,10 +210,10 @@
     </div>
     <div class="out glass">
       <h3>Your Dice</h3>
-      <p>Save your settings as <b>dice.json</b>. After writing Dice onto the card, drop this file onto the card's <b>bootfs</b> drive (or a USB stick in the Pi).</p>
+      <p>Save your settings as <b>dice.json</b>. On a Pi, drop it onto the card's <b>bootfs</b> drive after writing Dice. On a PC, put it on a USB stick.</p>
       <button class="btn main" type="button" id="save">Save dice.json</button>
       <p class="warn" id="warn" hidden></p>
-      <p>Installing onto a Pi that already has Raspberry Pi OS? A setup code carries everything except the passwords.</p>
+      <p>Installing onto a computer that already runs Raspberry Pi OS, Debian or Ubuntu? A setup code carries everything except the passwords.</p>
       <button class="btn soft" type="button" id="getcode">Get a setup code</button>
       <div class="code" id="code"><span class="hint">Your setup code (it lasts 30 days)</span><b id="code-v"></b></div>
     </div>
@@ -215,63 +221,98 @@
 </section>
 
 <section class="wrap card-sec" id="card">
-  <h2>Put it on a card</h2>
-  <p class="lede">Three ways, depending on what you've got. Writing Dice erases whatever is on that card or drive, so use a different one from Home Assistant's.</p>
+  <h2>Put it on your computer</h2>
+  <p class="lede">Dice runs on a Raspberry Pi or on a PC. Writing Dice erases whatever is on that card, drive or USB stick, so use a different one from Home Assistant's.</p>
+  <div class="devices" role="group" aria-label="Which computer">
+    <button type="button" data-dev="pi" aria-pressed="true">Raspberry Pi</button>
+    <button type="button" data-dev="pc" aria-pressed="false">PC</button>
+  </div>
+
+  <div class="dev on" data-dev="pi">
   <div class="routes" role="tablist">
-    <button type="button" role="tab" data-r="imager" aria-selected="true">With Raspberry Pi Imager</button>
-    <button type="button" role="tab" data-r="pi" aria-selected="false">No admin password? Use the Pi</button>
-    <button type="button" role="tab" data-r="os" aria-selected="false">Already have Raspberry Pi OS</button>
+      <button type="button" role="tab" data-r="imager" aria-selected="true">With Raspberry Pi Imager</button>
+      <button type="button" role="tab" data-r="pi" aria-selected="false">No admin password? Use the Pi</button>
+      <button type="button" role="tab" data-r="os" aria-selected="false">Already have Raspberry Pi OS</button>
+    </div>
+
+    <div class="route on" data-route="imager" role="tabpanel">
+      <ol class="steps">
+        <li><div><b>Download Dice</b><span>One file, about a gigabyte: dice-arm64.img.xz.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/Dice/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
+        <li><div><b>Open Raspberry Pi Imager</b><span>Get it free from raspberrypi.com/software. On a Mac it asks for an administrator password to write cards.</span></div></li>
+        <li><div><b>Choose your Pi, then the Dice file</b><span>Under Operating System, scroll to the bottom, choose Use custom, and pick the file you downloaded.</span></div></li>
+        <li><div><b>Choose where it goes</b><span>The microSD card, or the NVMe drive in a USB adapter. When it asks about OS customisation, choose No: your dice.json does that.</span></div></li>
+        <li><div><b>Write, then add your settings</b><span>When it's finished, the card shows up as a drive called bootfs. Drag your dice.json onto it, then eject it.</span></div></li>
+        <li><div><b>Switch the Pi on</b><span>The die turns while it starts, then Dice says hello by name.</span></div></li>
+      </ol>
+      <div class="aside"><h3>NVMe drives</h3><p>On a Pi 5 with an NVMe drive, write Dice onto the drive through a USB adapter, or use the Pi itself (the next tab). With no microSD card in, the Pi 5 starts from the NVMe drive.</p></div>
+    </div>
+
+    <div class="route" data-route="pi" role="tabpanel">
+      <ol class="steps">
+        <li><div><b>Copy two files onto a USB stick</b><span>The Dice file and your dice.json. Copying files doesn't need an administrator.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/Dice/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
+        <li><div><b>Plug everything into the Pi</b><span>The USB stick, a keyboard, a screen, an Ethernet cable to your router, and the microSD card or NVMe drive for Dice. Take Home Assistant's card out first.</span></div></li>
+        <li><div><b>Start Network Install</b><span>Switch the Pi on. With nothing to start from, it offers Network Install: hold Shift. It downloads Raspberry Pi Imager and opens it right on the Pi.</span></div></li>
+        <li><div><b>Choose the Dice file</b><span>Under Operating System, choose Use custom, and pick the Dice file on the USB stick.</span></div></li>
+        <li><div><b>Choose where it goes, and write</b><span>The microSD card or the NVMe drive. Then Write.</span></div></li>
+        <li><div><b>Restart with the USB stick still in</b><span>Dice finds dice.json on the stick and sets everything up.</span></div></li>
+      </ol>
+      <div class="aside"><h3>If Use custom isn't there</h3><p>Pick Raspberry Pi OS Lite (64-bit) instead and set your Wi-Fi in Imager's settings. Then follow the last tab with your setup code.</p></div>
+    </div>
+
+    <div class="route" data-route="os" role="tabpanel">
+      <ol class="steps">
+        <li><div><b>Get a setup code</b><span>Press Get a setup code above. It holds everything except your passwords.</span></div></li>
+        <li><div><b>Paste one line into Terminal on the Pi</b><span>It installs Dice and takes your settings.</span><div class="cmd"><code id="oneline">curl -fsSL {{origin}}/dice/install.sh | sudo bash</code><button type="button" id="copy1">Copy</button></div></div></li>
+        <li><div><b>Restart</b><span>Type sudo reboot. To take Dice off later: sudo /opt/dice/bin/dice-uninstall</span></div></li>
+      </ol>
+      <div class="aside"><h3>What it changes</h3><p>It adds Dice in /opt/dice and starts it instead of the usual desktop. Your files stay where they are.</p></div>
+    </div>
   </div>
 
-  <div class="route on" data-route="imager" role="tabpanel">
-    <ol class="steps">
-      <li><div><b>Download Dice</b><span>One file, about a gigabyte: dice-arm64.img.xz.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/Dice/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
-      <li><div><b>Open Raspberry Pi Imager</b><span>Get it free from raspberrypi.com/software. On a Mac it asks for an administrator password to write cards.</span></div></li>
-      <li><div><b>Choose your Pi, then the Dice file</b><span>Under Operating System, scroll to the bottom, choose Use custom, and pick the file you downloaded.</span></div></li>
-      <li><div><b>Choose where it goes</b><span>The microSD card, or the NVMe drive in a USB adapter. When it asks about OS customisation, choose No: your dice.json does that.</span></div></li>
-      <li><div><b>Write, then add your settings</b><span>When it's finished, the card shows up as a drive called bootfs. Drag your dice.json onto it, then eject it.</span></div></li>
-      <li><div><b>Switch the Pi on</b><span>The die's dots light up one by one, then Dice says hello by name.</span></div></li>
-    </ol>
-    <div class="aside"><h3>NVMe drives</h3><p>On a Pi 5 with an NVMe drive, write Dice onto the drive through a USB adapter, or use the Pi itself (the next tab). With no microSD card in, the Pi 5 starts from the NVMe drive.</p></div>
-  </div>
+  <div class="dev" data-dev="pc">
+    <div class="routes" role="tablist">
+      <button type="button" role="tab" data-r="usb" aria-selected="true">From a USB stick</button>
+      <button type="button" role="tab" data-r="linux" aria-selected="false">Already have Debian or Ubuntu</button>
+    </div>
 
-  <div class="route" data-route="pi" role="tabpanel">
-    <ol class="steps">
-      <li><div><b>Copy two files onto a USB stick</b><span>The Dice file and your dice.json. Copying files doesn't need an administrator.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/Dice/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
-      <li><div><b>Plug everything into the Pi</b><span>The USB stick, a keyboard, a screen, an Ethernet cable to your router, and the microSD card or NVMe drive for Dice. Take Home Assistant's card out first.</span></div></li>
-      <li><div><b>Start Network Install</b><span>Switch the Pi on. With nothing to start from, it offers Network Install: hold Shift. It downloads Raspberry Pi Imager and opens it right on the Pi.</span></div></li>
-      <li><div><b>Choose the Dice file</b><span>Under Operating System, choose Use custom, and pick the Dice file on the USB stick.</span></div></li>
-      <li><div><b>Choose where it goes, and write</b><span>The microSD card or the NVMe drive. Then Write.</span></div></li>
-      <li><div><b>Restart with the USB stick still in</b><span>Dice finds dice.json on the stick and sets everything up.</span></div></li>
-    </ol>
-    <div class="aside"><h3>If Use custom isn't there</h3><p>Pick Raspberry Pi OS Lite (64-bit) instead and set your Wi-Fi in Imager's settings. Then follow the last tab with your setup code.</p></div>
-  </div>
+    <div class="route on" data-route="usb" role="tabpanel">
+      <ol class="steps">
+        <li><div><b>Download Dice for PCs</b><span>One file, about a gigabyte and a half: dice-amd64.iso.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/Dice/releases/latest/download/dice-amd64.iso">Download Dice for PCs</a></div></div></li>
+        <li><div><b>Write it onto a USB stick</b><span>8 GB or bigger. In Raspberry Pi Imager choose Use custom and pick the file, or use balenaEtcher. Everything on the stick is erased.</span></div></li>
+        <li><div><b>Start the PC from the stick</b><span>Plug it in and switch the PC on. Tap its start-up menu key straight away (often F12, F11, F9 or Esc) and pick the USB stick.</span></div></li>
+        <li><div><b>Try it, or install it</b><span>Pick Dice to try it from the stick. Pick Install to put it on the PC's own drive: that erases the drive, and asks for your name and a password.</span></div></li>
+        <li><div><b>Bring your settings</b><span>Put your dice.json on a second USB stick and plug it in too. Dice finds it when it starts.</span></div></li>
+      </ol>
+      <div class="aside"><h3>If the PC won't start from the stick</h3><p>Look in its settings (often F2 or Del as it starts) for the start-up order, and put USB first. Some PCs also need Secure Boot turned off.</p></div>
+    </div>
 
-  <div class="route" data-route="os" role="tabpanel">
-    <ol class="steps">
-      <li><div><b>Get a setup code</b><span>Press Get a setup code above. It holds everything except your passwords.</span></div></li>
-      <li><div><b>Paste one line into Terminal on the Pi</b><span>It installs Dice and takes your settings.</span><div class="cmd"><code id="oneline">curl -fsSL {{origin}}/dice/install.sh | sudo bash</code><button type="button" id="copy1">Copy</button></div></div></li>
-      <li><div><b>Restart</b><span>Type sudo reboot. To take Dice off later: sudo /opt/dice/bin/dice-uninstall</span></div></li>
-    </ol>
-    <div class="aside"><h3>What it changes</h3><p>It adds Dice in /opt/dice and starts it instead of the usual desktop. Your files stay where they are.</p></div>
+    <div class="route" data-route="linux" role="tabpanel">
+      <ol class="steps">
+        <li><div><b>Get a setup code</b><span>Press Get a setup code above. It holds everything except your passwords.</span></div></li>
+        <li><div><b>Paste one line into Terminal on the PC</b><span>It installs Dice and takes your settings. Debian 12 or newer, or Ubuntu 24.04 or newer, 64-bit.</span><div class="cmd"><code id="oneline2">curl -fsSL {{origin}}/dice/install.sh | sudo bash</code><button type="button" id="copy2">Copy</button></div></div></li>
+        <li><div><b>Restart</b><span>Type sudo reboot. To take Dice off later: sudo /opt/dice/bin/dice-uninstall</span></div></li>
+      </ol>
+      <div class="aside"><h3>What it changes</h3><p>It adds Dice in /opt/dice and starts it instead of the usual desktop. Your files stay where they are.</p></div>
+    </div>
   </div>
 </section>
 
 <section class="wrap know">
   <h2>Good to know</h2>
   <dl>
-    <div><dt>Which Pi</dt><dd>A Raspberry Pi 5 or 4, with a screen. The official touch screens work, and can be turned in Settings.</dd></div>
+    <div><dt>Which computers</dt><dd>A Raspberry Pi 5 or 4 with a screen (the official touch screens work, and can be turned in Settings), or a 64-bit PC that can start from a USB stick.</dd></div>
     <div><dt>Home Assistant</dt><dd>Keep it on its own card or drive and it stays exactly as it is. Put its address above for a dashboard button.</dd></div>
     <div><dt>The password</dt><dd>The user is dice, password dice, until you set one above or in Settings, You.</dd></div>
     <div><dt>Your passwords</dt><dd>They never leave this computer. After the first start, Dice wipes them out of dice.json and renames it dice-applied.json.</dd></div>
-    <div><dt>Changing things later</dt><dd>Use Settings on the Pi, or drop a new dice.json onto the card and restart.</dd></div>
-    <div><dt>Just curious?</dt><dd><a href="/diceweb/">DiceWeb</a> is the same thing in your browser: the games, Music, Notes and a pretend Terminal.</dd></div>
+    <div><dt>Changing things later</dt><dd>Use Settings in Dice, or drop a new dice.json onto the card or a USB stick and restart.</dd></div>
+    <div><dt>Just curious?</dt><dd><a href="/diceweb/">DiceWeb</a> is the same thing in your browser: the desktop, Music, Notes, Files and a pretend Terminal.</dd></div>
   </dl>
 </section>
 <footer><a href="/">Back to the start</a> &nbsp; <a href="/apps">The Terminal apps</a></footer>
 
 <script src="/diceweb/js/art.js"></script>
 <script src="/diceweb/js/catalog.js"></script>
+<script src="/diceweb/js/die3d.js"></script>
 <script src="/diceweb/js/gfx.js"></script>
 <script>
 (function () {
@@ -327,7 +368,7 @@
   const buddies = $('#buddies');
   ['cubby'].concat(Object.keys(ART.mascots)).forEach((id) => {
     const b = document.createElement('button');
-    b.type = 'button'; b.title = id === 'cubby' ? 'Cubby' : ART.mascots[id].name; b.setAttribute('aria-label', b.title);
+    b.type = 'button'; b.title = id === 'cubby' ? 'The die' : ART.mascots[id].name; b.setAttribute('aria-label', b.title);
     b.appendChild(G.face(id, 58, G.hexA(G.colourOf(id), 0.25)));
     b.addEventListener('click', () => { set('buddy', id); marks(); });
     b.dataset.id = id;
@@ -453,12 +494,22 @@
       .finally(() => { btn.disabled = false; });
   });
   $('#copy1').addEventListener('click', () => { navigator.clipboard.writeText($('#oneline').textContent).then(() => { $('#copy1').textContent = 'Copied'; setTimeout(() => { $('#copy1').textContent = 'Copy'; }, 1400); }); });
+  $('#copy2').addEventListener('click', () => { navigator.clipboard.writeText($('#oneline2').textContent).then(() => { $('#copy2').textContent = 'Copied'; setTimeout(() => { $('#copy2').textContent = 'Copy'; }, 1400); }); });
   document.querySelectorAll('.routes button').forEach((b) => b.addEventListener('click', () => {
-    document.querySelectorAll('.routes button').forEach((x) => x.setAttribute('aria-selected', x === b));
-    document.querySelectorAll('.route').forEach((r) => r.classList.toggle('on', r.dataset.route === b.dataset.r));
+    const box = b.closest('.dev');
+    box.querySelectorAll('.routes button').forEach((x) => x.setAttribute('aria-selected', x === b));
+    box.querySelectorAll('.route').forEach((r) => r.classList.toggle('on', r.dataset.route === b.dataset.r));
   }));
+  // Raspberry Pi or PC: guessed from this computer, and remembered
+  function pickDev(d) {
+    document.querySelectorAll('.devices button').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.dev === d)));
+    document.querySelectorAll('.dev').forEach((x) => x.classList.toggle('on', x.dataset.dev === d));
+    try { localStorage.setItem('dice-dev', d); } catch (e) { /* fine */ }
+  }
+  document.querySelectorAll('.devices button').forEach((b) => b.addEventListener('click', () => pickDev(b.dataset.dev)));
+  pickDev((() => { try { return localStorage.getItem('dice-dev'); } catch (e) { return null; } })() || 'pi');
 
-  // ---- the hero: a Pi on a desk, its screen showing Dice, Cubby beside it ----
+  // ---- the hero: a Pi on a desk, its screen showing Dice, the die beside it ----
   const BOARD = ['gggggggggggggggggggggggg', 'gYgYgYgYgYgYgYgYgYgYgYgg', 'gYgYgYgYgYgYgYgYgYgYgYgg', 'gGGGGGGGGGGGGGGGGGGGGGgS', 'gGGGGGGGGGGGGGGGGGGGGGSS',
     'gGGGKKKKKKGGGGGGGGGGGSSS', 'gGGGKMMMMKGGGGkkGGGGGSSS', 'gGGGKMMMMKGGGGkkGGGGGGGg', 'gGGGKMMMMKGGGGGGGGGGGSSS', 'gGGGKKKKKKGGGGGGGGGGGSSS', 'gGGGGGGGGGGGGGGGGGGGGSSS', 'goGGGGGGGGGGGGGGGGGGGGog', 'gggggggggggggggggggggggg'];
   const BINK = { g: '#1f6b42', G: '#2f9a5d', Y: '#e8b83a', K: '#26262c', M: '#b8bcc8', k: '#3a3d4a', S: '#c9ced6', o: '#8a8f99' };
@@ -495,24 +546,24 @@
     hg.fillStyle = isNight() ? 'rgba(30,30,36,.8)' : 'rgba(255,255,255,.85)'; hg.fillRect(sx + 4, sy + 4, Math.round(sw * 0.45), Math.round(sh * 0.32));
     hg.fillStyle = '#ff707a'; hg.fillRect(sx + 6, sy + 6, 4, 4);
     hg.fillStyle = isNight() ? '#a3a3ad' : '#5f5f69'; hg.fillRect(sx + 12, sy + 7, Math.round(sw * 0.25), 1); hg.fillRect(sx + 12, sy + 9, Math.round(sw * 0.18), 1);
-    // the Pi, and Cubby
+    // the Pi, and the Dice die floating beside it, its shadow on the grass
     const b = G.sprite(BOARD, BINK, 'pi-board');
     hg.drawImage(b, sx + sw + 8, gy - b.height + 2);
-    const cub = G.mascot('cubby', { blink: !still && (t % 4.2) > 2.1 && (t % 4.2) < 2.24 });
-    const bob = still ? 0 : Math.floor(t * 1.6) % 2;
-    hg.fillStyle = 'rgba(0,0,0,.14)'; hg.fillRect(sx + sw + 40, gy + 1, cub.width - 6, 1);
-    hg.drawImage(cub, 0, 0, cub.width, cub.height - 1, sx + sw + 37, gy - cub.height + 1 + bob, cub.width, cub.height - 1);
-    hg.drawImage(cub, 0, cub.height - 1, cub.width, 1, sx + sw + 37, gy, cub.width, 1);
+    const die = still ? G.die(24, null, { key: 'mascot' }) : G.dieWobble(24, t);
+    const lift = 5 + (still ? 0 : Math.sin(t * 1.6) * 2), dx = sx + sw + 36;
+    const shw = Math.round(die.width * (0.62 - lift * 0.02));
+    hg.fillStyle = 'rgba(0,0,0,.16)'; hg.fillRect(dx + Math.round((die.width - shw) / 2), gy + 1, shw, 1);
+    hg.fillStyle = 'rgba(0,0,0,.08)'; hg.fillRect(dx + Math.round((die.width - shw) / 2) - 2, gy + 2, shw + 4, 1);
+    hg.drawImage(die, dx, Math.round(gy - die.height - lift));
   }
   new ResizeObserver(() => { clearTimeout(heroSize.t); heroSize.t = setTimeout(() => { heroSize(); heroDraw(performance.now()); }, 60); }).observe(hero);
   heroSize();
 
-  // the die by the name
+  // the die by the name, and as the tab's icon
   (function () {
-    const g = $('#logo').getContext('2d');
-    g.fillStyle = isNight() ? '#f3f3f5' : '#141416'; g.fillRect(1, 0, 10, 12); g.fillRect(0, 1, 12, 10);
-    g.fillStyle = isNight() ? '#1b1b1f' : '#ffffff'; g.fillRect(1, 1, 10, 10);
-    [['#ff707a', 2, 2], ['#7cc4ff', 8, 2], ['#f5c431', 5, 5], ['#8fd16a', 2, 8], ['#d39cf5', 8, 8]].forEach(([c, x, y]) => { g.fillStyle = c; g.fillRect(x, y, 2, 2); });
+    const logo = G.die(32, null, { key: 'logo', outline: isNight() ? [60, 60, 70] : null });
+    $('#logo').getContext('2d').drawImage(logo, 0, 0);
+    try { const l = document.querySelector('link[rel=icon]') || document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'icon' })); l.href = logo.toDataURL('image/png'); } catch (e) { /* keep the usual icon */ }
   })();
 
   drawWorlds();

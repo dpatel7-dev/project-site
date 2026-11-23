@@ -5,7 +5,7 @@
   const SECTIONS = [['you', 'You', 'person', '#ff707a'], ['look', 'Look', 'sun', '#f5c431'], ['sound', 'Sound', 'volume', '#d39cf5'], ['pads', 'Controllers', 'pad', '#7c9cff'],
     ['perf', 'Performance', 'chart', '#8fd16a'], ['start', 'Starting up', 'power', '#ef6a1f'], ['storage', 'Storage', 'lock', '#2bc4b2'], ['about', 'About', 'help', '#96969f']];
 
-  // on a Pi running Dice, there's more to set: Wi-Fi, the screen, power and updates
+  // on a computer running Dice, there's more to set: Wi-Fi, the screen, power and updates
   if (D.sys) {
     SECTIONS.splice(2, 0, ['wifi', 'Wi-Fi', 'wifi', '#2bc4b2'], ['display', 'Screen', 'desktop', '#7cc4ff']);
     SECTIONS.splice(SECTIONS.findIndex((x) => x[0] === 'storage'), 0, ['system', 'Power and updates', 'restart', '#ef6a1f']);
@@ -60,7 +60,7 @@
           if (homes && homes.kids[was] && was !== D.user()) { homes.kids[D.user()] = homes.kids[was]; delete homes.kids[was]; D.save(); }
           D.toast({ who: D.state.avatar, title: 'Hello, ' + v, text: 'That\'s your name in DiceWeb now.' });
         });
-        pane.appendChild(row('Name', 'Shown in the menu, Roll and Terminal.', name));
+        pane.appendChild(row('Name', 'Shown in the menu and in Terminal.', name));
         const av = h('<div class="avatars" data-row></div>');
         ['cubby'].concat(Object.keys(ART.mascots)).forEach((id) => {
           const b = h('<button data-nav data-key="you:av:' + id + '" aria-label="' + esc(id === 'cubby' ? 'Cubby' : ART.mascots[id].name) + '" aria-pressed="' + (D.state.avatar === id) + '" style="--c:' + G.colourOf(id) + '"></button>');
@@ -70,9 +70,9 @@
         });
         if (D.sys) {
           const pw = h('<button class="b small" data-nav data-key="you:pw">' + D.glyph('lock', 2) + 'Change</button>');
-          pw.onclick = () => D.ask({ title: 'A new password', text: 'For signing in to this Pi (sudo, SSH). At least 4 characters.', input: { type: 'password', label: 'New password' }, buttons: [{ label: 'Save it', value: true, go: true }, { label: 'Cancel', value: false }] })
-            .then((r) => { if (r && r.value) D.sys.post('/api/password', { password: r.value }).then((x) => D.toast(x.ok ? { icon: 'lock', c: '#4fc16b', title: 'Password changed', text: 'Use it next time this Pi asks.' } : { icon: 'lock', c: '#ff4d5e', title: 'Not changed', text: x.error || '' })); });
-          pane.appendChild(row('Password', 'The user on this Pi is ' + (D.sys.info.user || 'dice') + '.', pw));
+          pw.onclick = () => D.ask({ title: 'A new password', text: 'For signing in to this computer (sudo, SSH). At least 4 characters.', input: { type: 'password', label: 'New password' }, buttons: [{ label: 'Save it', value: true, go: true }, { label: 'Cancel', value: false }] })
+            .then((r) => { if (r && r.value) D.sys.post('/api/password', { password: r.value }).then((x) => D.toast(x.ok ? { icon: 'lock', c: '#4fc16b', title: 'Password changed', text: 'Use it next time this computer asks.' } : { icon: 'lock', c: '#ff4d5e', title: 'Not changed', text: x.error || '' })); });
+          pane.appendChild(row('Password', 'The user on this computer is ' + (D.sys.info.user || 'dice') + '.', pw));
         }
         const r = row('Picture', 'Any of the friends, or Cubby.', null);
         r.style.cssText = 'flex-direction:column;align-items:stretch';
@@ -102,7 +102,7 @@
       sound() {
         pane.appendChild(h('<h2>Sound</h2>'));
         const sv = D.sys && D.sys.status && D.sys.status.volume;
-        if (sv) pane.appendChild(row('Speaker volume', 'The Pi\'s own sound output.', ui.slider(sv.level, 0, 1, (v) => { clearTimeout(PANES.vt); PANES.vt = setTimeout(() => D.sys.post('/api/volume', { level: v, muted: false }), 120); }, 'snd:sys', 'Speaker volume')));
+        if (sv) pane.appendChild(row('Speaker volume', 'This computer\'s own sound output.', ui.slider(sv.level, 0, 1, (v) => { clearTimeout(PANES.vt); PANES.vt = setTimeout(() => D.sys.post('/api/volume', { level: v, muted: false }), 120); }, 'snd:sys', 'Speaker volume')));
         pane.appendChild(row(sv ? 'Dice sounds' : 'Volume', sv ? 'Clicks, games and Dice Radio, before the speaker.' : 'Everything DiceWeb plays.', ui.slider(D.state.volume, 0, 1, (v) => { D.set('volume', v); S.setVolume(v); }, 'snd:vol', 'Volume')));
         pane.appendChild(row('Music volume', 'Dice Radio and your songs.', ui.slider(D.state.musicVol, 0, 1, (v) => { D.set('musicVol', v); S.setMusic(v); }, 'snd:music', 'Music volume')));
         pane.appendChild(row('Interface sounds', 'Clicks and chimes as you move around.', sw(D.state.ui, (v) => { D.set('ui', v); S.setUi(v); if (v) S.play('select'); }, 'snd:ui', 'Interface sounds')));
@@ -133,7 +133,7 @@
       start() {
         pane.appendChild(h('<h2>Starting up</h2>'));
         pane.appendChild(row('Start-up animation', 'The die that rolls in when DiceWeb opens.', seg([['full', 'Full'], ['quick', 'Quick'], ['off', 'Off']], D.state.boot, (v) => D.set('boot', v), 'st:boot')));
-        pane.appendChild(row('Start in', 'Where DiceWeb opens.', seg([['game', 'Gaming Mode'], ['desk', 'Desktop']], D.state.start, (v) => D.set('start', v), 'st:in')));
+        pane.appendChild(row('Start in', 'Where DiceWeb opens.', seg([['desk', 'Desktop'], ['game', 'Big screen']], D.state.start, (v) => D.set('start', v), 'st:in')));
         pane.appendChild(row('Friends\' pop-ups', 'When a friend starts playing something.', sw(D.state.friendPops, (v) => D.set('friendPops', v), 'st:pops', 'Friends\' pop-ups')));
         const b = h('<button class="b small" data-nav data-key="st:restart">' + D.glyph('restart', 2) + 'Restart now</button>');
         b.onclick = () => D.restart();
@@ -154,7 +154,7 @@
         songs.onclick = () => D.ask({ title: 'Remove all your songs?', text: 'They come out of DiceWeb. The files on your computer stay where they are.', buttons: [{ label: 'Remove them', value: true, go: true, danger: true }, { label: 'Keep them', value: false }] }).then((ok) => { if (ok) { D.M.stop(); D.M.clear(); } });
         pane.appendChild(row('Your songs', 'Songs you added to Music.', songs));
         const reset = h('<button class="b small danger" data-nav data-key="sto:reset">Reset DiceWeb</button>');
-        reset.onclick = () => D.ask({ title: 'Reset DiceWeb?', text: 'Your name, notes, the disk, achievements, songs and settings all go. DiceWeb starts fresh, like the first time.', buttons: [{ label: 'Reset everything', value: true, go: true, danger: true, c: '#ff4d5e' }, { label: 'Cancel', value: false }] }).then((ok) => { if (ok) D.reset(); });
+        reset.onclick = () => D.ask({ title: 'Reset DiceWeb?', text: 'Your name, notes, the disk, songs and settings all go. DiceWeb starts fresh, like the first time.', buttons: [{ label: 'Reset everything', value: true, go: true, danger: true, c: '#ff4d5e' }, { label: 'Cancel', value: false }] }).then((ok) => { if (ok) D.reset(); });
         pane.appendChild(row('Start fresh', 'Takes everything away.', reset));
       },
       wifi() {
@@ -193,11 +193,11 @@
         pane.appendChild(row('Turn the screen', 'For screens mounted sideways or upside down. Takes effect when the desktop restarts.', seg([[0, 'Normal'], [90, '90°'], [180, '180°'], [270, '270°']], rot, (v) => D.sys.saveSettings({ screen: Object.assign({}, D.sys.settings.screen, { rotate: v }) }), 'disp:r')));
         const rs = h('<button class="b small" data-nav data-key="disp:restart">' + D.glyph('restart', 2) + 'Restart desktop</button>');
         rs.onclick = () => D.sys.power('restart-desktop');
-        pane.appendChild(row('Restart the desktop', 'Reloads Dice without restarting the Pi.', rs));
+        pane.appendChild(row('Restart the desktop', 'Reloads Dice without restarting the computer.', rs));
       },
       system() {
         pane.appendChild(h('<h2>Power and updates</h2>'));
-        [['Restart', 'Starts the Pi again.', 'restart', 'reboot'], ['Shut down', 'Wait for the green light to stop blinking before unplugging.', 'power', 'shutdown']].forEach(([t, sub, ic, a]) => {
+        [['Restart', 'Starts the computer again.', 'restart', 'reboot'], ['Shut down', 'On a Pi, wait for the green light to stop blinking before unplugging.', 'power', 'shutdown']].forEach(([t, sub, ic, a]) => {
           const b = h('<button class="b small" data-nav data-key="sys:' + a + '">' + D.glyph(ic, 2) + t + '</button>'); b.onclick = () => D.sys.power(a); pane.appendChild(row(t, sub, b));
         });
         const up = h('<button class="b small" data-nav data-key="sys:update">' + D.glyph('restart', 2) + 'Check now</button>');
@@ -211,13 +211,12 @@
         pane.appendChild(h('<h2>About</h2>'));
         const ua = navigator.userAgent;
         const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Your browser';
-        const n = Object.keys(D.state.ach).length;
         pane.appendChild(h('<div class="srow" style="display:block"><div style="display:flex;gap:16px;align-items:center"><canvas width="64" height="64" style="width:64px;height:64px;border-radius:16px"></canvas><div><b class="pix" style="font-size:1.6rem">' + (D.sys ? 'Dice ' + esc(D.sys.info.version) : 'DiceWeb ' + esc(D.version)) + '</b><span class="muted" style="display:block">' + (D.sys ? 'Your Raspberry Pi\'s own operating system.' : 'A whole console in your browser.') + ' Made by Dhruv, with Cubby the die.</span></div></div></div>'));
-        pane.querySelector('canvas').getContext('2d').drawImage(G.face('cubby', 64, G.hexA('#ff707a', 0.2)), 0, 0);
+        pane.querySelector('canvas').getContext('2d').drawImage(G.face('cubby', 64, G.hexA('#8a8a96', 0.2)), 0, 0);
         const st = D.sys && D.sys.status;
         const pi = st ? [['Computer', st.model], ['Name on the network', st.host + (st.ip ? ' (' + st.ip + ')' : '')], ['Temperature', st.temp ? st.temp + ' °C' : 'Unknown'],
           ['Memory', st.mem ? gb(st.mem.used) + ' of ' + gb(st.mem.total) + ' in use' : 'Unknown'], ['Storage', st.disk ? gb(st.disk.used) + ' of ' + gb(st.disk.total) + ' used' : 'Unknown'], ['Dice', D.sys.info.version]] : [];
-        const facts = pi.concat([['Browser', browser], ['Screen', innerWidth + ' × ' + innerHeight + (devicePixelRatio > 1 ? ' (sharp)' : '')], ['Controllers', D.input.padNames().length ? D.input.padNames().length + ' connected' : 'None connected'], ['Achievements', n + ' of ' + D.L.ACHIEVEMENTS.length], ['Time here', D.mins(Object.values(D.state.played).reduce((a, b) => a + b, 0)) + ' in apps']]);
+        const facts = pi.concat([['Browser', browser], ['Screen', innerWidth + ' × ' + innerHeight + (devicePixelRatio > 1 ? ' (sharp)' : '')], ['Controllers', D.input.padNames().length ? D.input.padNames().length + ' connected' : 'None connected'], ['Time here', D.mins(Object.values(D.state.played).reduce((a, b) => a + b, 0)) + ' in apps']]);
         facts.forEach(([a, b]) => pane.appendChild(row(a, '', h('<span class="muted">' + esc(b) + '</span>'))));
         const link = h('<a class="b small" data-nav data-key="ab:site" href="' + esc(D.origin) + '" target="_blank" rel="noopener">' + D.glyph('link', 2) + 'The website</a>');
         pane.appendChild(row('More apps', 'The whole suite lives on the website.', link));
@@ -265,7 +264,7 @@
     if (b(12)) g.fillRect(16, 21, 4, 4); if (b(13)) g.fillRect(16, 29, 4, 4); if (b(14)) g.fillRect(12, 25, 4, 4); if (b(15)) g.fillRect(20, 25, 4, 4);
     void dp;
     // face buttons
-    [[76, 31, 0, '#4fc16b'], [81, 26, 1, '#ff4d5e'], [71, 26, 2, '#4f8cff'], [76, 21, 3, '#f5c431']].forEach(([x, y, i, c]) => { g.fillStyle = b(i) ? c : dim; g.fillRect(x - 2, y - 2, 4, 4); });
+    [[76, 31, 0], [81, 26, 1], [71, 26, 2], [76, 21, 3]].forEach(([x, y, i]) => { g.fillStyle = b(i) ? '#7c9cff' : dim; g.fillRect(x - 2, y - 2, 4, 4); });
     // sticks
     [[33, 37, 0, 1, 10], [60, 37, 2, 3, 11]].forEach(([x, y, a1, a2, press]) => {
       g.fillStyle = dim; g.fillRect(x - 5, y - 5, 10, 10);

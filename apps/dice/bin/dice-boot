@@ -2,14 +2,17 @@
 """
 dice-boot: runs at every start-up, as root, before the desktop.
 
-1. If there's a dice.json (made on the website) on the card's "bootfs" drive
-   or on a USB stick, it applies it: your name, the computer's name, password,
+1. If there's a dice.json (made on the website) on the Pi card's "bootfs"
+   drive, a PC's EFI partition, or a USB stick, it applies it: your name, the computer's name, password,
    Wi-Fi, time zone, keyboard, look, screen, apps, SSH and updates. Passwords
    are then wiped from the file and it's renamed dice-applied.json, so it
    only happens once. Drop a new dice.json on the card to change things again.
-2. Starts the Dice desktop for the person who uses this Pi.
+   Only USB sticks and other removable drives are looked at, never the
+   computer's own disks, and they're opened read-only until a dice.json turns up.
+2. Starts the Dice desktop for the person who uses this computer.
 """
 import glob
+import hashlib
 import json
 import os
 import pwd
@@ -20,7 +23,8 @@ import sys
 import time
 
 SETTINGS = '/etc/dice/settings.json'
-PLACES = ['/boot/firmware/dice.json', '/boot/dice.json']
+PLACES = ['/boot/firmware/dice.json', '/boot/dice.json', '/boot/efi/dice.json', '/etc/dice/dice.json']
+APPLIED = '/var/lib/dice/applied'  # fingerprints of files that couldn't be tidied (read-only sticks)
 SITE = os.environ.get('DICE_SITE', 'https://djp7.pythonanywhere.com')
 KEEP = ('name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh')
 
@@ -44,6 +48,42 @@ def user():
         return None
 
 
+def read(path):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError:
+        return ''
+
+
+def mounted():
+    """Devices that are already in use (the computer's own disks, the live USB Dice started from)."""
+    out = set()
+    for line in read('/proc/mounts').splitlines():
+        dev = line.split(' ')[0]
+        if dev.startswith('/dev/'):
+            out.add(os.path.realpath(dev))
+    return out
+
+
+def usb_parts(sys_block='/sys/block'):
+    """Partitions on USB sticks and other removable drives, never the computer's own disks."""
+    busy = mounted()
+    out = []
+    for blk in sorted(glob.glob(os.path.join(sys_block, 'sd*'))):
+        name = os.path.basename(blk)
+        removable = read(os.path.join(blk, 'removable')) == '1'
+        if '/usb' not in os.path.realpath(blk) and not removable:
+            continue
+        parts = sorted(os.path.basename(p) for p in glob.glob(os.path.join(blk, name + '*')) if os.path.basename(p)[len(name):].isdigit())
+        devs = ['/dev/' + p for p in parts] or ['/dev/' + name]
+        # a stick with anything of it already in use is the one Dice started from: leave it alone
+        if any(d in busy for d in devs + ['/dev/' + name]):
+            continue
+        out += devs
+    return out
+
+
 def find():
     """(path to dice.json, mount point to undo or None)."""
     for p in PLACES:
@@ -51,15 +91,35 @@ def find():
             return p, None
     mnt = '/run/dice/usb'
     os.makedirs(mnt, exist_ok=True)
-    for dev in sorted(glob.glob('/dev/sd[a-z][0-9]')) + sorted(glob.glob('/dev/sd[a-z]')):
-        if sh(['mount', dev, mnt], timeout=20)[0] != 0:
+    for dev in usb_parts():
+        if sh(['mount', '-o', 'ro,nosuid,nodev,noexec', dev, mnt], timeout=20)[0] != 0:
             continue
         p = os.path.join(mnt, 'dice.json')
         if os.path.isfile(p):
             log('found dice.json on ' + dev)
+            sh(['mount', '-o', 'remount,rw,nosuid,nodev,noexec', mnt], timeout=20)  # so it can be tidied up afterwards
             return p, mnt
         sh(['umount', mnt])
     return None, None
+
+
+def fingerprint(path):
+    try:
+        with open(path, 'rb') as f:
+            return hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        return ''
+
+
+def wifi_device():
+    """The Wi-Fi card's name: wlan0 on a Pi, something like wlp2s0 on a PC."""
+    code, out = sh(['nmcli', '-t', '-f', 'DEVICE,TYPE', 'device'], timeout=10)
+    if code == 0:
+        for line in out.splitlines():
+            dev, _, kind = line.partition(':')
+            if kind == 'wifi' and dev:
+                return dev
+    return 'wlan0'
 
 
 def load(path):
@@ -132,7 +192,7 @@ def apply(cfg):
         sh(['rfkill', 'unblock', 'wifi'])
         if wait_for_networkmanager():
             sh(['nmcli', 'connection', 'delete', 'dice-wifi'])
-            cmd = ['nmcli', 'connection', 'add', 'type', 'wifi', 'ifname', 'wlan0', 'con-name', 'dice-wifi', 'ssid', str(wifi['ssid']), 'connection.autoconnect', 'yes']
+            cmd = ['nmcli', 'connection', 'add', 'type', 'wifi', 'ifname', wifi_device(), 'con-name', 'dice-wifi', 'ssid', str(wifi['ssid']), 'connection.autoconnect', 'yes']
             if wifi.get('password'):
                 cmd += ['wifi-sec.key-mgmt', 'wpa-psk', 'wifi-sec.psk', str(wifi['password'])]
             if wifi.get('hidden'):
@@ -199,6 +259,13 @@ def scrub(path, cfg, mnt):
     if isinstance(clean.get('wifi'), dict):
         clean['wifi'] = {k: v for k, v in clean['wifi'].items() if k != 'password'}
     clean['applied'] = time.strftime('%Y-%m-%d %H:%M')
+    # remembered too, in case the stick can't be written to (so it isn't applied again every start-up)
+    try:
+        os.makedirs(os.path.dirname(APPLIED), exist_ok=True)
+        with open(APPLIED, 'a') as f:
+            f.write(fingerprint(path) + '\n')
+    except OSError:
+        pass
     try:
         with open(os.path.join(os.path.dirname(path), 'dice-applied.json'), 'w') as f:
             json.dump(clean, f, indent=2)
@@ -215,6 +282,11 @@ def main():
     if os.geteuid() != 0:
         sys.exit('dice-boot needs to run as root (it runs by itself at start-up).')
     path, mnt = find()
+    if path and fingerprint(path) in read(APPLIED).split():
+        log('this dice.json was already used')
+        if mnt:
+            sh(['umount', mnt])
+        path = None
     if path:
         cfg = load(path)
         if cfg is not None:

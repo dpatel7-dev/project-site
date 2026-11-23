@@ -1,4 +1,4 @@
-// System mode: when DiceWeb runs on a Raspberry Pi as Dice, the Pi's helper
+// System mode: when DiceWeb runs on a Raspberry Pi or a PC as Dice, the computer's helper
 // (diced) puts a secret in the page (window.DICE_SYS). Then the Terminal is
 // real, Files shows real files, and Settings changes real Wi-Fi, sound,
 // brightness and power. Anywhere else, Dice.sys is null and DiceWeb carries
@@ -26,8 +26,8 @@
     }),
     saveSettings: (s) => { Object.assign(Sys.settings, s); return call('POST', '/api/settings', s); },
     power: (action) => {
-      const words = { reboot: ['Restart the Pi?', 'Everything closes and Dice starts again.', 'Restart'], shutdown: ['Shut down the Pi?', 'Wait for the green light to stop blinking before unplugging it.', 'Shut down'],
-        'restart-desktop': ['Restart the desktop?', 'Dice reloads. The Pi stays on.', 'Restart desktop'] }[action];
+      const words = { reboot: ['Restart the computer?', 'Everything closes and Dice starts again.', 'Restart'], shutdown: ['Shut down the computer?', 'On a Pi, wait for the green light to stop blinking before unplugging it.', 'Shut down'],
+        'restart-desktop': ['Restart the desktop?', 'Dice reloads. The computer stays on.', 'Restart desktop'] }[action];
       return D.ask({ title: words[0], text: words[1], buttons: [{ label: words[2], value: true, go: true }, { label: 'Cancel', value: false }] })
         .then((ok) => { if (ok) { D.save(true); call('POST', '/api/power', { action }); } return ok; });
     },

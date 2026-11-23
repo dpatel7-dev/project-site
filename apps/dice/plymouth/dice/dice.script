@@ -1,23 +1,52 @@
-// Dice boot splash: a pixel die on black whose six dots light up, one colour
-// at a time, as the Raspberry Pi starts.
+// Dice start-up splash: the Dice die turning slowly on black, the word Dice,
+// and a bar of twelve pieces that fills up as the computer starts.
+// (The pictures come from tools/make-splash.js.)
 Window.SetBackgroundTopColor(0, 0, 0);
 Window.SetBackgroundBottomColor(0, 0, 0);
 
-for (i = 0; i <= 6; i++)
+FRAMES = 32;
+for (i = 0; i < FRAMES; i++)
   frame[i] = Image("die" + i + ".png");
+// on a small screen (like the Pi's 7 inch one) the die is drawn smaller
+fit = 1;
+if (Window.GetHeight() < 700) fit = 0.66;
+if (fit < 1)
+  for (i = 0; i < FRAMES; i++)
+    frame[i] = frame[i].Scale(frame[i].GetWidth() * fit, frame[i].GetHeight() * fit);
+
 die = Sprite(frame[0]);
 die.SetX(Window.GetX() + Window.GetWidth() / 2 - frame[0].GetWidth() / 2);
-die.SetY(Window.GetY() + Window.GetHeight() / 2 - frame[0].GetHeight() / 2 - 40);
+die.SetY(Window.GetY() + Window.GetHeight() / 2 - frame[0].GetHeight() / 2 - 50 * fit);
 
 word_image = Image("word.png");
 word = Sprite(word_image);
 word.SetX(Window.GetX() + Window.GetWidth() / 2 - word_image.GetWidth() / 2);
-word.SetY(die.GetY() + frame[0].GetHeight() + 40);
+word.SetY(die.GetY() + frame[0].GetHeight() + 24 * fit);
+
+on_image = Image("seg-on.png");
+off_image = Image("seg-off.png");
+gap = 4;
+bar_width = 12 * on_image.GetWidth() + 11 * gap;
+for (i = 0; i < 12; i++) {
+  seg[i] = Sprite(off_image);
+  seg[i].SetX(Window.GetX() + Window.GetWidth() / 2 - bar_width / 2 + i * (on_image.GetWidth() + gap));
+  seg[i].SetY(word.GetY() + word_image.GetHeight() + 26);
+}
+
+// the die turns: one picture every three screen refreshes, about two seconds a turn
+tick = 0;
+fun refresh_callback() {
+  tick++;
+  die.SetImage(frame[Math.Int(tick / 3) % FRAMES]);
+}
+Plymouth.SetRefreshFunction(refresh_callback);
 
 fun progress_callback(duration, progress) {
-  n = Math.Int(progress * 7);
-  if (n > 6) n = 6;
-  die.SetImage(frame[n]);
+  n = Math.Int(progress * 12 + 0.5);
+  for (i = 0; i < 12; i++) {
+    if (i < n) seg[i].SetImage(on_image);
+    else seg[i].SetImage(off_image);
+  }
 }
 Plymouth.SetBootProgressFunction(progress_callback);
 

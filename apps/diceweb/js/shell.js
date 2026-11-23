@@ -1,4 +1,4 @@
-// The shell: Gaming Mode. The boot screen, the top bar, Home, Library, Store,
+// The shell: Big screen. The boot screen, the top bar, Home, Library, Store,
 // each app's own page, the menu on the left, Quick access on the right,
 // search, and running apps full screen.
 (function () {
@@ -9,10 +9,9 @@
   const NEWS = [
     { app: 'pca', title: 'pca 1.12: delete everything', text: 'One command takes every app off your computer, with no traces left.' },
     { app: 'hum', title: 'hum 1.2: dancing flowers', text: 'The garden dances to the beat of whatever is playing. And a mini mode.' },
-    { app: 'roll', title: 'DiceWeb 1.0', text: 'A whole console in your browser. You\'re looking at it.' },
+    { app: 'files', title: 'Dice for PCs', text: 'Dice now runs on a PC from a USB stick, as well as on a Raspberry Pi.' },
     { app: 'locket', title: 'locket: fills in passwords', text: 'Your passwords, filled in on websites, locked with one.' },
   ];
-  const ACH_FOR = { roll: ['first-roll', 'pig-win', 'bust'], flight: ['flight-5', 'flight-20'], music: ['dj'], terminal: ['terminal-10'], notes: ['note'] };
 
   // ---- The world behind everything ----------------------------------------------
   const Hero = D.hero = { app: null, world: null, old: null, fadeAt: 0, last: 0, paused: false };
@@ -129,7 +128,7 @@
   };
 
   // ---- Pages ---------------------------------------------------------------------------
-  const TITLES = { home: 'Home', library: 'Library', store: 'Store', page: '', profile: 'Achievements', settings: 'Settings' };
+  const TITLES = { home: 'Home', library: 'Library', store: 'Store', page: '', settings: 'Settings' };
   Shell.go = function (v, arg, opts) {
     opts = opts || {};
     if (Shell.view) {
@@ -172,7 +171,7 @@
     if (Math.abs(g - (Hero.ground || 0.37)) > 0.01) { Hero.ground = g; if (Hero.app) { Hero.old = null; Hero.set(Hero.app, true); } }
     const want = restore && view.focusKey ? page.querySelector('[data-key="' + CSS.escape(view.focusKey) + '"]') : null;
     if (want) Nav.focus(want, { scroll: false }); else Nav.first(page);
-    if (!Nav.el || !page.contains(Nav.el)) { const fallback = D.app(view.v === 'page' ? view.arg : (D.state.recent[0] || 'roll')); if (fallback) Hero.set(fallback); }
+    if (!Nav.el || !page.contains(Nav.el)) { const fallback = D.app(view.v === 'page' ? view.arg : (D.state.recent[0] || 'music')); if (fallback) Hero.set(fallback); }
     Legend.update();
   };
 
@@ -180,7 +179,7 @@
   function tile(app, opts) {
     opts = opts || {};
     const el = h('<button class="tile ' + (opts.size || '') + '" data-nav data-key="' + esc((opts.key || 't') + ':' + app.id) + '" data-hero="' + app.id + '" data-a="' + esc(opts.a || 'Open') + '" style="--tc:' + app.c + '" aria-label="' + esc(app.name) + '">' +
-      '<span class="shine"></span><span class="name">' + esc(app.name) + (opts.sub ? '<span class="sub">' + esc(opts.sub) + '</span>' : '') + '</span>' + (opts.flag ? '<span class="flag ' + (opts.live ? 'live' : '') + '">' + esc(opts.flag) + '</span>' : '') + '</button>');
+      '<span class="name">' + esc(app.name) + (opts.sub ? '<span class="sub">' + esc(opts.sub) + '</span>' : '') + '</span>' + (opts.flag ? '<span class="flag ' + (opts.live ? 'live' : '') + '">' + esc(opts.flag) + '</span>' : '') + '</button>');
     el.prepend(D.coverEl(app, opts.size === 'wide' ? 'wide' : 'cover'));
     el.onclick = opts.onclick || (() => Shell.go('page', app.id));
     if (opts.x) el.dataset.x = opts.x;
@@ -205,7 +204,7 @@
     const ids = [];
     if (run) ids.push(run.id);
     D.state.recent.forEach((id) => { if (!ids.includes(id) && D.app(id)) ids.push(id); });
-    ['roll', 'flight', 'music', 'terminal', 'notes', 'pca', 'pigeon', 'scout', 'hum'].forEach((id) => { if (ids.length < 9 && !ids.includes(id)) ids.push(id); });
+    ['music', 'files', 'terminal', 'notes', 'browser', 'pca', 'pigeon', 'scout', 'hum'].forEach((id) => { if (ids.length < 9 && !ids.includes(id)) ids.push(id); });
     ids.forEach((id, i) => {
       const app = D.app(id);
       const live = run && run.id === id;
@@ -226,10 +225,9 @@
     const fr = h('<section class="shelf" data-block><h2>Friends <small>' + D.friends.filter((f) => f.status !== 'Snoozing').length + ' around</small></h2><div class="row" data-row id="friends"></div></section>');
     const frow = fr.querySelector('#friends');
     D.friends.slice().sort((a, b) => (statusClass(b.status) === 'play') - (statusClass(a.status) === 'play')).forEach((f) => {
-      const c = h('<button class="card" data-nav data-key="f:' + f.id + '" data-hero="' + f.id + '" data-a="Say hi" data-x="Play Roll"><span><b>' + esc(f.name) + '</b><span class="status ' + statusClass(f.status) + '">' + esc(f.status) + '</span></span></button>');
+      const c = h('<button class="card" data-nav data-key="f:' + f.id + '" data-hero="' + f.id + '" data-a="Say hi"><span><b>' + esc(f.name) + '</b><span class="status ' + statusClass(f.status) + '">' + esc(f.status) + '</span></span></button>');
       c.prepend(face(f.id, 56));
       c.onclick = () => D.sayHi(f.id);
-      c._x = () => D.launch('roll', { arg: { vs: f.id } });
       frow.appendChild(c);
     });
     page.appendChild(fr);
@@ -260,19 +258,17 @@
     if (key.startsWith('f:')) {
       const f = D.friends.find((x) => x.id === el.dataset.hero);
       kick = 'Friend'; name = f.name; line = f.name + ' ' + f.kind + ', from ' + (D.app(f.id) || {}).name + '. ' + f.status + '.';
-      facts = ['<b>' + Dice.btn('a') + '</b> say hi', '<b>' + Dice.btn('x') + '</b> play Roll together'];
+      facts = ['<b>' + Dice.btn('a') + '</b> say hi'];
     } else if (key === 'r:all') {
-      kick = 'Library'; name = 'Everything'; line = 'All ' + D.all().length + ' apps: games, tools, and the apps for your computer.';
+      kick = 'Library'; name = 'Everything'; line = 'All ' + D.all().length + ' apps: the ones built in, and the apps for your computer.';
     } else if (app) {
       const run = D.running();
-      kick = run && run.id === app.id ? 'Running now' : app.kind === 'game' ? 'Game' : app.suite ? 'App for your computer' : 'Built into DiceWeb';
+      kick = run && run.id === app.id ? 'Running now' : app.suite ? 'App for your computer' : 'Built into DiceWeb';
       name = app.name; line = app.line;
       if (!app.suite) {
         const p = D.state.played[app.id];
-        facts.push(p ? 'Played <b>' + D.mins(p) + '</b>' : 'Not played yet');
+        facts.push(p ? 'Used for <b>' + D.mins(p) + '</b>' : 'Not opened yet');
         if (D.state.last[app.id]) facts.push('Last opened <b>' + D.ago(D.state.last[app.id]) + '</b>');
-        const a = ACH_FOR[app.id];
-        if (a) facts.push('<b>' + a.filter((x) => D.state.ach[x]).length + ' of ' + a.length + '</b> achievements');
       } else {
         facts.push('Get it with <b>one line</b> in Terminal');
         if (D.versions && D.versions[app.id]) facts.push('Version <b>' + esc(D.versions[app.id]) + '</b>');
@@ -291,12 +287,12 @@
   });
 
   // Library: everything, in tabs
-  const LIB_TABS = [['all', 'All'], ['games', 'Games'], ['dice', 'Built in'], ['suite', 'For your computer']];
+  const LIB_TABS = [['all', 'All'], ['dice', 'Built in'], ['suite', 'For your computer']];
   Views.library = function (arg, view) {
     const tab = view.tab || 'all';
     const page = h('<div><div class="lib-head"><h1 class="title">Library</h1><div class="tabs" role="tablist" data-block>' + '<span class="hint">' + D.btn('lb') + '</span>' +
       LIB_TABS.map(([id, n]) => '<button class="tab" role="tab" data-nav data-key="tab:' + id + '" data-tab="' + id + '" aria-selected="' + (id === tab) + '" data-sound="tab">' + n + '</button>').join('') + '<span class="hint">' + D.btn('rb') + '</span></div></div><div class="grid" id="lib"></div></div>');
-    const apps = D.all().filter((a) => tab === 'all' || (tab === 'games' && a.kind === 'game') || (tab === 'dice' && !a.suite) || (tab === 'suite' && a.suite));
+    const apps = D.all().filter((a) => tab === 'all' || (tab === 'dice' && !a.suite) || (tab === 'suite' && a.suite));
     const grid = page.querySelector('#lib');
     apps.forEach((a, i) => { const t = tile(a, { key: 'l', flag: D.running() && D.running().id === a.id ? 'Running' : '', live: true }); if (i === 0) t.setAttribute('data-first', ''); grid.appendChild(t); });
     page.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { view.tab = b.dataset.tab; Shell.render(); Nav.focus($('[data-key="tab:' + b.dataset.tab + '"]')); }; });
@@ -336,7 +332,6 @@
   Views.page = function (id, view) {
     const app = D.app(id);
     D.state.seen[id] = Date.now(); D.save();
-    if (Object.keys(D.state.seen).length >= 8) D.achieve('explorer');
     Hero.set(app);
     const run = D.running();
     const live = run && run.id === id;
@@ -366,45 +361,20 @@
       get.querySelector('#getcopy').onclick = (e) => copy(cmd, e.currentTarget);
       left.appendChild(get);
     } else {
-      const how = { roll: 'Press ' + Dice.btn('a') + ' to roll and ' + Dice.btn('x') + ' to hold. Hold too late and a one takes it all. First to 50 wins.', flight: Dice.btn('a') + ' or a click makes Bumble flap. Don\'t touch the flowers.',
+      const how = { files: 'Your files, in folders. On Dice they\'re the real files on the computer.', browser: 'Open the suite\'s web pages without leaving DiceWeb.',
         music: 'Pick a Dice Radio station, or add songs from your computer. They stay here for next time.', terminal: 'Type help and press Enter. Try neofetch, roll 2d6, or say pebble hi.',
         notes: 'Notes save as you type. They\'re files too: ls ~/notes in Terminal.', store: 'Every app for your computer, with the line to get it.', settings: 'Look, sound, controllers and more.' }[id];
-      left.appendChild(h('<div class="panel"><h3>How it works</h3><p>' + how + '</p></div>'));
+      if (how) left.appendChild(h('<div class="panel"><h3>How it works</h3><p>' + how + '</p></div>'));
     }
     const right = h('<div style="display:grid;gap:18px;align-content:start"></div>');
     if (!app.suite) {
-      right.appendChild(h('<div class="panel stats"><div><b>' + (D.state.played[id] ? D.mins(D.state.played[id]) : 'None yet') + '</b><span>Played</span></div><div><b>' + (D.state.last[id] ? D.ago(D.state.last[id]) : 'Never') + '</b><span>Last opened</span></div>' +
-        (id === 'flight' ? '<div><b>' + (D.state.stats.flight || 0) + '</b><span>Best flight</span></div>' : '') + (id === 'roll' ? '<div><b>' + (D.state.stats.rollWins || 0) + ' of ' + (D.state.stats.rollGames || 0) + '</b><span>Games won</span></div>' : '') + '</div>'));
-      const ids = ACH_FOR[id];
-      if (ids) {
-        const box = h('<div class="panel" data-block><h3>Achievements</h3><div class="achs"></div></div>');
-        ids.forEach((aid) => box.querySelector('.achs').appendChild(achEl(L.ACHIEVEMENTS.find((a) => a.id === aid))));
-        right.appendChild(box);
-      }
+      right.appendChild(h('<div class="panel stats"><div><b>' + (D.state.played[id] ? D.mins(D.state.played[id]) : 'None yet') + '</b><span>Time spent</span></div><div><b>' + (D.state.last[id] ? D.ago(D.state.last[id]) : 'Never') + '</b><span>Last opened</span></div>' + '</div>'));
     } else {
       right.appendChild(h('<div class="panel"><h3>' + esc((ART.mascots[id] || { name: 'pca' }).name) + '</h3><p>' + esc(app.blurb) + '.</p>' + (D.versions && D.versions[id] ? '<p style="margin:0">Version ' + esc(D.versions[id]) + '</p>' : '') + '</div>'));
     }
     body.append(left, right);
     return page;
   };
-  function achEl(a) {
-    const got = D.state.ach[a.id];
-    const el = h('<div class="ach ' + (got ? '' : 'locked') + '" data-nav data-key="a:' + a.id + '" style="--mc:' + a.c + '"><span class="medal">' + D.icon('trophy', got ? a.c : '#96969f', 2) + '</span><div><b>' + esc(a.secret && !got ? 'Secret' : a.name) + '</b><span>' + esc(got ? 'Unlocked ' + D.ago(got) : a.secret ? 'Keep exploring.' : a.how) + '</span></div></div>');
-    return el;
-  }
-
-  // You and your achievements
-  Views.profile = function () {
-    const n = Object.keys(D.state.ach).length;
-    const page = h('<div><div class="lib-head" data-block><div style="display:flex;gap:18px;align-items:center"><canvas width="72" height="72" style="width:88px;height:88px;border-radius:22px"></canvas><div><h1 class="title">' + esc(D.state.name) + '</h1><p class="muted" style="margin:6px 0 0">Level ' + D.level() + '. ' + n + ' of ' + L.ACHIEVEMENTS.length + ' achievements.</p></div></div>' +
-      '<button class="b" data-nav data-key="pr:edit">' + D.glyph('gear', 2) + 'Change name and picture</button></div><div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px" id="achs"></div></div>');
-    page.querySelector('canvas').getContext('2d').drawImage(G.face(D.state.avatar, 72, G.hexA(G.colourOf(D.state.avatar), 0.25)), 0, 0);
-    page.querySelector('[data-key="pr:edit"]').onclick = () => D.launch('settings', { arg: 'you' });
-    L.ACHIEVEMENTS.slice().sort((a, b) => (!!D.state.ach[b.id]) - (!!D.state.ach[a.id])).forEach((a, i) => { const e = achEl(a); if (!i) e.setAttribute('data-first', ''); page.querySelector('#achs').appendChild(e); });
-    Hero.set({ id: 'me', land: 'meadow', c: G.colourOf(D.state.avatar), who: D.state.avatar });
-    return page;
-  };
-
   // Settings, as a page (the same thing opens in a window on the desktop)
   Views.settings = function (arg, view) {
     const page = h('<div><div class="lib-head"><h1 class="title">Settings</h1></div><div id="sethost"></div></div>');
@@ -472,8 +442,8 @@
   };
   D.friendCard = function (id) {
     const f = D.friends.find((x) => x.id === id);
-    D.ask({ who: id, title: f.name, text: f.name + ' ' + f.kind + ' from ' + D.app(id).name + '. ' + f.status + '.', buttons: [{ label: 'Say hi', value: 'hi', go: true, c: G.colourOf(id) }, { label: 'Play Roll', value: 'roll' }, { label: 'Close', value: null }] })
-      .then((v) => { if (v === 'hi') D.sayHi(id); if (v === 'roll') D.launch('roll', { arg: { vs: id } }); });
+    D.ask({ who: id, title: f.name, text: f.name + ' ' + f.kind + ' from ' + D.app(id).name + '. ' + f.status + '.', buttons: [{ label: 'Say hi', value: 'hi', go: true, c: G.colourOf(id) }, { label: 'Close', value: null }] })
+      .then((v) => { if (v === 'hi') D.sayHi(id); });
   };
 
   // ---- The menu on the left ----------------------------------------------------------
@@ -485,16 +455,16 @@
     Menu.prev = Nav.el;
     const v = Shell.view ? Shell.view.v : 'home';
     const items = [['home', 'Home', 'home', '#ff707a'], ['library', 'Library', 'library', '#7cc4ff'], ['store', 'Store', 'store', '#2bc4b2'], ['music', 'Music', 'music', '#d39cf5'],
-      ['profile', 'Achievements', 'trophy', '#f5c431'], ['settings', 'Settings', 'gear', '#7c9cff']];
+      ['settings', 'Settings', 'gear', '#7c9cff']];
     const run = D.running();
-    menuEl.innerHTML = '<button class="me" data-nav data-key="m:me"><canvas width="58" height="58"></canvas><span><b>' + esc(D.state.name) + '</b><span>Level ' + D.level() + ', ' + Object.keys(D.state.ach).length + ' achievements</span></span></button>' +
+    menuEl.innerHTML = '<button class="me" data-nav data-key="m:me"><canvas width="58" height="58"></canvas><span><b>' + esc(D.state.name) + '</b><span>Your name and picture</span></span></button>' +
       '<div class="menu-list">' + (run ? '<button class="mi" data-nav data-key="m:resume" data-first>' + D.icon('play', run.app.c, 2) + 'Resume ' + esc(run.app.name) + '</button><button class="mi" data-nav data-key="m:exit">' + D.icon('close', '#ff4d5e', 3) + 'Close ' + esc(run.app.name) + '</button>' : '') +
       items.map(([id, n, ic, c]) => '<button class="mi ' + (v === id ? 'here' : '') + '" data-nav data-key="m:' + id + '" ' + (!run && v === id ? 'data-first' : '') + '>' + D.icon(ic, c, 2) + n + '</button>').join('') +
       '<button class="mi" data-nav data-key="m:power" aria-expanded="false">' + D.icon('power', '#ff4d5e', 2) + 'Power</button><div class="power" hidden></div></div>' +
       '<div class="menu-foot"><span>DiceWeb ' + D.version + '</span><span>' + D.glyph(D.night() ? 'moon' : 'sun', 1) + ' ' + (D.night() ? 'Night' : 'Day') + '</span></div>';
     menuEl.querySelector('canvas').getContext('2d').drawImage(G.face(D.state.avatar, 58, G.hexA(G.colourOf(D.state.avatar), 0.25)), 0, 0);
     const pick = (k) => menuEl.querySelector('[data-key="m:' + k + '"]');
-    pick('me').onclick = () => { Menu.close(true); D.suspendIfRunning(); Shell.go('profile'); };
+    pick('me').onclick = () => { Menu.close(true); D.launch('settings', { arg: 'you' }); };
     items.forEach(([id]) => { pick(id).onclick = () => { Menu.close(true); if (id === 'music') return D.launch('music'); if (id === 'settings') return D.launch('settings'); D.suspendIfRunning(); Shell.go(id, null, { root: id === 'home' }); if (id !== 'home') Shell.stack.unshift({ v: 'home' }); }; });
     if (run) { pick('resume').onclick = () => { Menu.close(true); D.launch(run.id); }; pick('exit').onclick = () => { Menu.close(true); D.closeApp(); }; }
     pick('power').onclick = () => {
@@ -569,20 +539,20 @@
   const QPANES = {
     notifs(body) {
       const list = D.state.notifs;
-      if (!list.length) { body.appendChild(h('<p class="qhint">Nothing yet. Achievements, friends and controllers show up here.</p>')); return; }
+      if (!list.length) { body.appendChild(h('<p class="qhint">Nothing yet. Friends and controllers show up here.</p>')); return; }
       const clear = h('<button class="b small" data-nav data-key="q:clear" style="margin:0 0 12px 6px">' + D.glyph('trash', 2) + 'Clear all</button>');
       clear.onclick = () => { D.state.notifs = []; D.save(); D.emit('notifs'); Qam.show('notifs'); };
       body.appendChild(clear);
       list.slice(0, 30).forEach((n, i) => {
         const r = h('<button class="qrow ' + (n.read ? '' : 'unread') + '" data-nav data-key="q:n' + i + '"><span><b>' + esc(n.title) + '</b><span>' + esc(n.text || '') + '</span></span><small class="muted">' + D.ago(n.t) + '</small></button>');
         r.prepend(n.who ? face(n.who, 40) : h('<span class="pic" style="display:grid;place-items:center;background:color-mix(in srgb,' + (n.c || '#7c9cff') + ' 22%,var(--bg))">' + D.icon(n.icon || 'bell', n.c || '#7c9cff', 2) + '</span>'));
-        r.onclick = () => { if (n.who) D.friendCard(n.who); else if (n.kind === 'ach') { Qam.close(true); D.suspendIfRunning(); Shell.go('profile'); } };
+        r.onclick = () => { if (n.who) D.friendCard(n.who); };
         body.appendChild(r);
       });
       setTimeout(() => { D.state.notifs.forEach((n) => { n.read = true; }); D.save(); D.emit('notifs'); }, 1500);
     },
     friends(body) {
-      body.appendChild(h('<p class="qhint">The suite\'s mascots, up to their own things. Say hi, or play Roll with one.</p>'));
+      body.appendChild(h('<p class="qhint">The suite\'s mascots, up to their own things. Say hi to one.</p>'));
       D.friends.slice().sort((a, b) => (b.status !== 'Snoozing') - (a.status !== 'Snoozing')).forEach((f) => {
         const r = h('<button class="qrow" data-nav data-key="q:f' + f.id + '" data-a="Open" data-x="Say hi"><span><b>' + esc(f.name) + '</b><span class="status ' + statusClass(f.status) + '">' + esc(f.status) + '</span></span></button>');
         r.prepend(face(f.id, 40));
@@ -703,7 +673,6 @@
     { name: 'Sleep', words: 'power off screen', icon: 'moon', run: () => D.sleep() },
     { name: 'Restart', words: 'reboot power', icon: 'restart', run: () => D.restart() },
     { name: 'Switch to Desktop', words: 'windows desktop mode', icon: 'desktop', run: () => D.desk.enter() },
-    { name: 'Achievements', words: 'trophies profile level', icon: 'trophy', run: () => { D.suspendIfRunning(); Shell.go('profile'); } },
     { name: 'Controller test', words: 'gamepad joystick buttons', icon: 'pad', run: () => D.launch('settings', { arg: 'pads' }) },
     { name: 'Library', words: 'all apps games', icon: 'library', run: () => { D.suspendIfRunning(); Shell.go('library'); } },
   ];
@@ -731,7 +700,7 @@
     const out = $('#sres');
     out.innerHTML = '';
     const items = [];
-    D.all().forEach((a) => items.push({ kind: a.suite ? 'App for your computer' : a.kind === 'game' ? 'Game' : 'Built in', name: a.name, words: (a.words || '') + ' ' + a.blurb, app: a }));
+    D.all().forEach((a) => items.push({ kind: a.suite ? 'App for your computer' : 'Built in', name: a.name, words: (a.words || '') + ' ' + a.blurb, app: a }));
     D.friends.forEach((f) => items.push({ kind: 'Friend', name: f.name, words: f.kind + ' ' + f.id, who: f.id }));
     ACTIONS.forEach((a) => items.push(Object.assign({ kind: 'Do it' }, a)));
     const hits = q.trim() ? items.map((it) => [L.score(q, it), it]).filter((x) => x[0] > 0).sort((a, b) => b[0] - a[0]).map((x) => x[1]) : items.filter((it) => it.app && !it.app.suite).concat(items.filter((it) => it.kind === 'Do it').slice(0, 3));
@@ -757,7 +726,7 @@
   D.ctx = function (id, mode, extra) {
     extra = extra || {};
     const ctx = {
-      id, mode, arg: extra.arg, night: D.night, sound: S, music: M, state: D.state, save: D.save, achieve: D.achieve, toast: D.toast, notify: D.notify,
+      id, mode, arg: extra.arg, night: D.night, sound: S, music: M, state: D.state, save: D.save, toast: D.toast, notify: D.notify,
       close: () => (mode === 'desk' ? extra.win && extra.win.close() : mode === 'page' ? Shell.back() : D.closeApp()),
       setTitle: (t) => { if (extra.win) extra.win.setTitle(t); },
       open: (aid, arg) => D.launch(aid, { arg }),
@@ -977,7 +946,6 @@
     g.fillStyle = '#f6f0d8';
     for (let y = -8; y <= 8; y++) for (let x = -8; x <= 8; x++) { if (x * x + y * y > 66) continue; const bx = x + 4.5, by = y - 2.5; if (bx * bx + by * by < 40) continue; g.fillRect(12 + x, 12 + y, 1, 1); }
     el.classList.add('on');
-    D.achieve('nap');
     setTimeout(() => { el.onclick = () => D.wake(); }, 400);
   };
   D.wake = function () {
@@ -1002,43 +970,34 @@
     if (kind === 'off') { el.classList.add('gone'); el.hidden = true; then && then(); return; }
     D.booting = true;
     el.hidden = false; el.classList.remove('gone');
-    el.innerHTML = '<div class="stage"><canvas width="40" height="40"></canvas><div class="word pix" aria-label="DiceWeb"></div><div class="bar">' + '<i></i>'.repeat(12) + '</div></div><div class="skip">Press any key to skip</div>';
-    const c = el.querySelector('canvas'), g = c.getContext('2d'), word = el.querySelector('.word'), bars = el.querySelectorAll('.bar i');
-    const COLS = ['#ff707a', '#f5c431', '#8fd16a', '#7cc4ff', '#d39cf5', '#2bc4b2'];
+    el.innerHTML = '<div class="stage"><canvas width="72" height="84"></canvas><div class="word pix" aria-label="DiceWeb"></div><div class="bar">' + '<i></i>'.repeat(12) + '</div></div><div class="skip">Press any key to skip</div>';
+    const c = el.querySelector('canvas'), g = c.getContext('2d'), word = el.querySelector('.word'), bars = el.querySelector('.bar').children;
+    g.imageSmoothingEnabled = false;
     const t0 = performance.now(), quick = kind === 'quick' || D.reduced();
-    const T = quick ? { drop: 0, pips: 0, word: 120, end: 700 } : { drop: 650, pips: 1450, word: 1750, end: 2600 };
-    let lit = -1, raf = 0;
-    const night = D.night();
-    function die(x, y, s, face, on, squash) {
-      const w = s, hh = Math.round(s * (squash || 1));
-      const top = y + (s - hh);
-      g.fillStyle = night ? '#f3f3f5' : '#141416'; g.fillRect(x + 1, top, w - 2, hh); g.fillRect(x, top + 1, w, hh - 2);
-      g.fillStyle = night ? '#1b1b1f' : '#ffffff'; g.fillRect(x + 2, top + 1, w - 4, hh - 2); g.fillRect(x + 1, top + 2, w - 2, hh - 4);
-      const p = Math.max(2, Math.round(s / 7));
-      G.PIPS[face].forEach(([a, b], i) => {
-        g.fillStyle = i <= on ? COLS[i] : (night ? '#3a3a42' : '#d6d6dc');
-        g.fillRect(x + Math.round(w * (0.24 + a * 0.26)) - (p >> 1) + 1, top + Math.round(hh * (0.24 + b * 0.26)) - (p >> 1) + 1, p, p);
-      });
-    }
+    const T = quick ? { drop: 0, word: 100, end: 650 } : { drop: 1100, word: 1300, end: 2400 };
+    const night = D.night(), outline = night ? [58, 58, 68] : null;
+    let raf = 0, landed = false;
+    const shadow = (w, a) => { for (let k = 0; k < 3; k++) { g.fillStyle = 'rgba(0,0,0,' + (a * (k ? 0.5 : 1)).toFixed(3) + ')'; g.fillRect(36 - w / 2 - k * 2, 76 + k, w + k * 4, 1); } };
     function frame(now) {
       const t = Math.max(0, now - t0);
-      g.clearRect(0, 0, 40, 40);
-      const s = 26, x = 7;
-      if (t < T.drop) { // falling and tumbling in
+      g.clearRect(0, 0, 72, 84);
+      if (t < T.drop) { // tumbling down, bouncing once, settling into its pose
         const k = t / T.drop;
-        const y = Math.round(-30 + 37 * (1 - Math.pow(1 - Math.min(1, k * 1.25), 3)) + (k > 0.8 ? -Math.sin((k - 0.8) / 0.2 * Math.PI) * 3 : 0));
-        const face = 1 + Math.floor(t / 90) % 6;
-        die(x, y, s, face, -1, k > 0.78 && k < 0.88 ? 0.86 : 1);
-        if (k > 0.78 && !frame.landed) { frame.landed = true; S.play('land'); }
+        const fall = Math.min(1, k / 0.55);
+        let y = -70 + 70 * (1 - Math.pow(1 - fall, 2));
+        if (k > 0.55) y = -Math.abs(Math.sin((k - 0.55) / 0.45 * Math.PI)) * 12 * (1 - (k - 0.55) / 0.45);
+        if (k > 0.5 && !landed) { landed = true; S.play('land'); }
+        const step = Math.round(k * 40);
+        shadow(Math.round(26 + y * 0.15), 0.18 * Math.min(1, fall));
+        g.drawImage(G.die(64, DiceDie.tumble(k), { key: 'boot' + step + (night ? 'n' : ''), ss: 2, outline }), 4, Math.round(10 + y));
       } else {
-        const on = quick ? 5 : Math.min(5, Math.floor((t - T.drop) / ((T.pips - T.drop) / 6)));
-        if (on > lit) { lit = on; if (!quick) S.play('pip', on); }
-        die(x, 7, s, 6, on, 1);
+        shadow(26, 0.18);
+        g.drawImage(G.die(64, null, { key: 'boot-rest' + (night ? 'n' : ''), ss: 3, outline }), 4, 10);
       }
       const wk = Math.max(0, Math.min(1, (t - T.word) / 500));
       const text = 'DiceWeb';
       word.textContent = text.slice(0, Math.round(wk * text.length));
-      bars.forEach((b, i) => b.classList.toggle('on', i < Math.round(Math.min(1, t / T.end) * 12)));
+      [...bars].forEach((b, i) => b.classList.toggle('on', i < Math.round(Math.min(1, t / T.end) * 12)));
       if (t >= T.end) return finish();
       raf = requestAnimationFrame(frame);
     }
@@ -1062,7 +1021,7 @@
     D.ask({ who: 'cubby', title: again ? 'Hello again' : 'Welcome to DiceWeb', text: 'Move with the arrow keys or a controller. Enter picks things, Esc goes back, M opens the menu and Q opens Quick access. The mouse works too.', buttons: [{ label: 'Let\'s go', value: true, go: true }] });
   }
 
-  // ---- On a Pi: the settings chosen on the website ---------------------------------
+  // ---- On Dice: the settings chosen on the website ----------------------------------
   const WORLDS = { hills: '#7cc4ff', mountains: '#7c9cff', beach: '#ff7a59', city: '#2bc4b2', forest: '#8fd16a', autumn: '#e8913a', desert: '#ef6a1f', garden: '#f5c431', ice: '#9fd3ff', deep: '#d39cf5', meadow: '#d7f07a', pond: '#f6a6b8' };
   D.WORLDS = WORLDS;
   function fromPi(first) {
@@ -1084,7 +1043,6 @@
     D.sys.saveSettings({ welcome: null });
     const lines = (w.done || []).concat((w.problems || []).map((p) => 'Heads up: ' + p));
     D.ask({ who: D.state.avatar, title: w.name ? 'Dice is ready, ' + w.name : 'Dice is ready', text: lines.length ? lines.join('. ') + '.' : 'Everything is set up.', buttons: [{ label: 'Let\'s go', value: true, go: true }] });
-    D.achieve('hello');
   }
 
   // ---- Every frame --------------------------------------------------------------------------
@@ -1099,6 +1057,8 @@
 
   // ---- Start up ---------------------------------------------------------------------------
   Shell.start = function () {
+    // the tab's icon: the same die, drawn small
+    try { const l = document.querySelector('link[rel=icon]'); if (l) l.href = G.die(32, null, { key: 'favicon' }).toDataURL('image/png'); } catch (e) { /* keep the drawn one */ }
     document.documentElement.dataset.motion = D.state.motion;
     document.documentElement.setAttribute('data-input', 'keys');
     D.applyLook(true);
@@ -1109,7 +1069,7 @@
     M.load();
     const first = D.state.fresh;
     if (D.sys) fromPi(first);
-    Hero.set(D.app(D.state.recent[0] || 'roll'));
+    Hero.set(D.app(D.state.recent[0] || 'music'));
     Shell.go('home', null, { root: true, quiet: true });
     requestAnimationFrame(loop);
     const after = () => {
@@ -1117,8 +1077,6 @@
       const wel = D.sys && D.sys.settings.welcome;
       if (wel) setTimeout(() => piWelcome(wel), 700);
       else if (first) setTimeout(() => welcome(), 600);
-      if (first) D.achieve('hello');
-      if (D.night()) D.achieve('night-owl');
     };
     D.boot(first ? 'full' : D.state.boot, after);
     D.save(true);

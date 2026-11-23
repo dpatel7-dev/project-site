@@ -1,5 +1,5 @@
 // DiceWeb's core: what it remembers, day and night, the keyboard and
-// controllers, moving around the screen, pop-ups, friends and achievements.
+// controllers, moving around the screen, pop-ups and friends.
 (function () {
   'use strict';
   const L = window.DiceLogic, G = window.DiceGfx, S = window.DiceSound, M = window.DiceMusic;
@@ -37,9 +37,9 @@
   // ---- What DiceWeb remembers ------------------------------------------------------
   const KEY = 'diceweb';
   const DEFAULTS = {
-    v: 1, name: 'player', avatar: 'cubby', look: 'auto', volume: 0.7, ui: true, musicVol: 0.8, motion: 'full', boot: 'full', start: 'game',
-    perf: 0, fps: 30, bright: 1, friendPops: true, recent: [], played: {}, last: {}, seen: {}, ach: {}, notifs: [], said: {},
-    stats: { cmds: 0, flight: 0, rollWins: 0, rollGames: 0 }, disk: null, hist: [],
+    v: 2, name: 'player', avatar: 'cubby', look: 'auto', volume: 0.7, ui: true, musicVol: 0.8, motion: 'full', boot: 'full', start: 'desk',
+    perf: 0, fps: 30, bright: 1, friendPops: true, recent: [], played: {}, last: {}, seen: {}, notifs: [], said: {},
+    stats: { cmds: 0 }, disk: null, hist: [],
   };
   function load() {
     let s = null;
@@ -47,6 +47,10 @@
     const out = Object.assign({}, JSON.parse(JSON.stringify(DEFAULTS)), s || {});
     out.stats = Object.assign({}, DEFAULTS.stats, out.stats || {});
     if (!out.disk) out.disk = L.newDisk((out.name || 'player').toLowerCase().replace(/[^a-z0-9._-]+/g, '') || 'player');
+    // version 2: DiceWeb opens on the desktop, and the games and achievements are gone
+    if (s && (s.v || 1) < 2) { out.v = 2; if (out.start === 'game') out.start = 'desk'; out.notifs = (out.notifs || []).filter((n) => n.kind !== 'ach'); }
+    delete out.ach; delete out.stats.flight; delete out.stats.rollWins; delete out.stats.rollGames;
+    out.recent = (out.recent || []).filter((id) => id !== 'roll' && id !== 'flight');
     out.fresh = !s;
     return out;
   }
@@ -75,7 +79,6 @@
       const changed = night !== null;
       night = n;
       if (changed || force) { G.clearCovers(); Dice.emit('look', n); }
-      if (n) setTimeout(() => Dice.achieve('night-owl'), 3000);
     }
   };
   setInterval(() => Dice.applyLook(), 60000);
@@ -116,7 +119,7 @@
     Dice.save();
   };
 
-  // ---- Notifications, pop-ups and achievements ------------------------------------
+  // ---- Notifications and pop-ups --------------------------------------------------
   Dice.notify = function (n) {
     const item = Object.assign({ t: Date.now(), read: false }, n);
     Dice.state.notifs.unshift(item);
@@ -138,23 +141,13 @@
     const el = Dice.h('<div class="toast glass ' + (n.kind || '') + '" role="status">' + pic + '<div><b>' + Dice.esc(n.title) + '</b><span>' + Dice.esc(n.text || '') + '</span></div></div>');
     if (n.who) { const c = el.querySelector('canvas'); c.getContext('2d').drawImage(G.face(n.who, 40, G.hexA(G.colourOf(n.who), 0.25)), 0, 0); }
     box.appendChild(el);
-    S.play(n.sound || (n.kind === 'ach' ? 'achieve' : 'toast'));
-    if (n.kind === 'ach') S.rumble(160, 0.3);
+    S.play(n.sound || 'toast');
     requestAnimationFrame(() => el.classList.add('in'));
-    setTimeout(() => { el.classList.remove('in'); el.classList.add('out'); setTimeout(() => { el.remove(); nextToast(); }, 320); }, n.kind === 'ach' ? 4200 : 3400);
+    setTimeout(() => { el.classList.remove('in'); el.classList.add('out'); setTimeout(() => { el.remove(); nextToast(); }, 320); }, 3400);
   }
-  Dice.achieve = function (id) {
-    const a = L.ACHIEVEMENTS.find((x) => x.id === id);
-    if (!a || Dice.state.ach[id]) return;
-    Dice.state.ach[id] = Date.now();
-    Dice.save();
-    Dice.notify({ kind: 'ach', icon: 'trophy', c: a.c, title: 'Achievement: ' + a.name, text: a.how });
-    Dice.emit('achieve', id);
-  };
-  Dice.level = () => L.level(Object.keys(Dice.state.ach).length);
 
   // ---- Friends: the mascots, up to their own things -------------------------------
-  const STATUSES = [['Online', 4], ['Away', 2], ['Playing Roll', 2], ['Playing Bumble\'s Flight', 2], ['Listening to Dice Radio', 2], ['In Terminal', 1], ['Writing notes', 1], ['Snoozing', 1]];
+  const STATUSES = [['Online', 4], ['Away', 2], ['Listening to Dice Radio', 3], ['In Terminal', 2], ['Writing notes', 2], ['Tidying files', 1], ['Snoozing', 1]];
   Dice.friends = Object.keys(CATALOG.friends).map((id) => ({ id, name: ART.mascots[id].name, kind: CATALOG.friends[id][0], lines: CATALOG.friends[id][1], status: 'Online' }));
   function pickStatus(r) {
     const total = STATUSES.reduce((n, s) => n + s[1], 0);
@@ -169,7 +162,7 @@
     const before = f.status;
     f.status = pickStatus(Math.random());
     Dice.emit('friends');
-    if (f.status !== before && /^Playing/.test(f.status) && Date.now() - lastFriendToast > 4 * 60000 && Dice.state.friendPops) {
+    if (f.status !== before && /^Listening/.test(f.status) && Date.now() - lastFriendToast > 4 * 60000 && Dice.state.friendPops) {
       lastFriendToast = Date.now();
       Dice.notify({ who: f.id, title: f.name + ' is ' + f.status.toLowerCase(), text: 'Say hi from Quick access.', sound: 'toast' });
     }
@@ -181,7 +174,6 @@
     Dice.state.said[id] = n + 1;
     Dice.save();
     Dice.toast({ who: id, title: f.name, text: f.lines[n % f.lines.length] });
-    if (Object.keys(Dice.state.said).length >= 5) Dice.achieve('friendly');
   };
 
   // ---- Input: keyboard, controllers, mouse and touch -------------------------------
@@ -196,10 +188,7 @@
     document.documentElement.setAttribute('data-input', s);
     Dice.emit('source', s);
   };
-  const CODE = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'b', 'a'];
-  let codeAt = 0;
   Input.fire = function (action, src) {
-    if (action === CODE[codeAt]) { codeAt++; if (codeAt === CODE.length) { codeAt = 0; Dice.emit('code'); Dice.achieve('code'); } } else codeAt = action === CODE[0] ? 1 : 0;
     if (Input.handler) Input.handler(action, src);
   };
   window.addEventListener('keydown', (e) => {
@@ -243,7 +232,7 @@
       for (const a of ['up', 'down', 'left', 'right', 'a', 'b', 'x', 'y', 'lb', 'rb', 'menu', 'quick']) {
         const k = p.index + a;
         if (state[a]) {
-          if (!held[k]) { held[k] = { at: now, rep: now + 380 }; Input.setSource('pad'); S.unlock(); Dice.achieve('pad'); Input.fire(a, 'pad'); }
+          if (!held[k]) { held[k] = { at: now, rep: now + 380 }; Input.setSource('pad'); S.unlock(); Input.fire(a, 'pad'); }
           else if (['up', 'down', 'left', 'right'].includes(a) && now >= held[k].rep) { held[k].rep = now + 110; Input.fire(a, 'pad'); }
         } else delete held[k];
       }
@@ -344,10 +333,18 @@
   // ---- The legend along the bottom: what each button does here ----------------
   const GLYPH = {
     keys: { a: 'Enter', b: 'Esc', x: 'X', y: 'Y', menu: 'M', quick: 'Q', lb: '[', rb: ']', search: '/' },
-    pad: { a: 'A', b: 'B', x: 'X', y: 'Y', menu: '☰', quick: '⋯', lb: 'LB', rb: 'RB', search: 'Y' },
+    pad: { menu: '☰', quick: '⋯', lb: 'L', rb: 'R' },
   };
+  // On a controller the four face buttons are shown by where they are (a little
+  // diamond of dots with one filled in), not by a letter or a colour, so any
+  // controller makes sense.
+  const FACE = { a: [7, 12], b: [12, 7], x: [2, 7], y: [7, 2], search: [7, 2] };
   Dice.btn = function (b) {
     const src = Input.source === 'pad' ? 'pad' : 'keys';
+    if (src === 'pad' && FACE[b]) {
+      const dots = [[7, 2], [12, 7], [7, 12], [2, 7]].map(([x, y]) => '<circle cx="' + x + '" cy="' + y + '" r="' + (x === FACE[b][0] && y === FACE[b][1] ? 2.4 : 1.5) + '"' + (x === FACE[b][0] && y === FACE[b][1] ? '' : ' fill="none" stroke="currentColor" stroke-width="1"') + '/>').join('');
+      return '<span class="bt bt-pad bt-face" aria-label="' + ({ a: 'bottom button', b: 'right button', x: 'left button', y: 'top button', search: 'top button' })[b] + '"><svg viewBox="0 0 14 14" width="14" height="14" fill="currentColor" aria-hidden="true">' + dots + '</svg></span>';
+    }
     const label = GLYPH[src][b] || b;
     return '<span class="bt bt-' + src + ' bt-' + b + '">' + Dice.esc(label) + '</span>';
   };

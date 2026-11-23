@@ -49,36 +49,6 @@
     return best;
   }
 
-  // ---- Roll: the dice game called Pig -----------------------------------------
-  // Roll as often as you like; the dots add up. Roll a one and you lose what
-  // you had this turn. Hold to keep it. First to the target wins.
-  const PIG_TARGET = 50;
-  // How brave each friend is: they keep rolling until their turn is worth this.
-  const NERVE = { gossip: 14, tot: 18, pigeon: 16, tidy: 12, den: 20, scout: 17, roomy: 11, hey: 15, morph: 22, shoo: 16,
-    magpie: 19, medic: 13, flash: 24, hum: 18, usual: 15, locket: 21, cubby: 17 };
-  function pigChoice(who, turn, mine, theirs, target) {
-    target = target || PIG_TARGET;
-    if (mine + turn >= target) return 'hold';
-    let nerve = NERVE[who] || 17;
-    if (theirs >= target - 8) nerve += 10;      // they're nearly there: be brave
-    else if (mine > theirs + 15) nerve -= 4;     // well ahead: play it safe
-    return turn >= nerve ? 'hold' : 'roll';
-  }
-  function pigStep(state, face) {
-    // state: {turn, scores:[a,b], who: 0|1}; returns a new state after one roll
-    const s = { turn: state.turn, scores: state.scores.slice(), who: state.who, bust: false, won: -1 };
-    if (face === 1) { s.turn = 0; s.bust = true; s.who = 1 - s.who; return s; }
-    s.turn += face;
-    if (s.scores[s.who] + s.turn >= (state.target || PIG_TARGET)) { s.scores[s.who] += s.turn; s.turn = 0; s.won = s.who; }
-    return s;
-  }
-  function pigHold(state) {
-    const s = { turn: 0, scores: state.scores.slice(), who: 1 - state.who, bust: false, won: -1 };
-    s.scores[state.who] += state.turn;
-    if (s.scores[state.who] >= (state.target || PIG_TARGET)) s.won = state.who;
-    return s;
-  }
-
   // ---- A pretend disk, kept in the browser -----------------------------------
   function newDisk(name) {
     const now = Date.now();
@@ -87,9 +57,8 @@
       home: { type: 'dir', kids: {
         [name || 'player']: { type: 'dir', kids: {
           'readme.txt': f('Welcome to DiceWeb.\n\nThis is a pretend disk that lives in your browser.\nType "help" to see what you can do here.\nNotes you write in the Notes app are saved in the notes folder.'),
-          notes: { type: 'dir', kids: { 'first note.txt': f('Things to try:\n- Win a game of Roll\n- Get 10 in Bumble\'s Flight\n- Plug in a controller\n- Switch to Desktop from the Power menu') } },
+          notes: { type: 'dir', kids: { 'first note.txt': f('Things to try:\n- Put a song on in Music\n- Type neofetch in Terminal\n- Plug in a controller\n- Try Big screen from the die menu') } },
           music: { type: 'dir', kids: {} },
-          games: { type: 'dir', kids: { 'scores.txt': f('No high scores yet.') } },
         } },
       } },
       apps: { type: 'dir', kids: {} },
@@ -145,13 +114,13 @@
 
   // ---- Terminal ---------------------------------------------------------------
   const FORTUNES = [
-    'Roll a one in Roll and your turn is over. Hold early when you\'re ahead.',
+    'roll 2d6 rolls two dice. roll d20 rolls one with twenty sides.',
     'Press Q for Quick access, M for the menu, / to search.',
     'Plug in a controller: every screen works with it.',
     'Switch to Desktop from the Power menu for windows you can drag around.',
     'The look follows the sun: light by day, dark after sunset.',
-    'Bumble flies better if you tap little and often.',
-    'Ctrl+1 opens the menu and Ctrl+2 Quick access, like a Steam Deck.',
+    'On Dice, the Files app shows the real files on the computer.',
+    'Ctrl+1 opens the menu and Ctrl+2 Quick access.',
     'Notes are files too: try "ls ~/notes".',
   ];
   const HELP = [
@@ -163,7 +132,7 @@
     '  mkdir, touch, rm   make a folder, make a file, remove one',
     '  roll [2d6]         roll some dice',
     '  apps               every app in DiceWeb',
-    '  open <app>         open one, like "open roll"',
+    '  open <app>         open one, like "open music"',
     '  say <friend> hi    a friend says something',
     '  look day|night|auto',
     '  neofetch, date, whoami, uptime, history, fortune, clear, exit',
@@ -272,7 +241,7 @@
       case 'open': case 'start': case 'play': {
         const want = (args.join(' ') || '').toLowerCase();
         const app = env.apps.find((a) => a.id === want || a.name.toLowerCase() === want) || env.apps.find((a) => want && a.name.toLowerCase().startsWith(want));
-        if (!app) { say(want ? 'open: no app called ' + want + ' (type "apps" to see them all)' : 'open: which app? Like: open roll'); break; }
+        if (!app) { say(want ? 'open: no app called ' + want + ' (type "apps" to see them all)' : 'open: which app? Like: open music'); break; }
         say('Opening ' + app.name + '…'); res.open = app.id;
         break;
       }
@@ -306,11 +275,12 @@
           ['Look: ' + env.look, 'out'], ['Screen: ' + env.screen, 'out'],
         ];
         const art = [
-          [['┌─────────┐', 'dim']],
-          [['│ ', 'dim'], ['●', 'p1'], ['     ', ''], ['●', 'p2'], [' │', 'dim']],
-          [['│    ', 'dim'], ['●', 'p3'], ['    │', 'dim']],
-          [['│ ', 'dim'], ['●', 'p4'], ['     ', ''], ['●', 'p5'], [' │', 'dim']],
-          [['└─────────┘', 'dim']],
+          // the Dice die: black, with white dots
+          [['           ', 'die']],
+          [['  ●     ●  ', 'die']],
+          [['     ●     ', 'die']],
+          [['  ●     ●  ', 'die']],
+          [['           ', 'die']],
           [['', '']], [['', '']], [['', '']],
         ];
         for (let i = 0; i < info.length; i++) {
@@ -334,27 +304,6 @@
     return res;
   }
 
-  // ---- Achievements -----------------------------------------------------------
-  const ACHIEVEMENTS = [
-    { id: 'hello', name: 'Hello, Dice', how: 'Start DiceWeb for the first time.', c: '#7cc4ff' },
-    { id: 'first-roll', name: 'First roll', how: 'Roll the die in Roll.', c: '#f2c14e' },
-    { id: 'pig-win', name: 'Pig out', how: 'Win a game of Roll.', c: '#ff7a59' },
-    { id: 'bust', name: 'Bad luck', how: 'Roll a one in Roll and lose your turn.', c: '#96969f' },
-    { id: 'flight-5', name: 'Off the ground', how: 'Fly past 5 flowers in Bumble\'s Flight.', c: '#f5c431' },
-    { id: 'flight-20', name: 'Bee line', how: 'Fly past 20 flowers in Bumble\'s Flight.', c: '#d99e17' },
-    { id: 'dj', name: 'DJ Dice', how: 'Play a song in Music.', c: '#d39cf5' },
-    { id: 'terminal-10', name: 'Command line', how: 'Run 10 commands in Terminal.', c: '#8fd16a' },
-    { id: 'note', name: 'Note taker', how: 'Write a note.', c: '#e8913a' },
-    { id: 'night-owl', name: 'Night owl', how: 'Use DiceWeb after sunset.', c: '#6a9be6' },
-    { id: 'explorer', name: 'Explorer', how: 'Look at 8 different app pages.', c: '#2bc4b2' },
-    { id: 'pad', name: 'Plugged in', how: 'Use a controller.', c: '#7c9cff' },
-    { id: 'desktop', name: 'Two modes', how: 'Switch to Desktop mode.', c: '#f6a6b8' },
-    { id: 'nap', name: 'Power nap', how: 'Put DiceWeb to sleep.', c: '#a487dd' },
-    { id: 'friendly', name: 'Friendly', how: 'Say hi to 5 friends.', c: '#ef6a1f' },
-    { id: 'code', name: 'Up, up, down, down', how: 'A secret. Controllers know it.', c: '#d7f07a', secret: true },
-  ];
-  function level(count) { return 1 + Math.floor(count / 2); }
-
   // ---- Search -------------------------------------------------------------------
   function score(q, item) {
     q = q.trim().toLowerCase();
@@ -369,7 +318,7 @@
     return hits ? 20 + 10 * hits / qs.length : 0;
   }
 
-  const api = { clockNight, pickNext, PIG_TARGET, NERVE, pigChoice, pigStep, pigHold, newDisk, resolve, walk, writeFile, makeDir, remove, tokens, parseDice, run, HELP, ACHIEVEMENTS, level, score };
+  const api = { clockNight, pickNext, newDisk, resolve, walk, writeFile, makeDir, remove, tokens, parseDice, run, HELP, score };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DiceLogic = api;
 })(this);

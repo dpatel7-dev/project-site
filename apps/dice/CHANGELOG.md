@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0
+
+- Dice runs on PCs too. dice-amd64.iso is a Debian 13 live system with Dice in it: write it to a USB stick, start the PC from it, and pick Install to keep it. Or run the same one-line install on a PC with Debian or Ubuntu.
+- The new Dice die (black, rounded edges, white dots) everywhere, from DiceWeb 1.1. The start-up splash is the die turning slowly with a loading bar, drawn by tools/make-splash.js from the same code DiceWeb uses.
+- dice-boot only looks for dice.json on USB sticks and other removable drives, never the computer's own disks, opens them read-only until it finds one, and leaves alone the stick Dice started from. A dice.json that couldn't be tidied away (a read-only stick) is remembered so it's only used once.
+- Wi-Fi from dice.json works with any Wi-Fi card (PCs don't call theirs wlan0).
+- About shows a PC's maker and model.
+- DiceWeb 1.1: opens on the Desktop, no games or achievements, Big screen instead of Gaming Mode.
+
 ## 1.0.0
 
 - Dice: an operating system for the Raspberry Pi 5 and 4, built on Raspberry Pi OS Lite (64-bit), with DiceWeb as its desktop.

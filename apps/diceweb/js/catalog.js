@@ -1,7 +1,7 @@
 // Everything DiceWeb knows about: its own apps, the apps for your computer,
 // and the friends (the mascots). The suite list matches the website's.
 window.CATALOG = {
-  version: '1.0.0',
+  version: '1.1.0',
   site: 'https://djp7.pythonanywhere.com',
 
   // Cubby: DiceWeb's own mascot, a die with feet.
@@ -30,12 +30,8 @@ window.CATALOG = {
       R: '#ffb3b8', M: '#1a1e2a', F: '#ffb048', f: '#e48a34' },
   },
 
-  // Built into DiceWeb. kind: game (Play) or app (Open).
+  // Built into DiceWeb.
   builtins: [
-    { id: 'roll', name: 'Roll', kind: 'game', c: '#ff707a', who: 'cubby', land: 'table', blurb: 'The dice game called Pig, against a friend',
-      line: 'Roll as often as you dare: the dots add up. Roll a one and you lose the lot. First to 50 wins.', words: 'dice game pig board' },
-    { id: 'flight', name: "Bumble's Flight", kind: 'game', c: '#f5c431', who: 'hum', land: 'flight', blurb: 'Fly Bumble between the flowers',
-      line: 'Tap to flap. Fly Bumble through the gaps between the flowers. How far can you get?', words: 'bee game flappy fly arcade' },
     { id: 'music', name: 'Music', kind: 'app', c: '#d39cf5', who: 'cubby', land: 'concert', blurb: 'Dice Radio and your own songs',
       line: 'Dice Radio makes little songs as it plays, and you can add your own. The flowers dance along.', words: 'songs radio audio player mp3 listen' },
     { id: 'terminal', name: 'Terminal', kind: 'app', c: '#8fd16a', who: null, land: 'screen', blurb: 'A pretend command line to play with',
@@ -43,7 +39,7 @@ window.CATALOG = {
     { id: 'notes', name: 'Notes', kind: 'app', c: '#e8913a', who: null, land: 'paper', blurb: 'Write things down',
       line: 'Quick notes, saved as you type. They are files in Terminal too.', words: 'write text notepad memo' },
     { id: 'files', name: 'Files', kind: 'app', c: '#5aa9e6', who: 'tidy', land: 'autumn', blurb: 'Your folders and files',
-      line: 'Your folders and files. On a Pi running Dice, your real ones, and any USB stick you plug in.', words: 'folders documents finder explorer usb' },
+      line: 'Your folders and files. On a computer running Dice, your real ones, and any USB stick you plug in.', words: 'folders documents finder explorer usb' },
     { id: 'browser', name: 'Web', kind: 'app', c: '#7c9cff', who: 'scout', land: 'mountains', blurb: 'Open websites',
       line: 'Open any website, or your Home Assistant dashboard.', words: 'browser internet chrome website home assistant' },
     { id: 'store', name: 'Store', kind: 'system', c: '#2bc4b2', who: 'cubby', land: 'market', blurb: 'Every app for your computer',
@@ -92,7 +88,7 @@ window.CATALOG = {
     magpie: ['the magpie', ['I kept that. And that. I keep everything you copy.', 'Shiny! Oh, it\'s just your clipboard.']],
     medic: ['the axolotl', ['Your computer looks healthy today. Drink some water!', 'Slow computer? Let\'s have a look. Gently.']],
     flash: ['the firefly', ['Quick quiz: what\'s 7 × 8? …56! You got it.', 'I light up when you remember something.']],
-    hum: ['the bumblebee', ['Bzz. Put a song on. The flowers will dance.', 'Have you tried my flight game? Bzz.']],
+    hum: ['the bumblebee', ['Bzz. Put a song on. The flowers will dance.', 'I hum along to Dice Radio. Bzz.']],
     usual: ['the raccoon', ['The usual? Pizza, extra cheese. I remembered.', 'Who owes who? I wrote it down.']],
     locket: ['the armadillo', ['Your passwords are safe with me. Rolled up tight.', 'One password to open them all. Just one.']],
   },

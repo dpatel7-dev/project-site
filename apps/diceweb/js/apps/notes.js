@@ -50,7 +50,6 @@
       f.kids[cur].text = text.value; f.kids[cur].t = Date.now();
       D.save();
       saved.textContent = 'Saved';
-      if (text.value.trim().length > 3) ctx.achieve('note');
       ctx.setTitle(cur.replace(/\.txt$/, '') + ' – Notes');
       const row = list.querySelector('.qrow.on');
       if (row) { row.querySelector('b').textContent = cur.replace(/\.txt$/, ''); row.querySelector('span span').textContent = (text.value.split('\n').find((l) => l.trim()) || 'Empty').slice(0, 60); row.dataset.key = 'no:' + cur; }

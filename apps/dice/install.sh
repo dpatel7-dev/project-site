@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
-# Dice for Raspberry Pi OS (64-bit).
+# Dice for a Raspberry Pi (64-bit Raspberry Pi OS) or a PC (64-bit Debian or Ubuntu).
 #
-# On a Pi that already runs Raspberry Pi OS:
+# On a Pi that already runs Raspberry Pi OS, or a PC that runs Debian or Ubuntu:
 #   curl -fsSL https://djp7.pythonanywhere.com/dice/install.sh | sudo bash
 # With your settings from the website (the setup code it gave you):
 #   curl -fsSL https://djp7.pythonanywhere.com/dice/install.sh | sudo bash -s -- K7Q2XM
 #
-# The Dice image is built with this same script (see image/build.sh).
+# The Dice images are built with this same script (image/build.sh for the Pi,
+# image/build-pc.sh for PCs).
 # To take Dice off again:  sudo /opt/dice/bin/dice-uninstall
 set -euo pipefail
 
@@ -18,11 +19,19 @@ fail() { printf '\n\033[1;31m%s\033[0m\n' "$*" >&2; exit 1; }
 
 [ "$(id -u)" = 0 ] || fail "Dice needs to be installed with sudo:  curl -fsSL $SITE/dice/install.sh | sudo bash"
 [ -f /etc/os-release ] && . /etc/os-release
-case " ${ID:-} ${ID_LIKE:-} " in *debian*|*raspbian*) ;; *) fail "Dice needs Raspberry Pi OS (or another Debian-based system).";; esac
+case " ${ID:-} ${ID_LIKE:-} " in *debian*|*raspbian*|*ubuntu*) ;; *) fail "Dice needs Raspberry Pi OS, Debian or Ubuntu.";; esac
 if [ -n "$CODE" ] && ! printf '%s' "$CODE" | grep -Eq '^[A-Za-z0-9]{4,12}$'; then fail "That setup code doesn't look right: $CODE"; fi
-[ "$(dpkg --print-architecture)" = arm64 ] || say "Note: Dice is made for 64-bit Raspberry Pi OS. This is $(dpkg --print-architecture), so it may not work."
+ARCH=$(dpkg --print-architecture)
+case "$ARCH" in arm64|amd64) ;; *) say "Note: Dice is made for 64-bit computers (arm64 or amd64). This is $ARCH, so it may not work.";; esac
 
+# a Raspberry Pi, or a PC?
+# (DICE_IMAGE=pi or pc says so when building an image, where the build machine is neither)
+PI=0
+if grep -qi 'raspberry pi' /proc/device-tree/model 2>/dev/null || [ -f /boot/firmware/config.txt ]; then PI=1; fi
+case "$IMAGE" in pi) PI=1;; pc) PI=0;; esac
 BOOT=/boot/firmware; [ -d "$BOOT" ] || BOOT=/boot
+# where the settings from the website go: the Pi's card, or Dice's own folder on a PC
+if [ "$PI" = 1 ]; then SETTINGS_FILE="$BOOT/dice.json"; THIS="the Pi"; else SETTINGS_FILE=/etc/dice/dice.json; THIS="the computer"; fi
 
 say "1 of 5: Getting what Dice needs. This takes a while..."
 export DEBIAN_FRONTEND=noninteractive
@@ -30,6 +39,10 @@ apt-get update
 CHROME=chromium
 apt-cache show chromium >/dev/null 2>&1 || CHROME=chromium-browser
 PKGS="cage $CHROME python3 curl ca-certificates plymouth plymouth-themes wlr-randr pipewire pipewire-pulse wireplumber fonts-noto-color-emoji network-manager rfkill iw alsa-utils"
+# a PC also wants the drivers for its graphics, and a sound card's firmware where Debian has them
+if [ "$PI" = 0 ]; then
+  for p in libgl1-mesa-dri mesa-vulkan-drivers firmware-linux-free firmware-sof-signed; do apt-cache show "$p" >/dev/null 2>&1 && PKGS="$PKGS $p"; done
+fi
 # shellcheck disable=SC2086
 apt-get install -y --no-install-recommends $PKGS
 
@@ -51,7 +64,7 @@ chmod +x /opt/dice/bin/*
 mkdir -p /etc/dice /var/lib/dice
 [ -f /etc/dice/settings.json ] || echo '{}' > /etc/dice/settings.json
 
-say "3 of 5: Setting Dice to start with the Pi..."
+say "3 of 5: Setting Dice to start with $THIS..."
 cp /opt/dice/system/*.service /opt/dice/system/*.timer /etc/systemd/system/
 systemctl daemon-reload 2>/dev/null || true
 systemctl enable dice.service dice-boot.service dice-update.timer
@@ -61,8 +74,10 @@ for dm in lightdm gdm3 sddm; do
 done
 systemctl set-default multi-user.target
 
-if [ -n "$IMAGE" ]; then
-  # the image's own user: "dice", password "dice" (Settings, You, changes it)
+if [ -n "$IMAGE" ] && [ "$PI" = 1 ]; then
+  # the Pi image's own user: "dice", password "dice" (Settings, You, changes it).
+  # (The PC image's live system makes its own "dice" user when it starts, and
+  # its installer asks for a name and password.)
   if getent passwd 1000 >/dev/null; then
     OLD=$(getent passwd 1000 | cut -d: -f1)
     if [ "$OLD" != dice ]; then
@@ -86,19 +101,27 @@ rm -rf /usr/share/plymouth/themes/dice
 cp -r /opt/dice/plymouth/dice /usr/share/plymouth/themes/dice
 plymouth-set-default-theme dice 2>/dev/null || true
 if command -v update-initramfs >/dev/null 2>&1; then update-initramfs -u >/dev/null 2>&1 || true; fi
-if [ -f "$BOOT/cmdline.txt" ]; then
+if [ "$PI" = 1 ] && [ -f "$BOOT/cmdline.txt" ]; then
   LINE=$(head -n1 "$BOOT/cmdline.txt")
   for w in quiet splash plymouth.ignore-serial-consoles logo.nologo vt.global_cursor_default=0; do
     case " $LINE " in *" $w "*) ;; *) LINE="$LINE $w";; esac
   done
   printf '%s\n' "$LINE" > "$BOOT/cmdline.txt"
 fi
-if [ -f "$BOOT/config.txt" ] && ! grep -q '^disable_splash=1' "$BOOT/config.txt"; then printf '\n# Dice\ndisable_splash=1\n' >> "$BOOT/config.txt"; fi
+if [ "$PI" = 1 ] && [ -f "$BOOT/config.txt" ] && ! grep -q '^disable_splash=1' "$BOOT/config.txt"; then printf '\n# Dice\ndisable_splash=1\n' >> "$BOOT/config.txt"; fi
+# on a PC the splash needs "quiet splash" on the GRUB line instead
+if [ "$PI" = 0 ] && [ -f /etc/default/grub ]; then
+  if ! grep -q 'splash' /etc/default/grub; then
+    sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 quiet splash"/' /etc/default/grub
+    command -v update-grub >/dev/null 2>&1 && update-grub >/dev/null 2>&1 || true
+  fi
+fi
 
 say "5 of 5: Your settings..."
 if [ -n "$CODE" ]; then
-  if curl -fsSL "$SITE/dice/setup/$CODE.json" -o "$BOOT/dice.json"; then
-    echo "Got your settings ($CODE). They'll be used when the Pi restarts."
+  if curl -fsSL "$SITE/dice/setup/$CODE.json" -o "$SETTINGS_FILE"; then
+    [ "$PI" = 0 ] && chmod 600 "$SETTINGS_FILE"  # it can hold your Wi-Fi password
+    echo "Got your settings ($CODE). They'll be used when $THIS restarts."
   else
     echo "Couldn't get the settings for $CODE (codes last 30 days). Dice will ask instead."
   fi
@@ -107,6 +130,6 @@ else
 fi
 
 if [ -z "$IMAGE" ]; then
-  say "Dice is installed. Restart the Pi to start it:  sudo reboot"
+  say "Dice is installed. Restart $THIS to start it:  sudo reboot"
   echo "(To take Dice off again later:  sudo /opt/dice/bin/dice-uninstall)"
 fi

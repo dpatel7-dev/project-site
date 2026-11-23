@@ -4,16 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>djp7 - Dice, and little apps for your Terminal</title>
-<meta name="description" content="Two things live here. Dice: your own operating system for a Raspberry Pi, that you can also play in your browser. And sixteen little apps you open by typing one word in Terminal.">
+<meta name="description" content="Two things live here. Dice: your own operating system for a Raspberry Pi or a PC, that you can also use in your browser. And sixteen little apps you open by typing one word in Terminal.">
 <style>
   /* The front door: two doors, each a little living pixel world. Dice on the
-     left (Cubby and a Raspberry Pi on a hill), the apps on the right (all
+     left (the Dice die floating by a Raspberry Pi on a hill), the apps on the right (all
      the mascots wandering about a meadow). Plain white by day, black at night. */
   body { min-height: 100svh; display: flex; flex-direction: column; }
   .top { display: flex; align-items: center; justify-content: space-between; padding: 22px clamp(18px, 3vw, 34px) 0; }
   .brand { display: inline-flex; align-items: center; gap: 10px; font: 700 1.5rem/1 var(--pixel); text-decoration: none; letter-spacing: .01em; }
-  .brand canvas { width: 30px; height: 30px; }
-  .top p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .brand canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+  .me { display: inline-flex; align-items: center; padding: 8px 15px; border-radius: 999px; color: var(--ink); text-decoration: none; font-size: .95rem; font-weight: 600; box-shadow: inset 0 0 0 1px var(--line); }
+  .me:hover { background: var(--soft); }
+  .me:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
   main { flex: 1; display: flex; flex-direction: column; padding: 18px clamp(12px, 2vw, 22px) 22px; gap: 16px; }
   .ask { margin: 8px clamp(6px, 1.4vw, 14px) 0; font: 700 clamp(1.9rem, 3.4vw, 2.8rem)/1.05 var(--pixel); letter-spacing: -.01em; }
   .doors { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-height: min(640px, calc(100svh - 190px)); }
@@ -43,8 +45,8 @@
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="/" aria-label="djp7, the start"><canvas id="logo" width="12" height="12" aria-hidden="true"></canvas>djp7</a>
-  <p>Made by Dhruv</p>
+  <a class="brand" href="/" aria-label="djp7, the start"><canvas id="logo" width="32" height="32" aria-hidden="true"></canvas>djp7</a>
+  <a class="me" href="/me">Made by Dhruv</a>
 </header>
 <main>
   <h1 class="ask">Pick a door</h1>
@@ -53,9 +55,9 @@
       <canvas class="world" id="w-dice" aria-hidden="true"></canvas>
       <div class="panel glass">
         <h2 id="d-dice">Dice</h2>
-        <p>Your own operating system. Put it on a <b>Raspberry Pi</b>'s microSD card or NVMe drive, set up just how you like before it ever starts. Or play it here in your browser.</p>
-        <div class="go"><a class="btn main" href="/dice">Make it yours</a><a class="btn soft" href="/diceweb/">Play it in your browser</a></div>
-        <div class="facts"><span>Real Wi-Fi, files and Terminal</span><span>Games</span><span>Day and night</span></div>
+        <p>Your own operating system, set up just how you like before it ever starts. Put it on a <b>Raspberry Pi</b>'s microSD card or NVMe drive, or on a <b>PC</b> from a USB stick. Or use it here in your browser.</p>
+        <div class="go"><a class="btn main" href="/dice">Make it yours</a><a class="btn soft" href="/diceweb/">Try it in your browser</a></div>
+        <div class="facts"><span>Raspberry Pi or PC</span><span>Real Wi-Fi, files and Terminal</span><span>Day and night</span></div>
       </div>
     </section>
     <section class="door" data-href="/apps" data-c style="--c:#7c9cff" aria-labelledby="d-apps">
@@ -73,6 +75,7 @@
 
 <script src="/diceweb/js/art.js"></script>
 <script src="/diceweb/js/catalog.js"></script>
+<script src="/diceweb/js/die3d.js"></script>
 <script src="/diceweb/js/gfx.js"></script>
 <script>
 (function () {
@@ -80,16 +83,12 @@
   const night = () => (typeof djp7Night === 'function' ? djp7Night() : matchMedia('(prefers-color-scheme: dark)').matches);
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // the little die by the name
-  (function () {
-    const g = document.getElementById('logo').getContext('2d');
-    const ink = night() ? '#f3f3f5' : '#141416', face = night() ? '#1b1b1f' : '#ffffff';
-    g.fillStyle = ink; g.fillRect(1, 0, 10, 12); g.fillRect(0, 1, 12, 10);
-    g.fillStyle = face; g.fillRect(1, 1, 10, 10);
-    [['#ff707a', 2, 2], ['#7cc4ff', 8, 2], ['#f5c431', 5, 5], ['#8fd16a', 2, 8], ['#d39cf5', 8, 8]].forEach(([c, x, y]) => { g.fillStyle = c; g.fillRect(x, y, 2, 2); });
-  })();
+  // the Dice die by the name (the same one DiceWeb draws), and the tab's icon
+  const logo = G.die(32, null, { key: 'logo', outline: night() ? [60, 60, 70] : null });
+  document.getElementById('logo').getContext('2d').drawImage(logo, 0, 0);
+  try { const l = document.querySelector('link[rel=icon]') || document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'icon' })); l.href = logo.toDataURL('image/png'); } catch (e) { /* keep the usual icon */ }
 
-  // a Raspberry Pi board, to sit by Cubby (a plain green board, no logo)
+  // a Raspberry Pi board, to sit by the die (a plain green board, no logo)
   const BOARD = ['gggggggggggggggggggggggg', 'gYgYgYgYgYgYgYgYgYgYgYgg', 'gYgYgYgYgYgYgYgYgYgYgYgg', 'gGGGGGGGGGGGGGGGGGGGGGgS', 'gGGGGGGGGGGGGGGGGGGGGGSS',
     'gGGGKKKKKKGGGGGGGGGGGSSS', 'gGGGKMMMMKGGGGkkGGGGGSSS', 'gGGGKMMMMKGGGGkkGGGGGGGg', 'gGGGKMMMMKGGGGGGGGGGGSSS', 'gGGGKKKKKKGGGGGGGGGGGSSS', 'gGGGGGGGGGGGGGGGGGGGGSSS', 'goGGGGGGGGGGGGGGGGGGGGog', 'gggggggggggggggggggggggg'];
   const BINK = { g: '#1f6b42', G: '#2f9a5d', Y: '#e8b83a', K: '#26262c', M: '#b8bcc8', k: '#3a3d4a', S: '#c9ced6', o: '#8a8f99' };
@@ -117,9 +116,10 @@
     size();
     if (!still) raf = requestAnimationFrame(loop);
   }
-  door(document.getElementById('w-dice'), (W, H) => new G.World({ land: 'hills', c: '#ff707a', who: 'cubby', night: night(), W, H, layout: 'cover', seed: 'door-dice' }),
-    (g, w) => { const b = G.sprite(BOARD, BINK, 'pi-board'); g.drawImage(b, Math.min(w.W - b.width - 2, w.mx + 30), w.gy - b.height + 2); });
-  door(document.getElementById('w-apps'), (W, H) => new G.World({ land: 'meadow', c: '#7c9cff', who: null, night: night(), W, H, layout: 'wall', gang: true, seed: 'door-apps' }));
+  // the die floats at the right, clear of the panel, with the Pi to its left
+  door(document.getElementById('w-dice'), (W, H) => { const w = new G.World({ land: 'hills', c: '#ff707a', who: 'cubby', night: night(), W, H, layout: 'cover', seed: 'door-dice' }); w.mx = W - 28; return w; },
+    (g, w) => { const b = G.sprite(BOARD, BINK, 'pi-board'); g.drawImage(b, w.mx - b.width - 6, w.gy - b.height + 2); });
+  door(document.getElementById('w-apps'), (W, H) => new G.World({ land: 'meadow', c: '#7c9cff', who: null, night: night(), W, H, layout: 'wall', gang: true, gangDie: false, seed: 'door-apps' }));
 
   // the whole door opens its page, not just the button
   document.querySelectorAll('.door').forEach((d) => d.addEventListener('click', (e) => { if (!e.target.closest('a')) location.href = d.dataset.href; }));

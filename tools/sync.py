@@ -106,6 +106,17 @@ def main(argv):
             if not check:
                 os.makedirs(os.path.dirname(dst), exist_ok=True)
                 shutil.copyfile(src, dst)
+        # files that were taken out of a copied folder go from here too
+        wanted = set(expand(root, files))
+        for rel in files:
+            if not rel.endswith('/'):
+                continue
+            here = os.path.join(SITE, 'apps', app)
+            for old in expand(here, [rel]):
+                if old not in wanted:
+                    stale.append('%s/%s (removed)' % (app, old))
+                    if not check:
+                        os.remove(os.path.join(here, old))
     if roots.get('pca') and roots.get('tot'):
         try:
             data = subprocess.run(['node', '-e', ART, roots['pca'], roots['tot']], check=True, capture_output=True, text=True).stdout

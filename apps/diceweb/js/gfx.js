@@ -30,6 +30,25 @@
     if (k) sprites.set(k, c);
     return c;
   };
+  G.nightNow = () => (typeof Dice !== 'undefined' && Dice.night ? Dice.night() : typeof djp7Night === 'function' ? djp7Night() : false);
+  // ---- The Dice die, as pixel art (see die3d.js) -----------------------
+  const dice = new Map();
+  G.die = function (size, M, opts) {
+    const key = size + ':' + (opts && opts.key ? opts.key : JSON.stringify(M || 'rest')) + ':' + (opts && opts.outline ? 'o' : '');
+    if (dice.has(key)) return dice.get(key);
+    const img = DiceDie.render(size, M || DiceDie.REST, Object.assign({ ss: size < 40 ? 4 : 3 }, opts || {}));
+    const c = G.canvas(img.w, img.h);
+    c.getContext('2d').putImageData(new ImageData(img.data, img.w, img.h), 0, 0);
+    if (dice.size > 200) dice.clear();
+    dice.set(key, c);
+    return c;
+  };
+  // the die gently turning back and forth, for the worlds
+  G.dieWobble = function (size, t) {
+    const n = 16, k = Math.floor(((t * 1.2) % n + n) % n);
+    const ang = Math.sin(k / n * Math.PI * 2) * 0.12;
+    return G.die(size, DiceDie.pose([0, 1, 0], ang), { key: 'w' + k + (G.nightNow() ? 'n' : ''), outline: G.nightNow() ? [44, 44, 52] : null });
+  };
   // The mascots, trimmed to their edges, plus a copy with the eyes shut.
   function mascotOf(who) {
     if (who === 'cubby') return CATALOG.cubby;
@@ -37,6 +56,7 @@
   }
   G.mascot = function (who, opts) {
     opts = opts || {};
+    if (who === 'cubby') return G.die(24, null, { key: 'mascot' });
     const m = mascotOf(who);
     if (!m) return null;
     const grid = trimGrid(m.grid);
@@ -55,6 +75,7 @@
     const c = G.canvas(size, size), g = c.getContext('2d');
     g.imageSmoothingEnabled = false;
     if (bg) { g.fillStyle = bg; g.fillRect(0, 0, size, size); }
+    if (who === 'cubby') { const d = G.die(Math.round(size * 0.86), null, { key: 'face' }); g.drawImage(d, Math.round((size - d.width) / 2), Math.round((size - d.height) / 2)); return c; }
     if (!m) return c;
     const s = G.mascot(who);
     const scale = Math.max(1, Math.floor(size / Math.max(s.width, s.height) * 1.0));
@@ -62,7 +83,7 @@
     g.drawImage(s, Math.round((size - w) / 2), Math.round((size - h) / 2 + size * 0.04), w, h);
     return c;
   };
-  G.colourOf = (who) => (mascotOf(who) || {}).color || '#ff707a';
+  G.colourOf = (who) => (who === 'cubby' ? '#8a8a96' : (mascotOf(who) || {}).color || '#ff707a');
 
   // ---- Icons ----------------------------------------------------------------------
   // K is the ink (dark by day, light at night), k the ink faded, A the accent.
@@ -112,6 +133,12 @@
     scale = scale || 2;
     const key = name + ink + (accent || '') + scale;
     if (iconCache.has(key)) return iconCache.get(key);
+    if (name === 'die') {
+      const n = 12 * scale, night = ink !== '#141416' && ink !== '#000000';
+      const c = G.die(n, null, { key: 'icon', outline: night ? [70, 70, 80] : null, dither: 0 });
+      iconCache.set(key, { url: c.toDataURL(), w: n, h: n });
+      return iconCache.get(key);
+    }
     const grid = ICONS[name] || ICONS.help;
     const pal = Object.assign({ K: ink, k: hexA(ink, 0.4), A: accent || ink }, PIPS);
     const w = Math.max(...grid.map((r) => r.length)), h = grid.length;
@@ -603,6 +630,7 @@
       if (!s) return;
       const lay = this.o.layout, W = this.W;
       let x, y;
+      if (who === 'cubby') this.dieFloat = true;
       if (this.land === 'flight') { x = Math.round(W * (lay === 'cover' ? 0.5 : 0.68) - s.width / 2); y = Math.round(this.S * 0.4 - s.height / 2); this.float = true; }
       else if (this.land === 'market' && this.stall) { x = Math.round((lay === 'cover' ? W * 0.5 : (this.stall.x0 + this.stall.x1) / 2) - s.width / 2); y = this.stall.counter - s.height + 4; }
       else if (this.land === 'table') { x = Math.round(W * (lay === 'cover' || lay === 'square' ? 0.5 : 0.71) - s.width / 2); y = Math.round(this.H * (lay === 'cover' || lay === 'square' ? 0.66 : lay === 'hero' ? 0.24 : 0.62) - s.height / 2); }
@@ -750,8 +778,18 @@
           }
         }
       }
+      // the Dice die floats over the ground, turning a little, its shadow under it
+      if (this.who === 'cubby' && this.dieFloat) {
+        // smaller in the big scene behind Home, where the ground sits near the top
+        const ds = this.o.layout === 'hero' ? 18 : 24;
+        const d = still ? G.die(ds, null, { key: 'mascot' + ds }) : G.dieWobble(ds, t);
+        const lift = (ds < 24 ? 3 : 5) + (still ? 0 : Math.sin(t * 1.6) * (ds < 24 ? 1 : 2));
+        const groundY = this.land === 'table' ? this.my + d.height + 2 : this.gy;
+        const sw = Math.round(d.width * (0.62 - lift * 0.02));
+        for (let k = 0; k < 2; k++) { g.fillStyle = 'rgba(0,0,0,' + (k ? 0.1 : 0.16) + ')'; g.fillRect(this.mx + Math.round((d.width - sw) / 2) - k * 2, groundY + k, sw + k * 4, 1); }
+        g.drawImage(d, this.mx, Math.round(groundY - d.height - lift));
+      } else if (this.who) {
       // the mascot: breathing, and blinking now and then
-      if (this.who) {
         const blinking = !still && (t % 4.2) > this.blinkAt && (t % 4.2) < this.blinkAt + 0.14;
         const s = G.mascot(this.who, { blink: blinking });
         const bob = still ? 0 : this.float ? Math.round(Math.sin(t * 2.2) * 1.6) : (Math.floor(t * 1.6) % 2);
@@ -774,7 +812,7 @@
       const r = seeded(hash('gang' + this.W));
       this.gangers = [];
       const n = Math.min(ids.length, Math.max(4, Math.floor(this.W / 34)));
-      const pick = ids.sort(() => r() - 0.5).slice(0, n).concat(['cubby']);
+      const pick = ids.sort(() => r() - 0.5).slice(0, n).concat(this.o.gangDie === false ? [] : ['cubby']); // the die bounces along too, unless told not to
       pick.forEach((id, i) => this.gangers.push({ id, x: (i + 0.5) / pick.length * this.W, dir: r() > 0.5 ? 1 : -1, speed: 2 + r() * 3, rest: r() * 4, seed: r() * 10 }));
     }
     drawGang(g, t, still) {
@@ -788,6 +826,13 @@
         let pos = ((m.x + travel * m.dir) % (2 * span) + 2 * span) % (2 * span);
         let dir = m.dir;
         if (pos > span) { pos = 2 * span - pos; dir = -dir; }
+        if (m.id === 'cubby') { // the die doesn't walk: it bounces along, and its shadow shrinks as it goes up
+          const up = walking ? Math.round(Math.abs(Math.sin((t + m.seed) * 5)) * 5) : 0;
+          const d = walking ? G.dieWobble(24, t) : s;
+          g.fillStyle = 'rgba(0,0,0,.16)'; g.fillRect(Math.round(pos) + 4 + (up >> 1), this.gy + 1, s.width - 8 - up, 1);
+          g.drawImage(d, Math.round(pos), this.gy - s.height + 2 - up);
+          continue;
+        }
         const hop = walking && Math.floor(t * 6 + m.seed) % 2 ? 1 : 0;
         const sp = G.mascot(m.id, { flip: dir < 0 });
         g.fillStyle = 'rgba(0,0,0,.14)'; g.fillRect(Math.round(pos) + 3, this.gy + 1, s.width - 6, 1);

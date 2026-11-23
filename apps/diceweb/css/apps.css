@@ -81,6 +81,8 @@
 .term-in { flex: 1; border: 0; background: none; font: inherit; padding: 0; min-width: 0; caret-color: #4fa83d; }
 .t-hi { color: #3f8f2f; font-weight: 700; } .t-dir { color: #3a6fd9; } .t-dim { color: #8e8e9a; } .t-dir.t-dir { font-weight: 700; } .t-file { color: inherit; } .t-out { color: inherit; }
 :root[data-look=dark] .t-hi { color: #8fd16a; } :root[data-look=dark] .t-dir { color: #7cc4ff; }
+.t-die { display: inline-block; background: #1b1b20; color: #f3f3f5; }
+:root[data-look=dark] .t-die { background: #2a2a32; }
 .t-p1 { color: #ff707a; } .t-p2 { color: #f5c431; } .t-p3 { color: #8fd16a; } .t-p4 { color: #7cc4ff; } .t-p5 { color: #d39cf5; } .t-p6 { color: #2bc4b2; }
 
 /* ---------- Notes ---------- */

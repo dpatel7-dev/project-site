@@ -1,4 +1,4 @@
-// The real Terminal, when DiceWeb runs on a Pi as Dice: a real shell, in a
+// The real Terminal, when DiceWeb runs as Dice (on a Pi or a PC): a real shell, in a
 // real terminal screen (see vt.js). Elsewhere the pretend Terminal stays.
 (function () {
   'use strict';

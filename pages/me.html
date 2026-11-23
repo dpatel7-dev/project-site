@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dhruv - who made all this</title>
+<meta name="description" content="Dhruv made everything on this site: Dice, an operating system for a Raspberry Pi or a PC, DiceWeb, and sixteen little apps you open from Terminal, plus the pixel animals that go with them.">
+<style>
+  /* Dhruv's own page. Quiet, like the rest of the site: the one loud thing is
+     the row of animals, every one of them an app he made. */
+  body { min-height: 100svh; display: flex; flex-direction: column; }
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 22px clamp(18px, 3vw, 34px) 0; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font: 700 1.5rem/1 var(--pixel); text-decoration: none; letter-spacing: .01em; }
+  .brand canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+  .top nav a { color: var(--muted); font-size: .95rem; margin-left: 18px; }
+  main { flex: 1; width: min(1120px, 100% - clamp(36px, 6vw, 68px)); margin: 0 auto; padding: clamp(28px, 6vw, 72px) 0 40px; }
+  .hi { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: clamp(20px, 4vw, 56px); align-items: center; }
+  .hi h1 { font: 700 clamp(4rem, 11vw, 8.5rem)/.85 var(--pixel); margin: 0 0 22px; letter-spacing: -.02em; }
+  .hi p { margin: 0 0 14px; font-size: 1.2rem; line-height: 1.55; max-width: 34em; }
+  .hi p.muted { color: var(--muted); font-size: 1.05rem; }
+  .links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  .btn.soft { background: var(--soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .btn.soft:hover { background: var(--bg); }
+  .stage { position: relative; aspect-ratio: 4 / 3; border-radius: 28px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); background: var(--soft); }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+  h2 { font: 700 clamp(1.8rem, 3.4vw, 2.6rem)/1 var(--pixel); margin: clamp(48px, 8vw, 88px) 0 8px; letter-spacing: -.01em; }
+  .sub { color: var(--muted); margin: 0 0 22px; font-size: 1.05rem; max-width: 40em; }
+  .made { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .made a { display: flex; flex-direction: column; border-radius: 24px; overflow: hidden; color: var(--ink); text-decoration: none; box-shadow: inset 0 0 0 1px var(--line); background: var(--soft); }
+  .made .pic { position: relative; aspect-ratio: 16 / 10; overflow: hidden; }
+  .made .pic canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; transition: transform .6s cubic-bezier(.2, .8, .2, 1); transform-origin: 50% 90%; }
+  .made a:hover canvas, .made a:focus-visible canvas { transform: scale(1.04); }
+  .made a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .made .card { padding: 18px 20px 20px; }
+  .made b { display: block; font: 700 1.6rem/1 var(--pixel); margin-bottom: 6px; }
+  .made span { color: var(--muted); font-size: .98rem; }
+  .zoo { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; padding: 0; margin: 0; list-style: none; }
+  .zoo a { display: grid; justify-items: center; gap: 8px; padding: 16px 8px 14px; border-radius: 20px; text-decoration: none; color: var(--ink); background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); transition: transform .2s; }
+  .zoo a:hover { transform: translateY(-3px); background: color-mix(in oklab, var(--c) 18%, var(--bg)); }
+  .zoo a:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .zoo canvas { width: 64px; height: 64px; image-rendering: pixelated; border-radius: 16px; }
+  .zoo b { font: 700 1.05rem/1 var(--pixel); }
+  .zoo small { color: var(--muted); font-size: .8rem; text-align: center; line-height: 1.3; }
+  .into { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; }
+  .into div { padding: 20px 22px; border-radius: 20px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
+  .into dt { font: 700 1.25rem/1.1 var(--pixel); margin-bottom: 8px; }
+  .into dd { margin: 0; color: var(--muted); }
+  footer { padding: 4px clamp(18px, 3vw, 34px) 26px; color: var(--muted); font-size: .9rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  footer a { color: inherit; }
+  @media (max-width: 860px) { .hi, .made, .into { grid-template-columns: 1fr; } }
+  @media (prefers-reduced-motion: reduce) { .made a canvas, .zoo a { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/" aria-label="djp7, the start"><canvas id="logo" width="32" height="32" aria-hidden="true"></canvas>djp7</a>
+  <nav aria-label="Elsewhere"><a href="/dice">Dice</a><a href="/apps">The apps</a></nav>
+</header>
+<main>
+  <section class="hi">
+    <div>
+      <h1>Dhruv</h1>
+      <p>I made everything on this site: Dice, an operating system for a Raspberry Pi or a PC, and sixteen little apps you open by typing one word in Terminal.</p>
+      <p class="muted">I draw the pixel worlds and the animals in them too. Each animal is one of the apps.</p>
+      <div class="links"><a class="btn main" href="https://github.com/dpatel7-dev" rel="me noopener">My GitHub</a><a class="btn soft" href="/new">What's new</a></div>
+    </div>
+    <div class="stage"><canvas id="w-me" aria-label="The Dice die floating over a hill while the animals wander past"></canvas></div>
+  </section>
+
+  <h2>Things I've made</h2>
+  <p class="sub">Free, with no accounts. Most of it is plain Python and JavaScript with nothing extra to install.</p>
+  <div class="made">
+    <a href="/dice"><div class="pic"><canvas id="w-dice" aria-hidden="true"></canvas></div><div class="card"><b>Dice</b><span>An operating system for a Raspberry Pi or a PC, set up on the website before it ever starts.</span></div></a>
+    <a href="/diceweb/"><div class="pic"><canvas id="w-web" aria-hidden="true"></canvas></div><div class="card"><b>DiceWeb</b><span>The same desktop, in your browser. Music, Notes, Files and a pretend Terminal.</span></div></a>
+    <a href="/apps"><div class="pic"><canvas id="w-apps" aria-hidden="true"></canvas></div><div class="card"><b>The apps</b><span>Sixteen little apps for Mac, Windows and Linux, and pca to keep them all up to date.</span></div></a>
+  </div>
+
+  <h2>The animals</h2>
+  <p class="sub">Every app has its own. Pick one to see what it does.</p>
+  <ul class="zoo" id="zoo"></ul>
+
+  <h2>What I'm into</h2>
+  <dl class="into">
+    <div><dt>Software</dt><dd>Whole things, from the first line to the website you download them from.</dd></div>
+    <div><dt>AI</dt><dd>Tree of Thought talks to lots of free AIs at once, and scout answers questions from the web.</dd></div>
+    <div><dt>Games</dt><dd>Pixel art, little worlds that move, and the sounds that go with them.</dd></div>
+  </dl>
+</main>
+<footer><span>Made by Dhruv.</span><span><a href="/">Back to the start</a> &nbsp; <a href="https://github.com/dpatel7-dev" rel="me noopener">GitHub</a></span></footer>
+
+<script src="/diceweb/js/art.js"></script>
+<script src="/diceweb/js/catalog.js"></script>
+<script src="/diceweb/js/die3d.js"></script>
+<script src="/diceweb/js/gfx.js"></script>
+<script>
+(function () {
+  const G = window.DiceGfx;
+  const night = () => (typeof djp7Night === 'function' ? djp7Night() : matchMedia('(prefers-color-scheme: dark)').matches);
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // the die by the name, and as the tab's icon
+  const logo = G.die(32, null, { key: 'logo', outline: night() ? [60, 60, 70] : null });
+  document.getElementById('logo').getContext('2d').drawImage(logo, 0, 0);
+  try { const l = document.querySelector('link[rel=icon]') || document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'icon' })); l.href = logo.toDataURL('image/png'); } catch (e) { /* keep the usual icon */ }
+
+  // little living worlds, only moving while they're on screen
+  function world(canvas, make, per) {
+    let w = null, last = 0, on = false;
+    const g = canvas.getContext('2d');
+    function size() {
+      const r = canvas.getBoundingClientRect();
+      const cell = Math.max(4, Math.round(r.width / (per || 110)));
+      canvas.width = Math.max(40, Math.round(r.width / cell)); canvas.height = Math.max(40, Math.round(r.height / cell));
+      w = make(canvas.width, canvas.height);
+      w.draw(g, performance.now() / 1000, still);
+    }
+    const loop = (now) => { if (on && w && now - last > 50) { last = now; w.draw(g, now / 1000, still); } requestAnimationFrame(loop); };
+    new ResizeObserver(() => { clearTimeout(size.t); size.t = setTimeout(size, 60); }).observe(canvas);
+    new IntersectionObserver((es) => { on = es[0].isIntersecting; }).observe(canvas);
+    size();
+    if (!still) requestAnimationFrame(loop);
+  }
+  const N = night();
+  world(document.getElementById('w-me'), (W, H) => new G.World({ land: 'meadow', c: '#8a8a96', who: null, night: N, W, H, layout: 'wall', gang: true, seed: 'me' }), 120);
+  world(document.getElementById('w-dice'), (W, H) => new G.World({ land: 'hills', c: '#8a8a96', who: 'cubby', night: N, W, H, layout: 'cover', seed: 'me-dice' }), 70);
+  world(document.getElementById('w-web'), (W, H) => new G.World({ land: 'mountains', c: '#7c9cff', who: 'cubby', night: N, W, H, layout: 'wide', seed: 'me-web' }), 90);
+  world(document.getElementById('w-apps'), (W, H) => new G.World({ land: 'meadow', c: '#f5c431', who: null, night: N, W, H, layout: 'wall', gang: true, gangDie: false, seed: 'me-apps' }), 90);
+
+  // every animal, each one a link to its app
+  const zoo = document.getElementById('zoo');
+  CATALOG.suite.forEach((a) => {
+    if (!ART.mascots[a.id]) return;
+    const li = document.createElement('li');
+    const link = document.createElement('a');
+    link.href = '/' + a.id; link.style.setProperty('--c', a.c);
+    const c = document.createElement('canvas'); c.width = c.height = 64; c.setAttribute('aria-hidden', 'true');
+    c.getContext('2d').drawImage(G.face(a.id, 64, G.hexA(a.c, 0.22)), 0, 0);
+    const b = document.createElement('b'); b.textContent = a.name === 'Tree of Thought' ? 'ToT' : a.name;
+    const s = document.createElement('small'); s.textContent = ART.mascots[a.id].name + ', ' + a.blurb.charAt(0).toLowerCase() + a.blurb.slice(1);
+    link.append(c, b, s); li.appendChild(link); zoo.appendChild(li);
+  });
+})();
+</script>
+</body>
+</html>
