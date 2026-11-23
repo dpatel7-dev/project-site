@@ -49,6 +49,10 @@ function skyBands(g, W, H, top, low, bands) {
     for (let x = 0; x < W; x++) if (left <= 1 ? (x + y) % 2 === 0 : (x % 2 === 0 && y % 2 === 0)) g.fillRect(x, y, 1, 1);
   }
 }
+// A smooth sky from `top` to `low`: each row of pixels a little lighter than the one above.
+function skyGradient(g, W, H, top, low) {
+  for (let y = 0; y < H; y++) { g.fillStyle = mixHex(top, low, H > 1 ? y / (H - 1) : 0); g.fillRect(0, y, W, 1); }
+}
 function isNight() { return typeof djp7Night === 'function' ? djp7Night() : matchMedia('(prefers-color-scheme: dark)').matches; }
 
 // An app's own little world: a sky in its colour, the ground, and its mascot
@@ -72,7 +76,7 @@ function drawStage(stage, id) {
     const top = night ? mixHex(c, '#000000', 0.9) : mixHex(c, '#ffffff', 0.62);
     const low = night ? mixHex(c, '#000000', 0.72) : mixHex(c, '#ffffff', 0.86);
     const ground = Math.round(rows * 0.79);
-    skyBands(g, cols, ground, top, low, 6);
+    skyGradient(g, cols, ground, top, low);
     if (night) {
       for (let y = 1; y < ground * 0.7; y++) for (let x = 0; x < cols; x++) {
         const r = rnd(x * 3.1, y * 1.7);

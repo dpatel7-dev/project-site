@@ -27,43 +27,43 @@ SHELL = os.path.join(HERE, 'pages', 'shell')
 # type in the All apps sheet to find it.
 APPS = [
     # ask and learn
-    dict(id='scout', name='scout', c='#7c9cff', group='learn', line='Ask anything. It searches the web and explains the answer, with a link to every source.',
+    dict(id='scout', blurb='Ask anything, answered from the web', name='scout', c='#7c9cff', group='learn', line='Ask anything. It searches the web and explains the answer, with a link to every source.',
          words='ask question search web answer google research explain find out'),
-    dict(id='tot', name='Tree of Thought', short='tot', c='#8fd16a', group='learn', line='Talk to lots of free AIs in one place. Ask one, or all of them at once.',
+    dict(id='tot', blurb='Lots of free AIs in one place', name='Tree of Thought', short='tot', c='#8fd16a', group='learn', line='Talk to lots of free AIs in one place. Ask one, or all of them at once.',
          words='ai chat chatbot gpt claude gemini models assistant tree of thought'),
-    dict(id='flash', name='flash', c='#d7f07a', group='learn', line='Study cards that come back just before you\'d forget them, and practice tests.',
+    dict(id='flash', blurb='Study cards and practice tests', name='flash', c='#d7f07a', group='learn', line='Study cards that come back just before you\'d forget them, and practice tests.',
          words='study cards flashcards test exam quiz learn school homework revise memorize'),
-    dict(id='den', name='den', c='#f0843c', group='learn', line='A friendly code editor in your browser, with a fox who explains things.',
+    dict(id='den', blurb='A friendly code editor for learning', name='den', c='#f0843c', group='learn', line='A friendly code editor in your browser, with a fox who explains things.',
          words='code coding learn editor programming python javascript html ide'),
-    dict(id='hey', name='hey', c='#f2c14e', group='learn', line='Say what you want to do in plain words and get the Terminal command.',
+    dict(id='hey', blurb='Plain words in, Terminal commands out', name='hey', c='#f2c14e', group='learn', line='Say what you want to do in plain words and get the Terminal command.',
          words='command terminal shell help how do i'),
     # talk and share
-    dict(id='gossip', name='gossip', c='#7cc4ff', group='talk', line='Private chat with friends: messages, calls and files only you two can read.',
+    dict(id='gossip', blurb='Private chat, calls and files', name='gossip', c='#7cc4ff', group='talk', line='Private chat with friends: messages, calls and files only you two can read.',
          words='chat message messages friends call talk text dm'),
-    dict(id='pigeon', name='pigeon', c='#2bc4b2', group='talk', line='Your own locked drive. Send files to your other computers and get files from anyone.',
+    dict(id='pigeon', blurb='Your own locked drive', name='pigeon', c='#2bc4b2', group='talk', line='Your own locked drive. Send files to your other computers and get files from anyone.',
          words='files drive send share upload storage transfer backup cloud'),
     # files and your mac
-    dict(id='tidy', name='tidy', c='#e8913a', group='mac', line='Sorts a messy folder, like Downloads, into neat folders. Shows you first.',
+    dict(id='tidy', blurb='Sorts a messy folder for you', name='tidy', c='#e8913a', group='mac', line='Sorts a messy folder, like Downloads, into neat folders. Shows you first.',
          words='folder organize organise sort downloads mess messy files clean'),
-    dict(id='roomy', name='roomy', c='#ff7a59', group='mac', line='Frees up space on your computer, safely. Everything goes to the Trash first.',
+    dict(id='roomy', blurb='Frees up space, safely', name='roomy', c='#ff7a59', group='mac', line='Frees up space on your computer, safely. Everything goes to the Trash first.',
          words='space disk storage full clean free up room'),
-    dict(id='morph', name='morph', c='#d39cf5', group='mac', line='Turn any file into any other: videos, songs, photos, documents and PDFs.',
+    dict(id='morph', blurb='Turns any file into any other', name='morph', c='#d39cf5', group='mac', line='Turn any file into any other: videos, songs, photos, documents and PDFs.',
          words='convert converter file video photo pdf mp3 mp4 image png jpg heic'),
-    dict(id='medic', name='medic', c='#f6a6b8', group='mac', line='Why your Mac is slow, hot or low on battery, in plain words, with safe fixes.',
+    dict(id='medic', blurb='Why your Mac is slow, and the fix', name='medic', c='#f6a6b8', group='mac', line='Why your Mac is slow, hot or low on battery, in plain words, with safe fixes.',
          words='slow battery hot fix health mac fan speed'),
-    dict(id='shoo', name='shoo', c='#d9a877', group='mac', line='Blocks ads, trackers and YouTube\'s ads on every site. No administrator needed.',
+    dict(id='shoo', blurb='Blocks ads, YouTube\'s too', name='shoo', c='#d9a877', group='mac', line='Blocks ads, trackers and YouTube\'s ads on every site. No administrator needed.',
          words='ads adblock ad blocker youtube block trackers popups'),
     # every day
-    dict(id='hum', name='hum', c='#f5c431', group='day', line='Your music in a little panel at the side of the screen: files, links, playlists.',
+    dict(id='hum', blurb='Your music, off to one side', name='hum', c='#f5c431', group='day', line='Your music in a little panel at the side of the screen: files, links, playlists.',
          words='music songs song play playlist audio listen'),
-    dict(id='magpie', name='magpie', c='#6a9be6', group='day', line='Remembers everything you copy, so you can paste something from earlier.',
+    dict(id='magpie', blurb='Everything you copied, to paste again', name='magpie', c='#6a9be6', group='day', line='Remembers everything you copy, so you can paste something from earlier.',
          words='clipboard copy paste history copied'),
-    dict(id='locket', name='locket', c='#ef6a1f', group='day', line='All your passwords, locked with one. Fills them in on websites, too.',
+    dict(id='locket', blurb='Your passwords, filled in for you', name='locket', c='#ef6a1f', group='day', line='All your passwords, locked with one. Fills them in on websites, too.',
          words='passwords password login logins vault security keys sign in autofill'),
-    dict(id='usual', name='usual', c='#ff7a5c', group='day', line='Order the usual: your details, who it\'s for, what to say, and who owes what.',
+    dict(id='usual', blurb='Order the usual, quickly', name='usual', c='#ff7a5c', group='day', line='Order the usual: your details, who it\'s for, what to say, and who owes what.',
          words='food order restaurant pizza lunch dinner takeout delivery'),
     # the menu
-    dict(id='pca', name='pca', c='#b9a6ff', group='menu', line='The menu that installs every app here, opens them, and keeps them up to date.',
+    dict(id='pca', blurb='Installs and updates them all', name='pca', c='#b9a6ff', group='menu', line='The menu that installs every app here, opens them, and keeps them up to date.',
          words='install update menu all apps project cli access'),
 ]
 GROUPS = [
@@ -228,10 +228,18 @@ def _data(here, kind):
     return body.replace('</', '<\\/')
 
 
-LOOK = ("<script>try{var l=localStorage.getItem('djp7-look');if(l==='light'||l==='dark')"
-        "document.documentElement.setAttribute('data-look',l)}catch(e){}"
-        "window.djp7Night=function(){var l=document.documentElement.getAttribute('data-look');"
-        "return l?l==='dark':matchMedia('(prefers-color-scheme: dark)').matches}</script>")
+# Day or night, set before anything is drawn. Chosen in All apps (Day or Night), or
+# Auto: by the time of day. Night is from sunset to sunrise, worked out from the
+# date (for about 40 degrees north, the middle of the US and Europe).
+CLOCK = ("function(d){d=d||new Date();var y=d.getFullYear(),n=Math.floor((d-new Date(y,0,0))/864e5),"
+         "e=23.44*Math.sin(2*Math.PI*(284+n)/365)*Math.PI/180,x=-Math.tan(0.698)*Math.tan(e),"
+         "h=Math.acos(Math.max(-1,Math.min(1,x)))*12/Math.PI,"
+         "s=d.getTimezoneOffset()<Math.max(new Date(y,0,1).getTimezoneOffset(),new Date(y,6,1).getTimezoneOffset())?1:0,"
+         "t=d.getHours()+d.getMinutes()/60;return t<12+s-h||t>=12+s+h}")
+LOOK = ("<script>(function(){var r=document.documentElement,l=null;window.djp7ClockNight=" + CLOCK + ";"
+        "try{l=localStorage.getItem('djp7-look')}catch(e){}"
+        "r.setAttribute('data-look',l==='light'||l==='dark'?l:(djp7ClockNight()?'dark':'light'));"
+        "window.djp7Night=function(){return r.getAttribute('data-look')==='dark'}})()</script>")
 FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
          '<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">')
 
@@ -290,7 +298,7 @@ def apps_json(version, fresh=()):
     names = {k: v.get('name', '') for k, v in mascots().items()}
     out = []
     for a in APPS:
-        x = {k: a[k] for k in ('id', 'name', 'c', 'line', 'group', 'words')}
+        x = {k: a[k] for k in ('id', 'name', 'c', 'line', 'blurb', 'group', 'words')}
         x.update(short=a.get('short', a['name']), v=version(a['id']), mascot=names.get(a['id'], ''), fresh=a['id'] in fresh)
         if a['id'] not in names:
             x['icon'] = icons()[a['id']][0]

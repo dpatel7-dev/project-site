@@ -6,17 +6,17 @@
 <title>djp7 - little apps you open by typing one word</title>
 <meta name="description" content="Small, friendly apps that run in your computer's Terminal: ask anything (scout), chat (gossip), many AIs (Tree of Thought), your own drive (pigeon), tidy a folder (tidy), free up space (roomy), learn to code (den), get any command in plain words (hey), convert any file (morph), block ads (shoo), keep everything you copy (magpie), check up on your Mac (medic), study with cards (flash), play your music (hum), order the usual (usual) and keep your passwords (locket). One command installs them all.">
 <style>
-  /* The front door: a pixel world where the mascots live (blue sky by day,
-     stars by night) with a glass Terminal floating in it that you can type in.
-     Below it, plain white (or black) and easy reading. */
-  .world { position: relative; margin: 12px; border-radius: 34px; overflow: hidden; min-height: min(820px, calc(100svh - 128px)); display: flex; flex-direction: column;
+  /* The front door: a pixel world that's day when it's day and night when it's
+     night, a few of the mascots out in it, and a glass Terminal floating in the
+     sky that you can type in. Below it, plain white (or black) and easy reading. */
+  .world { position: relative; margin: 12px; border-radius: 34px; overflow: hidden; min-height: min(760px, calc(100svh - 124px)); display: flex; flex-direction: column;
     background: #8fbfff; box-shadow: inset 0 0 0 1px var(--line); isolation: isolate; }
   .world canvas.sky { position: absolute; inset: 0; z-index: -1; }
-  .world-in { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 560px); gap: 32px 48px; align-items: center; padding-top: clamp(40px, 9vh, 96px); padding-bottom: 28px; }
-  .hello h1 { font: 700 clamp(2.7rem, 6.2vw, 5rem)/.98 var(--pixel); margin: 0; letter-spacing: -.02em; color: var(--sky-ink); }
-  .hello .lede { margin: 22px 0 0; color: var(--sky-dim); font-size: 1.2rem; max-width: 30em; }
+  .world-in { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px); gap: 32px 56px; align-items: center; padding-top: clamp(36px, 8vh, 84px); padding-bottom: 112px; }
+  .hello h1 { font: 700 clamp(2.3rem, 4.6vw, 3.7rem)/1.02 var(--pixel); margin: 0; letter-spacing: -.02em; color: var(--sky-ink); }
+  .hello .lede { margin: 20px 0 0; color: var(--sky-dim); font-size: 1.16rem; max-width: 29em; }
   .hello .lede b { color: var(--sky-ink); }
-  .go { display: flex; flex-wrap: wrap; gap: 10px; margin: 30px 0 0; }
+  .go { display: flex; flex-wrap: wrap; gap: 10px; margin: 28px 0 0; }
   .go .btn { background: var(--sky-ink); color: var(--sky-btn-ink); }
   .go .btn:hover { background: color-mix(in oklab, var(--sky-ink) 85%, #7cc4ff); }
   .go .btn.ghost { position: relative; background: var(--glass); color: var(--ink); -webkit-backdrop-filter: blur(20px) saturate(180%); backdrop-filter: blur(20px) saturate(180%); box-shadow: inset 0 0 0 1px var(--line); }
@@ -29,81 +29,80 @@
   .tbar i + i { background: #febc2e; }
   .tbar i + i + i { background: #28c840; }
   .tbar span { position: absolute; left: 50%; top: 11px; transform: translateX(-50%); font: 600 .84rem/1.2 var(--read); color: var(--muted); }
-  .tlog { padding: 4px 20px 0; min-height: 11.5em; display: flex; flex-direction: column; justify-content: flex-end; }
-  .tlog p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .tlog { padding: 2px 20px 0; min-height: 7.3em; display: flex; flex-direction: column; justify-content: flex-end; }
+  .tlog p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: none; }
   .tlog .me::before, .tline .pr { color: var(--muted); }
   .tlog .me::before { content: "~ % "; }
-  .tlog .out { padding-left: 1.2em; text-indent: -1.2em; margin-bottom: .55em; color: var(--muted); }
+  .tlog .out { margin-bottom: .4em; color: var(--muted); }
   .tlog .out b { color: var(--ink); font-weight: 700; }
   .tlog .out b::before { content: ""; display: inline-block; width: .62em; height: .62em; margin-right: .58em; background: var(--c); vertical-align: .04em; }
   .tline { display: flex; gap: .6em; padding: 0 20px; align-items: baseline; }
   .tline input { all: unset; flex: 1; min-width: 0; font: inherit; color: var(--ink); caret-color: var(--caret, #28c840); }
-  .thint { margin: 10px 0 0; padding: 12px 20px 16px; border-top: 1px solid var(--line); font: .95rem/1.45 var(--read); color: var(--muted); min-height: 3.4em; }
+  .thint { margin: 10px 0 0; padding: 12px 20px 15px; border-top: 1px solid var(--line); font: .95rem/1.45 var(--read); color: var(--muted); min-height: 3.3em; }
   .thint b { color: var(--ink); }
   .thint i { font-style: normal; display: inline-block; width: 9px; height: 9px; background: var(--c); margin: 0 6px 0 2px; }
   .term:focus-within { box-shadow: inset 0 0 0 2px var(--ink), var(--shadow); }
 
-  /* the mascots, standing on the grass */
-  .crew { position: relative; display: flex; justify-content: center; align-items: flex-end; gap: clamp(4px, 1.6vw, 26px); padding: 0 16px; margin-bottom: -4px; }
-  .mate { position: relative; display: block; padding: 2px; border-radius: 8px; text-decoration: none; }
+  /* a few of the mascots out in the world: different ones by day and by night */
+  .cast { position: absolute; left: 0; right: 0; bottom: 60px; height: 110px; pointer-events: none; }
+  .mate { position: absolute; bottom: 0; display: block; padding: 2px; border-radius: 8px; pointer-events: auto; text-decoration: none; }
   .mate canvas { display: block; }
+  .mate.flies { animation: drift 7s ease-in-out infinite alternate; }
+  .mate.glows canvas { filter: drop-shadow(0 0 6px rgba(240, 255, 140, .9)); }
+  @keyframes drift { to { transform: translateX(46px); } }
   .mate .tag { position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%) scale(.9); transform-origin: 50% 100%; opacity: 0; pointer-events: none; white-space: nowrap;
     font: 700 .95rem/1 var(--pixel); color: #141416; background: var(--c); padding: 6px 9px 7px; border-radius: 8px; transition: opacity .15s, transform .15s; }
   .mate .tag::after { content: ""; position: absolute; left: 50%; top: 100%; margin-left: -4px; border: 4px solid transparent; border-top-color: var(--c); }
-  .mate:hover .tag, .mate:focus-visible .tag, .mate.say .tag { opacity: 1; transform: translateX(-50%) scale(1); }
+  .mate:hover .tag, .mate:focus-visible .tag { opacity: 1; transform: translateX(-50%) scale(1); }
   .mate:focus-visible { outline: 3px solid var(--sky-ink); }
   .ground { height: 64px; image-rendering: pixelated; background-size: 96px 72px; }
+  @media (prefers-reduced-motion: reduce) { .mate.flies { animation: none; } }
 
   /* plain reading from here down */
-  .band { padding-top: 92px; }
-  .band > h2, .band .gethead h2 { font: 700 clamp(1.9rem, 4.4vw, 2.8rem)/1.08 var(--pixel); margin: 0; letter-spacing: -.01em; }
-  .band .sub { color: var(--muted); margin: 10px 0 30px; font-size: 1.12rem; max-width: 40em; }
+  .band { padding-top: 88px; }
+  .band > h2, .band .gethead h2 { font: 700 clamp(1.9rem, 4.2vw, 2.6rem)/1.08 var(--pixel); margin: 0; letter-spacing: -.01em; }
+  .band .sub { color: var(--muted); margin: 10px 0 28px; font-size: 1.1rem; max-width: 40em; }
   .band .gethead { margin-bottom: 10px; }
-  #get .getbox { margin-top: 26px; }
+  #get .getbox { margin-top: 24px; }
+  #get { padding-top: 128px; } /* starts below the dock when the page opens */
 
-  .group { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 18px 32px; padding: 30px 0; border-top: 1px solid var(--line); }
-  .group h3 { font: 700 1.35rem/1.15 var(--pixel); margin: 6px 0 0; }
-  .group h3 small { display: block; margin-top: 8px; font: 400 .98rem/1.45 var(--read); color: var(--muted); }
-  .plots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 26px; }
-  .plot { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 16px; align-items: center; padding: 8px; margin: -8px; border-radius: 24px; text-decoration: none; }
-  .plot:hover { background: color-mix(in oklab, var(--c) 11%, var(--bg)); }
-  .patch { position: relative; height: 88px; border-radius: 18px; overflow: hidden; display: grid; place-items: end center; background:
-      linear-gradient(transparent 74%, color-mix(in oklab, var(--c) 70%, #fff) 74% 77%, var(--c) 77%), color-mix(in oklab, var(--c) 22%, var(--bg)); }
-  .patch canvas { margin-bottom: 14px; }
-  .plot b { font: 700 1.4rem/1.1 var(--pixel); display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 9px; }
-  .plot b small { font: 400 .82rem/1 var(--read); color: var(--muted); }
-  .plot b em { font: 700 .72rem/1 var(--read); font-style: normal; color: #141416; background: var(--c); padding: 4px 6px; border-radius: 6px; }
-  .plot > span > span { display: block; margin-top: 4px; color: var(--muted); font-size: .98rem; line-height: 1.45; }
+  /* every app: an even grid, one line each */
+  .apps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 14px; }
+  .app { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 0 14px; align-items: center; padding: 10px; margin: 0 -10px; border-radius: 20px; text-decoration: none; }
+  .app:hover { background: color-mix(in oklab, var(--c) 12%, var(--bg)); }
+  .app .pic { height: 56px; border-radius: 15px; display: grid; place-items: end center; padding-bottom: 9px;
+    background: linear-gradient(transparent 74%, color-mix(in oklab, var(--c) 70%, #fff) 74% 78%, var(--c) 78%), color-mix(in oklab, var(--c) 22%, var(--bg)); }
+  .app b { font: 700 1.2rem/1.15 var(--pixel); display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
+  .app b small { font: 400 .76rem/1 var(--read); color: var(--muted); }
+  .app b em { font: 700 .68rem/1 var(--read); font-style: normal; color: #141416; background: var(--c); padding: 3px 5px; border-radius: 5px; }
+  .app .bl { display: block; margin-top: 3px; color: var(--muted); font-size: .94rem; line-height: 1.35; }
 
-  .newsbox { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr)); gap: 12px; }
-  .news { padding: 18px 20px 20px; border-radius: 24px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
-  .news header { display: flex; align-items: center; gap: 10px; font: 700 1.2rem/1.2 var(--pixel); margin-bottom: 8px; }
+  /* what's new: one line per app */
+  .newslist { display: grid; gap: 2px; margin-top: 22px; }
+  .news { display: grid; grid-template-columns: 48px 150px minmax(0, 1fr); gap: 0 16px; align-items: center; padding: 10px 12px; margin: 0 -12px; border-radius: 16px; }
+  .news:hover { background: var(--soft); }
+  .news canvas { justify-self: center; }
+  .news header { display: flex; align-items: baseline; gap: 8px; font: 700 1.15rem/1.2 var(--pixel); }
   .news header a { text-decoration: none; }
   .news header span { font: 400 .8rem var(--read); color: var(--muted); }
-  .news header canvas { flex: none; }
-  .news p, .news ul { margin: 0; color: var(--muted); font-size: .96rem; }
-  .news ul { padding-left: 1.1em; }
+  .news ul { list-style: none; margin: 0; padding: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .news li { display: inline; }
   .news code { font-size: .84em; }
-  .seeall { display: inline-block; margin-top: 18px; font-weight: 700; }
-  footer.site { padding: 80px 0 30px; color: var(--muted); font-size: .94rem; max-width: 52em; }
+  .seeall { display: inline-block; margin-top: 16px; font-weight: 700; }
+  footer.site { padding: 72px 0 28px; color: var(--muted); font-size: .94rem; }
   footer.site a { color: var(--ink); }
 
   /* the sky's colours, for the words that sit on it */
   .world { --sky-ink: #0c1733; --sky-dim: #22355f; --sky-btn-ink: #ffffff; }
-  @media (prefers-color-scheme: dark) { :root:not([data-look=light]) .world { --sky-ink: #ffffff; --sky-dim: #c2cbe6; --sky-btn-ink: #0c1733; background: #050817; } }
   :root[data-look=dark] .world { --sky-ink: #ffffff; --sky-dim: #c2cbe6; --sky-btn-ink: #0c1733; background: #050817; }
 
-  @media (max-width: 980px) {
-    .world-in { grid-template-columns: minmax(0, 1fr); padding-top: 44px; }
-    .group { grid-template-columns: 1fr; gap: 14px; }
-  }
-  @media (max-width: 700px) {
+  @media (max-width: 1040px) { .apps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 980px) { .world-in { grid-template-columns: minmax(0, 1fr); padding-top: 40px; } }
+  @media (max-width: 640px) {
     .world { margin: 8px; border-radius: 26px; }
-    .plots { grid-template-columns: 1fr; }
-    .plot { grid-template-columns: 92px minmax(0, 1fr); }
-    .patch { height: 76px; }
-    .tlog { min-height: 8.5em; }
-    .crew { gap: 3px; padding: 0 8px; }
+    .apps { grid-template-columns: 1fr; }
+    .news { grid-template-columns: 40px minmax(0, 1fr); }
+    .news ul { grid-column: 2; white-space: normal; }
   }
 </style>
 </head>
@@ -123,7 +122,7 @@
       <p class="thint" id="thint">Try it: type what you want to do, like <b>music</b>, and press Enter.</p>
     </div>
   </div>
-  <nav class="crew" id="crew" aria-label="The apps' mascots"></nav>
+  <div class="cast" id="cast"></div>
   <div class="ground" aria-hidden="true"></div>
 </header>
 
@@ -131,7 +130,7 @@
   <section class="band" id="get" aria-labelledby="get-title">
     <div class="gethead"><h2 id="get-title">Get every app at once</h2>
       <div class="os" role="group" aria-label="Your computer"><button type="button" data-os="sh" aria-pressed="true">Mac</button><button type="button" data-os="ps1" aria-pressed="false">Windows</button></div></div>
-    <p class="sub">Three steps, about a minute. After that, everything keeps itself up to date.</p>
+    <p class="sub">Three steps, about a minute. This installs <b>pca</b>, the menu that installs the others and keeps everything up to date.</p>
     <div class="getbox">
     <ol class="steps3">
       <li><b id="s1">Open Terminal</b><p id="s1p">Hold <kbd>⌘</kbd> and press <kbd>space</kbd>, type <b>Terminal</b>, press <kbd>return</kbd>.</p></li>
@@ -145,18 +144,17 @@
   <section class="band" id="apps" aria-labelledby="apps-title">
     <h2 id="apps-title">Every app</h2>
     <p class="sub">Pick one to see what it looks like and how to get just that one. Or, on any page, just start typing what you want to do.</p>
-    <div id="groups"></div>
+    <div class="apps" id="appgrid"></div>
   </section>
 
   <section class="band" aria-labelledby="news-title">
     <h2 id="news-title">What's new</h2>
-    <p class="sub">The latest from each app. pca brings you every change by itself.</p>
-    <div class="newsbox" id="news">{{news_short}}</div>
+    <div class="newslist" id="news">{{news_short}}</div>
     <a class="seeall" href="/new">See everything that's new</a>
   </section>
 
   <footer class="site">
-    Every app's code is on GitHub: <a href="https://github.com/dpatel7-dev/gossip">gossip</a>, <a href="https://github.com/dpatel7-dev/Tree-Of-Thought">Tree of Thought</a>, <a href="https://github.com/dpatel7-dev/pigeon">pigeon</a>, <a href="https://github.com/dpatel7-dev/Tidy">tidy</a>, <a href="https://github.com/dpatel7-dev/Den">den</a>, <a href="https://github.com/dpatel7-dev/scout">scout</a>, <a href="https://github.com/dpatel7-dev/roomy">roomy</a>, <a href="https://github.com/dpatel7-dev/hey">hey</a>, <a href="https://github.com/dpatel7-dev/morph">morph</a>, <a href="https://github.com/dpatel7-dev/shoo">shoo</a>, <a href="https://github.com/dpatel7-dev/magpie">magpie</a>, <a href="https://github.com/dpatel7-dev/medic">medic</a>, <a href="https://github.com/dpatel7-dev/flash">flash</a>, <a href="https://github.com/dpatel7-dev/hum">hum</a>, <a href="https://github.com/dpatel7-dev/usual">usual</a>, <a href="https://github.com/dpatel7-dev/locket">locket</a>, <a href="https://github.com/dpatel7-dev/Project-CLI-Access">pca</a> and <a href="https://github.com/dpatel7-dev/project-site">this website</a>.
+    All the code is on GitHub, at <a href="https://github.com/dpatel7-dev">github.com/dpatel7-dev</a>. This website's own code is <a href="https://github.com/dpatel7-dev/project-site">project-site</a>.
   </footer>
 </main>
 
@@ -164,18 +162,16 @@
 {{art}}
 (function () {
   const APPS = {{apps_json}};
-  const GROUPS = {{groups_json}};
   const byId = {};
   APPS.forEach((a) => { byId[a.id] = a; });
-  const crewApps = APPS.filter((a) => ART.mascots[a.id]);
   const fits = (id) => trimGrid(ART.mascots[id].grid);
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-  // ── the world: sky, far hills, sun or moon, the grass ──
   const world = document.getElementById('world');
-  const sky = world.querySelector('canvas.sky');
   const rnd = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
+
+  // ── the world: sky, sun or moon, clouds or stars, far hills, the grass ──
+  const sky = world.querySelector('canvas.sky');
   function drawSky() {
     const night = isNight();
     const cell = innerWidth < 700 ? 6 : 8;
@@ -183,41 +179,37 @@
     sky.width = W; sky.height = H;
     sky.style.width = W * cell + 'px'; sky.style.height = H * cell + 'px';
     const g = sky.getContext('2d');
-    const top = night ? '#02040c' : '#5f9dff', low = night ? '#16255a' : '#d4e8ff';
     const groundCells = Math.ceil(64 / cell);
-    skyBands(g, W, H, top, low, 9);
-    // keep stars and clouds out from behind the words
+    skyGradient(g, W, H, night ? '#02040c' : '#5f9dff', night ? '#17275c' : '#d6e9ff');
+    // keep the sun, clouds and stars out from behind the words and the Terminal
     const wr = world.getBoundingClientRect();
-    const words = ['.hello h1', '.hello .lede', '.hello .go'].map((q) => world.querySelector(q).getBoundingClientRect())
+    const keep = ['.hello h1', '.hello .lede', '.hello .go', '#term'].map((q) => world.querySelector(q).getBoundingClientRect())
       .map((r) => [Math.floor((r.left - wr.left) / cell) - 1, Math.floor((r.top - wr.top) / cell) - 1, Math.ceil((r.right - wr.left) / cell) + 1, Math.ceil((r.bottom - wr.top) / cell) + 1]);
-    const clear = (x0, y0, x1, y1) => !words.some(([a, b, c, d]) => x0 < c && x1 > a && y0 < d && y1 > b);
-    // the sun (or moon) goes in the first bit of open sky, top right if there's room
-    const spot = (r) => [[0.88, 0.15], [0.9, 0.07], [0.62, 0.09], [0.84, 0.42], [0.5, 0.5]].map(([fx, fy]) => [Math.round(W * fx), Math.round(H * fy)])
-      .find(([x, y]) => x + r < W && y - r > 0 && clear(x - r - 1, y - r - 1, x + r + 2, y + r + 2)) || [-99, -99];
+    const clear = (x0, y0, x1, y1) => !keep.some(([a, b, c, d]) => x0 < c && x1 > a && y0 < d && y1 > b);
+    const spot = (r) => [[0.9, 0.12], [0.6, 0.08], [0.48, 0.18], [0.94, 0.4]].map(([fx, fy]) => [Math.round(W * fx), Math.round(H * fy)])
+      .find(([x, y]) => x + r < W && y - r > 0 && clear(x - r - 1, y - r - 1, x + r + 2, y + r + 2));
     if (night) {
-      for (let y = 0; y < H * 0.72; y++) for (let x = 0; x < W; x++) {
+      for (let y = 0; y < H * 0.7; y++) for (let x = 0; x < W; x++) {
         const r = rnd(x * 2.3, y * 4.1);
-        if (r > 0.993 && clear(x, y, x + 1, y + 1)) { g.globalAlpha = 0.35 + (r - 0.988) * 55; g.fillStyle = r > 0.997 ? '#fff4c0' : '#ffffff'; g.fillRect(x, y, 1, 1); }
+        if (r > 0.993 && clear(x, y, x + 1, y + 1)) { g.globalAlpha = 0.35 + (r - 0.993) * 90; g.fillStyle = r > 0.998 ? '#fff4c0' : '#ffffff'; g.fillRect(x, y, 1, 1); }
       }
       g.globalAlpha = 1;
-      const [mx, my] = spot(6);
-      if (mx >= 0) for (let y = -6; y <= 6; y++) for (let x = -6; x <= 6; x++) {
-        const d = x * x + y * y;
-        if (d <= 17 && !((x + 2) * (x + 2) + (y - 1) * (y - 1) <= 11)) { g.fillStyle = '#f7f1d6'; g.fillRect(mx + x, my + y, 1, 1); }
+      const m = spot(5);
+      if (m) for (let y = -5; y <= 5; y++) for (let x = -5; x <= 5; x++) {
+        if (x * x + y * y <= 17 && !((x + 2) * (x + 2) + (y - 1) * (y - 1) <= 11)) { g.fillStyle = '#f7f1d6'; g.fillRect(m[0] + x, m[1] + y, 1, 1); }
       }
     } else {
-      const [sx, sy] = spot(7);
-      if (sx >= 0) for (let y = -7; y <= 7; y++) for (let x = -7; x <= 7; x++) {
+      const s = spot(6);
+      if (s) for (let y = -6; y <= 6; y++) for (let x = -6; x <= 6; x++) {
         const d = x * x + y * y;
-        if (d <= 13) { g.fillStyle = '#ffe27a'; g.fillRect(sx + x, sy + y, 1, 1); }
-        else if (d <= 26) { g.fillStyle = '#ffefa6'; g.fillRect(sx + x, sy + y, 1, 1); }
-        else if (d <= 40 && (x + y) % 2 === 0) { g.fillStyle = '#fff4c4'; g.fillRect(sx + x, sy + y, 1, 1); }
+        if (d <= 12) { g.fillStyle = '#ffe27a'; g.fillRect(s[0] + x, s[1] + y, 1, 1); }
+        else if (d <= 22) { g.fillStyle = '#ffefa6'; g.fillRect(s[0] + x, s[1] + y, 1, 1); }
       }
       const CLOUD = ['.....WWWW.........', '...WWWWWWWW..WWW..', '.WWWWWWWWWWWWWWWWW', 'WWWWWWWWWWWWWWWWWW', '.ssssssssssssssss.'];
       let made = 0;
-      [[0.03, 0.05], [0.4, 0.04], [0.62, 0.2], [0.86, 0.42], [0.5, 0.6], [0.06, 0.62], [0.3, 0.3], [0.72, 0.68]].forEach(([fx, fy], n) => {
+      [[0.03, 0.05], [0.42, 0.05], [0.7, 0.04], [0.47, 0.62], [0.3, 0.34]].forEach(([fx, fy], n) => {
         const cx = Math.round(W * fx), cy = Math.round(H * fy), wide = n % 2 ? 14 : 18;
-        if (made >= 4 || cx + wide > W || !clear(cx, cy, cx + wide, cy + 5)) return;
+        if (made >= 3 || cx + wide > W || !clear(cx - 1, cy - 1, cx + wide + 1, cy + 6)) return;
         made++;
         CLOUD.forEach((row, r) => [...row].forEach((ch, k) => {
           if (ch === '.' || k >= wide) return;
@@ -226,16 +218,10 @@
         }));
       });
     }
-    // far hills, a little lighter (or darker) than the grass, so the world has some depth
     const hill = night ? '#0f2a2a' : '#9cc98a', hill2 = night ? '#0b2020' : '#86b874';
     for (let x = 0; x < W; x++) {
       const h = Math.round(5 + 3 * Math.sin(x / 9) + 2 * Math.sin(x / 4.3 + 1) + 2 * Math.sin(x / 23));
-      for (let y = H - groundCells - h; y < H; y++) { g.fillStyle = y > H - h + 1 && rnd(x, y) < 0.25 ? hill2 : hill; g.fillRect(x, y, 1, 1); }
-    }
-    if (night) for (let i = 0; i < 26; i++) { // fireflies, Blink's friends
-      const x = Math.round(rnd(i, 3) * W), y = Math.round(H - groundCells - 2 - rnd(i, 9) * H * 0.18);
-      if (!clear(x, y, x + 1, y + 1)) continue;
-      g.fillStyle = rnd(i, 5) < 0.5 ? '#f6ff8a' : '#d7f07a'; g.fillRect(x, y, 1, 1);
+      for (let y = H - groundCells - h; y < H; y++) { g.fillStyle = y > H - groundCells - h + 1 && rnd(x, y) < 0.25 ? hill2 : hill; g.fillRect(x, y, 1, 1); }
     }
     const tile = document.createElement('canvas');
     const T = ['..g.....G.......g...G.....g..G..', 'gGgG.gGGgGg.GgGGgGgG.gGgGGgGgGgG', 'GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG', 'gGGgGGGGgGGGgGGGGgGGGgGGGGgGGgGG'];
@@ -245,26 +231,31 @@
     document.getElementById('term').style.setProperty('--caret', night ? '#d7f07a' : '#28c840');
   }
 
-  // ── everyone standing on the grass, as big as fits in one row ──
-  const crew = document.getElementById('crew');
-  crewApps.forEach((a) => {
-    const el = document.createElement('a');
-    el.className = 'mate'; el.href = '/' + a.id; el.dataset.id = a.id; el.style.setProperty('--c', a.c);
-    el.setAttribute('aria-label', a.name + (a.mascot ? ', with ' + a.mascot : ''));
-    el.innerHTML = '<span class="tag">' + esc(a.short || a.name) + '</span><canvas aria-hidden="true"></canvas>';
-    crew.appendChild(el);
-  });
-  function drawCrew() {
-    const widths = crewApps.map((a) => Math.max(...fits(a.id).map((r) => r.length)));
-    const gap = parseFloat(getComputedStyle(crew).columnGap) || 8;
-    const room = crew.clientWidth - 32 - gap * (crewApps.length - 1) - 4 * crewApps.length;
-    const s = Math.max(1, Math.min(5, Math.floor(room / widths.reduce((a, b) => a + b, 0))));
-    crew.querySelectorAll('.mate').forEach((el, i) => {
-      const c = drawPixels(el.querySelector('canvas'), fits(crewApps[i].id), ART.mascots[crewApps[i].id].ink, s);
-      if (s === 1) { // tiny screens: shrink a little more, still in one row
-        const q = Math.min(1, room / widths.reduce((a, b) => a + b, 0));
-        c.style.width = Math.floor(widths[i] * q) + 'px';
-      } else c.style.width = '';
+  // ── who's out: Rowan the tree, Bumble buzzing about and a pigeon by day;
+  //    by night Rowan, Pip the owl awake under it, and Blink glowing ──
+  const CAST = {
+    day: [{ id: 'tot', x: 0.03, s: 4 }, { id: 'hum', x: 0.3, up: 52, s: 3, flies: true }, { id: 'pigeon', x: 0.9, s: 3 }],
+    night: [{ id: 'tot', x: 0.03, s: 4 }, { id: 'scout', x: 0.105, s: 3 }, { id: 'flash', x: 0.34, up: 58, s: 3, flies: true, glows: true }],
+  };
+  const cast = document.getElementById('cast');
+  let castFor = '';
+  function drawCast() {
+    const night = isNight() ? 'night' : 'day';
+    const small = innerWidth < 700;
+    if (castFor === night + small) return;
+    castFor = night + small;
+    cast.textContent = '';
+    CAST[night].forEach((m) => {
+      const a = byId[m.id];
+      if (!a || !ART.mascots[m.id]) return;
+      const el = document.createElement('a');
+      el.className = 'mate' + (m.flies && !still ? ' flies' : '') + (m.glows ? ' glows' : '');
+      el.href = '/' + m.id; el.dataset.id = m.id; el.style.setProperty('--c', a.c);
+      el.style.left = (m.x * 100) + '%'; el.style.bottom = (m.up || 0) + 'px';
+      el.setAttribute('aria-label', a.name + ': ' + a.blurb);
+      el.innerHTML = '<span class="tag">' + esc(a.short || a.name) + '</span>';
+      el.appendChild(drawPixels(document.createElement('canvas'), fits(m.id), ART.mascots[m.id].ink, Math.max(2, m.s - (small ? 1 : 0))));
+      cast.appendChild(el);
     });
   }
 
@@ -298,41 +289,29 @@
     const p = document.createElement('p');
     p.className = cls; p.innerHTML = html;
     log.appendChild(p);
-    while (log.children.length > 8) log.firstChild.remove();
+    while (log.children.length > 4) log.firstChild.remove(); // the last two, so nothing is cut off
   }
-  let saying = 0;
-  function cheer(id) {
-    crew.querySelectorAll('.mate.say').forEach((m) => m.classList.remove('say'));
-    const m = crew.querySelector('.mate[data-id="' + id + '"]');
-    if (!m) return;
-    m.classList.add('say');
-    clearTimeout(saying);
-    saying = setTimeout(() => m.classList.remove('say'), 2600);
-  }
-  function answer(text, typedByYou) {
+  function answer(text, typedByYou, quiet) {
     const q = text.trim().toLowerCase();
     say(esc(text), 'me');
     if (!q) return;
-    if (q === 'help' || q === 'ls') {
-      say('every app here:' + APPS.map((a) => ' <span style="color:' + a.c + '">' + esc(a.id) + '</span>').join(''), 'out');
-      return;
-    }
+    if (q === 'help' || q === 'ls') { say('every app here:' + APPS.map((a) => ' <span style="color:' + a.c + '">' + esc(a.id) + '</span>').join(''), 'out'); return; }
     if (q === 'clear') { log.textContent = ''; return; }
     const a = best(q);
     if (!a) { say('no app for that yet. Try music, files, study or passwords.', 'out'); return; }
-    say('<b style="--c:' + a.c + '">' + esc(a.short || a.name) + '</b> ' + esc(a.line), 'out');
-    cheer(a.id);
+    say('<b style="--c:' + a.c + '">' + esc(a.short || a.name) + '</b> ' + esc(a.blurb), 'out');
+    if (!quiet && window.dockShow) window.dockShow(a.id); // its icon in the dock lights up
     if (typedByYou) { hint.innerHTML = 'Opening <b>' + esc(a.name) + '</b>…'; setTimeout(() => { location.href = '/' + a.id; }, 450); }
   }
   function hintFor(text) {
     const a = best(text);
     if (!text.trim()) hint.innerHTML = 'Try it: type what you want to do, like <b>music</b>, and press Enter.';
-    else if (a) hint.innerHTML = 'Press Enter for <i style="--c:' + a.c + '"></i><b>' + esc(a.name) + '</b>: ' + esc(a.line);
+    else if (a) hint.innerHTML = 'Press Enter for <i style="--c:' + a.c + '"></i><b>' + esc(a.name) + '</b>: ' + esc(a.blurb);
     else hint.innerHTML = 'Nothing called that yet. Try <b>music</b>, <b>files</b>, <b>study</b> or <b>passwords</b>.';
   }
-
-  // it types by itself until you click in it
-  const DEMO = ['scout', 'hum', 'locket', 'flash', 'shoo', 'pigeon', 'medic', 'gossip', 'magpie', 'tidy', 'morph', 'usual', 'roomy', 'den', 'hey', 'tot'];
+  // it starts with a couple already typed, then types by itself until you click in it
+  ['scout', 'hum'].forEach((w) => answer(w, false, true));
+  const DEMO = ['locket', 'flash', 'shoo', 'pigeon', 'medic', 'gossip', 'magpie', 'tidy', 'morph', 'usual', 'roomy', 'den', 'hey', 'tot', 'scout', 'hum'];
   let demoOn = !still, timer = 0, n = 0;
   function stopDemo() { demoOn = false; clearTimeout(timer); }
   function demoStep() {
@@ -347,12 +326,11 @@
         if (!demoOn) return;
         tin.value = '';
         answer(word, false);
-        timer = setTimeout(demoStep, 2300);
+        timer = setTimeout(demoStep, 2600);
       }, 420);
     })();
   }
-  if (still) { ['scout', 'hum', 'locket'].forEach((w) => answer(w, false)); crew.querySelectorAll('.say').forEach((m) => m.classList.remove('say')); }
-  else timer = setTimeout(demoStep, 900);
+  if (demoOn) timer = setTimeout(demoStep, 1800);
   tin.addEventListener('focus', () => { if (demoOn) { stopDemo(); tin.value = ''; } hintFor(tin.value); });
   tin.addEventListener('input', () => hintFor(tin.value));
   tin.addEventListener('keydown', (e) => {
@@ -369,26 +347,15 @@
     return true;
   };
 
-  // ── every app, by what it's for ──
-  const groups = document.getElementById('groups');
-  GROUPS.forEach(([g, title, about]) => {
-    const apps = APPS.filter((a) => a.group === g);
-    const box = document.createElement('div');
-    box.className = 'group';
-    box.innerHTML = '<h3>' + esc(title) + '<small>' + esc(about) + '</small></h3><div class="plots"></div>';
-    const plots = box.querySelector('.plots');
-    apps.forEach((a) => {
-      const el = document.createElement('a');
-      el.className = 'plot'; el.href = '/' + a.id; el.style.setProperty('--c', a.c);
-      const v = a.v && a.v !== '?' ? 'v' + a.v : '';
-      el.innerHTML = '<span class="patch"><canvas aria-hidden="true"></canvas></span><span><b>' + esc(a.name) + (v ? ' <small>' + v + '</small>' : '') + (a.fresh ? ' <em>new</em>' : '') + '</b><span>' + esc(a.line) + '</span></span>';
-      plots.appendChild(el);
-      const art = ART.mascots[a.id];
-      const cv = el.querySelector('canvas');
-      if (art) drawPixels(cv, trimGrid(art.grid), art.ink, innerWidth < 700 ? 2 : 3);
-      else if (a.icon) { const img = new Image(); img.src = a.icon; img.alt = ''; img.className = 'pix'; img.onload = () => { img.width = img.naturalWidth * 3; }; cv.replaceWith(img); img.style.marginBottom = '14px'; }
-    });
-    groups.appendChild(box);
+  // ── every app (pca is the one in the steps above) ──
+  const grid = document.getElementById('appgrid');
+  APPS.filter((a) => a.id !== 'pca').forEach((a) => {
+    const el = document.createElement('a');
+    el.className = 'app'; el.href = '/' + a.id; el.style.setProperty('--c', a.c);
+    const v = a.v && a.v !== '?' ? 'v' + a.v : '';
+    el.innerHTML = '<span class="pic"></span><span><b>' + esc(a.short || a.name) + (v ? ' <small>' + v + '</small>' : '') + (a.fresh ? ' <em>new</em>' : '') + '</b><span class="bl">' + esc(a.blurb) + '</span></span>';
+    if (ART.mascots[a.id]) el.firstChild.appendChild(drawPixels(document.createElement('canvas'), fits(a.id), ART.mascots[a.id].ink, 2));
+    grid.appendChild(el);
   });
 
   // ── what's new: each app's mascot beside its news ──
@@ -396,10 +363,9 @@
     const a = byId[n.dataset.app];
     if (!a || !ART.mascots[a.id]) return;
     n.style.setProperty('--c', a.c);
-    const c = document.createElement('canvas');
+    const c = drawPixels(document.createElement('canvas'), fits(a.id), ART.mascots[a.id].ink, 2);
     c.setAttribute('aria-hidden', 'true');
-    drawPixels(c, fits(a.id), ART.mascots[a.id].ink, 2);
-    n.querySelector('header').prepend(c);
+    n.prepend(c);
   });
 
   // ── the three steps, for a Mac or Windows ──
@@ -427,9 +393,10 @@
     setTimeout(() => { copy.textContent = 'Copy'; }, 1600);
   });
 
-  function drawAll() { drawSky(); drawCrew(); }
+  function drawAll() { drawSky(); drawCast(); }
   drawAll();
-  // redraw when the world changes size (the window, or the fonts arriving and the words reflowing)
+  // redraw when the world changes size (the window, or the fonts arriving and the words reflowing),
+  // and when day turns to night (or Day / Night is picked in All apps)
   let wait = 0, seen = '';
   new ResizeObserver(() => {
     const now = world.clientWidth + 'x' + world.clientHeight;
@@ -438,7 +405,7 @@
     clearTimeout(wait); wait = setTimeout(drawAll, 60);
   }).observe(world);
   if (document.fonts) document.fonts.ready.then(drawSky);
-  addEventListener('djp7look', drawSky);
+  addEventListener('djp7look', drawAll);
 })();
 </script>
 </body>

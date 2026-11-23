@@ -8,7 +8,7 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-<script>try{var l=localStorage.getItem('djp7-look');if(l==='light'||l==='dark')document.documentElement.setAttribute('data-look',l)}catch(e){}</script>
+<script>(function(){var r=document.documentElement,l=null;window.djp7ClockNight=function(d){d=d||new Date();var y=d.getFullYear(),n=Math.floor((d-new Date(y,0,0))/864e5),e=23.44*Math.sin(2*Math.PI*(284+n)/365)*Math.PI/180,x=-Math.tan(0.698)*Math.tan(e),h=Math.acos(Math.max(-1,Math.min(1,x)))*12/Math.PI,s=d.getTimezoneOffset()<Math.max(new Date(y,0,1).getTimezoneOffset(),new Date(y,6,1).getTimezoneOffset())?1:0,t=d.getHours()+d.getMinutes()/60;return t<12+s-h||t>=12+s+h};try{l=localStorage.getItem('djp7-look')}catch(e){}r.setAttribute('data-look',l==='light'||l==='dark'?l:(djp7ClockNight()?'dark':'light'));window.djp7Night=function(){return r.getAttribute('data-look')==='dark'}})()</script>
 <style>
   /* One moment on a black backdrop: a mascot doing its thing while the page
      checks you're a person. Then straight through. */

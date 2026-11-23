@@ -139,7 +139,7 @@
       + '<p class="dk-how" id="dk-how">Click an app to see what it does and how to get it. Or type, and press <b>Enter</b> to open the first one.</p>'
       + '<div class="dk-list"></div>'
       + '<div class="dk-foot"><nav class="dk-links" aria-label="More"><a href="/">Home</a><a href="/start">Start here</a><a href="/new">What\'s new</a></nav>'
-      + '<div class="dk-look" role="group" aria-label="Day or night"><span>Look</span><button type="button" data-look="auto">Auto</button><button type="button" data-look="light">Day</button><button type="button" data-look="dark">Night</button></div></div>'
+      + '<div class="dk-look" role="group" aria-label="Day or night"><span>Look</span><button type="button" data-look="auto" title="Day from sunrise, night from sunset">Auto</button><button type="button" data-look="light">Day</button><button type="button" data-look="dark">Night</button></div></div>'
       + '</div>';
     document.body.appendChild(sheet);
     input = sheet.querySelector('input');
@@ -231,15 +231,30 @@
     sheet.querySelectorAll('.dk-look button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.look === v)));
   }
   function apply(v) {
-    if (v === 'light' || v === 'dark') root.setAttribute('data-look', v);
-    else root.removeAttribute('data-look');
+    const was = root.getAttribute('data-look');
+    const now = v === 'light' || v === 'dark' ? v : (window.djp7ClockNight && djp7ClockNight() ? 'dark' : 'light');
+    root.setAttribute('data-look', now);
     paintLook();
-    dispatchEvent(new CustomEvent('djp7look'));
+    if (now !== was) dispatchEvent(new CustomEvent('djp7look'));
   }
   function setLook(v) {
     try { if (v === 'auto') localStorage.removeItem('djp7-look'); else localStorage.setItem('djp7-look', v); } catch (e) { /* this browser won't remember it */ }
     apply(v);
   }
   addEventListener('storage', (e) => { if (e.key === 'djp7-look') apply(e.newValue || 'auto'); });
-  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => dispatchEvent(new CustomEvent('djp7look')));
+  // on Auto, the sun sets (and rises) while the page is open
+  setInterval(() => { if (chosen() === 'auto') apply('auto'); }, 60000);
+
+  // the front page's Terminal points at the app it found: its icon in the dock lights up
+  let lit = null;
+  window.dockShow = function (id) {
+    const el = dock.querySelector('.dk-i[data-id="' + id + '"]');
+    if (lit) { lit.classList.remove('dk-lit'); lit.firstElementChild.style.transform = ''; }
+    if (!el || !el.offsetWidth || px !== null) return;
+    lit = el;
+    el.classList.add('dk-lit');
+    if (!still.matches) el.firstElementChild.style.transform = 'scale(1.3)';
+    clearTimeout(window.dockShow.t);
+    window.dockShow.t = setTimeout(() => { el.classList.remove('dk-lit'); el.firstElementChild.style.transform = ''; lit = null; }, 2200);
+  };
 })();

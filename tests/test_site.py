@@ -186,6 +186,10 @@ class Site(unittest.TestCase):
             text = self.page(path, path[1:])
             self.assertIn('data-look=light', text.replace('"', ''), path)
         self.assertIn('Bastion the armadillo', home + self.page('/locket', 'locket'))
+        # day or night by the time of day, unless Day or Night was picked
+        self.assertIn('window.djp7ClockNight=', home)
+        with open(os.path.join(site_app.HERE, 'pages', 'check.html'), encoding='utf-8') as f:
+            self.assertIn('window.djp7ClockNight=', f.read())  # the "are you a person?" check too
         self.assertNotIn('console', call('/robots.txt')[2].decode())
 
     def test_reloads_itself_after_a_git_pull(self):

@@ -131,9 +131,13 @@ def changes(app, sections=1):
 
 
 def _lead(point):
-    m = re.match(r'^\*\*(.+?)\*\*', point)
+    """The short version of a change: its bold lead (or first sentence), as plain words."""
+    m = re.match(r'^\*\*(.+?)\*\*:?\s*(.*)', point)
     if m:
-        return '**%s**' % m.group(1)
+        lead = m.group(1).rstrip(':').rstrip()
+        rest = re.split(r'(?<=[.!?])\s+', m.group(2))[0] if len(lead) < 30 and m.group(2) else ''
+        out = lead + (': ' + rest.replace('**', '') if rest else '')
+        return out if len(out) <= 140 else out[:137].rsplit(' ', 1)[0] + '…'
     parts = re.split(r'(?<=[.!?])\s+', point)
     out = parts[0]
     if len(out) < 40 and len(parts) > 1:

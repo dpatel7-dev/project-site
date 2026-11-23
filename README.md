@@ -18,8 +18,9 @@ with its name under it, plus Home, All apps, Start here and What's new. **All
 apps** opens a sheet of every app that you can search by typing what you want
 to do ("music", "passwords"). On this site's own pages you can just start
 typing, and on the front page the typing goes into the Terminal in the sky.
-Day or night follows your computer, or pick **Day** or **Night** at the bottom
-of All apps.
+Day or night follows the time of day: night from sunset, day from sunrise
+(the front page's world changes with it, and so do the mascots out in it). Or
+pick **Day** or **Night** at the bottom of All apps.
 
 ## The "checking you're a person" screen
 
