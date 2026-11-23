@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>pca - Project CLI Access</title>
-<meta name="description" content="One command for every project: pick gossip, Tree of Thought, pigeon or tidy, press Enter, and pca installs and opens it.">
+<meta name="description" content="One command for every app here: type pca, pick one, press Enter, and pca installs and opens it, keeps everything up to date, switches every app between light and dark, and can delete it all.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -45,7 +45,8 @@
   .term .top i { font-style: normal; color: var(--term-faint); }
   .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
   .card { border: 1px solid var(--term-faint); border-radius: 8px; padding: 14px 14px 12px; cursor: pointer; text-align: left; font: inherit; color: inherit; background: none; display: flex; flex-direction: column; }
-  .card canvas { image-rendering: pixelated; width: 100%; max-width: 156px; height: auto; align-self: center; margin-bottom: 12px; }
+  .card .pic { height: 54px; display: flex; align-items: flex-end; justify-content: center; margin: 4px 0 12px; }
+  .card canvas { image-rendering: pixelated; max-width: 100%; height: auto; }
   .card b { font-weight: 700; }
   .card .about { color: var(--term-dim); }
   .card .more { color: var(--term-faint); }
@@ -76,9 +77,10 @@
   footer.wrap { padding-top: 64px; padding-bottom: 56px; color: var(--grey); font-size: .88rem; }
 
   @media (max-width: 700px) {
-    .cards { grid-template-columns: 1fr; gap: 8px; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .card { display: grid; grid-template-columns: 64px 1fr; column-gap: 14px; align-items: center; }
-    .card canvas { grid-row: 1 / span 4; margin: 0; width: 64px; }
+    .card .pic { grid-row: 1 / span 4; height: auto; margin: 0; }
+    .card canvas { max-width: 64px; }
     .card .more, .term .top span { display: none; }
     td:first-child { white-space: normal; width: 40%; padding-right: 14px; }
   }
@@ -87,18 +89,13 @@
 <body>
 <header class="wrap">
   <h1>pca</h1>
-  <p class="lede"><b>Project CLI Access</b> is one command for every project. Type <b>pca</b>, pick one with the arrow keys, press Enter. If it isn't installed yet, pca installs it first, and whatever is out of date, it updates by itself.</p>
+  <p class="lede"><b>Project CLI Access</b> is one command for every app here, all sixteen of them. Type <b>pca</b>, pick one with the arrow keys, press Enter. If it isn't installed yet, pca installs it first, and whatever is out of date, it updates by itself.</p>
 </header>
 
 <div class="wrap">
   <div class="term" id="term" tabindex="0" aria-label="A copy of the pca picker. Use the arrow keys or click a card.">
     <div class="top"><div><b>project cli access</b> <span>&nbsp;·&nbsp; one command, every project</span></div><i>v{{pca_version}}</i></div>
-    <div class="cards">
-      <button type="button" class="card" data-id="gossip" data-cmd="gossip" data-v="{{gossip_version}}" style="--c:#7cc4ff" aria-pressed="true"><canvas aria-hidden="true"></canvas><b>gossip</b><span class="about">end-to-end encrypted chat</span><span class="more">people, servers and calls</span><span class="st"></span></button>
-      <button type="button" class="card" data-id="tot" data-cmd="tot" data-v="" style="--c:#8fd16a" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>tree of thought</b><span class="about">many AI models, one garden</span><span class="more">every answer is a branch</span><span class="st"></span></button>
-      <button type="button" class="card" data-id="pigeon" data-cmd="pigeon" data-v="{{pigeon_version}}" style="--c:#2bc4b2" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>pigeon</b><span class="about">your own locked drive</span><span class="more">files fly between devices</span><span class="st"></span></button>
-      <button type="button" class="card" data-id="tidy" data-cmd="tidy" data-v="{{tidy_version}}" style="--c:#e8913a" aria-pressed="false"><canvas aria-hidden="true"></canvas><b>tidy</b><span class="about">an AI that tidies</span><span class="more">plans first · undo</span><span class="st"></span></button>
-    </div>
+    <div class="cards" id="cards"></div>
     <div class="hint" id="hint" aria-live="polite"></div>
     <div class="from">from {{host}}</div>
   </div>
@@ -118,15 +115,17 @@
 <section class="wrap" aria-labelledby="commands-title">
   <h2 id="commands-title">Commands</h2>
   <table>
-    <tr><td>pca</td><td>The picker. Enter opens a project, u updates it, U checks for updates, x then x removes it.</td></tr>
-    <tr><td>pca tot</td><td>Straight into Tree of Thought. Also pca gossip, pca pigeon and pca tidy.</td></tr>
-    <tr><td>pca pigeon send pic.png</td><td>Anything after the project's name goes to the project.</td></tr>
+    <tr><td>pca</td><td>The picker. <b>Enter</b> opens an app, <b>w</b> shows what's new in it, <b>u</b> updates it, <b>U</b> updates everything, <b>L</b> switches every app between light, dark and following the time of day, <b>x</b> then <b>x</b> removes it.</td></tr>
+    <tr><td>pca tot</td><td>Straight into Tree of Thought. Same for any app: pca hum, pca locket, pca scout…</td></tr>
+    <tr><td>pca pigeon send pic.png</td><td>Anything after the app's name goes to the app.</td></tr>
     <tr><td>pca list</td><td>What's installed, and which version.</td></tr>
-    <tr><td>pca install all</td><td>Install every project.</td></tr>
+    <tr><td>pca install all</td><td>Install every app.</td></tr>
     <tr><td>pca update</td><td>Check for updates now and get them all. (pca also does this by itself when it starts.)</td></tr>
     <tr><td>pca auto daily</td><td>Also update once a day, even when pca isn't open. pca auto off stops updating by itself.</td></tr>
-    <tr><td>pca remove gossip</td><td>Uninstall one project.</td></tr>
-    <tr><td>pca uninstall</td><td>Remove pca itself. Your projects stay.</td></tr>
+    <tr><td>pca look light</td><td>Light for every app. Also pca look dark, and pca look auto.</td></tr>
+    <tr><td>pca remove gossip</td><td>Uninstall one app.</td></tr>
+    <tr><td>pca uninstall</td><td>Remove pca itself. Your apps stay.</td></tr>
+    <tr><td>pca delete-everything</td><td>Every app, everything they saved, and every trace they left, then pca itself (or <b>Shift + X</b> in the picker). It shows you the whole list first and only goes ahead when you type <b>delete everything</b>.</td></tr>
   </table>
   <p class="note">pca installs everything from this website, so if the site moves, the projects move with it.</p>
 </section>
@@ -139,12 +138,18 @@
 {{art}}
 (function () {
   const ORIGIN = location.origin;
+  const APPS = {{apps_json}};
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  // a card for every app, like the real picker
+  document.getElementById('cards').innerHTML = APPS.filter((a) => a.id !== 'pca' && ART.mascots[a.id]).map((a, i) =>
+    '<button type="button" class="card" data-id="' + a.id + '" data-cmd="' + a.id + '" data-v="' + (a.v && a.v !== '?' ? esc(a.v) : '') + '" style="--c:' + a.c + '" aria-pressed="' + (i === 0) + '">'
+    + '<span class="pic"><canvas aria-hidden="true"></canvas></span><b>' + esc(a.name.toLowerCase()) + '</b><span class="about">' + esc(a.blurb) + '</span><span class="st"></span></button>').join('');
   const cards = [...document.querySelectorAll('.card')];
   const hint = document.getElementById('hint');
   let sel = 0;
   cards.forEach((c) => {
     const m = ART.mascots[c.dataset.id];
-    drawPixels(c.querySelector('canvas'), m.grid, m.ink, 6);
+    drawPixels(c.querySelector('canvas'), trimGrid(m.grid), m.ink, 3);
     const st = c.querySelector('.st');
     st.innerHTML = c.dataset.v ? '<span class="ok">✓ </span>v' + c.dataset.v + ' &nbsp;·&nbsp; ' + c.dataset.cmd : 'not installed yet';
   });
@@ -153,7 +158,7 @@
     cards.forEach((c, j) => c.setAttribute('aria-pressed', String(j === sel)));
     const c = cards[sel];
     const what = c.dataset.v ? 'enter opens ' + c.dataset.cmd : 'enter installs and opens ' + c.dataset.cmd;
-    hint.textContent = '← → choose · ' + what + ' · u update · U update all · x remove · q quit';
+    hint.textContent = '← → choose · ' + what + " · w what's new · u update · U update all · l look · x remove · q quit";
   }
   cards.forEach((c, i) => c.addEventListener('click', () => {
     if (i === sel) {
@@ -163,7 +168,7 @@
   document.getElementById('term').addEventListener('keydown', (e) => {
     if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { show(sel + 1); e.preventDefault(); }
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { show(sel - 1); e.preventDefault(); }
-    else if (/^[1-3]$/.test(e.key)) show(Number(e.key) - 1);
+    else if (/^[1-9]$/.test(e.key) && Number(e.key) <= cards.length) show(Number(e.key) - 1);
   });
   show(0);
 
