@@ -8,7 +8,7 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 | `/dice/try` | the Dice emulator: Dice with your settings on a pretend Pi or PC, in the browser |
 | `/me` | Dhruv's own page: what he's made, the animals, and his GitHub |
 | `/apps` | every Terminal app, and the one command that installs them all |
-| `/dice` | [Dice](https://github.com/dpatel7-dev/Dice): set it up first, then put it on a Raspberry Pi (microSD card or NVMe drive) or a PC (USB stick) |
+| `/dice` | [Dice](https://github.com/dpatel7-dev/DiceOS): set it up first, then put it on a Raspberry Pi (microSD card or NVMe drive) or a PC (USB stick) |
 | `/diceweb/` | [DiceWeb](https://github.com/dpatel7-dev/DiceWeb), the same desktop, in your browser |
 | `/dice/install.sh`, `/dice/dice.tar.gz` | Dice's installer, and Dice itself (with DiceWeb inside) for the installer and the updater |
 | `/dice/setup` | where the Dice page saves a setup code (never a password); `/dice/setup/CODE.json` gets it back, for 30 days |

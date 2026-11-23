@@ -190,7 +190,7 @@
 
       <fieldset>
         <legend>Apps</legend>
-        <label class="f"><span>Your Home Assistant</span><input type="url" data-k="homeassistant" placeholder="http://homeassistant.local:8123"><small>Its address. Dice's Web app gets a button for your dashboard.</small></label>
+        <label class="f"><span>Your Home Assistant</span><input type="url" data-k="homeassistant" placeholder="http://homeassistant.local:8123"><small>Its address. SereneTab, Dice's browser, gets a shortcut to your dashboard.</small></label>
         <div class="f"><span>Terminal apps to install too</span><div class="chips" id="suite"></div><small>They install by themselves after the first start, once it's online.</small></div>
       </fieldset>
 
@@ -238,7 +238,7 @@
 
     <div class="route on" data-route="imager" role="tabpanel">
       <ol class="steps">
-        <li><div><b>Download Dice</b><span>One file, about a gigabyte: dice-arm64.img.xz.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/Dice/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
+        <li><div><b>Download Dice</b><span>One file, about a gigabyte: dice-arm64.img.xz.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
         <li><div><b>Open Raspberry Pi Imager</b><span>Get it free from raspberrypi.com/software. On a Mac it asks for an administrator password to write cards.</span></div></li>
         <li><div><b>Choose your Pi, then the Dice file</b><span>Under Operating System, scroll to the bottom, choose Use custom, and pick the file you downloaded.</span></div></li>
         <li><div><b>Choose where it goes</b><span>The microSD card, or the NVMe drive in a USB adapter. When it asks about OS customisation, choose No: your dice.json does that.</span></div></li>
@@ -250,7 +250,7 @@
 
     <div class="route" data-route="pi" role="tabpanel">
       <ol class="steps">
-        <li><div><b>Copy two files onto a USB stick</b><span>The Dice file and your dice.json. Copying files doesn't need an administrator.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/Dice/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
+        <li><div><b>Copy two files onto a USB stick</b><span>The Dice file and your dice.json. Copying files doesn't need an administrator.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
         <li><div><b>Plug everything into the Pi</b><span>The USB stick, a keyboard, a screen, an Ethernet cable to your router, and the microSD card or NVMe drive for Dice. Take Home Assistant's card out first.</span></div></li>
         <li><div><b>Start Network Install</b><span>Switch the Pi on. With nothing to start from, it offers Network Install: hold Shift. It downloads Raspberry Pi Imager and opens it right on the Pi.</span></div></li>
         <li><div><b>Choose the Dice file</b><span>Under Operating System, choose Use custom, and pick the Dice file on the USB stick.</span></div></li>
@@ -278,7 +278,7 @@
 
     <div class="route on" data-route="usb" role="tabpanel">
       <ol class="steps">
-        <li><div><b>Download Dice for PCs</b><span>One file, about a gigabyte and a half: dice-amd64.iso.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/Dice/releases/latest/download/dice-amd64.iso">Download Dice for PCs</a></div></div></li>
+        <li><div><b>Download Dice for PCs</b><span>One file, about a gigabyte and a half: dice-amd64.iso.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-amd64.iso">Download Dice for PCs</a></div></div></li>
         <li><div><b>Write it onto a USB stick</b><span>8 GB or bigger. In Raspberry Pi Imager choose Use custom and pick the file, or use balenaEtcher. Everything on the stick is erased.</span></div></li>
         <li><div><b>Start the PC from the stick</b><span>Plug it in and switch the PC on. Tap its start-up menu key straight away (often F12, F11, F9 or Esc) and pick the USB stick.</span></div></li>
         <li><div><b>Try it, or install it</b><span>Pick Dice to try it from the stick. Pick Install to put it on the PC's own drive: that erases the drive, and asks for your name and a password.</span></div></li>
@@ -559,7 +559,7 @@
     // the Pi, and the Dice die floating beside it, its shadow on the grass
     const b = G.sprite(BOARD, BINK, 'pi-board');
     hg.drawImage(b, sx + sw + 8, gy - b.height + 2);
-    const die = still ? G.die(24, null, { key: 'mascot' }) : G.dieWobble(24, t);
+    const die = G.die(24, null, { key: 'mascot' }); // the logo die, floating
     const lift = 5 + (still ? 0 : Math.sin(t * 1.6) * 2), dx = sx + sw + 36;
     const shw = Math.round(die.width * (0.62 - lift * 0.02));
     hg.fillStyle = 'rgba(0,0,0,.16)'; hg.fillRect(dx + Math.round((die.width - shw) / 2), gy + 1, shw, 1);

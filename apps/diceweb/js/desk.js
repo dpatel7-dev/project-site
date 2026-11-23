@@ -6,8 +6,8 @@
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, M = D.M, $ = D.$, esc = D.esc, h = D.h;
   const Desk = D.desk = { on: false, wins: [], z: 10, world: null, last: 0 };
-  const SIZES = { files: [900, 600], browser: [720, 520], music: [880, 580], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [900, 620], pigeon: [1000, 680],
-    calculator: [330, 500], calendar: [820, 580], clock: [560, 520], monitor: [760, 540] };
+  const SIZES = { files: [900, 600], browser: [1060, 690], music: [880, 580], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [900, 620], pigeon: [1000, 680],
+    calculator: [330, 500], calendar: [1000, 660], games: [960, 640], clock: [560, 520], monitor: [760, 540] };
 
   let root, wall, wg;
   function build() {

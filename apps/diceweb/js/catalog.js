@@ -1,7 +1,7 @@
 // Everything DiceWeb knows about: its own apps, the apps for your computer,
 // and the friends (the mascots). The suite list matches the website's.
 window.CATALOG = {
-  version: '1.2.0',
+  version: '1.3.0',
   site: 'https://djp7.pythonanywhere.com',
 
   // Cubby: DiceWeb's own mascot, a die with feet.
@@ -40,12 +40,14 @@ window.CATALOG = {
       line: 'Quick notes, saved as you type. They are files in Terminal too.', words: 'write text notepad memo' },
     { id: 'files', name: 'Files', kind: 'app', c: '#5aa9e6', who: 'tidy', land: 'autumn', blurb: 'Your folders and files',
       line: 'Your folders and files. On a computer running Dice, your real ones, and any USB stick you plug in.', words: 'folders documents finder explorer usb' },
-    { id: 'browser', name: 'Web', kind: 'app', c: '#7c9cff', who: 'scout', land: 'mountains', blurb: 'Open websites',
-      line: 'Open any website, or your Home Assistant dashboard.', words: 'browser internet chrome website home assistant' },
+    { id: 'browser', name: 'SereneTab', kind: 'app', c: '#3d86d6', who: 'scout', land: 'mountains', blurb: 'The web, with a calm new tab',
+      line: 'A web browser with tabs, and a new tab page with a city skyline under its real sky, the weather and your shortcuts.', words: 'browser web internet chrome website serenetab new tab search home assistant' },
     { id: 'calculator', name: 'Calculator', kind: 'app', c: '#5d6b8a', who: null, land: 'gears', blurb: 'Work out sums',
       line: 'Type a sum or press the keys. It keeps your last few answers.', words: 'calc maths math sum add numbers' },
-    { id: 'calendar', name: 'Calendar', kind: 'app', c: '#ff707a', who: null, land: 'paper', blurb: 'Days, and what\'s on',
-      line: 'A month at a time. Pick a day to add what\'s on.', words: 'date diary schedule events month plan' },
+    { id: 'calendar', name: 'Axiom', kind: 'app', c: '#d4a857', who: null, land: 'paper', blurb: 'A calm planner for school',
+      line: 'Classes, tasks by class, a calendar with a dot for each class, and notes. Today sorts out what\'s overdue and what\'s due.', words: 'axiom planner calendar homework tasks classes school notes reminders date schedule' },
+    { id: 'games', name: 'Games', kind: 'app', c: '#5b4bc4', who: null, land: 'screen', blurb: 'Dhruv\'s games from dpatel.dev',
+      line: 'Algebra Dash, Ball and Wall, Neon Voids and Pixel Lander: the games from dpatel.dev, ready to play.', words: 'games play arcade algebra dash ball wall neon voids lunar pixel lander' },
     { id: 'clock', name: 'Clock', kind: 'app', c: '#2bc4b2', who: null, land: 'hills', blurb: 'World clocks, a timer and a stopwatch',
       line: 'The time here and in other cities, a timer that rings, and a stopwatch with laps.', words: 'time timer stopwatch alarm world cities' },
     { id: 'monitor', name: 'System Monitor', kind: 'system', c: '#4fc16b', who: null, land: 'screen', blurb: 'How busy the computer is',

@@ -11,7 +11,7 @@
   const Hero = D.hero = { app: null, world: null, last: 0, paused: false };
   const cv = $('#hero'), hg = cv.getContext('2d');
   // how many screen pixels make one pixel of the landscapes (smaller numbers, more detail)
-  D.scapeCell = () => Math.max(2, Math.round(Math.max(innerWidth, innerHeight * 1.6) / 440));
+  D.scapeCell = () => Math.max(2, Math.round(Math.max(innerWidth, innerHeight * 1.6) / 640));
   // Behind Big screen: the world you picked, as a calm landscape across the top of the screen.
   // It stays the same as you move between apps; only the accent colour follows what's focused.
   Hero.size = function () {
@@ -317,7 +317,7 @@
       get.querySelector('#getcopy').onclick = (e) => copy(cmd, e.currentTarget);
       left.appendChild(get);
     } else {
-      const how = { files: 'Your files, in folders. On Dice they\'re the real files on the computer.', browser: 'Open the suite\'s web pages without leaving DiceWeb.',
+      const how = { files: 'Your files, in folders. On Dice they\'re the real files on the computer.', browser: 'Tabs, an address bar that searches, and a new tab page with a city under its real sky.',
         music: 'Pick a Dice Radio station, or add songs from your computer. They stay here for next time.', terminal: 'Type help and press Enter. Try neofetch, roll 2d6, or say pebble hi.',
         notes: 'Notes save as you type. They\'re files too: ls ~/notes in Terminal.', store: 'Every app for your computer, with the line to get it.', settings: 'Look, sound, controllers and more.' }[id];
       if (how) left.appendChild(h('<div class="panel"><h3>How it works</h3><p>' + how + '</p></div>'));
@@ -948,7 +948,7 @@
         g.drawImage(G.die(64, DiceDie.tumble(k), { key: 'boot' + step + (night ? 'n' : ''), ss: 2, outline }), 4, Math.round(10 + y));
       } else {
         shadow(26, 0.18);
-        g.drawImage(G.die(64, null, { key: 'boot-rest' + (night ? 'n' : ''), ss: 3, outline }), 4, 10);
+        g.drawImage(G.die(64, null, { key: 'boot-rest' + (night ? 'n' : ''), ss: 3, outline, ray: true }), 4, 10);
       }
       const wk = Math.max(0, Math.min(1, (t - T.word) / 500));
       const text = 'DiceWeb';

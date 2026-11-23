@@ -36,7 +36,8 @@
   G.die = function (size, M, opts) {
     const key = size + ':' + (opts && opts.key ? opts.key : JSON.stringify(M || 'rest')) + ':' + (opts && opts.outline ? 'o' : '');
     if (dice.has(key)) return dice.get(key);
-    const img = DiceDie.render(size, M || DiceDie.REST, Object.assign({ ss: size < 40 ? 4 : 3 }, opts || {}));
+    // resting: the flat logo die (sharp at any size); turning: the 3D one
+    const img = !M && !(opts && opts.ray) ? DiceDie.iso(size, opts) : DiceDie.render(size, M || DiceDie.REST, Object.assign({ ss: size < 40 ? 4 : 3 }, opts || {}));
     const c = G.canvas(img.w, img.h);
     c.getContext('2d').putImageData(new ImageData(img.data, img.w, img.h), 0, 0);
     if (dice.size > 200) dice.clear();
@@ -162,8 +163,8 @@
   // ---- Die faces (Roll and the boot screen) --------------------------------
   // ---- App icons: a white picture on a rounded tile of the app's colour -----------------
   // Clean and flat, so they read at a glance in the dock and the app grid.
-  const TILES = { files: '#e39a32', home: '#e39a32', browser: '#3b8ee0', terminal: '#2b2f3a', notes: '#e8913a', music: '#a862dc', store: '#ef5f74',
-    settings: '#66789c', calculator: '#4a5568', calendar: '#e5534b', clock: '#2f9e8f', monitor: '#3a9d68', gaming: '#2a2a32' };
+  const TILES = { files: '#e39a32', home: '#e39a32', browser: '#3d86d6', terminal: '#2b2f3a', notes: '#e8913a', music: '#a862dc', store: '#ef5f74',
+    settings: '#66789c', calculator: '#4a5568', calendar: '#d4a857', clock: '#2f9e8f', monitor: '#3a9d68', gaming: '#2a2a32', games: '#5b4bc4' };
   function glyph(id, day) {
     const g = [];
     for (let i = 0; i < 16; i++) g.push(new Array(16).fill(''));
@@ -207,18 +208,17 @@
         rect(3, 1, 10, 14, 'W'); rect(4, 2, 8, 3, 'A'); rect(8, 3, 3, 1, 'G');
         for (const y of [7, 10, 13]) for (const x of [4, 7, 10]) rect(x, y, 2, y === 13 ? 1 : 2, x === 10 ? 'O' : 'A');
         break;
-      case 'calendar': {
-        rect(1, 2, 14, 13, 'W'); rect(1, 2, 14, 3, 'R'); rect(4, 1, 1, 3, 'w'); rect(11, 1, 1, 3, 'w');
-        const d = String(new Date().getDate());
-        text(d, d.length === 1 ? 6 : 4, 7, 'A');
-        break;
-      }
       case 'clock': {
         disc(7.5, 7.5, 6.8, 'W');
         for (const [x, y] of [[7.5, 1.6], [13.4, 7.5], [7.5, 13.4], [1.6, 7.5]]) set(x, y, 'A');
         line(7.5, 7.5, 7.5, 3.5, 'A'); line(7.5, 7.5, 10.5, 9.5, 'A'); set(7.5, 7.5, 'R');
         break;
       }
+      case 'games': // an arcade stick and two buttons
+        rect(2, 11, 12, 4, 'W'); rect(3, 10, 10, 1, 'W'); rect(2, 14, 12, 1, 'w');
+        rect(5, 4, 2, 7, 'w'); disc(5.5, 3.5, 2.6, 'R');
+        rect(9, 11, 2, 2, 'O'); rect(12, 11, 1, 2, 'G'); rect(11, 11, 1, 2, 'G');
+        break;
       case 'monitor':
         rect(1, 2, 14, 10, 'W'); rect(2, 3, 12, 8, 'D');
         [[2, 9], [4, 8], [5, 9], [7, 5], [9, 7], [11, 4], [13, 6]].reduce((p, q) => { line(p[0], p[1], q[0], q[1], 'G'); return q; });
@@ -231,6 +231,43 @@
   }
   const appIcons = new Map();
   G.TILES = TILES;
+  // ---- SereneTab's mark: a little cube with arrows out along its three edges -------------
+  // (shapes in a 64 x 64 box; drawn as an SVG for pages and onto canvas for app icons)
+  const SERENE = [
+    ['top', 'M32 17L46 25L32 33L18 25Z'], ['left', 'M18 25L32 33L32 49L18 41Z'], ['right', 'M32 33L46 25L46 41L32 49Z'],
+    ['up', 'M30.5 17.5L33.5 17.5L33.5 10.5L30.5 10.5ZM27 11L37 11L32 3Z'],
+    ['west', 'M18.74 42.3L17.26 39.7L10.32 43.67L11.8 46.27ZM4.98 48.44L13.29 48.88L8.83 41.06Z'],
+    ['east', 'M45.26 42.3L46.74 39.7L53.68 43.67L52.2 46.27ZM59.02 48.44L50.71 48.88L55.17 41.06Z'],
+  ];
+  const SERENE_INK = {
+    tile: { top: '#ffffff', left: 'rgba(255,255,255,.78)', right: 'rgba(255,255,255,.52)', up: '#ffd66e', west: '#ff9d87', east: '#80f0c6' },
+    light: { top: '#e4f0ff', left: '#9fc6f3', right: '#5c97dc', up: '#f0b02c', west: '#ec6a55', east: '#28b884' },
+    dark: { top: '#eef5ff', left: '#a9cdf6', right: '#6aa3e6', up: '#ffd66e', west: '#ff9d87', east: '#80f0c6' },
+  };
+  // Axiom's mark: a cube cut into three slabs, orange, dark, orange, seen from above
+  G.drawAxiom = function (g, x, y, size) {
+    const k = size / 64, P = (pts) => { g.beginPath(); pts.forEach(([px, py], i) => (i ? g.lineTo : g.moveTo).call(g, x + px * k, y + py * k)); g.closePath(); g.fill(); };
+    const T = [32, 9], R = [53, 21], F = [32, 33], Lf = [11, 21], hgt = 25, gap = 2.6, sh = (hgt - gap * 2) / 3;
+    const ink = [['#ffb784', '#f0945a', '#c26a3a'], ['#5a5754', '#3b3936', '#232120'], ['#ffb784', '#f0945a', '#c26a3a']];
+    const off = (p, dy) => [p[0], p[1] + dy];
+    for (let i = 2; i >= 0; i--) { // bottom slab first, so the ones above cover it
+      const y0 = i * (sh + gap), y1 = y0 + sh, [top, left, right] = ink[i];
+      g.fillStyle = top; P([off(T, y0), off(R, y0), off(F, y0), off(Lf, y0)]);
+      g.fillStyle = left; P([off(Lf, y0), off(F, y0), off(F, y1), off(Lf, y1)]);
+      g.fillStyle = right; P([off(F, y0), off(R, y0), off(R, y1), off(F, y1)]);
+    }
+  };
+  G.sereneSvg = function (size, look) {
+    const ink = SERENE_INK[look || 'light'];
+    return '<svg class="serene" width="' + size + '" height="' + size + '" viewBox="0 0 64 64" aria-hidden="true"><g transform="translate(0 6)">' +
+      SERENE.map(([k, d]) => '<path d="' + d + '" fill="' + ink[k] + '"/>').join('') + '</g></svg>';
+  };
+  G.drawSerene = function (g, x, y, size, look) {
+    const ink = SERENE_INK[look || 'tile'];
+    g.save(); g.translate(x, y); g.scale(size / 64, size / 64); g.translate(0, 6);
+    for (const [k, d] of SERENE) { g.fillStyle = ink[k]; g.fill(new Path2D(d)); }
+    g.restore();
+  };
   G.appIcon = function (id, size, c) {
     const dpr = Math.min(3, Math.max(1, Math.round(window.devicePixelRatio || 1)));
     const day = new Date().getDate();
@@ -248,12 +285,21 @@
     g.fillStyle = 'rgba(255,255,255,.22)'; g.fillRect(0, 0, S, Math.max(1, dpr));
     g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, S - Math.max(1, dpr), S, Math.max(1, dpr));
     g.restore();
-    if (id === 'gaming') {
+    if (id === 'calendar') {
+      g.shadowColor = 'rgba(60,40,10,.25)'; g.shadowOffsetY = Math.max(1, S * 0.02); g.shadowBlur = S * 0.03;
+      G.drawAxiom(g, S * 0.15, S * 0.12, S * 0.7);
+      g.shadowColor = 'transparent';
+    } else if (id === 'browser') {
+      // SereneTab's mark, drawn smooth (it's a logo, not a picture)
+      g.shadowColor = 'rgba(0,0,0,.18)'; g.shadowOffsetY = Math.max(1, S * 0.02); g.shadowBlur = S * 0.03;
+      G.drawSerene(g, S * 0.13, S * 0.1, S * 0.74, 'tile');
+      g.shadowColor = 'transparent';
+    } else if (id === 'gaming') {
       const n = Math.round(S * 0.7), d = G.die(Math.max(16, Math.min(64, Math.round(n / dpr))), null, { key: 'appicon', outline: [70, 70, 82] });
       g.imageSmoothingEnabled = false; g.drawImage(d, Math.round((S - n) / 2), Math.round((S - n) / 2), n, n);
     } else {
       const gl = glyph(id), cell = Math.max(1, Math.floor((S * 0.64) / 16)), off = Math.round((S - cell * 16) / 2);
-      const pal = { W: '#ffffff', w: 'rgba(255,255,255,.72)', A: mix(tile, '#000000', 0.12), D: '#1d2028', G: '#8fe07a', R: '#e5534b', O: '#f0a43a' };
+      const pal = { W: '#ffffff', w: 'rgba(255,255,255,.72)', A: mix(tile, '#000000', 0.12), D: '#1d2028', G: '#8fe07a', R: '#e5534b', O: '#f0a43a', P: '#4a4846', o: '#f0945a', q: '#c06a3a', K: '#34322f', k: '#211f1d' };
       // a soft shadow under the picture, one cell down
       g.fillStyle = 'rgba(0,0,0,.14)';
       gl.forEach((row, y) => row.forEach((ch, x) => { if (ch === 'W' || ch === 'w') g.fillRect(off + x * cell, off + (y + 1) * cell, cell, cell); }));

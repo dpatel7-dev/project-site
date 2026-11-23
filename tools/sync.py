@@ -48,8 +48,8 @@ COPIES = {
     'usual': (['usual'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     'locket': (['locket'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     # a name ending in / copies the whole folder
-    'diceweb': (['DiceWeb', 'diceweb'], ['index.html', 'css/', 'js/', 'package.json', 'CHANGELOG.md']),
-    'dice': (['Dice', 'dice'], ['daemon/diced.py', 'bin/', 'system/', 'plymouth/', 'install.sh', 'VERSION', 'image/README-bootfs.txt', 'CHANGELOG.md']),
+    'diceweb': (['DiceWeb', 'diceweb'], ['index.html', 'css/', 'js/', 'games/', 'package.json', 'CHANGELOG.md']),
+    'dice': (['DiceOS', 'Dice', 'dice'], ['daemon/diced.py', 'bin/', 'system/', 'plymouth/', 'install.sh', 'VERSION', 'image/README-bootfs.txt', 'CHANGELOG.md']),
 }
 
 

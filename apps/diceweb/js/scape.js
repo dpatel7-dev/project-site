@@ -9,8 +9,6 @@
 (function () {
   'use strict';
   const G = window.DiceGfx;
-  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
-  const bayer = (x, y) => (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
 
   // ---- colour, in [r, g, b] -----------------------------------------------------------
   const rgb = (h) => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
@@ -157,15 +155,14 @@
       this.prepMoving();
     }
 
-    // ---- sky: a smooth gradient in dithered steps, then the sun or the moon ----------------
+    // ---- sky: a smooth gradient, one colour per row (no dots), then the sun or the moon ------
     buildSky() {
       const { W, H } = this, b = new Buf(W, H), [top, mid, low] = this.sky();
-      const span = this.R.under ? H : this.hy, steps = 18;
+      const span = this.R.under ? H : this.hy;
       const at = (t) => (t < 0.55 ? mixc(top, mid, t / 0.55) : mixc(mid, low, (t - 0.55) / 0.45));
       for (let y = 0; y < H; y++) {
-        const t = Math.min(1, y / span), p = t * steps, k = Math.floor(p), f = p - k;
-        const c0 = at(k / steps), c1 = at(Math.min(1, (k + 1) / steps));
-        for (let x = 0; x < W; x++) b.set(x, y, f > bayer(x, y) ? c1 : c0);
+        const c = at(Math.min(1, y / span));
+        for (let x = 0; x < W; x++) b.set(x, y, c);
       }
       if (!this.R.under) this.sun(b);
       return b.canvas();
@@ -175,13 +172,13 @@
       const sx = Math.round(W * 0.8), sy = Math.round(this.hy * (this.night ? 0.26 : 0.3));
       this.sunAt = { x: sx, y: sy, r };
       const glow = this.night ? rgb('#c9d6ff') : rgb(this.world === 'desert' ? '#fff0c0' : '#fff6d8');
-      const G2 = 2.6;
-      for (let y = -r * G2; y <= r * G2; y++) for (let x = -r * G2; x <= r * G2; x++) {
+      // a soft, even glow (no dots), fading out smoothly
+      const G2 = 2.8, gr = Math.ceil(r * G2); // whole pixels, so no ring is missed
+      for (let y = -gr; y <= gr; y++) for (let x = -gr; x <= gr; x++) {
         const d = Math.hypot(x, y);
         if (d <= r || d > r * G2) continue;
-        const a = Math.pow(1 - (d - r) / (r * (G2 - 1)), 2.4) * (this.night ? 0.3 : 0.55);
-        const lv = 4, step = (Math.floor(a * lv) + ((a * lv) % 1 > bayer(sx + x, sy + y) ? 1 : 0)) / lv;
-        if (step > 0) b.set(sx + x, sy + y, mixc(b.get(sx + x, sy + y), glow, step));
+        const a = Math.pow(1 - (d - r) / (r * (G2 - 1)), 2.2) * (this.night ? 0.28 : 0.5);
+        b.set(sx + x, sy + y, mixc(b.get(sx + x, sy + y), glow, a));
       }
       const disc = this.night ? rgb('#f3efdc') : rgb(this.world === 'desert' ? '#ffd257' : '#ffe079');
       const rim = this.night ? rgb('#d8d4c2') : lit(disc, 0.45);
@@ -243,22 +240,22 @@
             if (d >= shadow + 2 && d % 6 === 3 && n2(x * 0.04, y * 0.08) > 0.45) col = dim(col, 0.04);
           } else if (L.k === 'sand') {
             col = d < 1 ? hi : c;
-            if (n2(x * 0.5, y * 0.5) > 0.72 && bayer(x, y) > 0.5) col = dim(c, 0.07);
+            if (n2(x * 0.08, y * 0.16) > 0.7) col = dim(c, 0.05);
             if (this.R.under) col = mixc(col, this.horizonCol(), Math.min(0.5, 0.25 + d * 0.01));
           } else if (L.k === 'reef') {
             const v = n2(x * 0.06, y * 0.06);
-            col = d < 1 ? lit(c, 0.12) : d < 3 && bayer(x, y) > 0.5 ? lit(c, 0.06) : v > 0.68 ? lit(c, 0.04) : v < 0.3 ? dim(c, 0.06) : c;
+            col = d < 1 ? lit(c, 0.12) : d < 2 ? lit(c, 0.06) : v > 0.68 ? lit(c, 0.04) : v < 0.3 ? dim(c, 0.06) : c;
           } else {
             // grassy land: a lit edge, then soft patches like fields, in clean clusters (not noise)
             if (d === 0) col = hi;
-            else if (d === 1 && bayer(x, y) > 0.5) col = hi;
+            else if (d === 1) col = mixc(hi, c, 0.5);
             else if (L.tex || L.k === 'field' || isFront) {
-              const v = n2(x * 0.03 / this.k, y * 0.07 / this.k) + (n2(x * 0.2, y * 0.3) - 0.5) * 0.08;
-              if (v > 0.66) col = lit(c, this.night ? 0.025 : 0.05); else if (v < 0.34) col = dim(c, 0.045);
+              // big soft patches only: no fine speckle
+              const v = n2(x * 0.03 / this.k, y * 0.07 / this.k);
+              if (v > 0.68) col = lit(c, this.night ? 0.02 : 0.04); else if (v < 0.32) col = dim(c, 0.035);
             }
             if (L.snowbank) col = d < 1 ? rgb(this.night ? '#9fb2cc' : '#ffffff') : n2(x * 0.1, y * 0.2) > 0.6 ? this.landCol('#d6e4ef', 0) : c;
             if (L.gold && n2(x * 0.3, y * 0.6) > 0.66) col = this.landCol('#a8853e', 0);
-            if (L.k === 'field' && d > 1 && (x * 7 + y * 13) % 11 === 0) col = dim(c, 0.05);
           }
           b.set(x, y, col);
         }
@@ -543,10 +540,10 @@
     }
     mistStrip(i) {
       const W = this.W * 2, h = Math.round(this.H * 0.09), c = G.canvas(W, h), g = c.getContext('2d'), n = noise1(this.rand);
-      g.fillStyle = this.night ? 'rgb(150,170,210)' : 'rgb(255,255,255)';
+      const ink = this.night ? '150,170,210' : '255,255,255';
       for (let x = 0; x < W; x++) {
         const thick = (0.4 + n(x * 0.012 + i * 7) * 0.6) * h;
-        for (let y = 0; y < h; y++) { const d = Math.abs(y - h / 2) / (thick / 2 + 0.01); if (d < 1 && Math.pow(1 - d, 1.5) * 0.7 > bayer(x, y)) g.fillRect(x, y, 1, 1); }
+        for (let y = 0; y < h; y++) { const d = Math.abs(y - h / 2) / (thick / 2 + 0.01); if (d < 1) { g.fillStyle = 'rgba(' + ink + ',' + (Math.pow(1 - d, 1.5) * 0.6).toFixed(2) + ')'; g.fillRect(x, y, 1, 1); } }
       }
       return c;
     }

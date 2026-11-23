@@ -125,11 +125,11 @@
 .win.opening { animation: winin .26s var(--spring); }
 @keyframes winin { from { transform: scale(.92); opacity: 0; } }
 .win:not(.active) { filter: saturate(.85); }
-.win:not(.active) header { opacity: .75; }
-.win header { height: 40px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; cursor: grab; touch-action: none; }
-.win header:active { cursor: grabbing; }
-.win header .wico canvas { border-radius: 5px; display: block; }
-.win header b { font: 700 .92rem/1 var(--read); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win:not(.active) > header { opacity: .75; }
+.win > header { height: 40px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 8px 0 12px; cursor: grab; touch-action: none; }
+.win > header:active { cursor: grabbing; }
+.win > header .wico canvas { border-radius: 5px; display: block; }
+.win > header b { font: 700 .92rem/1 var(--read); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wbtns { display: flex; gap: 6px; }
 .wbtns button { width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
 .wbtns button:hover { background: color-mix(in srgb, var(--ink) 16%, transparent); }
@@ -180,7 +180,6 @@
 .sgrid button { display: grid; justify-items: center; gap: 8px; padding: 14px 4px 12px; border-radius: 16px; font: 600 .84rem/1.25 var(--read); text-align: center; }
 .sgrid button canvas { filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .18)); transition: transform .18s var(--spring); }
 .sgrid button:hover, .sgrid button:focus-visible { background: color-mix(in srgb, var(--ink) 8%, transparent); outline: none; }
-.sgrid button:hover canvas { transform: translateY(-2px); }
 .srow2 { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .wbody.dstore { overflow-y: auto; }
 .dstore-in { padding: 20px 22px; }
@@ -225,14 +224,6 @@
 @media (max-width: 700px) { .files { grid-template-columns: 1fr; } .fi-side { display: none; } .fi-row { grid-template-columns: 36px 1fr 80px; } .fi-row .muted:nth-of-type(1), .fi-row .muted:nth-of-type(3) { display: none; } }
 
 /* ---------- Web ---------- */
-.browser { position: absolute; inset: 0; overflow-y: auto; background: var(--bg); }
-.br-in { max-width: 760px; margin: 0 auto; padding: 32px 24px; }
-.br-in h2 { font-size: 2rem; margin: 0 0 6px; }
-.br-go { display: flex; gap: 10px; margin: 18px 0 22px; }
-.br-go input { flex: 1; min-width: 0; border: 0; border-radius: 14px; padding: 14px 16px; font-weight: 700; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
-.br-go input.is-focus, .br-go input:focus { box-shadow: inset 0 0 0 2px var(--ink); }
-.br-links { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-.br-links .card { width: auto; }
 
 /* ---------- the real Terminal ---------- */
 .rterm { position: absolute; inset: 0; background: #fbfbfc; --vt-fg: #26262c; --vt-bg: #fbfbfc; }
@@ -271,32 +262,6 @@
 .ca-hist b { color: var(--ink); font-weight: 700; }
 
 /* ---------- Calendar ---------- */
-.cal { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) 270px; }
-.cal-month { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-.cal-month header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.cal-month h2 { margin: 0; font-size: 1.5rem; }
-.cal-nav { display: flex; gap: 6px; }
-.cal-days, .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
-.cal-days span { text-align: center; color: var(--muted); font: 700 .74rem/1 var(--read); padding: 4px 0; }
-.cal-grid { flex: 1; grid-auto-rows: minmax(38px, 1fr); }
-.cal-grid button { position: relative; border-radius: 10px; display: grid; align-content: start; justify-items: start; padding: 6px 8px; font: 600 .9rem/1 var(--read); box-shadow: inset 0 0 0 1px var(--line); }
-.cal-grid button:hover { background: var(--soft); }
-.cal-grid button.out { color: var(--muted); box-shadow: none; opacity: .6; }
-.cal-grid button.today span { background: #e5534b; color: #fff; border-radius: 999px; padding: 3px 7px; margin: -3px -5px; }
-.cal-grid button.on { background: color-mix(in srgb, #e5534b 11%, var(--bg)); box-shadow: inset 0 0 0 2px #e5534b; }
-.cal-grid .dots { position: absolute; left: 8px; bottom: 6px; display: flex; gap: 3px; }
-.cal-grid .dots b { width: 5px; height: 5px; border-radius: 3px; background: #e5534b; }
-.cal-side { padding: 16px; background: var(--soft); box-shadow: inset 1px 0 0 var(--line); overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-.cal-side h3 { margin: 0; font: 700 1rem/1.2 var(--read); }
-.cal-side .cal-soon-h { margin-top: 10px; font-size: .82rem; color: var(--muted); }
-.cal-list, .cal-soon { display: grid; gap: 6px; }
-.cal-item { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); font-size: .9rem; }
-.cal-item b { font: 700 .78rem/1 var(--read); color: var(--muted); white-space: nowrap; }
-.cal-item.small { grid-template-columns: auto 1fr; font-size: .84rem; }
-.cal-add { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
-.cal-add input { padding: 9px 10px; border-radius: 10px; border: 0; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); font: 500 .9rem var(--read); color: var(--ink); min-width: 0; }
-.cal-add input:first-child { grid-column: 1 / -1; }
-@container (max-width: 640px) { .cal { grid-template-columns: 1fr; grid-template-rows: auto auto; overflow-y: auto; } .cal-grid { grid-auto-rows: 40px; } .cal-side { box-shadow: inset 0 1px 0 var(--line); } }
 
 /* ---------- Clock ---------- */
 .clk { height: 100%; display: flex; flex-direction: column; }
@@ -341,3 +306,21 @@
 .worlds button canvas { width: 100%; aspect-ratio: 16 / 10; border-radius: 10px; image-rendering: pixelated; box-shadow: inset 0 0 0 1px var(--line); }
 .worlds button[aria-pressed=true] { color: var(--ink); background: var(--soft); box-shadow: inset 0 0 0 2px var(--ink); }
 .worlds button.is-focus { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+
+/* ---------- Games ---------- */
+.gm { position: absolute; inset: 0; overflow-y: auto; background: #12121a; color: #eceaf6; }
+.gm-in { max-width: 900px; margin: 0 auto; padding: 26px 24px 30px; }
+.gm-in h2 { margin: 0; font-size: 2rem; }
+.gm-in .muted { color: #a9a6bd; margin: 6px 0 18px; }
+.gm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.gm-card { --c: #7c9cff; display: grid; gap: 6px; align-content: start; text-align: left; padding: 10px 10px 14px; border: 0; border-radius: 16px; background: #1c1c27; color: inherit; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); transition: box-shadow .15s, background .15s; }
+.gm-card:hover, .gm-card.is-focus { background: #222232; box-shadow: inset 0 0 0 2px var(--c); }
+.gm-pic { display: block; border-radius: 10px; overflow: hidden; margin-bottom: 4px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .06); }
+.gm-cover { display: block; width: 100%; height: auto; aspect-ratio: 8 / 5; image-rendering: pixelated; }
+.gm-card b { font: 700 1.15rem/1.15 var(--pixel); color: color-mix(in oklab, var(--c) 55%, #fff); }
+.gm-card span:not(.gm-pic) { font-size: .9rem; line-height: 1.4; color: #cfcce0; }
+.gm-card small { font-size: .76rem; color: #8f8ca6; }
+.gm-bar { position: absolute; left: 0; right: 0; top: 0; height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 10px; background: #0d0d13; box-shadow: 0 1px 0 rgba(255, 255, 255, .06); }
+.gm-bar b { font: 700 1rem/1 var(--pixel); }
+.gm-bar .muted { flex: 1; min-width: 0; font-size: .8rem; color: #8f8ca6; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.gm-frame { position: absolute; left: 0; right: 0; bottom: 0; top: 46px; width: 100%; height: calc(100% - 46px); border: 0; background: #000; }

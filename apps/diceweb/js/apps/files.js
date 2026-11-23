@@ -168,31 +168,4 @@
       unmount() { off(); },
     };
   } });
-
-  // Web: opens websites in the real browser (on Dice) or a new tab.
-  D.register({ id: 'browser', mount(root, ctx) {
-    root.classList.add('browser');
-    const ha = (D.sys && D.sys.settings.homeassistant) || D.state.ha || '';
-    const links = [ha && ['Home Assistant', ha, 'Your home\'s dashboard'], ['The website', D.origin, 'Every app in the suite'], ['Wikipedia', 'https://en.wikipedia.org', 'Look anything up'], (D.sys && D.sys.status && D.sys.status.model && !/raspberry/i.test(D.sys.status.model) ? ['Debian help', 'https://www.debian.org/doc/', 'How Debian works'] : ['Raspberry Pi help', 'https://www.raspberrypi.com/documentation/', 'How the Pi works'])].filter(Boolean);
-    root.innerHTML = '<div class="br-in"><h2 class="pix">Web</h2><p class="muted">' + (D.sys ? 'Websites open in Chromium, on top of Dice. Close it (×) to come back.' : 'Websites open in a new tab.') + '</p>' +
-      '<form class="br-go"><input data-nav data-key="br:url" placeholder="Type a web address or search" aria-label="Web address" autocomplete="off" spellcheck="false"><button class="b go" data-nav data-key="br:go" style="--c:#7c9cff">Go</button></form>' +
-      '<div class="br-links"></div></div>';
-    const open = (url) => (D.sys ? D.sys.open(url) : window.open(url, '_blank', 'noopener'));
-    root.querySelector('form').onsubmit = (e) => {
-      e.preventDefault();
-      let v = root.querySelector('input').value.trim();
-      if (!v) return;
-      if (!/^https?:\/\//i.test(v)) v = /^[\w-]+(\.[\w-]+)+(\/.*)?$/.test(v) || /^localhost|^\d+\.\d+\.\d+\.\d+/.test(v) ? 'http://' + v : 'https://duckduckgo.com/?q=' + encodeURIComponent(v);
-      open(v);
-    };
-    links.forEach(([n, url, sub], i) => {
-      const b = h('<button class="card" data-nav data-key="br:l' + i + '" ' + (i ? '' : 'data-first') + '><span><b>' + esc(n) + '</b><span>' + esc(sub) + '</span></span></button>');
-      b.prepend(h('<span class="pic" style="display:grid;place-items:center;background:var(--soft-2)">' + D.glyph(i === 0 && ha ? 'home' : 'link', 3) + '</span>'));
-      b.onclick = () => open(url);
-      root.querySelector('.br-links').appendChild(b);
-    });
-    setTimeout(() => { if (ctx.mode === 'run') D.nav.first(root); }, 40);
-    ctx.legend([['a', 'Open'], ['b', 'Home']]);
-    return {};
-  } });
 })();

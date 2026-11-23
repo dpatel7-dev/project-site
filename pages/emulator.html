@@ -155,7 +155,7 @@
   // ---- the logo, and the die on the start-up screen (the same pictures Dice draws) ----
   const night = typeof djp7Night === 'function' ? djp7Night() : matchMedia('(prefers-color-scheme: dark)').matches;
   function paint(canvas, img) { const g = canvas.getContext('2d'); g.putImageData(new ImageData(img.data, img.w, img.h), 0, 0); }
-  paint($('#logo'), DiceDie.render(32, null, { ss: 3, outline: night ? [60, 60, 70] : null }));
+  paint($('#logo'), DiceDie.iso(32, { outline: night ? [60, 60, 70] : null }));
   const FRAMES = [];
   for (let i = 0; i < 32; i++) FRAMES.push(DiceDie.render(64, DiceDie.pose([0, 1, 0], (i / 32) * Math.PI * 2), { ss: 3, outline: [44, 44, 52] }));
   for (let i = 0; i < 12; i++) $('#bar').appendChild(document.createElement('i'));

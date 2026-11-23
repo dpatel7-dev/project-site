@@ -359,7 +359,120 @@
   }
   function dayKey(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 
-  const api = { clockNight, pickNext, newDisk, calc, calcText, monthGrid, dayKey, resolve, walk, writeFile, makeDir, remove, tokens, parseDice, run, HELP, score };
+  // ---- SereneTab: the sun and moon over a city ---------------------------------------
+  // Good to about a degree, which is plenty for painting a sky.
+  const RAD = Math.PI / 180;
+  const days = (d) => d.getTime() / 864e5 - 10957.5; // days since noon, 1 Jan 2000 (UTC)
+  function toSky(ra, dec, n, lat, lon) {
+    const gmst = (280.46061837 + 360.98564736629 * n) % 360;
+    const ha = (gmst + lon) * RAD - ra, la = lat * RAD;
+    const alt = Math.asin(Math.sin(la) * Math.sin(dec) + Math.cos(la) * Math.cos(dec) * Math.cos(ha));
+    const az = Math.atan2(-Math.sin(ha) * Math.cos(dec), Math.cos(la) * Math.sin(dec) - Math.sin(la) * Math.cos(dec) * Math.cos(ha));
+    return { alt: alt / RAD, az: (az / RAD + 360) % 360 };
+  }
+  function sunLon(n) {
+    const L = 280.46 + 0.9856474 * n, g = (357.528 + 0.9856003 * n) * RAD;
+    return (L + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * RAD;
+  }
+  // where the sun is: alt (degrees above the horizon) and az (compass degrees, 90 = east)
+  function sunPos(d, lat, lon) {
+    const n = days(d), lam = sunLon(n), eps = 23.439 * RAD;
+    return toSky(Math.atan2(Math.cos(eps) * Math.sin(lam), Math.cos(lam)), Math.asin(Math.sin(eps) * Math.sin(lam)), n, lat, lon);
+  }
+  // the moon: where it is, how much of it is lit (0 new, 1 full) and whether it's growing
+  function moonPos(d, lat, lon) {
+    const n = days(d), eps = 23.439 * RAD;
+    const Mp = (134.963 + 13.064993 * n) * RAD, F = (93.272 + 13.22935 * n) * RAD;
+    const lam = (218.316 + 13.176396 * n) * RAD + 6.289 * RAD * Math.sin(Mp), bet = 5.128 * RAD * Math.sin(F);
+    const ra = Math.atan2(Math.sin(lam) * Math.cos(eps) - Math.tan(bet) * Math.sin(eps), Math.cos(lam));
+    const dec = Math.asin(Math.sin(bet) * Math.cos(eps) + Math.cos(bet) * Math.sin(eps) * Math.sin(lam));
+    const el = lam - sunLon(n);
+    return Object.assign(toSky(ra, dec, n, lat, lon), { lit: (1 - Math.cos(el)) / 2, waxing: Math.sin(el) > 0 });
+  }
+  // the time on a city's clocks, like "8:42 pm"
+  function cityTime(d, tz) {
+    try { return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: tz }).toLowerCase(); } catch (e) { return ''; }
+  }
+
+  // ---- SereneTab: what you typed in the address bar ------------------------------------
+  const ENGINES = {
+    ddg: { name: 'DuckDuckGo', mark: 'D', c: '#de5833', url: 'https://duckduckgo.com/?q=' },
+    google: { name: 'Google', mark: 'G', c: '#4285f4', url: 'https://www.google.com/search?q=' },
+    bing: { name: 'Bing', mark: 'B', c: '#1aa39a', url: 'https://www.bing.com/search?q=' },
+    brave: { name: 'Brave Search', mark: 'Br', c: '#e2552b', url: 'https://search.brave.com/search?q=' },
+    wiki: { name: 'Wikipedia', mark: 'W', c: '#6b7280', url: 'https://en.wikipedia.org/w/index.php?search=' },
+  };
+  // a web address if it looks like one (example.com, localhost:8123, 192.168.1.4), else a search
+  function omni(text, engine) {
+    const v = String(text || '').trim();
+    if (!v) return null;
+    if (/^https?:\/\/\S+$/i.test(v)) return { url: v, search: false };
+    if (/^[a-z][\w+.-]*:/i.test(v) && !/^(localhost|[\w-]+(\.[\w-]+)+):\d/i.test(v)) return { url: (ENGINES[engine] || ENGINES.ddg).url + encodeURIComponent(v), search: true }; // other schemes: just search for them
+    const local = /^(localhost|\d{1,3}(\.\d{1,3}){3}|[\w-]+\.local)(:\d+)?(\/\S*)?$/i.test(v);
+    if (local) return { url: 'http://' + v, search: false };
+    if (!/\s/.test(v) && /^[\w-]+(\.[\w-]+)*\.[a-z]{2,}(:\d+)?([/?#]\S*)?$/i.test(v)) return { url: 'https://' + v, search: false };
+    return { url: (ENGINES[engine] || ENGINES.ddg).url + encodeURIComponent(v), search: true };
+  }
+  // Big sites that refuse to be shown inside another page: these open in their own window
+  const OWN_WINDOW = ['google.com', 'youtube.com', 'duckduckgo.com', 'bing.com', 'brave.com', 'github.com', 'gitlab.com', 'x.com', 'twitter.com', 'facebook.com', 'instagram.com',
+    'reddit.com', 'amazon.com', 'netflix.com', 'linkedin.com', 'microsoft.com', 'live.com', 'office.com', 'apple.com', 'icloud.com', 'stackoverflow.com', 'discord.com', 'twitch.tv',
+    'spotify.com', 'chatgpt.com', 'openai.com', 'claude.ai', 'anthropic.com', 'tiktok.com', 'pinterest.com', 'khanacademy.org', 'quizlet.com', 'instructure.com', 'schoology.com', 'zoom.us', 'paypal.com'];
+  const hostOf = (u) => { try { return new URL(u).hostname.toLowerCase(); } catch (e) { return ''; } };
+  // how to show an address: 'frame' (inside SereneTab) or 'window' (its own window), and the address to use
+  function howToShow(url, here) {
+    let u;
+    try { u = new URL(url); } catch (e) { return { how: 'window', url }; }
+    if (!/^https?:$/.test(u.protocol)) return { how: 'window', url };
+    const h = u.hostname.toLowerCase();
+    // YouTube videos play in YouTube's own player, which is made to sit inside other pages
+    const yt = /(^|\.)youtube\.com$/.test(h) ? (u.pathname === '/watch' ? u.searchParams.get('v') : (u.pathname.match(/^\/(shorts|embed|live)\/([\w-]{6,})/) || [])[2]) : h === 'youtu.be' ? u.pathname.slice(1) : null;
+    if (yt && /^[\w-]{6,20}$/.test(yt)) return { how: 'frame', url: 'https://www.youtube-nocookie.com/embed/' + yt, video: true };
+    let base = null;
+    try { base = here ? new URL(here) : null; } catch (e) { base = null; }
+    if (base && base.origin === u.origin) return { how: 'frame', url: u.href };
+    if (base && base.protocol === 'https:' && u.protocol === 'http:') return { how: 'window', url: u.href }; // a secure page can't show an insecure one
+    if (OWN_WINDOW.some((d) => h === d || h.endsWith('.' + d))) return { how: 'window', url: u.href };
+    return { how: 'frame', url: u.href };
+  }
+  // ---- SereneTab: weather codes (WMO, as Open-Meteo sends them) in words ----------------
+  function weatherWords(code) {
+    const c = +code;
+    if (c === 0) return { text: 'Clear', kind: 'clear' };
+    if (c === 1) return { text: 'Mostly clear', kind: 'clear' };
+    if (c === 2) return { text: 'Partly cloudy', kind: 'some' };
+    if (c === 3) return { text: 'Cloudy', kind: 'cloud' };
+    if (c === 45 || c === 48) return { text: 'Fog', kind: 'fog' };
+    if (c >= 51 && c <= 57) return { text: 'Drizzle', kind: 'rain' };
+    if (c >= 61 && c <= 67) return { text: c === 61 ? 'Light rain' : c >= 66 ? 'Freezing rain' : 'Rain', kind: 'rain' };
+    if (c >= 71 && c <= 77) return { text: c === 71 ? 'Light snow' : 'Snow', kind: 'snow' };
+    if (c >= 80 && c <= 82) return { text: 'Showers', kind: 'rain' };
+    if (c === 85 || c === 86) return { text: 'Snow showers', kind: 'snow' };
+    if (c >= 95) return { text: 'Thunderstorm', kind: 'storm' };
+    return { text: '', kind: 'clear' };
+  }
+
+  // ---- Axiom: sorting a student's tasks into what matters now ----------------------------
+  function addDays(key, n) { const [y, m, d] = key.split('-').map(Number); return dayKey(new Date(y, m - 1, d + n)); }
+  const TESTS = ['test', 'quiz', 'exam'];
+  // overdue, due today, due in the next week, and tests and quizzes coming up (open tasks only)
+  function planBuckets(tasks, today) {
+    const open = tasks.filter((t) => !t.done && t.due), week = addDays(today, 7), by = (a, b) => (a.due + (a.time || '99')).localeCompare(b.due + (b.time || '99'));
+    return {
+      overdue: open.filter((t) => t.due < today).sort(by),
+      today: open.filter((t) => t.due === today).sort(by),
+      week: open.filter((t) => t.due > today && t.due <= week).sort(by),
+      tests: open.filter((t) => TESTS.includes(t.type) && t.due >= today).sort(by),
+    };
+  }
+  // the old Calendar kept {day: [{text, time}]}; Axiom keeps them as tasks
+  function eventsToTasks(events) {
+    const out = [];
+    Object.keys(events || {}).sort().forEach((k) => (events[k] || []).forEach((e, i) => { if (e && e.text) out.push({ id: 'ev-' + k + '-' + i, title: e.text, type: 'event', due: k, time: e.time || '', done: false, classId: null }); }));
+    return out;
+  }
+
+  const api = { clockNight, pickNext, newDisk, calc, calcText, monthGrid, dayKey, resolve, walk, writeFile, makeDir, remove, tokens, parseDice, run, HELP, score,
+    sunPos, moonPos, cityTime, ENGINES, omni, howToShow, hostOf, weatherWords, addDays, planBuckets, eventsToTasks };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DiceLogic = api;
 })(this);

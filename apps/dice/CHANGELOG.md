@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0
+
+- DiceWeb 1.3: sharper backgrounds, and a new logo die drawn flat in the isometric view (the start-up splash now lands in the same pose). SereneTab replaces Web: a real browser with tabs and a calm new tab page (a city skyline under its real sky and weather, a glass clock, shortcuts and a note); sites that won't show inside it open in Chromium on top of Dice, as before. Axiom, the school planner, replaces Calendar and keeps what was on it. Games has the games from dpatel.dev.
+- tools/sync-diceweb.sh copies DiceWeb's games/ folder too.
+
 ## 1.2.0
 
 - DiceWeb 1.2: calm, detailed moving landscapes with no mascots behind the desktop, a cleaner desktop (just Home, a small dock of favourites, all apps in a grid), smaller clock corner, and new built-in apps: Calculator, Calendar, Clock and System Monitor (which shows this computer's real load, memory, storage and temperature).

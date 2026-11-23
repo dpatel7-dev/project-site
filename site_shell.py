@@ -93,9 +93,9 @@ ICONS = {
     'pca': (['KKKKKKKKKKKKKKKK', 'KRKYKGKKKKKKKKKK', 'KKKKKKKKKKKKKKKK', 'Kddddddddddddddk', 'Kd>dBBBBBBdddddk', 'Kddddddddddddddk',
              'KdddPPPPPPPPdddk', 'Kddddddddddddddk', 'KdddOOOOOddddddk', 'Kddddddddddddddk', 'KdddGGGGGGGddddk', 'Kddddddddddddddk', 'kkkkkkkkkkkkkkkk'],
             {'K': '#3a3d4a', 'k': '#2b2d38', 'd': '#17181f', 'R': '#ff6b6b', 'Y': '#f2c14e', 'G': '#8fd16a', '>': '#8fd16a', 'B': '#7cc4ff', 'P': '#d39cf5', 'O': '#f0843c'}),
-    # the Dice die (drawn by DiceWeb's die3d.js at 16 pixels): the 1 on the left, 2 on top, 3 on the right
-    'dice': (['......c.........', '.....ccbbb......', '....cccbbbbee...', '...cccccbbbee...', '..ccccccbbbbb...', '.ccceecccebbbb..', '..cceccccbbbbb..', '..cccccbaaaabb..', '..ccccbaaaaaaaa.', '...ccbaaaaaddd..', '...cbadaddaaa...', '...baddaaaaa....', '......aaaaa.....', '.........a......'],
-             {'a': '#1f1f25', 'b': '#2f2f35', 'c': '#47474d', 'd': '#aaaaaa', 'e': '#e2e2e2'}),
+    # the Dice die (DiceWeb's die3d.js ISO16): the 1 on the left, the 2 on top, the 3 on the right
+    'dice': (['......tttt......', '....tttttttt....', '..tttttttttttt..', '.tttPPttttPPttt.', '.llmmttttttmmrr.', '.llllmmttmmrrSS.', '.llllllmmrrrrSS.', '.lllllllrrSSrrr.', '.lllQQllrrSSrrr.', '.lllQQllrrrrrrr.', '.lllllllSSrrrrr.', '...lllllSSrrr...', '.....lllrrr.....', '.......lr.......'],
+             {'t': '#3b3b45', 'l': '#2a2a32', 'r': '#1b1b21', 'm': '#5a5a66', 'P': '#f6f6f8', 'Q': '#e4e4e9', 'S': '#c4c4cc'}),
     'find': (['..KKKK......', '.KbbbbK.....', 'KbWbbbbK....', 'KbWbbbbK....', 'KbbbbbbK....', 'KbbbbbbK....', '.KbbbbK.....', '..KKKKSS....',
               '......SSS...', '.......SSS..', '........SSS.', '.........SS.'],
              {'K': '#55555f', 'b': '#9fd3ff', 'W': '#ffffff', 'S': '#c08a4a'}),

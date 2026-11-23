@@ -108,8 +108,6 @@
       grad.addColorStop(0, G.mix(tile, night ? '#000000' : '#ffffff', night ? 0.42 : 0.62));
       grad.addColorStop(1, G.mix(tile, night ? '#000000' : '#ffffff', night ? 0.62 : 0.3));
       g.fillStyle = grad; g.fillRect(0, 0, w, h);
-      g.fillStyle = night ? 'rgba(255,255,255,.05)' : 'rgba(255,255,255,.22)';
-      for (let y = 6; y < h; y += 12) for (let x = 6 + ((y / 12) % 2) * 6; x < w; x += 12) g.fillRect(x, y, 2, 2);
       const isz = Math.round(Math.min(w, h) * 0.44), cy = layout === 'cover' ? h * 0.36 : h * 0.42;
       const glow = g.createRadialGradient(w / 2, cy, 0, w / 2, cy, isz);
       glow.addColorStop(0, night ? 'rgba(255,255,255,.12)' : 'rgba(255,255,255,.5)'); glow.addColorStop(1, 'rgba(255,255,255,0)');
