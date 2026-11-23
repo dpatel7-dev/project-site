@@ -61,6 +61,10 @@ body:has(.dk-onapp) { padding-bottom: 0; }
 .dk-ic img { width: calc(var(--w) * var(--px)); height: calc(var(--h) * var(--px)); max-width: none; }
 .dk-l { white-space: nowrap; letter-spacing: .01em; padding: 1px 5px 2px; border-radius: 6px; }
 .dk-i:hover .dk-l { color: var(--dk-ink); }
+/* the apps are just their mascots (the note above says which is which); the one you're on keeps its name */
+.dk-app { min-width: 0; padding: 3px 4px 22px; }
+.dk-app .dk-l { position: absolute; left: 50%; bottom: 2px; transform: translateX(-50%); visibility: hidden; }
+.dk-app[aria-current=page] .dk-l, .dk-app.dk-lit .dk-l { visibility: visible; }
 .dk-i[aria-current=page] .dk-l, .dk-all[aria-expanded=true] .dk-l, .dk-i.dk-lit .dk-l { color: #141416; background: var(--c, #fff); font-weight: 700; }
 .dk-all { --c: #f2c14e; }
 .dk-i:focus-visible { box-shadow: 0 0 0 2px var(--dk-ink); }
@@ -74,6 +78,7 @@ body:has(.dk-onapp) { padding-bottom: 0; }
   .dk-app:not(.dk-here), .dk-gap { display: none; }
   .dk-apps:not(:has(.dk-here)), .dk-apps:not(:has(.dk-here)) + .dk-sep { display: none; }
   .dk-i { min-width: 58px; padding: 4px 6px 3px; }
+  .dk-app { padding-bottom: 24px; }
   .dk-l { font-size: 11.5px; }
   .dk-tip { display: none; }
 }

@@ -151,18 +151,80 @@ def _rgba(colour):
         return b'\0\0\0\0'
 
 
+def _png_bytes(w, h, rows):
+    """PNG bytes from rows of RGBA bytes (each row w * 4 long)."""
+    def chunk(kind, data):
+        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff)
+    raw = b''.join(b'\0' + r for r in rows)
+    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 6, 0, 0, 0))
+            + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b''))
+
+
+def _uri(data):
+    return 'data:image/png;base64,' + base64.b64encode(data).decode()
+
+
 def png(grid, ink):
     """A pixel picture as a PNG data address, with its width and height in pixels."""
     rows = _trim(grid)
     w, h = max(len(r) for r in rows), len(rows)
     clear = b'\0\0\0\0'
-    raw = b''.join(b'\0' + b''.join(_rgba(ink[ch]) if ch in ink else clear for ch in r.ljust(w, '.')) for r in rows)
+    return _uri(_png_bytes(w, h, [b''.join(_rgba(ink[ch]) if ch in ink else clear for ch in r.ljust(w, '.')) for r in rows])), w, h
 
-    def chunk(kind, data):
-        return struct.pack('>I', len(data)) + kind + data + struct.pack('>I', zlib.crc32(kind + data) & 0xffffffff)
-    data = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 6, 0, 0, 0))
-            + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b''))
-    return 'data:image/png;base64,' + base64.b64encode(data).decode(), w, h
+
+def _mix(colour, other, t):
+    a, b = _rgba(colour), _rgba(other)
+    return bytes(round(a[i] + (b[i] - a[i]) * t) for i in range(3)) + b'\xff'
+
+
+def tile(grid, ink, colour=None, size=32):
+    """A square picture for a browser tab: the pixel art as big as fits, crisp, on a
+    rounded tile of a pale version of the colour (or on nothing, with no colour)."""
+    rows = _trim(grid)
+    w, h = max(len(r) for r in rows), len(rows)
+    pad = 3 if colour else 1
+    scale = max(1, min((size - 2 * pad) // w, (size - 2 * pad) // h))
+    canvas = [[b'\0\0\0\0'] * size for _ in range(size)]
+    if colour:
+        fill, edge = _mix(colour, '#ffffff', 0.62), _mix(colour, '#ffffff', 0.25)
+        r = max(3, size // 5)
+        for y in range(size):
+            for x in range(size):
+                cx = r if x < r else size - 1 - r if x > size - 1 - r else x
+                cy = r if y < r else size - 1 - r if y > size - 1 - r else y
+                if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
+                    canvas[y][x] = edge if y >= size - max(2, size // 10) else fill
+    ox, oy = (size - w * scale) // 2, (size - h * scale) // 2
+    for y, row in enumerate(rows):
+        for x, ch in enumerate(row):
+            if ch in ink:
+                c = _rgba(ink[ch])
+                if c[3] == 0:
+                    continue
+                for dy in range(scale):
+                    for dx in range(scale):
+                        canvas[oy + y * scale + dy][ox + x * scale + dx] = c
+    return _png_bytes(size, size, [b''.join(r) for r in canvas])
+
+
+# which picture each page's tab gets
+TAB = {'home': ('all', None), 'start': ('start', '#8fd16a'), 'new': ('new', '#d39cf5'), '': ('scout', '#7c9cff')}
+
+
+def favicon(here):
+    """<link> tags for this page's tab picture: its app's mascot, or the site's own."""
+    key = ('favicon', here)
+    stamp = _read(os.path.join(HERE, 'pages', 'art.js'))
+    hit = _cache.get(key)
+    if hit and hit[0] is stamp:
+        return hit[1]
+    pic, colour = TAB.get(here, (here, BY_ID[here]['c'] if here in BY_ID else None))
+    art = mascots().get(pic)
+    grid, ink = (art['grid'], art['ink']) if art else ICONS.get(pic, ICONS['all'])
+    small, big = tile(grid, ink, colour, 32), tile(grid, ink, colour or '#ffffff', 180)
+    out = ('<link rel="icon" type="image/png" sizes="32x32" href="%s"><link rel="apple-touch-icon" href="%s">' % (_uri(small), _uri(big)))
+    _cache[key] = (stamp, out)
+    return out
 
 
 def icons():
@@ -244,12 +306,12 @@ FONTS = ('<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="
          '<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">')
 
 
-def head(styled):
-    """What goes at the end of <head>: day or night before anything is drawn, and the styles."""
+def head(styled, here=''):
+    """What goes at the top of <head>: day or night before anything is drawn, the tab's picture, and the styles."""
     css = _read(os.path.join(SHELL, 'dock.css'))
     if styled:
-        return LOOK + FONTS + '<style>' + _read(os.path.join(SHELL, 'site.css')) + '\n' + css + '</style>'
-    return LOOK + '<style>' + css + '</style>'
+        return LOOK + favicon(here) + FONTS + '<style>' + _read(os.path.join(SHELL, 'site.css')) + '\n' + css + '</style>'
+    return LOOK + favicon(here) + '<style>' + css + '</style>'
 
 
 def tail(here, kind):
@@ -262,7 +324,8 @@ def inject(page, here, kind='page', styled=True):
     'scroll' for a page made by an app that keeps its own look (gossip); 'fit' for an
     app that fills the window and leaves room at the bottom by itself (pigeon).
     styled: whether the page is built on the site's shared styles (pages/shell/site.css)."""
-    top, bottom = head(styled and kind == 'page'), tail(here, kind)
+    page = re.sub(r'<link rel="icon"[^>]*href="data:,"[^>]*>', '', page)  # an empty "no picture" placeholder (pigeon's)
+    top, bottom = head(styled and kind == 'page', here), tail(here, kind)
     if kind == 'fit':
         bottom = bottom.replace('<nav class="dk"', '<nav class="dk dk-onapp"', 1)
     # the shared styles go first in <head>, so a page's own styles can change them

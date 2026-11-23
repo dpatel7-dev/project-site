@@ -59,12 +59,12 @@
   @media (prefers-reduced-motion: reduce) { .mate.flies { animation: none; } }
 
   /* plain reading from here down */
-  .band { padding-top: 88px; }
+  .band { padding-top: 72px; }
   .band > h2, .band .gethead h2 { font: 700 clamp(1.9rem, 4.2vw, 2.6rem)/1.08 var(--pixel); margin: 0; letter-spacing: -.01em; }
-  .band .sub { color: var(--muted); margin: 10px 0 28px; font-size: 1.1rem; max-width: 40em; }
+  .band .sub { color: var(--muted); margin: 10px 0 22px; font-size: 1.1rem; max-width: 44em; }
   .band .gethead { margin-bottom: 10px; }
-  #get .getbox { margin-top: 24px; }
-  #get { padding-top: 128px; } /* starts below the dock when the page opens */
+  #get { padding-top: 120px; } /* starts below the dock when the page opens */
+  #get .cmd { max-width: 760px; }
 
   /* every app: an even grid, one line each */
   .apps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 14px; }
@@ -73,22 +73,9 @@
   .app .pic { height: 56px; border-radius: 15px; display: grid; place-items: end center; padding-bottom: 9px;
     background: linear-gradient(transparent 74%, color-mix(in oklab, var(--c) 70%, #fff) 74% 78%, var(--c) 78%), color-mix(in oklab, var(--c) 22%, var(--bg)); }
   .app b { font: 700 1.2rem/1.15 var(--pixel); display: flex; align-items: baseline; gap: 7px; white-space: nowrap; }
-  .app b small { font: 400 .76rem/1 var(--read); color: var(--muted); }
   .app b em { font: 700 .68rem/1 var(--read); font-style: normal; color: #141416; background: var(--c); padding: 3px 5px; border-radius: 5px; }
   .app .bl { display: block; margin-top: 3px; color: var(--muted); font-size: .94rem; line-height: 1.35; }
 
-  /* what's new: one line per app */
-  .newslist { display: grid; gap: 2px; margin-top: 22px; }
-  .news { display: grid; grid-template-columns: 48px 150px minmax(0, 1fr); gap: 0 16px; align-items: center; padding: 10px 12px; margin: 0 -12px; border-radius: 16px; }
-  .news:hover { background: var(--soft); }
-  .news canvas { justify-self: center; }
-  .news header { display: flex; align-items: baseline; gap: 8px; font: 700 1.15rem/1.2 var(--pixel); }
-  .news header a { text-decoration: none; }
-  .news header span { font: 400 .8rem var(--read); color: var(--muted); }
-  .news ul { list-style: none; margin: 0; padding: 0; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .news li { display: inline; }
-  .news code { font-size: .84em; }
-  .seeall { display: inline-block; margin-top: 16px; font-weight: 700; }
   footer.site { padding: 72px 0 28px; color: var(--muted); font-size: .94rem; }
   footer.site a { color: var(--ink); }
 
@@ -101,8 +88,6 @@
   @media (max-width: 640px) {
     .world { margin: 8px; border-radius: 26px; }
     .apps { grid-template-columns: 1fr; }
-    .news { grid-template-columns: 40px minmax(0, 1fr); }
-    .news ul { grid-column: 2; white-space: normal; }
   }
 </style>
 </head>
@@ -112,7 +97,7 @@
   <div class="world-in wrap">
     <div class="hello">
       <h1>Little apps you open by typing one word</h1>
-      <p class="lede">Ask anything, chat with friends, play your music, keep your passwords, free up space. <b>Each one is a word you type in Terminal</b>, and one menu installs them all and keeps them up to date.</p>
+      <p class="lede">Ask anything, chat, play music, keep passwords. <b>Each one is a word you type in Terminal</b>, and one menu installs them all.</p>
       <p class="go"><a class="btn" href="#get">Get all of them</a><a class="btn ghost" href="/start">New to Terminal? Start here</a></p>
     </div>
     <div class="term glass" id="term">
@@ -130,27 +115,14 @@
   <section class="band" id="get" aria-labelledby="get-title">
     <div class="gethead"><h2 id="get-title">Get every app at once</h2>
       <div class="os" role="group" aria-label="Your computer"><button type="button" data-os="sh" aria-pressed="true">Mac</button><button type="button" data-os="ps1" aria-pressed="false">Windows</button></div></div>
-    <p class="sub">Three steps, about a minute. This installs <b>pca</b>, the menu that installs the others and keeps everything up to date.</p>
-    <div class="getbox">
-    <ol class="steps3">
-      <li><b id="s1">Open Terminal</b><p id="s1p">Hold <kbd>⌘</kbd> and press <kbd>space</kbd>, type <b>Terminal</b>, press <kbd>return</kbd>.</p></li>
-      <li><b>Copy the line below, paste it in, press Enter</b><p>Press Copy, then click in the window that opened and paste.</p></li>
-      <li><b>Type <code>pca</code> and press Enter</b><p>Pick an app with the arrow keys and press Enter. It installs itself and opens.</p></li>
-    </ol>
+    <p class="sub">Paste this into <span class="where">Terminal</span>, press Enter, then type <code>pca</code>. New to Terminal? <a href="/start">The picture guide shows you how.</a></p>
     <div class="cmd"><code id="cmd">curl -fsSL {{origin}}/pca/install.sh | sh</code><button type="button" id="copy">Copy</button></div>
-    </div>
   </section>
 
   <section class="band" id="apps" aria-labelledby="apps-title">
     <h2 id="apps-title">Every app</h2>
-    <p class="sub">Pick one to see what it looks like and how to get just that one. Or, on any page, just start typing what you want to do.</p>
+    <p class="sub">Click one to see it. Or, on any page, just start typing what you want to do.</p>
     <div class="apps" id="appgrid"></div>
-  </section>
-
-  <section class="band" aria-labelledby="news-title">
-    <h2 id="news-title">What's new</h2>
-    <div class="newslist" id="news">{{news_short}}</div>
-    <a class="seeall" href="/new">See everything that's new</a>
   </section>
 
   <footer class="site">
@@ -207,9 +179,9 @@
       }
       const CLOUD = ['.....WWWW.........', '...WWWWWWWW..WWW..', '.WWWWWWWWWWWWWWWWW', 'WWWWWWWWWWWWWWWWWW', '.ssssssssssssssss.'];
       let made = 0;
-      [[0.03, 0.05], [0.42, 0.05], [0.7, 0.04], [0.47, 0.62], [0.3, 0.34]].forEach(([fx, fy], n) => {
+      [[0.04, 0.08], [0.5, 0.03], [0.66, 0.13], [0.3, 0.34], [0.47, 0.62]].forEach(([fx, fy], n) => {
         const cx = Math.round(W * fx), cy = Math.round(H * fy), wide = n % 2 ? 14 : 18;
-        if (made >= 3 || cx + wide > W || !clear(cx - 1, cy - 1, cx + wide + 1, cy + 6)) return;
+        if (made >= 2 || cx + wide > W || !clear(cx - 1, cy - 1, cx + wide + 1, cy + 6)) return;
         made++;
         CLOUD.forEach((row, r) => [...row].forEach((ch, k) => {
           if (ch === '.' || k >= wide) return;
@@ -352,33 +324,17 @@
   APPS.filter((a) => a.id !== 'pca').forEach((a) => {
     const el = document.createElement('a');
     el.className = 'app'; el.href = '/' + a.id; el.style.setProperty('--c', a.c);
-    const v = a.v && a.v !== '?' ? 'v' + a.v : '';
-    el.innerHTML = '<span class="pic"></span><span><b>' + esc(a.short || a.name) + (v ? ' <small>' + v + '</small>' : '') + (a.fresh ? ' <em>new</em>' : '') + '</b><span class="bl">' + esc(a.blurb) + '</span></span>';
+    el.innerHTML = '<span class="pic"></span><span><b>' + esc(a.short || a.name) + (a.fresh ? ' <em>new</em>' : '') + '</b><span class="bl">' + esc(a.blurb) + '</span></span>';
     if (ART.mascots[a.id]) el.firstChild.appendChild(drawPixels(document.createElement('canvas'), fits(a.id), ART.mascots[a.id].ink, 2));
     grid.appendChild(el);
   });
 
-  // ── what's new: each app's mascot beside its news ──
-  document.querySelectorAll('#news .news').forEach((n) => {
-    const a = byId[n.dataset.app];
-    if (!a || !ART.mascots[a.id]) return;
-    n.style.setProperty('--c', a.c);
-    const c = drawPixels(document.createElement('canvas'), fits(a.id), ART.mascots[a.id].ink, 2);
-    c.setAttribute('aria-hidden', 'true');
-    n.prepend(c);
-  });
-
-  // ── the three steps, for a Mac or Windows ──
+  // ── the command, for a Mac or Windows ──
   const ORIGIN = location.origin;
   const cmds = { sh: 'curl -fsSL ' + ORIGIN + '/pca/install.sh | sh', ps1: 'irm ' + ORIGIN + '/pca/install.ps1 | iex' };
-  const first = {
-    sh: ['Open Terminal', 'Hold <kbd>⌘</kbd> and press <kbd>space</kbd>, type <b>Terminal</b>, press <kbd>return</kbd>.'],
-    ps1: ['Open PowerShell', 'Press the <kbd>⊞ Win</kbd> key, type <b>PowerShell</b>, press <kbd>Enter</kbd>.'],
-  };
   function pick(os) {
     document.getElementById('cmd').textContent = cmds[os];
-    document.getElementById('s1').textContent = first[os][0];
-    document.getElementById('s1p').innerHTML = first[os][1];
+    document.querySelectorAll('.where').forEach((w) => { w.textContent = os === 'sh' ? 'Terminal' : 'PowerShell'; });
     document.querySelectorAll('.os button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.os === os)));
   }
   document.querySelectorAll('.os button').forEach((b) => b.addEventListener('click', () => pick(b.dataset.os)));

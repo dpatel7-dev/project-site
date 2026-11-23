@@ -104,7 +104,8 @@ class Site(unittest.TestCase):
         self.assertNotIn('**', new)
         home = self.page('/', None)
         self.assertIn('href="/start"', home)
-        self.assertIn('class="news"', home)
+        self.assertIn('href="/new"', home)  # what's new is one click away, in the dock
+        self.assertIn('rel="icon"', home)  # every page has its own picture in the tab
         v = json.loads(call('/versions.json')[2])
         for app in ('scout', 'roomy', 'hey', 'morph', 'shoo', 'magpie', 'medic', 'flash', 'hum', 'usual', 'locket', 'tidy', 'pigeon'):
             self.assertIn(app, v)

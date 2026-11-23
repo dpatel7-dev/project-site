@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.12.0
+- **Delete everything:** `pca delete-everything` (or **X** in pca) removes every app from here, everything they saved, and every trace they left on this computer, and then pca itself. First each app's own uninstall runs (so shoo's certificate, the menu-bar helpers and background services are undone properly), then pca sweeps their folders, commands, background services, Mac app wrappers, magpie's Quick Action, macOS's settings and caches for them, the lines the installers added to your shell's start-up files, the commands in your Terminal history that mention them, and their temporary files. It shows the whole list (with sizes, and a warning about locket's password vault) and only goes ahead when you type `delete everything`. Nothing that isn't theirs is touched.
+
 ## 1.11.0
 - **Light or dark for every app**: press **L** to switch between light, dark and following your Mac. pca itself, every app's window and side panel, and the apps with their own colours (gossip, Tree of Thought, tidy, roomy, den) all follow it. Or: `pca look light`, `pca look dark`, `pca look auto`.
 - locket's armadillo is now called Bastion.
