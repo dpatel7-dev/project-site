@@ -93,6 +93,9 @@ ICONS = {
     'pca': (['KKKKKKKKKKKKKKKK', 'KRKYKGKKKKKKKKKK', 'KKKKKKKKKKKKKKKK', 'Kddddddddddddddk', 'Kd>dBBBBBBdddddk', 'Kddddddddddddddk',
              'KdddPPPPPPPPdddk', 'Kddddddddddddddk', 'KdddOOOOOddddddk', 'Kddddddddddddddk', 'KdddGGGGGGGddddk', 'Kddddddddddddddk', 'kkkkkkkkkkkkkkkk'],
             {'K': '#3a3d4a', 'k': '#2b2d38', 'd': '#17181f', 'R': '#ff6b6b', 'Y': '#f2c14e', 'G': '#8fd16a', '>': '#8fd16a', 'B': '#7cc4ff', 'P': '#d39cf5', 'O': '#f0843c'}),
+    'dice': (['.KKKKKKKKKK.', 'KWWWWWWWWWWK', 'KWRRWWWWBBWK', 'KWRRWWWWBBWK', 'KWWWWWWWWWWK', 'KWWWWYYWWWWK', 'KWWWWYYWWWWK', 'KWWWWWWWWWWK', 'KWGGWWWWPPWK',
+              'KWGGWWWWPPWK', 'KWWWWWWWWWWK', '.KKKKKKKKKK.'],
+             {'K': '#2a2833', 'W': '#ffffff', 'R': '#ff707a', 'B': '#7cc4ff', 'Y': '#f5c431', 'G': '#8fd16a', 'P': '#d39cf5'}),
     'find': (['..KKKK......', '.KbbbbK.....', 'KbWbbbbK....', 'KbWbbbbK....', 'KbbbbbbK....', 'KbbbbbbK....', '.KbbbbK.....', '..KKKKSS....',
               '......SSS...', '.......SSS..', '........SSS.', '.........SS.'],
              {'K': '#55555f', 'b': '#9fd3ff', 'W': '#ffffff', 'S': '#c08a4a'}),
@@ -262,7 +265,7 @@ def dock(here):
     ic = icons()
     parts = ['<nav class="dk" id="dk" aria-label="Every page on this site"><div class="dk-bar">',
              _item('/', 'Home', ic['home'], here == 'home', 'home', '#e2574c', ' dk-side'),
-             '<a class="dk-i dk-side dk-all" href="/#apps" data-id="all" role="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="dk-sheet">'
+             '<a class="dk-i dk-side dk-all" href="/apps#apps" data-id="all" role="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="dk-sheet">'
              '<span class="dk-ic">%s</span><span class="dk-l">All apps</span></a>' % _img(ic['all']),
              '<span class="dk-sep" aria-hidden="true"></span><span class="dk-apps">']
     last = None
@@ -275,6 +278,7 @@ def dock(here):
         parts.append(_item('/' + a['id'], a.get('short', a['name']), ic[a['id']], here == a['id'], a['id'], a['c'],
                            ' dk-app' + (' dk-here' if here == a['id'] else '')))
     parts += ['</span><span class="dk-sep" aria-hidden="true"></span>',
+              _item('/dice', 'Dice', ic['dice'], here == 'dice', 'dice', '#ff707a', ' dk-side'),
               _item('/start', 'Start here', ic['start'], here == 'start', 'start', '#8fd16a', ' dk-side'),
               _item('/new', "What's new", ic['new'], here == 'new', 'new', '#d39cf5', ' dk-side dk-new'),
               '</div></nav>']
@@ -319,13 +323,13 @@ def tail(here, kind):
     return dock(here) + '<script>window.DOCK=' + _data(here, kind) + ';\n' + _read(os.path.join(SHELL, 'dock.js')) + '</script>'
 
 
-def inject(page, here, kind='page', styled=True):
+def inject(page, here, kind='page', styled=True, dock=True):
     """Add the shell to a whole HTML page. kind: 'page' for this site's own pages;
     'scroll' for a page made by an app that keeps its own look (gossip); 'fit' for an
     app that fills the window and leaves room at the bottom by itself (pigeon).
     styled: whether the page is built on the site's shared styles (pages/shell/site.css)."""
     page = re.sub(r'<link rel="icon"[^>]*href="data:,"[^>]*>', '', page)  # an empty "no picture" placeholder (pigeon's)
-    top, bottom = head(styled and kind == 'page', here), tail(here, kind)
+    top, bottom = head(styled and kind == 'page', here), (tail(here, kind) if dock else '')
     if kind == 'fit':
         bottom = bottom.replace('<nav class="dk"', '<nav class="dk dk-onapp"', 1)
     # the shared styles go first in <head>, so a page's own styles can change them

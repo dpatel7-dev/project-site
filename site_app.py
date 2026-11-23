@@ -24,7 +24,9 @@ import importlib.util
 import json
 import os
 import re
+import secrets
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APPS = os.path.join(HERE, 'apps')
@@ -352,6 +354,153 @@ def check_answer(environ, start_response):
     return [body]
 
 
+# ---- Dice: the front door, DiceWeb's files, the installer, setup codes ----
+DICEWEB = os.path.join(HERE, 'apps', 'diceweb')
+DICE = os.path.join(HERE, 'apps', 'dice')
+STATIC_TYPES = {'.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json',
+                '.png': 'image/png', '.svg': 'image/svg+xml', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8'}
+CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  # no 0/O or 1/I to mix up
+SETUP_KEYS = {'dice': int, 'name': str, 'computer': str, 'timezone': str, 'keyboard': str, 'look': str, 'world': str, 'buddy': str, 'start': str, 'boot': str,
+              'homeassistant': str, 'ssh': bool, 'updates': bool, 'suite': list, 'screen': dict, 'wifi': dict}
+_tarball = {}
+
+
+def _static(start_response, base, rel):
+    """A file from one of the copied apps, with the right type; nothing outside it."""
+    rel = rel.lstrip('/') or 'index.html'
+    if rel.endswith('/'):
+        rel += 'index.html'
+    real = os.path.realpath(os.path.join(base, rel))
+    ext = os.path.splitext(real)[1].lower()
+    if not real.startswith(os.path.realpath(base) + os.sep) or ext not in STATIC_TYPES or not os.path.isfile(real):
+        return _send(start_response, '404 Not Found', 'not found\n', 'text/plain; charset=utf-8')
+    with open(real, 'rb') as f:
+        data = f.read()
+    start_response('200 OK', [('Content-Type', STATIC_TYPES[ext]), ('Content-Length', str(len(data))), ('Cache-Control', 'no-cache'),
+                              ('X-Content-Type-Options', 'nosniff'), ('Referrer-Policy', 'strict-origin-when-cross-origin')])
+    return [data]
+
+
+def _walk(base):
+    for root, dirs, files in os.walk(base):
+        dirs[:] = sorted(d for d in dirs if not d.startswith('.') and d not in ('test', 'tests', '__pycache__'))
+        for name in sorted(files):
+            if not name.startswith('.') and not name.endswith('.pyc'):
+                yield os.path.join(root, name)
+
+
+def dice_tarball():
+    """Dice, with DiceWeb inside it, as dice.tar.gz (what the installer and the updater download)."""
+    import io
+    import tarfile
+    files = [(p, 'dice/' + os.path.relpath(p, DICE)) for p in _walk(DICE)] + [(p, 'dice/diceweb/' + os.path.relpath(p, DICEWEB)) for p in _walk(DICEWEB)]
+    stamp = max([os.path.getmtime(p) for p, _ in files] or [0])
+    if _tarball.get('stamp') != stamp:
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode='w:gz') as tar:
+            for path, name in files:
+                info = tar.gettarinfo(path, name)
+                info.uid = info.gid = 0
+                info.uname = info.gname = 'root'
+                info.mode = 0o755 if (name.startswith('dice/bin/') or name.endswith('.sh') or name.endswith('diced.py')) else 0o644
+                with open(path, 'rb') as f:
+                    tar.addfile(info, f)
+        _tarball.update(stamp=stamp, data=buf.getvalue())
+    return _tarball['data']
+
+
+def _setup_dir():
+    base = os.environ.get('SITE_DATA') or os.path.join(os.path.expanduser('~'), 'site-data')
+    path = os.path.join(base, 'dice-setups')
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def clean_setup(data):
+    """Only the settings Dice knows, of the right kinds. Never a password."""
+    if not isinstance(data, dict):
+        return None
+    out = {}
+    for k, kind in SETUP_KEYS.items():
+        if k in data and isinstance(data[k], kind) and not (kind is int and isinstance(data[k], bool)):
+            out[k] = data[k]
+    for k in ('name', 'computer', 'timezone', 'keyboard', 'look', 'world', 'buddy', 'start', 'boot', 'homeassistant'):
+        if k in out:
+            out[k] = out[k][:200]
+    if 'suite' in out:
+        out['suite'] = [a for a in out['suite'] if isinstance(a, str) and a in APPS][:20]
+    if 'screen' in out:
+        out['screen'] = {'rotate': out['screen'].get('rotate')} if out['screen'].get('rotate') in (0, 90, 180, 270) else {}
+    if 'wifi' in out:
+        w = out['wifi']
+        out['wifi'] = {k: w[k] for k in ('ssid', 'country', 'hidden') if k in w and isinstance(w[k], (str, bool))}
+    return out
+
+
+def save_setup(data):
+    folder = _setup_dir()
+    now = time.time()
+    names = os.listdir(folder)
+    for name in names:  # codes last 30 days
+        try:
+            if now - os.path.getmtime(os.path.join(folder, name)) > 30 * 86400:
+                os.remove(os.path.join(folder, name))
+        except OSError:
+            pass
+    if len(names) > 5000:
+        raise ValueError('too many')
+    for _ in range(20):
+        code = ''.join(secrets.choice(CODE_CHARS) for _ in range(6))
+        path = os.path.join(folder, code + '.json')
+        if not os.path.exists(path):
+            with open(path, 'w') as f:
+                json.dump(data, f)
+            return code
+    raise ValueError('no code')
+
+
+def dice_routes(environ, start_response, path, method):
+    """Everything under /dice and /diceweb; None if it's not one of ours."""
+    if path == '/diceweb':
+        start_response('301 Moved Permanently', [('Location', '/diceweb/'), ('Content-Length', '0')])
+        return [b'']
+    if path.startswith('/diceweb/'):
+        return _static(start_response, DICEWEB, path[len('/diceweb/'):])
+    if path == '/dice/install.sh':
+        text = _read('apps', 'dice', 'install.sh')
+        if text is None:
+            return _send(start_response, '404 Not Found', 'not found\n', 'text/plain; charset=utf-8')
+        return _send(start_response, '200 OK', text, 'text/x-shellscript; charset=utf-8')
+    if path == '/dice/dice.tar.gz':
+        if not os.path.isdir(DICE):
+            return _send(start_response, '404 Not Found', 'not found\n', 'text/plain; charset=utf-8')
+        data = dice_tarball()
+        start_response('200 OK', [('Content-Type', 'application/gzip'), ('Content-Length', str(len(data))), ('Cache-Control', 'no-cache'),
+                                  ('Content-Disposition', 'attachment; filename="dice.tar.gz"')])
+        return [data]
+    if path == '/dice/setup':
+        if method != 'POST':
+            return _send(start_response, '405 Method Not Allowed', '{"error": "Send settings with POST."}', 'application/json')
+        try:
+            n = int(environ.get('CONTENT_LENGTH') or 0)
+            if n <= 0 or n > 8192:
+                raise ValueError('size')
+            data = clean_setup(json.loads(environ['wsgi.input'].read(n)))
+            if data is None:
+                raise ValueError('shape')
+            return _send(start_response, '200 OK', json.dumps({'code': save_setup(data)}), 'application/json')
+        except (ValueError, KeyError):
+            return _send(start_response, '400 Bad Request', '{"error": "Those settings didn\'t look right."}', 'application/json')
+    m = re.fullmatch(r'/dice/setup/([A-Za-z0-9]{4,12})\.json', path)
+    if m:
+        try:
+            with open(os.path.join(_setup_dir(), m.group(1).upper() + '.json')) as f:
+                return _send(start_response, '200 OK', f.read(), 'application/json')
+        except OSError:
+            return _send(start_response, '404 Not Found', '{"error": "No setup with that code. Codes last 30 days."}', 'application/json')
+    return None
+
+
 def application(environ, start_response):
     path = environ.get('PATH_INFO') or '/'
     method = environ.get('REQUEST_METHOD', 'GET')
@@ -363,6 +512,11 @@ def application(environ, start_response):
         return check_answer(environ, start_response)
     if site_check.needs_check(environ, path):
         return check_page(environ, start_response, path)
+
+    if path.startswith('/dice'):
+        answer = dice_routes(environ, start_response, path, method)
+        if answer is not None:
+            return answer
 
     # gossip's chat hub keeps the addresses every gossip install already knows
     if path in ('/api', '/install.sh', '/install.ps1', '/healthz', '/favicon.ico'):
@@ -383,7 +537,12 @@ def application(environ, start_response):
             if text is not None:
                 return _send(start_response, '200 OK', text, 'text/plain; charset=utf-8')
 
-    pages = {'/': ('home', 'home'), '/index.html': ('home', 'home'), '/tot': ('tot', 'tot'), '/tot/': ('tot', 'tot'),
+    if path in ('/', '/index.html', '/dice', '/dice/'):
+        name = 'door' if path in ('/', '/index.html') else 'dice'
+        page = _read('pages', name + '.html')
+        if page is not None:
+            return _send(start_response, '200 OK', _noticed(site_shell.inject(fill(page, environ, here=name), name, 'page', True, dock=False)))
+    pages = {'/apps': ('home', 'home'), '/apps/': ('home', 'home'), '/tot': ('tot', 'tot'), '/tot/': ('tot', 'tot'),
              '/pca': ('pca', 'pca'), '/pca/': ('pca', 'pca'), '/tidy': ('tidy', 'tidy'), '/tidy/': ('tidy', 'tidy'),
              '/den': ('den', 'den'), '/den/': ('den', 'den')}
     for name in ('scout', 'roomy', 'hey', 'morph', 'shoo', 'magpie', 'medic', 'flash', 'hum', 'usual', 'locket'):
@@ -396,7 +555,11 @@ def application(environ, start_response):
         if page is not None:
             return _send(start_response, '200 OK', _noticed(site_shell.inject(fill(page, environ, here=here), here, 'page', name not in OWN_LOOK)))
     if path == '/versions.json':  # what pca compares against to keep everything up to date
-        body = json.dumps({app: version(app) for app in APPS if version(app) != '?'})
+        found = {app: version(app) for app in APPS + ('diceweb',) if version(app) != '?'}
+        dv = (_read('apps', 'dice', 'VERSION') or '').strip()
+        if dv:
+            found['dice'] = dv
+        body = json.dumps(found)
         return _send(start_response, '200 OK', body, 'application/json')
     if path == '/robots.txt':
         return _send(start_response, '200 OK', 'User-agent: *\nDisallow: /pigeon/s/\nDisallow: /pigeon/d/\nDisallow: /api\nDisallow: /__check\n', 'text/plain; charset=utf-8')

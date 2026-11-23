@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en" data-look="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="description" content="DiceWeb: a whole console in your browser. Games, music, a Terminal, notes, and every app in the suite.">
+<title>DiceWeb</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' shape-rendering='crispEdges'%3E%3Crect x='1' y='0' width='10' height='12' fill='%23141416'/%3E%3Crect x='0' y='1' width='12' height='10' fill='%23141416'/%3E%3Crect x='1' y='1' width='10' height='10' fill='%23fff'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23ff707a'/%3E%3Crect x='8' y='2' width='2' height='2' fill='%237cc4ff'/%3E%3Crect x='5' y='5' width='2' height='2' fill='%23f5c431'/%3E%3Crect x='2' y='8' width='2' height='2' fill='%238fd16a'/%3E%3Crect x='8' y='8' width='2' height='2' fill='%23d39cf5'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@500;700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/dice.css">
+<link rel="stylesheet" href="css/apps.css">
+<script>
+  // light or dark before anything is drawn, so nothing flashes
+  (function () {
+    try {
+      var s = JSON.parse(localStorage.getItem('diceweb') || '{}'), look = s.look || 'auto', n;
+      if (look === 'night') n = true; else if (look === 'day') n = false;
+      else { var d = new Date(), y = d.getFullYear(), k = Math.floor((d - new Date(y, 0, 0)) / 864e5), e = 23.44 * Math.sin(2 * Math.PI * (284 + k) / 365) * Math.PI / 180,
+        h = Math.acos(Math.max(-1, Math.min(1, -Math.tan(0.698) * Math.tan(e)))) * 12 / Math.PI,
+        st = d.getTimezoneOffset() < Math.max(new Date(y, 0, 1).getTimezoneOffset(), new Date(y, 6, 1).getTimezoneOffset()) ? 1 : 0, t = d.getHours() + d.getMinutes() / 60;
+        n = t < 12 + st - h || t >= 12 + st + h; }
+      document.documentElement.setAttribute('data-look', n ? 'dark' : 'light');
+    } catch (e) { /* the default is fine */ }
+  })();
+</script>
+</head>
+<body>
+<div id="app" data-view="home">
+  <canvas id="hero" aria-hidden="true"></canvas>
+  <div id="veil" aria-hidden="true"></div>
+  <header id="top"></header>
+  <main id="view" aria-live="polite"></main>
+  <section id="run" aria-label="Running app"></section>
+  <footer id="legend" class="glass" aria-label="Buttons"></footer>
+</div>
+<div id="desk" hidden></div>
+<div id="scrim"></div>
+<nav id="menu" class="side glass" aria-label="Menu" aria-hidden="true"></nav>
+<aside id="qam" class="side glass" aria-label="Quick access"></aside>
+<div id="search" role="search"></div>
+<div id="toasts" aria-live="polite"></div>
+<div id="dialog"></div>
+<div id="launch" hidden></div>
+<div id="perf" class="glass" hidden></div>
+<div id="dim"></div>
+<div id="sleep" aria-hidden="true"></div>
+<div id="boot" aria-label="Starting DiceWeb"></div>
+<noscript><p style="padding:40px;font:18px system-ui">DiceWeb needs JavaScript turned on.</p></noscript>
+
+<script src="js/art.js"></script>
+<script src="js/catalog.js"></script>
+<script src="js/logic.js"></script>
+<script src="js/gfx.js"></script>
+<script src="js/sound.js"></script>
+<script src="js/core.js"></script>
+<script src="js/sys.js"></script>
+<script src="js/vt.js"></script>
+<script src="js/shell.js"></script>
+<script src="js/desk.js"></script>
+<script src="js/apps/roll.js"></script>
+<script src="js/apps/flight.js"></script>
+<script src="js/apps/music.js"></script>
+<script src="js/apps/terminal.js"></script>
+<script src="js/apps/realterm.js"></script>
+<script src="js/apps/files.js"></script>
+<script src="js/apps/notes.js"></script>
+<script src="js/apps/settings.js"></script>
+<script>Dice.shell.start();</script>
+</body>
+</html>

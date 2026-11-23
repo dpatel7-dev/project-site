@@ -1,0 +1,20 @@
+[Unit]
+Description=Dice desktop for %i
+After=systemd-user-sessions.service plymouth-quit-wait.service dice.service
+Wants=dice.service
+Conflicts=getty@tty1.service
+
+[Service]
+User=%i
+PAMName=login
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+UtmpIdentifier=tty1
+UtmpMode=user
+Environment=XDG_SESSION_TYPE=wayland
+ExecStart=/usr/bin/cage -s -d -- /opt/dice/bin/dice-session
+Restart=always
+RestartSec=2

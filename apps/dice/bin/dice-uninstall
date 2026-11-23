@@ -1,0 +1,17 @@
+#!/bin/sh
+# dice-uninstall: takes Dice off this Pi and gives the screen back.
+set -e
+[ "$(id -u)" = 0 ] || { echo "Run it with sudo: sudo /opt/dice/bin/dice-uninstall"; exit 1; }
+WHO=$(getent passwd 1000 | cut -d: -f1)
+systemctl disable --now dice-update.timer dice-boot.service dice.service 2>/dev/null || true
+systemctl stop "dice-session@$WHO.service" 2>/dev/null || true
+rm -f /etc/systemd/system/dice.service /etc/systemd/system/dice-boot.service /etc/systemd/system/dice-session@.service /etc/systemd/system/dice-update.service /etc/systemd/system/dice-update.timer
+systemctl daemon-reload
+if [ -f /var/lib/dice/display-managers ]; then
+  while read -r dm; do systemctl enable "$dm"; done < /var/lib/dice/display-managers
+  systemctl set-default graphical.target
+fi
+plymouth-set-default-theme -R spinner 2>/dev/null || true
+rm -rf /usr/share/plymouth/themes/dice /etc/dice /var/lib/dice /opt/dice.old
+echo "Dice is off this Pi. /opt/dice goes next; restart afterwards: sudo reboot"
+rm -rf /opt/dice

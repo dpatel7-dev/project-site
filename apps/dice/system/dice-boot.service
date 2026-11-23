@@ -1,0 +1,13 @@
+[Unit]
+Description=Dice start-up (applies dice.json, then starts the desktop)
+After=local-fs.target NetworkManager.service userconfig.service systemd-user-sessions.service dice.service
+Wants=dice.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/dice/bin/dice-boot
+TimeoutStartSec=180
+StandardOutput=journal+console
+
+[Install]
+WantedBy=multi-user.target

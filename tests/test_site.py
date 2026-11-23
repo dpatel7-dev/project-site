@@ -59,7 +59,7 @@ class Site(unittest.TestCase):
         return text
 
     def test_pages(self):
-        home = self.page('/', None)
+        home = self.page('/apps', None)
         self.assertIn('https://djp7.pythonanywhere.com/pca/install.sh', home)
         self.assertIn('const ART = {"mascots"', home)
         self.assertIn('https://djp7.pythonanywhere.com/tot/install.sh', self.page('/tot', 'tot'))
@@ -102,7 +102,7 @@ class Site(unittest.TestCase):
         self.assertRegex(new, r'<article class="news" data-app="scout">')
         self.assertIn('<b>', new, 'changelog bold becomes HTML')
         self.assertNotIn('**', new)
-        home = self.page('/', None)
+        home = self.page('/apps', None)
         self.assertIn('href="/start"', home)
         self.assertIn('href="/new"', home)  # what's new is one click away, in the dock
         self.assertIn('rel="icon"', home)  # every page has its own picture in the tab
@@ -159,14 +159,16 @@ class Site(unittest.TestCase):
         code, h, body = call('/versions.json')
         self.assertEqual(code, 200)
         v = json.loads(body)
-        self.assertEqual(set(v), {'gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph', 'shoo', 'magpie', 'medic', 'flash', 'hum', 'usual', 'locket'})
+        # pca only looks at the apps it knows, so Dice and DiceWeb being here too is fine
+        self.assertEqual(set(v), {'gossip', 'tot', 'pigeon', 'pca', 'tidy', 'den', 'scout', 'roomy', 'hey', 'morph', 'shoo', 'magpie', 'medic', 'flash', 'hum', 'usual', 'locket', 'dice', 'diceweb'})
         self.assertTrue(all(isinstance(x, str) and x.count('.') == 2 for x in v.values()))
 
     def test_the_dock(self):
         import base64
         import site_shell
-        home = self.page('/', None)
+        home = self.page('/apps', None)
         self.assertRegex(home, r'href="/"[^>]*aria-current="page"')
+        self.assertIn('href="/dice" data-id="dice"', home)  # Dice has a spot in the dock
         for a in site_shell.APPS:  # every app is in the dock, with its picture
             self.assertRegex(home, r'<a class="dk-i dk-app[^"]*" href="/%s" data-id="%s"' % (a['id'], a['id']))
         # the pictures are real PNG images
@@ -192,6 +194,70 @@ class Site(unittest.TestCase):
         with open(os.path.join(site_app.HERE, 'pages', 'check.html'), encoding='utf-8') as f:
             self.assertIn('window.djp7ClockNight=', f.read())  # the "are you a person?" check too
         self.assertNotIn('console', call('/robots.txt')[2].decode())
+
+    def test_two_doors(self):
+        code, h, body = call('/')
+        door = body.decode()
+        self.assertEqual(code, 200)
+        self.assertNotIn('<nav class="dk', door)  # just the two doors, no dock
+        for bit in ('href="/dice"', 'href="/apps"', 'href="/diceweb/"', 'rel="icon"', "localStorage.getItem('djp7-look')", '/diceweb/js/gfx.js'):
+            self.assertIn(bit, door)
+        code, h, body = call('/dice')
+        dice = body.decode()
+        self.assertEqual(code, 200)
+        self.assertNotIn('<nav class="dk', dice)
+        self.assertIn('releases/latest/download/dice-arm64.img.xz', dice)
+        self.assertIn('https://djp7.pythonanywhere.com/dice/install.sh', dice)
+        self.assertNotRegex(dice, r'\{\{\w+\}\}')
+
+    def test_diceweb_is_served(self):
+        code, h, _ = call('/diceweb')
+        self.assertEqual((code, h.get('Location')), (301, '/diceweb/'))
+        code, h, body = call('/diceweb/')
+        self.assertEqual(code, 200)
+        self.assertIn(b'<title>DiceWeb</title>', body)
+        self.assertNotIn(b'<nav class="dk', body)  # it's a whole console: no dock
+        code, h, body = call('/diceweb/js/gfx.js')
+        self.assertEqual((code, h['Content-Type']), (200, 'text/javascript; charset=utf-8'))
+        for bad in ('/diceweb/../site_app.py', '/diceweb/js/../../../site_app.py', '/diceweb/nope.js', '/diceweb/package.json/x'):
+            self.assertEqual(call(bad)[0], 404, bad)
+
+    def test_dice_install_and_download(self):
+        import io
+        import tarfile
+        code, h, body = call('/dice/install.sh')
+        self.assertEqual(code, 200)
+        self.assertIn(b'/dice/dice.tar.gz', body)
+        code, h, body = call('/dice/dice.tar.gz')
+        self.assertEqual((code, h['Content-Type']), (200, 'application/gzip'))
+        with tarfile.open(fileobj=io.BytesIO(body)) as tar:
+            names = {m.name: m for m in tar.getmembers()}
+        for need in ('dice/daemon/diced.py', 'dice/bin/dice-boot', 'dice/bin/dice-session', 'dice/system/dice.service', 'dice/plymouth/dice/die6.png', 'dice/diceweb/index.html', 'dice/diceweb/js/sys.js', 'dice/VERSION'):
+            self.assertIn(need, names)
+        self.assertTrue(names['dice/bin/dice-boot'].mode & 0o111)
+        self.assertFalse(any('test' in n for n in names))
+        self.assertTrue(all(n.startswith('dice/') and '..' not in n for n in names))
+
+    def test_dice_setup_codes_keep_no_secrets(self):
+        settings = {'dice': 1, 'name': 'Dhruv', 'password': 'hunter2', 'wifi': {'ssid': 'Home', 'password': 'wifi-secret', 'country': 'US'},
+                    'suite': ['scout', 'rm -rf'], 'screen': {'rotate': 45}, 'evil': '<script>'}
+        code, h, body = call('/dice/setup', method='POST', body=json.dumps(settings).encode(), headers={'CONTENT_TYPE': 'application/json'})
+        self.assertEqual(code, 200)
+        c = json.loads(body)['code']
+        self.assertRegex(c, r'^[A-Z2-9]{6}$')
+        code, h, body = call('/dice/setup/%s.json' % c)
+        got = json.loads(body)
+        self.assertEqual(got['name'], 'Dhruv')
+        self.assertEqual(got['wifi'], {'ssid': 'Home', 'country': 'US'})
+        self.assertEqual(got['suite'], ['scout'])
+        self.assertEqual(got['screen'], {})
+        for gone in (b'hunter2', b'wifi-secret', b'evil'):
+            self.assertNotIn(gone, body)
+        self.assertEqual(call('/dice/setup/%s.json' % c.lower())[0], 200)  # codes aren't fussy about capitals
+        self.assertEqual(call('/dice/setup/NOPE99.json')[0], 404)
+        self.assertEqual(call('/dice/setup')[0], 405)
+        self.assertEqual(call('/dice/setup', method='POST', body=b'x' * 9000, headers={'CONTENT_TYPE': 'application/json'})[0], 400)
+        self.assertEqual(call('/dice/setup', method='POST', body=b'[1, 2]', headers={'CONTENT_TYPE': 'application/json'})[0], 400)
 
     def test_reloads_itself_after_a_git_pull(self):
         # pretend PythonAnywhere's WSGI file lives here, and the code on disk just changed

@@ -1,0 +1,31 @@
+#!/bin/sh
+# dice-session: runs inside cage (the screen's Wayland compositor) as the person
+# using the Pi, and shows the Dice desktop full screen in Chromium.
+SETTINGS=/etc/dice/settings.json
+get() { python3 -c "import json,sys;d=json.load(open('$SETTINGS'));v=d$1;print(v if v is not None else '')" 2>/dev/null; }
+
+# keyboard layout for Wayland apps
+if [ -f /etc/default/keyboard ]; then . /etc/default/keyboard; export XKB_DEFAULT_LAYOUT="$XKBLAYOUT" XKB_DEFAULT_VARIANT="$XKBVARIANT"; fi
+
+# turn the screen if asked (for touch screens mounted sideways)
+ROT=$(get "['screen']['rotate']")
+if [ -n "$ROT" ] && [ "$ROT" != 0 ] && command -v wlr-randr >/dev/null 2>&1; then
+  OUT=$(wlr-randr | awk 'NR==1{print $1}')
+  [ -n "$OUT" ] && wlr-randr --output "$OUT" --transform "$ROT"
+fi
+
+# wait for the system helper
+i=0
+while [ $i -lt 100 ]; do
+  curl -s -o /dev/null http://127.0.0.1:7070/healthz && break
+  i=$((i + 1)); sleep 0.2
+done
+
+CHROME=$(command -v chromium || command -v chromium-browser)
+[ -z "$CHROME" ] && { echo "dice-session: Chromium isn't installed" >&2; exit 1; }
+mkdir -p "$HOME/.config/dice"
+exec "$CHROME" --kiosk --app=http://127.0.0.1:7070/ --ozone-platform=wayland \
+  --user-data-dir="$HOME/.config/dice/shell" --no-first-run --noerrdialogs --disable-infobars \
+  --disable-session-crashed-bubble --disable-features=Translate,MediaRouter --password-store=basic \
+  --autoplay-policy=no-user-gesture-required --check-for-update-interval=31536000 --enable-features=OverlayScrollbar \
+  --touch-events=enabled --overscroll-history-navigation=0

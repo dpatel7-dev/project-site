@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""
+dice-boot: runs at every start-up, as root, before the desktop.
+
+1. If there's a dice.json (made on the website) on the card's "bootfs" drive
+   or on a USB stick, it applies it: your name, the computer's name, password,
+   Wi-Fi, time zone, keyboard, look, screen, apps, SSH and updates. Passwords
+   are then wiped from the file and it's renamed dice-applied.json, so it
+   only happens once. Drop a new dice.json on the card to change things again.
+2. Starts the Dice desktop for the person who uses this Pi.
+"""
+import glob
+import json
+import os
+import pwd
+import re
+import shutil
+import subprocess
+import sys
+import time
+
+SETTINGS = '/etc/dice/settings.json'
+PLACES = ['/boot/firmware/dice.json', '/boot/dice.json']
+SITE = os.environ.get('DICE_SITE', 'https://djp7.pythonanywhere.com')
+KEEP = ('name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh')
+
+
+def log(msg):
+    print('dice-boot: ' + msg, flush=True)
+
+
+def sh(cmd, **kw):
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=kw.pop('timeout', 60), **kw)
+        return p.returncode, (p.stdout + p.stderr).strip()
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return 1, str(e)
+
+
+def user():
+    try:
+        return pwd.getpwuid(1000).pw_name
+    except KeyError:
+        return None
+
+
+def find():
+    """(path to dice.json, mount point to undo or None)."""
+    for p in PLACES:
+        if os.path.isfile(p):
+            return p, None
+    mnt = '/run/dice/usb'
+    os.makedirs(mnt, exist_ok=True)
+    for dev in sorted(glob.glob('/dev/sd[a-z][0-9]')) + sorted(glob.glob('/dev/sd[a-z]')):
+        if sh(['mount', dev, mnt], timeout=20)[0] != 0:
+            continue
+        p = os.path.join(mnt, 'dice.json')
+        if os.path.isfile(p):
+            log('found dice.json on ' + dev)
+            return p, mnt
+        sh(['umount', mnt])
+    return None, None
+
+
+def load(path):
+    try:
+        with open(path, encoding='utf-8-sig') as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else None
+    except (OSError, ValueError) as e:
+        log('could not read %s: %s' % (path, e))
+        return None
+
+
+def save_settings(data):
+    os.makedirs(os.path.dirname(SETTINGS), exist_ok=True)
+    cur = {}
+    if os.path.isfile(SETTINGS):
+        cur = load(SETTINGS) or {}
+    cur.update(data)
+    tmp = SETTINGS + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(cur, f, indent=2)
+    os.replace(tmp, SETTINGS)
+    return cur
+
+
+def wait_for_networkmanager(seconds=40):
+    end = time.time() + seconds
+    while time.time() < end:
+        if sh(['nmcli', 'general', 'status'], timeout=5)[0] == 0:
+            return True
+        time.sleep(1)
+    return False
+
+
+def apply(cfg):
+    done, problems = [], []
+    who = user()
+    settings = {k: cfg[k] for k in KEEP if k in cfg}
+
+    # the computer's name
+    host = str(cfg.get('computer') or '').strip().lower()
+    if host:
+        if re.fullmatch(r'[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?', host):
+            if sh(['hostnamectl', 'set-hostname', host])[0] != 0:
+                with open('/etc/hostname', 'w') as f:
+                    f.write(host + '\n')
+            hosts = open('/etc/hosts').read() if os.path.exists('/etc/hosts') else ''
+            hosts = re.sub(r'(?m)^127\.0\.1\.1\s+.*$', '127.0.1.1\t' + host, hosts) if '127.0.1.1' in hosts else hosts + '\n127.0.1.1\t' + host + '\n'
+            with open('/etc/hosts', 'w') as f:
+                f.write(hosts)
+            done.append('Named this computer ' + host)
+        else:
+            problems.append('The computer name "%s" has letters it can\'t use, so it wasn\'t changed.' % host)
+
+    # password
+    pw = cfg.get('password')
+    if pw and who:
+        code, out = sh(['chpasswd'], input='%s:%s\n' % (who, pw))
+        (done if code == 0 else problems).append('Set your password' if code == 0 else 'The password couldn\'t be set: ' + out)
+
+    # Wi-Fi
+    wifi = cfg.get('wifi') or {}
+    country = str(wifi.get('country') or '').upper()
+    if re.fullmatch(r'[A-Z]{2}', country):
+        if shutil.which('raspi-config'):
+            sh(['raspi-config', 'nonint', 'do_wifi_country', country])
+        else:
+            sh(['iw', 'reg', 'set', country])
+    if wifi.get('ssid'):
+        sh(['rfkill', 'unblock', 'wifi'])
+        if wait_for_networkmanager():
+            sh(['nmcli', 'connection', 'delete', 'dice-wifi'])
+            cmd = ['nmcli', 'connection', 'add', 'type', 'wifi', 'ifname', 'wlan0', 'con-name', 'dice-wifi', 'ssid', str(wifi['ssid']), 'connection.autoconnect', 'yes']
+            if wifi.get('password'):
+                cmd += ['wifi-sec.key-mgmt', 'wpa-psk', 'wifi-sec.psk', str(wifi['password'])]
+            if wifi.get('hidden'):
+                cmd += ['802-11-wireless.hidden', 'yes']
+            code, out = sh(cmd)
+            if code == 0:
+                sh(['nmcli', 'connection', 'up', 'dice-wifi'], timeout=40)
+                done.append('Joined the Wi-Fi network ' + str(wifi['ssid']))
+            else:
+                problems.append('Wi-Fi wasn\'t set up: ' + out)
+        else:
+            problems.append('Wi-Fi wasn\'t set up because NetworkManager isn\'t running. You can join it in Settings.')
+
+    # time zone and keyboard
+    tz = str(cfg.get('timezone') or '')
+    if tz:
+        if os.path.exists('/usr/share/zoneinfo/' + tz) and '..' not in tz:
+            if sh(['timedatectl', 'set-timezone', tz])[0] != 0:
+                try:
+                    os.remove('/etc/localtime')
+                except OSError:
+                    pass
+                os.symlink('/usr/share/zoneinfo/' + tz, '/etc/localtime')
+                with open('/etc/timezone', 'w') as f:
+                    f.write(tz + '\n')
+            done.append('Set the time zone to ' + tz)
+        else:
+            problems.append('Didn\'t recognise the time zone ' + tz)
+    kb = str(cfg.get('keyboard') or '')
+    if re.fullmatch(r'[a-z]{2,3}(\([\w-]+\))?', kb):
+        layout, variant = (kb.split('(') + [''])[:2]
+        with open('/etc/default/keyboard', 'w') as f:
+            f.write('XKBMODEL="pc105"\nXKBLAYOUT="%s"\nXKBVARIANT="%s"\nXKBOPTIONS=""\nBACKSPACE="guess"\n' % (layout, variant.rstrip(')')))
+        done.append('Set the keyboard to ' + kb)
+
+    # SSH: only with a password set, or anyone could get in with the default one
+    if 'ssh' in cfg:
+        if cfg['ssh'] and pw:
+            sh(['systemctl', 'enable', '--now', 'ssh'])
+            done.append('Turned on SSH')
+        elif cfg['ssh']:
+            problems.append('SSH stayed off because no password was set. Set one first.')
+        else:
+            sh(['systemctl', 'disable', '--now', 'ssh'])
+
+    # automatic updates
+    if 'updates' in cfg:
+        sh(['systemctl', 'enable' if cfg['updates'] else 'disable', '--now', 'dice-update.timer'])
+
+    settings['welcome'] = {'name': cfg.get('name') or '', 'done': done, 'problems': problems, 'at': int(time.time())}
+    save_settings(settings)
+
+    # the Terminal apps, in the background once the internet is up
+    suite = [a for a in (cfg.get('suite') or []) if re.fullmatch(r'[a-z]{2,10}', str(a))]
+    if suite and who:
+        subprocess.Popen(['/opt/dice/bin/dice-suite'] + suite, stdout=open('/var/log/dice-suite.log', 'w'), stderr=subprocess.STDOUT, start_new_session=True)
+    return done, problems
+
+
+def scrub(path, cfg, mnt):
+    """Wipe the passwords out of the file and rename it, so it only applies once."""
+    clean = dict(cfg)
+    clean.pop('password', None)
+    if isinstance(clean.get('wifi'), dict):
+        clean['wifi'] = {k: v for k, v in clean['wifi'].items() if k != 'password'}
+    clean['applied'] = time.strftime('%Y-%m-%d %H:%M')
+    try:
+        with open(os.path.join(os.path.dirname(path), 'dice-applied.json'), 'w') as f:
+            json.dump(clean, f, indent=2)
+        with open(path, 'w') as f:  # overwrite before removing
+            f.write('{}')
+        os.remove(path)
+    except OSError as e:
+        log('could not tidy up %s: %s' % (path, e))
+    if mnt:
+        sh(['umount', mnt])
+
+
+def main():
+    if os.geteuid() != 0:
+        sys.exit('dice-boot needs to run as root (it runs by itself at start-up).')
+    path, mnt = find()
+    if path:
+        cfg = load(path)
+        if cfg is not None:
+            done, problems = apply(cfg)
+            for d in done:
+                log('done: ' + d)
+            for p in problems:
+                log('problem: ' + p)
+            scrub(path, cfg, mnt)
+        elif mnt:
+            sh(['umount', mnt])
+    who = user()
+    if who and '--no-session' not in sys.argv:
+        sh(['systemctl', '--no-block', 'start', 'dice-session@%s.service' % who])
+        log('started the desktop for ' + who)
+
+
+if __name__ == '__main__':
+    main()

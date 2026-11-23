@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dice - your own operating system for a Raspberry Pi</title>
+<meta name="description" content="Dice is an operating system for the Raspberry Pi with pixel worlds, games, real Wi-Fi, files and Terminal. Set it up here first, then write it onto a microSD card or an NVMe drive.">
+<style>
+  /* Dice's own page. The colour comes from the world you pick: everything
+     else is plain white by day and black at night, with glass on top. */
+  .dtop { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 18px; padding: 14px clamp(16px, 3vw, 34px); }
+  .dtop::before { content: ""; position: absolute; inset: 0; z-index: -1; background: color-mix(in srgb, var(--bg) 82%, transparent); -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%); box-shadow: 0 1px 0 var(--line); }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font: 700 1.45rem/1 var(--pixel); text-decoration: none; }
+  .brand canvas { width: 28px; height: 28px; }
+  .dtop nav { display: flex; gap: 4px; margin-left: auto; flex-wrap: wrap; }
+  .dtop nav a { padding: 9px 13px; border-radius: 11px; text-decoration: none; font-weight: 700; font-size: .95rem; color: var(--muted); }
+  .dtop nav a:hover { color: var(--ink); background: var(--soft); }
+  .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 34px; align-items: center; padding-top: clamp(30px, 6vh, 70px); padding-bottom: 30px; }
+  .hero h1 { font: 700 clamp(3.6rem, 9vw, 7rem)/.88 var(--pixel); margin: 0 0 18px; letter-spacing: -.02em; }
+  .hero p { font-size: 1.2rem; color: var(--muted); margin: 0; max-width: 32em; }
+  .hero p b { color: var(--ink); }
+  .hero .go { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 26px; }
+  .btn.main { background: var(--c); color: #141416; }
+  .btn.main:hover { background: color-mix(in oklab, var(--c) 86%, #fff); }
+  .btn.soft { background: var(--soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+  .btn.soft:hover { background: var(--bg); }
+  .stage { border-radius: 30px; overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); aspect-ratio: 16 / 10; background: var(--soft); }
+  .stage canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  section > h2, .h2 { font: 700 clamp(1.9rem, 3.4vw, 2.7rem)/1.05 var(--pixel); margin: 0 0 10px; letter-spacing: -.01em; }
+  .lede { color: var(--muted); font-size: 1.1rem; margin: 0 0 26px; max-width: 46em; }
+  .make { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 460px); gap: 34px; align-items: start; padding-top: 50px; }
+  .sets { display: grid; gap: 16px; }
+  fieldset { border: 0; margin: 0; padding: 20px 22px 22px; border-radius: 24px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); display: grid; gap: 14px; min-width: 0; }
+  legend { float: left; width: 100%; padding: 0; margin: 0 0 4px; font: 700 1.35rem/1.2 var(--pixel); }
+  legend + * { clear: left; }
+  .f { display: grid; gap: 6px; min-width: 0; align-content: start; }
+  .f > span { font-weight: 700; }
+  .f small, .hint { color: var(--muted); font-size: .88rem; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  input[type=text], input[type=password], input[type=url], select { font: inherit; font-weight: 700; color: var(--ink); background: var(--bg); border: 0; border-radius: 12px; padding: 12px 14px; box-shadow: inset 0 0 0 1px var(--line); width: 100%; min-width: 0; }
+  input:focus-visible, select:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--ink); }
+  .pw { position: relative; }
+  .pw button { position: absolute; right: 6px; top: 6px; bottom: 6px; border: 0; border-radius: 9px; padding: 0 12px; font: 700 .85rem/1 var(--read); background: var(--soft); color: var(--muted); cursor: pointer; }
+  .seg { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 4px; border-radius: 14px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); justify-self: start; }
+  .seg button { font: 700 .92rem/1 var(--read); border: 0; background: none; color: var(--muted); padding: 10px 14px; border-radius: 10px; cursor: pointer; }
+  .seg button[aria-pressed=true] { background: var(--ink); color: var(--bg); }
+  .picks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .picks button { width: 58px; height: 58px; padding: 0; border: 0; border-radius: 15px; overflow: hidden; cursor: pointer; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+  .picks button canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  .picks button[aria-pressed=true] { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ink); }
+  .picks.worlds button { width: 72px; height: 72px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips label { display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 12px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); font-weight: 700; cursor: pointer; }
+  .chips input { accent-color: var(--ink); }
+  .chips label:has(input:checked) { box-shadow: inset 0 0 0 2px var(--ink); }
+  .chips i { width: 10px; height: 10px; border-radius: 3px; }
+  .sw { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .sw b { display: block; }
+  .toggle { appearance: none; width: 48px; height: 30px; border-radius: 10px; background: var(--soft-2, #ececf0); box-shadow: inset 0 0 0 1px var(--line); position: relative; cursor: pointer; flex: none; margin: 0; }
+  .toggle::after { content: ""; position: absolute; top: 4px; left: 4px; width: 22px; height: 22px; border-radius: 7px; background: var(--bg); box-shadow: 0 1px 4px rgba(0, 0, 0, .3); transition: left .18s; }
+  .toggle:checked { background: #4fc16b; }
+  .toggle:checked::after { left: 22px; }
+  .toggle:disabled { opacity: .45; cursor: default; }
+  :root[data-look=dark] .toggle { background: #1b1b1f; }
+
+  /* the preview: your desktop, as you set it up */
+  .side { position: sticky; top: 84px; display: grid; gap: 16px; }
+  .screen { position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 16 / 10; box-shadow: 0 0 0 10px #1b1b1f, 0 0 0 11px var(--line), 0 34px 60px -30px rgba(0, 0, 0, .5); background: #000; margin: 10px; }
+  .screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+  .screen .win { position: absolute; left: 9%; top: 11%; width: 58%; padding: 12px 14px; border-radius: 14px; display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
+  .screen .win canvas { position: static; width: 40px; height: 40px; border-radius: 10px; }
+  .screen .win b { display: block; font: 700 1.05rem/1.1 var(--pixel); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .screen .win span { display: block; color: var(--muted); font-size: .72rem; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .screen .shelf { position: absolute; left: 50%; bottom: 4%; transform: translateX(-50%); display: flex; gap: 5px; padding: 5px 7px; border-radius: 12px; }
+  .screen .shelf i { width: 16px; height: 16px; border-radius: 5px; }
+  .screen .tray { position: absolute; right: 3%; bottom: 4%; padding: 6px 9px; border-radius: 12px; font: 700 .7rem/1 var(--pixel); display: flex; gap: 6px; align-items: center; }
+  .screen .glass::after { border-radius: inherit; }
+  .out { padding: 20px; border-radius: 24px; display: grid; gap: 12px; }
+  .out h3 { font: 700 1.25rem/1.2 var(--pixel); margin: 0; }
+  .out p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .out .btn { justify-content: center; }
+  .code { display: none; gap: 8px; padding: 14px; border-radius: 16px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+  .code.on { display: grid; }
+  .code b { font: 700 2rem/1 var(--pixel); letter-spacing: .12em; }
+  .warn { color: #c2410c; font-weight: 700; font-size: .9rem; }
+  :root[data-look=dark] .warn { color: #ffb48a; }
+
+  /* getting it onto a card */
+  .card-sec { padding-top: 70px; }
+  .routes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+  .routes button { font: 700 1rem/1 var(--read); border: 0; padding: 13px 18px; border-radius: 14px; background: var(--soft); color: var(--muted); cursor: pointer; box-shadow: inset 0 0 0 1px var(--line); }
+  .routes button[aria-selected=true] { background: var(--ink); color: var(--bg); box-shadow: none; }
+  .route { display: none; }
+  .route.on { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  ol.steps { list-style: none; counter-reset: s; margin: 0; padding: 0; display: grid; gap: 10px; }
+  ol.steps li { counter-increment: s; display: grid; grid-template-columns: 38px 1fr; gap: 14px; align-items: start; padding: 14px 16px; border-radius: 18px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
+  ol.steps li::before { content: counter(s); width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; font: 700 1.1rem/1 var(--pixel); background: var(--ink); color: var(--bg); }
+  ol.steps li b { display: block; margin-bottom: 2px; }
+  ol.steps li span { color: var(--muted); }
+  ol.steps .cmd { margin-top: 10px; }
+  .aside { padding: 20px 22px; border-radius: 22px; background: var(--c-soft); display: grid; gap: 10px; }
+  .aside h3 { margin: 0; font: 700 1.2rem/1.2 var(--pixel); }
+  .aside p { margin: 0; }
+  .know { padding-top: 70px; padding-bottom: 40px; }
+  .know dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin: 0; }
+  .know dl div { padding: 18px 20px; border-radius: 20px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
+  .know dt { font-weight: 700; margin-bottom: 4px; }
+  .know dd { margin: 0; color: var(--muted); }
+  footer { padding: 30px clamp(18px, 3vw, 34px) 120px; color: var(--muted); }
+  footer a { color: inherit; }
+  @media (max-width: 960px) {
+    .hero, .make, .route.on { grid-template-columns: 1fr; }
+    .side { position: static; }
+    .dtop nav a:not(.keep) { display: none; }
+  }
+  @media (max-width: 560px) { .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body style="--c:#ff707a">
+<header class="dtop">
+  <a class="brand" href="/" aria-label="Back to the start"><canvas id="logo" width="12" height="12" aria-hidden="true"></canvas>Dice</a>
+  <nav aria-label="On this page"><a href="#make" class="keep">Make it yours</a><a href="#card">Put it on a card</a><a href="/diceweb/">Play in your browser</a><a href="/apps">The Terminal apps</a></nav>
+</header>
+
+<section class="wrap hero">
+  <div>
+    <h1>Dice</h1>
+    <p>An operating system for your <b>Raspberry Pi</b>, made of the same pixel worlds as everything else here. Set it up on this page, write it onto a <b>microSD card</b> or an <b>NVMe drive</b>, and switch the Pi on. It starts already yours.</p>
+    <div class="go"><a class="btn main" href="#make">Make it yours</a><a class="btn soft" href="/diceweb/">Try it in your browser first</a></div>
+  </div>
+  <div class="stage"><canvas id="hero" aria-label="A Raspberry Pi running Dice, with Cubby the die standing beside it"></canvas></div>
+</section>
+
+<section class="wrap make" id="make">
+  <div>
+    <h2 class="h2">Make it yours</h2>
+    <p class="lede">Everything here is optional: leave something blank and Dice asks on the screen instead. Your passwords stay on this computer. They only go into your file.</p>
+    <form class="sets" id="form" autocomplete="off" onsubmit="return false">
+      <fieldset>
+        <legend>You</legend>
+        <div class="two">
+          <label class="f"><span>Your name</span><input type="text" data-k="name" maxlength="20" placeholder="Your first name"></label>
+          <label class="f"><span>The computer's name</span><input type="text" data-k="computer" maxlength="40" placeholder="dice" pattern="[a-z0-9-]+"><small>On your network. Small letters, numbers and dashes.</small></label>
+        </div>
+        <label class="f"><span>A password</span><span class="pw"><input type="password" data-k="password" maxlength="64" placeholder="Leave blank to keep: dice"><button type="button" data-show="password">Show</button></span><small>For signing in to the Pi (and SSH). The user is called dice.</small></label>
+        <div class="f"><span>Your picture</span><div class="picks" id="buddies"></div></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Wi-Fi</legend>
+        <div class="two">
+          <label class="f"><span>Network name</span><input type="text" data-k="wifi.ssid" maxlength="32" placeholder="The name of your Wi-Fi"></label>
+          <label class="f"><span>Password</span><span class="pw"><input type="password" data-k="wifi.password" maxlength="63"><button type="button" data-show="wifi.password">Show</button></span></label>
+        </div>
+        <div class="two">
+          <label class="f"><span>Country</span><select data-k="wifi.country" id="country"></select><small>Wi-Fi rules differ by country.</small></label>
+          <label class="sw"><span><b>Hidden network</b><small class="hint">Only if your Wi-Fi doesn't show its name.</small></span><input class="toggle" type="checkbox" data-k="wifi.hidden"></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Where you are</legend>
+        <div class="two">
+          <label class="f"><span>Time zone</span><select data-k="timezone" id="tz"></select></label>
+          <label class="f"><span>Keyboard</span><select data-k="keyboard" id="kb"></select></label>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Look</legend>
+        <div class="f"><span>Day or night</span><div class="seg" data-seg="look"><button type="button" data-v="auto">Follow the clock</button><button type="button" data-v="day">Always day</button><button type="button" data-v="night">Always night</button></div><small>Following the clock means light by day and dark after sunset.</small></div>
+        <div class="f"><span>Your desktop's world</span><div class="picks worlds" id="worlds"></div></div>
+        <div class="two">
+          <div class="f"><span>Start in</span><div class="seg" data-seg="start"><button type="button" data-v="desktop">The desktop</button><button type="button" data-v="gaming">Gaming Mode</button></div></div>
+          <div class="f"><span>Start-up animation</span><div class="seg" data-seg="boot"><button type="button" data-v="full">Full</button><button type="button" data-v="quick">Quick</button><button type="button" data-v="off">Off</button></div></div>
+        </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Screen</legend>
+        <div class="f"><span>Turn the screen</span><div class="seg" data-seg="screen.rotate"><button type="button" data-v="0">Normal</button><button type="button" data-v="90">90°</button><button type="button" data-v="180">180°</button><button type="button" data-v="270">270°</button></div><small>For a touch screen mounted sideways or upside down, like on a wall.</small></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Apps</legend>
+        <label class="f"><span>Your Home Assistant</span><input type="url" data-k="homeassistant" placeholder="http://homeassistant.local:8123"><small>Its address. Dice's Web app gets a button for your dashboard.</small></label>
+        <div class="f"><span>Terminal apps to install too</span><div class="chips" id="suite"></div><small>They install by themselves after the first start, once the Pi is online.</small></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Access and updates</legend>
+        <label class="sw"><span><b>SSH</b><small class="hint" id="ssh-hint">Sign in to the Pi from another computer. Needs a password above.</small></span><input class="toggle" type="checkbox" data-k="ssh" id="ssh"></label>
+        <label class="sw"><span><b>Automatic updates</b><small class="hint">Dice checks for a newer Dice once a week.</small></span><input class="toggle" type="checkbox" data-k="updates"></label>
+      </fieldset>
+    </form>
+  </div>
+
+  <aside class="side">
+    <div class="screen" id="screen" aria-label="A preview of your Dice desktop">
+      <canvas id="wall"></canvas>
+      <div class="win glass"><canvas id="pv-face" width="40" height="40"></canvas><div><b id="pv-hi">Hi there</b><span id="pv-host">dice</span><span id="pv-wifi">No Wi-Fi yet</span></div></div>
+      <div class="shelf glass" id="pv-shelf"></div>
+      <div class="tray glass"><span id="pv-wf"></span><span id="pv-time"></span></div>
+    </div>
+    <div class="out glass">
+      <h3>Your Dice</h3>
+      <p>Save your settings as <b>dice.json</b>. After writing Dice onto the card, drop this file onto the card's <b>bootfs</b> drive (or a USB stick in the Pi).</p>
+      <button class="btn main" type="button" id="save">Save dice.json</button>
+      <p class="warn" id="warn" hidden></p>
+      <p>Installing onto a Pi that already has Raspberry Pi OS? A setup code carries everything except the passwords.</p>
+      <button class="btn soft" type="button" id="getcode">Get a setup code</button>
+      <div class="code" id="code"><span class="hint">Your setup code (it lasts 30 days)</span><b id="code-v"></b></div>
+    </div>
+  </aside>
+</section>
+
+<section class="wrap card-sec" id="card">
+  <h2>Put it on a card</h2>
+  <p class="lede">Three ways, depending on what you've got. Writing Dice erases whatever is on that card or drive, so use a different one from Home Assistant's.</p>
+  <div class="routes" role="tablist">
+    <button type="button" role="tab" data-r="imager" aria-selected="true">With Raspberry Pi Imager</button>
+    <button type="button" role="tab" data-r="pi" aria-selected="false">No admin password? Use the Pi</button>
+    <button type="button" role="tab" data-r="os" aria-selected="false">Already have Raspberry Pi OS</button>
+  </div>
+
+  <div class="route on" data-route="imager" role="tabpanel">
+    <ol class="steps">
+      <li><div><b>Download Dice</b><span>One file, about a gigabyte: dice-arm64.img.xz.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/Dice/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
+      <li><div><b>Open Raspberry Pi Imager</b><span>Get it free from raspberrypi.com/software. On a Mac it asks for an administrator password to write cards.</span></div></li>
+      <li><div><b>Choose your Pi, then the Dice file</b><span>Under Operating System, scroll to the bottom, choose Use custom, and pick the file you downloaded.</span></div></li>
+      <li><div><b>Choose where it goes</b><span>The microSD card, or the NVMe drive in a USB adapter. When it asks about OS customisation, choose No: your dice.json does that.</span></div></li>
+      <li><div><b>Write, then add your settings</b><span>When it's finished, the card shows up as a drive called bootfs. Drag your dice.json onto it, then eject it.</span></div></li>
+      <li><div><b>Switch the Pi on</b><span>The die's dots light up one by one, then Dice says hello by name.</span></div></li>
+    </ol>
+    <div class="aside"><h3>NVMe drives</h3><p>On a Pi 5 with an NVMe drive, write Dice onto the drive through a USB adapter, or use the Pi itself (the next tab). With no microSD card in, the Pi 5 starts from the NVMe drive.</p></div>
+  </div>
+
+  <div class="route" data-route="pi" role="tabpanel">
+    <ol class="steps">
+      <li><div><b>Copy two files onto a USB stick</b><span>The Dice file and your dice.json. Copying files doesn't need an administrator.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/Dice/releases/latest/download/dice-arm64.img.xz">Download Dice</a></div></div></li>
+      <li><div><b>Plug everything into the Pi</b><span>The USB stick, a keyboard, a screen, an Ethernet cable to your router, and the microSD card or NVMe drive for Dice. Take Home Assistant's card out first.</span></div></li>
+      <li><div><b>Start Network Install</b><span>Switch the Pi on. With nothing to start from, it offers Network Install: hold Shift. It downloads Raspberry Pi Imager and opens it right on the Pi.</span></div></li>
+      <li><div><b>Choose the Dice file</b><span>Under Operating System, choose Use custom, and pick the Dice file on the USB stick.</span></div></li>
+      <li><div><b>Choose where it goes, and write</b><span>The microSD card or the NVMe drive. Then Write.</span></div></li>
+      <li><div><b>Restart with the USB stick still in</b><span>Dice finds dice.json on the stick and sets everything up.</span></div></li>
+    </ol>
+    <div class="aside"><h3>If Use custom isn't there</h3><p>Pick Raspberry Pi OS Lite (64-bit) instead and set your Wi-Fi in Imager's settings. Then follow the last tab with your setup code.</p></div>
+  </div>
+
+  <div class="route" data-route="os" role="tabpanel">
+    <ol class="steps">
+      <li><div><b>Get a setup code</b><span>Press Get a setup code above. It holds everything except your passwords.</span></div></li>
+      <li><div><b>Paste one line into Terminal on the Pi</b><span>It installs Dice and takes your settings.</span><div class="cmd"><code id="oneline">curl -fsSL {{origin}}/dice/install.sh | sudo bash</code><button type="button" id="copy1">Copy</button></div></div></li>
+      <li><div><b>Restart</b><span>Type sudo reboot. To take Dice off later: sudo /opt/dice/bin/dice-uninstall</span></div></li>
+    </ol>
+    <div class="aside"><h3>What it changes</h3><p>It adds Dice in /opt/dice and starts it instead of the usual desktop. Your files stay where they are.</p></div>
+  </div>
+</section>
+
+<section class="wrap know">
+  <h2>Good to know</h2>
+  <dl>
+    <div><dt>Which Pi</dt><dd>A Raspberry Pi 5 or 4, with a screen. The official touch screens work, and can be turned in Settings.</dd></div>
+    <div><dt>Home Assistant</dt><dd>Keep it on its own card or drive and it stays exactly as it is. Put its address above for a dashboard button.</dd></div>
+    <div><dt>The password</dt><dd>The user is dice, password dice, until you set one above or in Settings, You.</dd></div>
+    <div><dt>Your passwords</dt><dd>They never leave this computer. After the first start, Dice wipes them out of dice.json and renames it dice-applied.json.</dd></div>
+    <div><dt>Changing things later</dt><dd>Use Settings on the Pi, or drop a new dice.json onto the card and restart.</dd></div>
+    <div><dt>Just curious?</dt><dd><a href="/diceweb/">DiceWeb</a> is the same thing in your browser: the games, Music, Notes and a pretend Terminal.</dd></div>
+  </dl>
+</section>
+<footer><a href="/">Back to the start</a> &nbsp; <a href="/apps">The Terminal apps</a></footer>
+
+<script src="/diceweb/js/art.js"></script>
+<script src="/diceweb/js/catalog.js"></script>
+<script src="/diceweb/js/gfx.js"></script>
+<script>
+(function () {
+  const G = window.DiceGfx, $ = (s) => document.querySelector(s);
+  const ORIGIN = location.origin;
+  const isNight = () => (typeof djp7Night === 'function' ? djp7Night() : matchMedia('(prefers-color-scheme: dark)').matches);
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const WORLDS = { hills: '#7cc4ff', mountains: '#7c9cff', beach: '#ff7a59', city: '#2bc4b2', forest: '#8fd16a', autumn: '#e8913a', desert: '#ef6a1f', garden: '#f5c431', ice: '#9fd3ff', deep: '#d39cf5', meadow: '#d7f07a', pond: '#f6a6b8' };
+  const WORLD_NAMES = { hills: 'Hills', mountains: 'Mountains', beach: 'Beach', city: 'City', forest: 'Forest', autumn: 'Autumn', desert: 'Desert', garden: 'Garden', ice: 'Ice', deep: 'Under the sea', meadow: 'Meadow', pond: 'Pond' };
+
+  // ---- what you've picked ----
+  const lang = navigator.language || 'en-US';
+  const region = (lang.split('-')[1] || 'US').toUpperCase();
+  const KB = [['us', 'English (US)'], ['gb', 'English (UK)'], ['us(dvorak)', 'Dvorak'], ['us(colemak)', 'Colemak'], ['de', 'German'], ['fr', 'French'], ['es', 'Spanish'], ['it', 'Italian'], ['pt', 'Portuguese'], ['br', 'Portuguese (Brazil)'], ['se', 'Swedish'], ['no', 'Norwegian'], ['dk', 'Danish'], ['fi', 'Finnish'], ['ch', 'Swiss'], ['jp', 'Japanese']];
+  const kbGuess = { GB: 'gb', DE: 'de', AT: 'de', FR: 'fr', ES: 'es', IT: 'it', PT: 'pt', BR: 'br', SE: 'se', NO: 'no', DK: 'dk', FI: 'fi', CH: 'ch', JP: 'jp' }[region] || 'us';
+  const cfg = { dice: 1, name: '', computer: '', password: '', wifi: { ssid: '', password: '', country: region, hidden: false }, timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
+    keyboard: kbGuess, look: 'auto', world: 'hills', buddy: 'cubby', start: 'desktop', boot: 'full', screen: { rotate: 0 }, homeassistant: '', suite: [], ssh: false, updates: true };
+  try { const saved = JSON.parse(localStorage.getItem('dice-setup') || 'null'); if (saved) { delete saved.password; if (saved.wifi) delete saved.wifi.password; deep(cfg, saved); } } catch (e) { /* start fresh */ }
+  function deep(a, b) { for (const k in b) { if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]) && a[k] && typeof a[k] === 'object') deep(a[k], b[k]); else a[k] = b[k]; } }
+  const get = (k) => k.split('.').reduce((o, x) => (o ? o[x] : undefined), cfg);
+  const set = (k, v) => { const p = k.split('.'); const last = p.pop(); p.reduce((o, x) => o[x], cfg)[last] = v; changed(); };
+  function remember() {
+    const c = JSON.parse(JSON.stringify(cfg)); delete c.password; delete c.wifi.password;
+    try { localStorage.setItem('dice-setup', JSON.stringify(c)); } catch (e) { /* fine */ }
+  }
+
+  // ---- filling in the form ----
+  const country = $('#country');
+  const names = Intl.DisplayNames ? new Intl.DisplayNames([lang], { type: 'region' }) : null;
+  ['US', 'CA', 'GB', 'IE', 'AU', 'NZ', 'IN', 'DE', 'FR', 'ES', 'IT', 'NL', 'BE', 'CH', 'AT', 'SE', 'NO', 'DK', 'FI', 'PL', 'PT', 'BR', 'MX', 'AR', 'CL', 'JP', 'KR', 'CN', 'TW', 'HK', 'SG', 'MY', 'PH', 'ZA', 'NG', 'KE', 'AE', 'SA', 'IL', 'TR', 'GR', 'CZ', 'HU', 'RO', 'UA']
+    .map((c) => [c, names ? names.of(c) : c]).sort((a, b) => a[1].localeCompare(b[1])).forEach(([c, n]) => country.add(new Option(n, c)));
+  if (![...country.options].some((o) => o.value === cfg.wifi.country)) country.add(new Option(cfg.wifi.country, cfg.wifi.country));
+  const tz = $('#tz');
+  (Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : ['UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'Europe/London', 'Europe/Berlin', 'Asia/Kolkata', 'Asia/Tokyo', 'Australia/Sydney'])
+    .forEach((z) => tz.add(new Option(z.replace(/_/g, ' '), z)));
+  if (![...tz.options].some((o) => o.value === cfg.timezone)) tz.add(new Option(cfg.timezone, cfg.timezone));
+  const kb = $('#kb');
+  KB.forEach(([v, n]) => kb.add(new Option(n, v)));
+  document.querySelectorAll('[data-k]').forEach((el) => {
+    const k = el.dataset.k, v = get(k);
+    if (el.type === 'checkbox') el.checked = !!v; else el.value = v == null ? '' : v;
+    el.addEventListener(el.tagName === 'SELECT' || el.type === 'checkbox' ? 'change' : 'input', () => set(k, el.type === 'checkbox' ? el.checked : el.value));
+  });
+  $('[data-k="computer"]').addEventListener('input', (e) => { e.target.dataset.touched = '1'; });
+  document.querySelectorAll('[data-show]').forEach((b) => b.addEventListener('click', () => { const i = b.previousElementSibling; i.type = i.type === 'password' ? 'text' : 'password'; b.textContent = i.type === 'password' ? 'Show' : 'Hide'; }));
+  document.querySelectorAll('[data-seg]').forEach((seg) => {
+    const k = seg.dataset.seg;
+    const mark = () => seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v) === String(get(k))));
+    seg.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { set(k, /^\d+$/.test(b.dataset.v) ? +b.dataset.v : b.dataset.v); mark(); }));
+    mark();
+  });
+  // pictures
+  const buddies = $('#buddies');
+  ['cubby'].concat(Object.keys(ART.mascots)).forEach((id) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.title = id === 'cubby' ? 'Cubby' : ART.mascots[id].name; b.setAttribute('aria-label', b.title);
+    b.appendChild(G.face(id, 58, G.hexA(G.colourOf(id), 0.25)));
+    b.addEventListener('click', () => { set('buddy', id); marks(); });
+    b.dataset.id = id;
+    buddies.appendChild(b);
+  });
+  // worlds
+  const worlds = $('#worlds');
+  function drawWorlds() {
+    worlds.innerHTML = '';
+    Object.keys(WORLDS).forEach((w) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.title = WORLD_NAMES[w]; b.setAttribute('aria-label', WORLD_NAMES[w]); b.dataset.id = w;
+      const c = G.cover({ id: 'pick-' + w, land: w, c: WORLDS[w], who: null }, 'square', previewNight());
+      const cv = document.createElement('canvas'); cv.width = c.width; cv.height = c.height; cv.getContext('2d').drawImage(c, 0, 0);
+      b.appendChild(cv);
+      b.addEventListener('click', () => { set('world', w); marks(); });
+      worlds.appendChild(b);
+    });
+    marks();
+  }
+  function marks() {
+    buddies.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === cfg.buddy));
+    worlds.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.id === cfg.world));
+  }
+  // Terminal apps
+  const suite = $('#suite');
+  CATALOG.suite.filter((a) => a.id !== 'pca').forEach((a) => {
+    const l = document.createElement('label');
+    l.innerHTML = '<input type="checkbox"><i></i>';
+    l.querySelector('i').style.background = a.c;
+    l.appendChild(document.createTextNode(a.name));
+    l.title = a.blurb;
+    const box = l.querySelector('input');
+    box.checked = cfg.suite.includes(a.id);
+    box.addEventListener('change', () => { cfg.suite = cfg.suite.filter((x) => x !== a.id).concat(box.checked ? [a.id] : []); changed(); });
+    suite.appendChild(l);
+  });
+
+  // ---- the preview ----
+  const previewNight = () => (cfg.look === 'night' ? true : cfg.look === 'day' ? false : isNight());
+  let world = null, wallKey = '', lastDraw = 0;
+  const wall = $('#wall'), wg = wall.getContext('2d');
+  function paintWall(now, force) {
+    const r = wall.getBoundingClientRect();
+    const cell = Math.max(3, Math.round(r.width / 110));
+    const W = Math.max(40, Math.round(r.width / cell)), H = Math.max(25, Math.round(r.height / cell));
+    const key = cfg.world + previewNight() + W + 'x' + H;
+    if (key !== wallKey) { wallKey = key; wall.width = W; wall.height = H; world = new G.World({ land: cfg.world, c: WORLDS[cfg.world], who: null, night: previewNight(), W, H, layout: 'wall', gang: true, seed: 'preview' }); force = true; }
+    if (!force && now - lastDraw < 60) return;
+    lastDraw = now;
+    world.draw(wg, now / 1000, still);
+  }
+  function preview() {
+    const night = previewNight();
+    $('#screen').dataset.look = night ? 'dark' : 'light';
+    const face = $('#pv-face').getContext('2d');
+    face.clearRect(0, 0, 40, 40); face.drawImage(G.face(cfg.buddy, 40, G.hexA(G.colourOf(cfg.buddy), 0.3)), 0, 0);
+    $('#pv-hi').textContent = cfg.name ? 'Hi, ' + cfg.name : 'Hi there';
+    $('#pv-host').textContent = (cfg.computer || 'dice') + '.local';
+    $('#pv-wifi').textContent = cfg.wifi.ssid ? 'On ' + cfg.wifi.ssid : 'No Wi-Fi yet';
+    const shelf = $('#pv-shelf');
+    shelf.innerHTML = '';
+    ['#ff707a', '#5aa9e6', '#7c9cff', '#8fd16a', '#e8913a', '#d39cf5', '#f5c431'].forEach((c) => { const i = document.createElement('i'); i.style.background = c; shelf.appendChild(i); });
+    $('#pv-wf').textContent = cfg.wifi.ssid ? '▂▄▆' : '';
+    $('#pv-time').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '');
+    document.body.style.setProperty('--c', WORLDS[cfg.world]);
+    paintWall(performance.now(), true);
+  }
+  // the little screen is light or dark on its own, whatever this page is
+  const sty = document.createElement('style');
+  sty.textContent = '#screen[data-look=light]{--glass:rgba(255,255,255,.7);--ink:#141416;--muted:#5f5f69;color:#141416}#screen[data-look=dark]{--glass:rgba(30,30,36,.66);--ink:#f3f3f5;--muted:#a3a3ad;color:#f3f3f5}';
+  document.head.appendChild(sty);
+
+  // ---- checks ----
+  function problems() {
+    const out = [];
+    if (cfg.computer && !/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(cfg.computer)) out.push('The computer\'s name can only have small letters, numbers and dashes.');
+    if (cfg.password && cfg.password.length < 4) out.push('Make the password at least 4 characters.');
+    if (cfg.wifi.ssid && cfg.wifi.password && cfg.wifi.password.length < 8) out.push('Wi-Fi passwords are at least 8 characters. Check it.');
+    if (cfg.homeassistant && !/^https?:\/\//.test(cfg.homeassistant)) out.push('Home Assistant\'s address should start with http:// or https://');
+    return out;
+  }
+  function changed() {
+    const comp = $('[data-k="computer"]');
+    if (!comp.dataset.touched && cfg.name) { cfg.computer = (cfg.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'dice').slice(0, 30) + '-pi'; comp.value = cfg.computer; }
+    const ssh = $('#ssh');
+    ssh.disabled = !cfg.password;
+    if (!cfg.password && cfg.ssh) { cfg.ssh = false; ssh.checked = false; }
+    const p = problems();
+    $('#warn').hidden = !p.length; $('#warn').textContent = p.join(' ');
+    remember();
+    clearTimeout(changed.t); changed.t = setTimeout(preview, 60);
+  }
+
+  // ---- what you take away ----
+  function clean(withSecrets) {
+    const c = JSON.parse(JSON.stringify(cfg));
+    if (!withSecrets) { delete c.password; delete c.wifi.password; }
+    if (!c.password) delete c.password;
+    if (!c.wifi.ssid) delete c.wifi;
+    for (const k of ['name', 'computer', 'homeassistant']) if (!c[k]) delete c[k];
+    return c;
+  }
+  $('#save').addEventListener('click', () => {
+    const p = problems();
+    if (p.length) { $('#warn').hidden = false; $('#warn').textContent = p.join(' '); $('#warn').scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+    const blob = new Blob([JSON.stringify(clean(true), null, 2) + '\n'], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dice.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    $('#save').textContent = 'Saved. Next: put it on a card';
+    setTimeout(() => { $('#save').textContent = 'Save dice.json'; }, 3200);
+  });
+  $('#getcode').addEventListener('click', () => {
+    const btn = $('#getcode');
+    btn.disabled = true; btn.textContent = 'Getting a code…';
+    fetch('/dice/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clean(false)) })
+      .then((r) => r.json()).then((r) => {
+        if (!r.code) throw new Error(r.error || 'no code');
+        $('#code').classList.add('on'); $('#code-v').textContent = r.code;
+        $('#oneline').textContent = 'curl -fsSL ' + ORIGIN + '/dice/install.sh | sudo bash -s -- ' + r.code;
+        btn.textContent = 'Get a new code';
+      }).catch(() => { btn.textContent = 'That didn\'t work. Try again'; })
+      .finally(() => { btn.disabled = false; });
+  });
+  $('#copy1').addEventListener('click', () => { navigator.clipboard.writeText($('#oneline').textContent).then(() => { $('#copy1').textContent = 'Copied'; setTimeout(() => { $('#copy1').textContent = 'Copy'; }, 1400); }); });
+  document.querySelectorAll('.routes button').forEach((b) => b.addEventListener('click', () => {
+    document.querySelectorAll('.routes button').forEach((x) => x.setAttribute('aria-selected', x === b));
+    document.querySelectorAll('.route').forEach((r) => r.classList.toggle('on', r.dataset.route === b.dataset.r));
+  }));
+
+  // ---- the hero: a Pi on a desk, its screen showing Dice, Cubby beside it ----
+  const BOARD = ['gggggggggggggggggggggggg', 'gYgYgYgYgYgYgYgYgYgYgYgg', 'gYgYgYgYgYgYgYgYgYgYgYgg', 'gGGGGGGGGGGGGGGGGGGGGGgS', 'gGGGGGGGGGGGGGGGGGGGGGSS',
+    'gGGGKKKKKKGGGGGGGGGGGSSS', 'gGGGKMMMMKGGGGkkGGGGGSSS', 'gGGGKMMMMKGGGGkkGGGGGGGg', 'gGGGKMMMMKGGGGGGGGGGGSSS', 'gGGGKKKKKKGGGGGGGGGGGSSS', 'gGGGGGGGGGGGGGGGGGGGGSSS', 'goGGGGGGGGGGGGGGGGGGGGog', 'gggggggggggggggggggggggg'];
+  const BINK = { g: '#1f6b42', G: '#2f9a5d', Y: '#e8b83a', K: '#26262c', M: '#b8bcc8', k: '#3a3d4a', S: '#c9ced6', o: '#8a8f99' };
+  const hero = $('#hero'), hg = hero.getContext('2d');
+  let hw = null, inner = null, hLast = 0;
+  function heroSize() {
+    const r = hero.getBoundingClientRect();
+    const cell = Math.max(4, Math.round(r.width / 150));
+    const W = Math.round(r.width / cell), H = Math.round(r.height / cell);
+    hero.width = W; hero.height = H;
+    hw = new G.World({ land: 'hills', c: '#ff707a', who: null, night: isNight(), W, H, layout: 'wide', seed: 'dice-hero' });
+    // the screen's own world has finer pixels than the world around it
+    const iw = Math.round(W * 0.42), ih = Math.round(W * 0.42 * 0.6);
+    inner = new G.World({ land: 'mountains', c: '#7c9cff', who: null, night: isNight(), W: iw * 2, H: ih * 2, layout: 'wall', gang: true, seed: 'dice-mini' });
+    inner.sw = iw; inner.sh = ih;
+    inner.canvas = G.canvas(iw * 2, ih * 2);
+  }
+  function heroDraw(now) {
+    if (!hw) return;
+    const t = now / 1000, W = hw.W, gy = hw.gy;
+    hw.draw(hg, t, still);
+    // the screen
+    const sw = inner.sw, sh = inner.sh, sx = Math.round(W * 0.12), sy = gy - sh - 9;
+    hg.fillStyle = '#1b1b1f'; hg.fillRect(sx - 2, sy - 2, sw + 4, sh + 4);
+    hg.fillStyle = '#2a2a32'; hg.fillRect(sx + (sw >> 1) - 2, sy + sh + 2, 5, 6); hg.fillRect(sx + (sw >> 1) - 9, gy - 2, 19, 2);
+    inner.draw(inner.canvas.getContext('2d'), t, still);
+    hg.imageSmoothingEnabled = false;
+    hg.drawImage(inner.canvas, sx, sy, sw, sh);
+    // the shelf on that screen
+    const n = 6, bw = n * 4 + 3, bx = sx + Math.round((sw - bw) / 2), by = sy + sh - 6;
+    hg.fillStyle = isNight() ? 'rgba(30,30,36,.75)' : 'rgba(255,255,255,.8)'; hg.fillRect(bx, by, bw, 5);
+    ['#ff707a', '#5aa9e6', '#7c9cff', '#8fd16a', '#e8913a', '#d39cf5'].forEach((c, i) => { hg.fillStyle = c; hg.fillRect(bx + 2 + i * 4, by + 1, 3, 3); });
+    // a window on that screen
+    hg.fillStyle = isNight() ? 'rgba(30,30,36,.8)' : 'rgba(255,255,255,.85)'; hg.fillRect(sx + 4, sy + 4, Math.round(sw * 0.45), Math.round(sh * 0.32));
+    hg.fillStyle = '#ff707a'; hg.fillRect(sx + 6, sy + 6, 4, 4);
+    hg.fillStyle = isNight() ? '#a3a3ad' : '#5f5f69'; hg.fillRect(sx + 12, sy + 7, Math.round(sw * 0.25), 1); hg.fillRect(sx + 12, sy + 9, Math.round(sw * 0.18), 1);
+    // the Pi, and Cubby
+    const b = G.sprite(BOARD, BINK, 'pi-board');
+    hg.drawImage(b, sx + sw + 8, gy - b.height + 2);
+    const cub = G.mascot('cubby', { blink: !still && (t % 4.2) > 2.1 && (t % 4.2) < 2.24 });
+    const bob = still ? 0 : Math.floor(t * 1.6) % 2;
+    hg.fillStyle = 'rgba(0,0,0,.14)'; hg.fillRect(sx + sw + 40, gy + 1, cub.width - 6, 1);
+    hg.drawImage(cub, 0, 0, cub.width, cub.height - 1, sx + sw + 37, gy - cub.height + 1 + bob, cub.width, cub.height - 1);
+    hg.drawImage(cub, 0, cub.height - 1, cub.width, 1, sx + sw + 37, gy, cub.width, 1);
+  }
+  new ResizeObserver(() => { clearTimeout(heroSize.t); heroSize.t = setTimeout(() => { heroSize(); heroDraw(performance.now()); }, 60); }).observe(hero);
+  heroSize();
+
+  // the die by the name
+  (function () {
+    const g = $('#logo').getContext('2d');
+    g.fillStyle = isNight() ? '#f3f3f5' : '#141416'; g.fillRect(1, 0, 10, 12); g.fillRect(0, 1, 12, 10);
+    g.fillStyle = isNight() ? '#1b1b1f' : '#ffffff'; g.fillRect(1, 1, 10, 10);
+    [['#ff707a', 2, 2], ['#7cc4ff', 8, 2], ['#f5c431', 5, 5], ['#8fd16a', 2, 8], ['#d39cf5', 8, 8]].forEach(([c, x, y]) => { g.fillStyle = c; g.fillRect(x, y, 2, 2); });
+  })();
+
+  drawWorlds();
+  changed();
+  preview();
+  heroDraw(performance.now());
+  const loop = (now) => {
+    if (now - hLast > 60) { hLast = now; heroDraw(now); }
+    paintWall(now);
+    requestAnimationFrame(loop);
+  };
+  if (!still) requestAnimationFrame(loop);
+  setInterval(() => { $('#pv-time').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, ''); }, 30000);
+})();
+</script>
+</body>
+</html>

@@ -4,7 +4,12 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 
 | Address | What's there |
 | --- | --- |
-| `/` | the front door: every project, and the one command that installs them all |
+| `/` | the front door: two doors, Dice or the Terminal apps |
+| `/apps` | every Terminal app, and the one command that installs them all |
+| `/dice` | [Dice](https://github.com/dpatel7-dev/Dice): set it up first, then put it on a microSD card or NVMe drive |
+| `/diceweb/` | [DiceWeb](https://github.com/dpatel7-dev/DiceWeb), the console you play in your browser |
+| `/dice/install.sh`, `/dice/dice.tar.gz` | Dice's installer, and Dice itself (with DiceWeb inside) for the installer and the updater |
+| `/dice/setup` | where the Dice page saves a setup code (never a password); `/dice/setup/CODE.json` gets it back, for 30 days |
 | `/gossip` | [gossip](https://github.com/dpatel7-dev/gossip)'s page. Its chat hub keeps `/api`, `/install.sh`, `/install.ps1` and `/healthz`, so every gossip already installed keeps working |
 | `/tot` | [Tree of Thought](https://github.com/dpatel7-dev/Tree-Of-Thought), plus `/tot/install.sh` and `/tot/install.ps1` |
 | `/pigeon` | [pigeon](https://github.com/dpatel7-dev/pigeon)'s web app (open it on your phone), its file server and installers |
@@ -14,10 +19,11 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 | `/versions.json` | the newest version of each project: pca checks it to keep everything up to date |
 
 A dock along the bottom of every page links them together: each app's mascot
-with its name under it, plus Home, All apps, Start here and What's new. **All
+with its name under it, plus Home, All apps, Dice, Start here and What's new.
+The front door and the Dice page have no dock: they're the way in. **All
 apps** opens a sheet of every app that you can search by typing what you want
 to do ("music", "passwords"). On this site's own pages you can just start
-typing, and on the front page the typing goes into the Terminal in the sky.
+typing, and on the apps page the typing goes into the Terminal in the sky.
 Day or night follows the time of day: night from sunset, day from sunrise
 (the front page's world changes with it, and so do the mascots out in it). Or
 pick **Day** or **Night** at the bottom of All apps.

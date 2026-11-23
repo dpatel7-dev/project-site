@@ -1,0 +1,15 @@
+#!/bin/sh
+# dice-suite: installs the Terminal apps chosen on the website, once the
+# internet is up. Runs in the background after the first start-up.
+SITE=${DICE_SITE:-https://djp7.pythonanywhere.com}
+WHO=$(getent passwd 1000 | cut -d: -f1)
+i=0
+until curl -fsS -o /dev/null "$SITE/versions.json"; do
+  i=$((i + 1)); [ $i -gt 60 ] && { echo "No internet; skipping the Terminal apps."; exit 1; }
+  sleep 10
+done
+command -v node >/dev/null 2>&1 || apt-get install -y nodejs
+for app in "$@"; do
+  echo "== $app"
+  su - "$WHO" -c "curl -fsSL '$SITE/$app/install.sh' | sh" || echo "$app didn't install"
+done

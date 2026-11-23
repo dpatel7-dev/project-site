@@ -47,7 +47,23 @@ COPIES = {
     'hum': (['hum'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     'usual': (['usual'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
     'locket': (['locket'], ['install.sh', 'install.ps1', 'package.json', 'CHANGELOG.md']),
+    # a name ending in / copies the whole folder
+    'diceweb': (['DiceWeb', 'diceweb'], ['index.html', 'css/', 'js/', 'package.json', 'CHANGELOG.md']),
+    'dice': (['Dice', 'dice'], ['daemon/diced.py', 'bin/', 'system/', 'plymouth/', 'install.sh', 'VERSION', 'image/README-bootfs.txt', 'CHANGELOG.md']),
 }
+
+
+def expand(root, files):
+    """Each file to copy, with folders (ending in /) opened up."""
+    out = []
+    for rel in files:
+        if not rel.endswith('/'):
+            out.append(rel)
+            continue
+        for base, dirs, names in os.walk(os.path.join(root, rel)):
+            dirs[:] = sorted(d for d in dirs if not d.startswith('.') and d not in ('test', '__pycache__'))
+            out += sorted(os.path.relpath(os.path.join(base, n), root) for n in names if not n.startswith('.') and not n.endswith('.pyc'))
+    return out
 
 ART = r"""
 const path = require('path');
@@ -78,7 +94,7 @@ def main(argv):
         if not root:
             print('  skip %-7s (no %s next to this folder)' % (app, ' or '.join(names)))
             continue
-        for rel in files:
+        for rel in expand(root, files):
             src = os.path.join(root, rel)
             dst = os.path.join(SITE, 'apps', app, rel)
             if not os.path.exists(src):

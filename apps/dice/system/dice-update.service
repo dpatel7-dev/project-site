@@ -1,0 +1,8 @@
+[Unit]
+Description=Update Dice
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/dice/bin/dice-update --auto

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>djp7 - Dice, and little apps for your Terminal</title>
+<meta name="description" content="Two things live here. Dice: your own operating system for a Raspberry Pi, that you can also play in your browser. And sixteen little apps you open by typing one word in Terminal.">
+<style>
+  /* The front door: two doors, each a little living pixel world. Dice on the
+     left (Cubby and a Raspberry Pi on a hill), the apps on the right (all
+     the mascots wandering about a meadow). Plain white by day, black at night. */
+  body { min-height: 100svh; display: flex; flex-direction: column; }
+  .top { display: flex; align-items: center; justify-content: space-between; padding: 22px clamp(18px, 3vw, 34px) 0; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font: 700 1.5rem/1 var(--pixel); text-decoration: none; letter-spacing: .01em; }
+  .brand canvas { width: 30px; height: 30px; }
+  .top p { margin: 0; color: var(--muted); font-size: .95rem; }
+  main { flex: 1; display: flex; flex-direction: column; padding: 18px clamp(12px, 2vw, 22px) 22px; gap: 16px; }
+  .ask { margin: 8px clamp(6px, 1.4vw, 14px) 0; font: 700 clamp(1.9rem, 3.4vw, 2.8rem)/1.05 var(--pixel); letter-spacing: -.01em; }
+  .doors { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; min-height: min(640px, calc(100svh - 190px)); }
+  .door { position: relative; border-radius: 32px; overflow: hidden; isolation: isolate; box-shadow: inset 0 0 0 1px var(--line); background: var(--soft); cursor: pointer; display: flex; flex-direction: column; }
+  .door canvas.world { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; image-rendering: pixelated; transition: transform .8s var(--ease, cubic-bezier(.2,.8,.2,1)); transform-origin: 50% 80%; }
+  .door:hover canvas.world, .door:focus-within canvas.world { transform: scale(1.025); }
+  .panel { margin: clamp(14px, 2.4vw, 26px); padding: 24px 26px 26px; border-radius: 26px; max-width: 470px; }
+  .panel h2 { font: 700 clamp(2.6rem, 5vw, 4.4rem)/.92 var(--pixel); margin: 0 0 14px; letter-spacing: -.015em; }
+  .panel p { margin: 0; color: var(--muted); font-size: 1.1rem; max-width: 30em; }
+  .panel p b { color: var(--ink); }
+  .panel .go { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+  .btn.soft { background: var(--glass); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+  .btn.soft:hover { background: var(--bg); }
+  .door[data-c] .btn.main { background: var(--c); color: #141416; }
+  .door[data-c] .btn.main:hover { background: color-mix(in oklab, var(--c) 86%, #fff); }
+  .door .facts { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 16px; font-size: .9rem; color: var(--muted); }
+  .door .facts span { display: inline-flex; align-items: center; gap: 7px; }
+  .door .facts span::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--c); }
+  footer { padding: 4px clamp(18px, 3vw, 34px) 26px; color: var(--muted); font-size: .9rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  footer a { color: inherit; }
+  @media (max-width: 860px) {
+    .doors { grid-template-columns: 1fr; }
+    .door { min-height: 540px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .door canvas.world { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/" aria-label="djp7, the start"><canvas id="logo" width="12" height="12" aria-hidden="true"></canvas>djp7</a>
+  <p>Made by Dhruv</p>
+</header>
+<main>
+  <h1 class="ask">Pick a door</h1>
+  <div class="doors">
+    <section class="door" data-href="/dice" data-c style="--c:#ff707a" aria-labelledby="d-dice">
+      <canvas class="world" id="w-dice" aria-hidden="true"></canvas>
+      <div class="panel glass">
+        <h2 id="d-dice">Dice</h2>
+        <p>Your own operating system. Put it on a <b>Raspberry Pi</b>'s microSD card or NVMe drive, set up just how you like before it ever starts. Or play it here in your browser.</p>
+        <div class="go"><a class="btn main" href="/dice">Make it yours</a><a class="btn soft" href="/diceweb/">Play it in your browser</a></div>
+        <div class="facts"><span>Real Wi-Fi, files and Terminal</span><span>Games</span><span>Day and night</span></div>
+      </div>
+    </section>
+    <section class="door" data-href="/apps" data-c style="--c:#7c9cff" aria-labelledby="d-apps">
+      <canvas class="world" id="w-apps" aria-hidden="true"></canvas>
+      <div class="panel glass">
+        <h2 id="d-apps">The apps</h2>
+        <p>Sixteen little apps you open by typing <b>one word</b> in Terminal: chat, your own drive, music, passwords, tidy folders, ask anything, and more.</p>
+        <div class="go"><a class="btn main" href="/apps">See the apps</a><a class="btn soft" href="/apps#get">Get them all</a></div>
+        <div class="facts"><span>Mac, Windows and Linux</span><span>No accounts</span><span>Free</span></div>
+      </div>
+    </section>
+  </div>
+</main>
+<footer><span>Two doors, one Dhruv.</span><span><a href="/new">What's new</a> &nbsp; <a href="/start">Start here</a></span></footer>
+
+<script src="/diceweb/js/art.js"></script>
+<script src="/diceweb/js/catalog.js"></script>
+<script src="/diceweb/js/gfx.js"></script>
+<script>
+(function () {
+  const G = window.DiceGfx;
+  const night = () => (typeof djp7Night === 'function' ? djp7Night() : matchMedia('(prefers-color-scheme: dark)').matches);
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // the little die by the name
+  (function () {
+    const g = document.getElementById('logo').getContext('2d');
+    const ink = night() ? '#f3f3f5' : '#141416', face = night() ? '#1b1b1f' : '#ffffff';
+    g.fillStyle = ink; g.fillRect(1, 0, 10, 12); g.fillRect(0, 1, 12, 10);
+    g.fillStyle = face; g.fillRect(1, 1, 10, 10);
+    [['#ff707a', 2, 2], ['#7cc4ff', 8, 2], ['#f5c431', 5, 5], ['#8fd16a', 2, 8], ['#d39cf5', 8, 8]].forEach(([c, x, y]) => { g.fillStyle = c; g.fillRect(x, y, 2, 2); });
+  })();
+
+  // a Raspberry Pi board, to sit by Cubby (a plain green board, no logo)
+  const BOARD = ['gggggggggggggggggggggggg', 'gYgYgYgYgYgYgYgYgYgYgYgg', 'gYgYgYgYgYgYgYgYgYgYgYgg', 'gGGGGGGGGGGGGGGGGGGGGGgS', 'gGGGGGGGGGGGGGGGGGGGGGSS',
+    'gGGGKKKKKKGGGGGGGGGGGSSS', 'gGGGKMMMMKGGGGkkGGGGGSSS', 'gGGGKMMMMKGGGGkkGGGGGGGg', 'gGGGKMMMMKGGGGGGGGGGGSSS', 'gGGGKKKKKKGGGGGGGGGGGSSS', 'gGGGGGGGGGGGGGGGGGGGGSSS', 'goGGGGGGGGGGGGGGGGGGGGog', 'gggggggggggggggggggggggg'];
+  const BINK = { g: '#1f6b42', G: '#2f9a5d', Y: '#e8b83a', K: '#26262c', M: '#b8bcc8', k: '#3a3d4a', S: '#c9ced6', o: '#8a8f99' };
+
+  function door(canvas, make, extra) {
+    let world = null, raf = 0, last = 0, W = 0, H = 0;
+    const g = canvas.getContext('2d');
+    function size() {
+      const r = canvas.getBoundingClientRect();
+      const cell = Math.max(4, Math.round(r.width / 120));
+      W = Math.max(40, Math.round(r.width / cell)); H = Math.max(40, Math.round(r.height / cell));
+      canvas.width = W; canvas.height = H;
+      world = make(W, H);
+      draw(performance.now(), true);
+    }
+    function draw(now, force) {
+      if (!world) return;
+      if (!force && now - last < 50) return;
+      last = now;
+      world.draw(g, now / 1000, still);
+      if (extra) extra(g, world, now / 1000);
+    }
+    const loop = (now) => { draw(now); raf = requestAnimationFrame(loop); };
+    new ResizeObserver(() => { clearTimeout(size.t); size.t = setTimeout(size, 60); }).observe(canvas);
+    size();
+    if (!still) raf = requestAnimationFrame(loop);
+  }
+  door(document.getElementById('w-dice'), (W, H) => new G.World({ land: 'hills', c: '#ff707a', who: 'cubby', night: night(), W, H, layout: 'cover', seed: 'door-dice' }),
+    (g, w) => { const b = G.sprite(BOARD, BINK, 'pi-board'); g.drawImage(b, Math.min(w.W - b.width - 2, w.mx + 30), w.gy - b.height + 2); });
+  door(document.getElementById('w-apps'), (W, H) => new G.World({ land: 'meadow', c: '#7c9cff', who: null, night: night(), W, H, layout: 'wall', gang: true, seed: 'door-apps' }));
+
+  // the whole door opens its page, not just the button
+  document.querySelectorAll('.door').forEach((d) => d.addEventListener('click', (e) => { if (!e.target.closest('a')) location.href = d.dataset.href; }));
+})();
+</script>
+</body>
+</html>

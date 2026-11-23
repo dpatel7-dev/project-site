@@ -1,0 +1,354 @@
+// DiceWeb's core: what it remembers, day and night, the keyboard and
+// controllers, moving around the screen, pop-ups, friends and achievements.
+(function () {
+  'use strict';
+  const L = window.DiceLogic, G = window.DiceGfx, S = window.DiceSound, M = window.DiceMusic;
+  const Dice = window.Dice = { L, G, S, M, music: M, started: Date.now() };
+  Dice.version = CATALOG.version;
+  Dice.desk = { on: false, action() {}, frame() {}, enter() {}, exit() {}, open() {} };
+
+  // ---- Little helpers -------------------------------------------------------------
+  Dice.$ = (sel, root) => (root || document).querySelector(sel);
+  Dice.$$ = (sel, root) => [...(root || document).querySelectorAll(sel)];
+  Dice.esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  Dice.h = function (html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+  Dice.ago = function (t) {
+    const s = Math.round((Date.now() - t) / 1000);
+    if (s < 50) return 'just now';
+    const m = Math.round(s / 60); if (m < 60) return m + ' min ago';
+    const h = Math.round(m / 60); if (h < 24) return h + (h === 1 ? ' hour ago' : ' hours ago');
+    const d = Math.round(h / 24); return d === 1 ? 'yesterday' : d + ' days ago';
+  };
+  Dice.mins = function (sec) {
+    const m = Math.round((sec || 0) / 60);
+    if (m < 1) return 'less than a minute';
+    if (m < 60) return m + (m === 1 ? ' minute' : ' minutes');
+    const h = Math.floor(m / 60), r = m % 60;
+    return h + (h === 1 ? ' hour' : ' hours') + (r ? ' ' + r + ' min' : '');
+  };
+  const events = {};
+  Dice.on = (e, fn) => { (events[e] = events[e] || new Set()).add(fn); return () => events[e].delete(fn); };
+  Dice.emit = (e, d) => (events[e] || []).forEach((fn) => { try { fn(d); } catch (err) { console.error(err); } });
+  Dice.reduced = () => Dice.state.motion === 'less' || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // The website's address, for install lines and links.
+  Dice.onSite = /^https?:$/.test(location.protocol) && /\/diceweb\b/.test(location.pathname);
+  Dice.origin = Dice.onSite ? location.origin : CATALOG.site;
+
+  // ---- What DiceWeb remembers ------------------------------------------------------
+  const KEY = 'diceweb';
+  const DEFAULTS = {
+    v: 1, name: 'player', avatar: 'cubby', look: 'auto', volume: 0.7, ui: true, musicVol: 0.8, motion: 'full', boot: 'full', start: 'game',
+    perf: 0, fps: 30, bright: 1, friendPops: true, recent: [], played: {}, last: {}, seen: {}, ach: {}, notifs: [], said: {},
+    stats: { cmds: 0, flight: 0, rollWins: 0, rollGames: 0 }, disk: null, hist: [],
+  };
+  function load() {
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { s = null; }
+    const out = Object.assign({}, JSON.parse(JSON.stringify(DEFAULTS)), s || {});
+    out.stats = Object.assign({}, DEFAULTS.stats, out.stats || {});
+    if (!out.disk) out.disk = L.newDisk((out.name || 'player').toLowerCase().replace(/[^a-z0-9._-]+/g, '') || 'player');
+    out.fresh = !s;
+    return out;
+  }
+  Dice.state = load();
+  let saveT = null;
+  Dice.save = function (now) {
+    clearTimeout(saveT);
+    const go = () => { try { const s = Object.assign({}, Dice.state); delete s.fresh; localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* full or blocked: carry on */ } };
+    if (now) go(); else saveT = setTimeout(go, 250);
+  };
+  Dice.set = function (k, v) { Dice.state[k] = v; Dice.save(); Dice.emit('state', k); };
+  Dice.reset = function () { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } M.clear(); location.reload(); };
+  Dice.user = () => (Dice.state.name || 'player').toLowerCase().replace(/[^a-z0-9._-]+/g, '') || 'player';
+  Dice.home = () => '/home/' + Dice.user();
+
+  // ---- Day and night ------------------------------------------------------------
+  let night = null;
+  Dice.night = () => (Dice.state.look === 'night' ? true : Dice.state.look === 'day' ? false : L.clockNight(new Date()));
+  Dice.ink = () => (Dice.night() ? '#f3f3f5' : '#141416');
+  Dice.applyLook = function (force) {
+    const n = Dice.night();
+    document.documentElement.setAttribute('data-look', n ? 'dark' : 'light');
+    const meta = document.querySelector('meta[name=theme-color]');
+    if (meta) meta.content = n ? '#000000' : '#ffffff';
+    if (n !== night || force) {
+      const changed = night !== null;
+      night = n;
+      if (changed || force) { G.clearCovers(); Dice.emit('look', n); }
+      if (n) setTimeout(() => Dice.achieve('night-owl'), 3000);
+    }
+  };
+  setInterval(() => Dice.applyLook(), 60000);
+
+  // A one-colour icon that takes the colour of the words around it.
+  const glyphs = new Map();
+  Dice.glyph = function (name, scale, cls) {
+    scale = scale || 2;
+    const k = name + scale;
+    if (!glyphs.has(k)) glyphs.set(k, G.icon(name, '#000000', '#000000', scale));
+    const ic = glyphs.get(k);
+    return '<i class="gl ' + (cls || '') + '" aria-hidden="true" style="--m:url(' + ic.url + ');width:' + ic.w + 'px;height:' + ic.h + 'px"></i>';
+  };
+  // A two-colour icon: the ink, plus a colour of its own.
+  Dice.icon = (name, accent, scale) => G.img(name, accent, scale);
+
+  // A picture element for an app's world.
+  Dice.coverEl = function (app, layout) {
+    const c = G.cover(app, layout, Dice.night());
+    const img = document.createElement('canvas');
+    img.width = c.width; img.height = c.height; img.className = 'art';
+    img.getContext('2d').drawImage(c, 0, 0);
+    return img;
+  };
+
+  // ---- Apps ------------------------------------------------------------------------
+  Dice.apps = {};
+  Dice.register = (def) => { Dice.apps[def.id] = def; };
+  Dice.all = function () {
+    return CATALOG.builtins.map((a) => Object.assign({ suite: false }, a)).concat(CATALOG.suite.map((a) => Object.assign({ kind: 'suite', suite: true, who: ART.mascots[a.id] ? a.id : null }, a)));
+  };
+  Dice.app = (id) => Dice.all().find((a) => a.id === id);
+  Dice.touch = function (id) { // remember what was opened, newest first
+    const r = Dice.state.recent.filter((x) => x !== id);
+    r.unshift(id);
+    Dice.state.recent = r.slice(0, 12);
+    Dice.state.last[id] = Date.now();
+    Dice.save();
+  };
+
+  // ---- Notifications, pop-ups and achievements ------------------------------------
+  Dice.notify = function (n) {
+    const item = Object.assign({ t: Date.now(), read: false }, n);
+    Dice.state.notifs.unshift(item);
+    Dice.state.notifs = Dice.state.notifs.slice(0, 40);
+    Dice.save();
+    Dice.emit('notifs');
+    if (n.toast !== false) Dice.toast(item);
+  };
+  Dice.unread = () => Dice.state.notifs.filter((n) => !n.read).length;
+  const toastQ = [];
+  let toasting = false;
+  Dice.toast = function (n) { toastQ.push(n); if (!toasting) nextToast(); };
+  function nextToast() {
+    const n = toastQ.shift();
+    const box = Dice.$('#toasts');
+    if (!n || !box) { toasting = false; return; }
+    toasting = true;
+    const pic = n.who ? '<canvas class="tface" width="40" height="40"></canvas>' : '<span class="tico" style="--c:' + (n.c || 'var(--ink)') + '">' + Dice.icon(n.icon || 'bell', n.c || '#7c9cff', 2) + '</span>';
+    const el = Dice.h('<div class="toast glass ' + (n.kind || '') + '" role="status">' + pic + '<div><b>' + Dice.esc(n.title) + '</b><span>' + Dice.esc(n.text || '') + '</span></div></div>');
+    if (n.who) { const c = el.querySelector('canvas'); c.getContext('2d').drawImage(G.face(n.who, 40, G.hexA(G.colourOf(n.who), 0.25)), 0, 0); }
+    box.appendChild(el);
+    S.play(n.sound || (n.kind === 'ach' ? 'achieve' : 'toast'));
+    if (n.kind === 'ach') S.rumble(160, 0.3);
+    requestAnimationFrame(() => el.classList.add('in'));
+    setTimeout(() => { el.classList.remove('in'); el.classList.add('out'); setTimeout(() => { el.remove(); nextToast(); }, 320); }, n.kind === 'ach' ? 4200 : 3400);
+  }
+  Dice.achieve = function (id) {
+    const a = L.ACHIEVEMENTS.find((x) => x.id === id);
+    if (!a || Dice.state.ach[id]) return;
+    Dice.state.ach[id] = Date.now();
+    Dice.save();
+    Dice.notify({ kind: 'ach', icon: 'trophy', c: a.c, title: 'Achievement: ' + a.name, text: a.how });
+    Dice.emit('achieve', id);
+  };
+  Dice.level = () => L.level(Object.keys(Dice.state.ach).length);
+
+  // ---- Friends: the mascots, up to their own things -------------------------------
+  const STATUSES = [['Online', 4], ['Away', 2], ['Playing Roll', 2], ['Playing Bumble\'s Flight', 2], ['Listening to Dice Radio', 2], ['In Terminal', 1], ['Writing notes', 1], ['Snoozing', 1]];
+  Dice.friends = Object.keys(CATALOG.friends).map((id) => ({ id, name: ART.mascots[id].name, kind: CATALOG.friends[id][0], lines: CATALOG.friends[id][1], status: 'Online' }));
+  function pickStatus(r) {
+    const total = STATUSES.reduce((n, s) => n + s[1], 0);
+    let k = r * total;
+    for (const [s, w] of STATUSES) { if ((k -= w) < 0) return s; }
+    return 'Online';
+  }
+  Dice.friends.forEach((f) => { f.status = pickStatus(Math.random()); });
+  let lastFriendToast = Date.now();
+  setInterval(() => {
+    const f = Dice.friends[Math.floor(Math.random() * Dice.friends.length)];
+    const before = f.status;
+    f.status = pickStatus(Math.random());
+    Dice.emit('friends');
+    if (f.status !== before && /^Playing/.test(f.status) && Date.now() - lastFriendToast > 4 * 60000 && Dice.state.friendPops) {
+      lastFriendToast = Date.now();
+      Dice.notify({ who: f.id, title: f.name + ' is ' + f.status.toLowerCase(), text: 'Say hi from Quick access.', sound: 'toast' });
+    }
+  }, 40000);
+  Dice.sayHi = function (id) {
+    const f = Dice.friends.find((x) => x.id === id);
+    if (!f) return;
+    const n = (Dice.state.said[id] || 0);
+    Dice.state.said[id] = n + 1;
+    Dice.save();
+    Dice.toast({ who: id, title: f.name, text: f.lines[n % f.lines.length] });
+    if (Object.keys(Dice.state.said).length >= 5) Dice.achieve('friendly');
+  };
+
+  // ---- Input: keyboard, controllers, mouse and touch -------------------------------
+  // Everything becomes one of: up down left right a b x y lb rb menu quick search
+  const Input = Dice.input = { source: 'keys', handler: null, pads: {} };
+  const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'a', ' ': 'a', Escape: 'b', Backspace: 'b',
+    m: 'menu', M: 'menu', q: 'quick', Q: 'quick', '/': 'search', x: 'x', X: 'x', y: 'y', Y: 'y', '[': 'lb', ']': 'rb', Tab: null };
+  const typing = (el) => el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(range|checkbox|radio|button)$/i.test(el.type)) || el.isContentEditable);
+  Input.setSource = function (s) {
+    if (Input.source === s) return;
+    Input.source = s;
+    document.documentElement.setAttribute('data-input', s);
+    Dice.emit('source', s);
+  };
+  const CODE = ['up', 'up', 'down', 'down', 'left', 'right', 'left', 'right', 'b', 'a'];
+  let codeAt = 0;
+  Input.fire = function (action, src) {
+    if (action === CODE[codeAt]) { codeAt++; if (codeAt === CODE.length) { codeAt = 0; Dice.emit('code'); Dice.achieve('code'); } } else codeAt = action === CODE[0] ? 1 : 0;
+    if (Input.handler) Input.handler(action, src);
+  };
+  window.addEventListener('keydown', (e) => {
+    S.unlock();
+    if (Dice.keyHook && Dice.keyHook(e)) return;
+    const t = e.target;
+    let action = null;
+    if (e.ctrlKey && (e.key === '1' || e.key === '2')) action = e.key === '1' ? 'menu' : 'quick';
+    else if (e.ctrlKey || e.metaKey || e.altKey) return;
+    else if (typing(t)) {
+      // in a text box, keep the keys for typing except a few that move about
+      if (e.key === 'Escape') action = 'b';
+      else if (t.hasAttribute('data-nav') && (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter')) action = KEYS[e.key];
+      else return;
+    } else action = KEYS[e.key];
+    if (e.key === 'Tab') return; // let Tab move between things the normal way
+    if (!action) return;
+    Input.setSource('keys');
+    e.preventDefault();
+    Input.fire(action, 'keys');
+  }, true);
+  ['pointerdown', 'touchstart'].forEach((ev) => window.addEventListener(ev, (e) => {
+    S.unlock();
+    Input.setSource(e.pointerType === 'touch' || ev === 'touchstart' ? 'touch' : 'mouse');
+  }, { passive: true, capture: true }));
+
+  // controllers: checked every frame
+  const PAD = { 0: 'a', 1: 'b', 2: 'x', 3: 'y', 4: 'lb', 5: 'rb', 8: 'quick', 9: 'menu', 16: 'menu', 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
+  const held = {};
+  Input.padNames = () => [...(navigator.getGamepads ? navigator.getGamepads() : [])].filter(Boolean).map((p) => p.id);
+  Input.pollPads = function (now) {
+    const pads = navigator.getGamepads ? navigator.getGamepads() : [];
+    for (const p of pads) {
+      if (!p) continue;
+      const state = {};
+      for (const b in PAD) if (p.buttons[b] && p.buttons[b].pressed) state[PAD[b]] = true;
+      const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
+      if (ax < -0.55) state.left = true; if (ax > 0.55) state.right = true;
+      if (ay < -0.55) state.up = true; if (ay > 0.55) state.down = true;
+      Input.pads[p.index] = { id: p.id, buttons: p.buttons.map((b) => b.value), axes: p.axes.slice() };
+      for (const a of ['up', 'down', 'left', 'right', 'a', 'b', 'x', 'y', 'lb', 'rb', 'menu', 'quick']) {
+        const k = p.index + a;
+        if (state[a]) {
+          if (!held[k]) { held[k] = { at: now, rep: now + 380 }; Input.setSource('pad'); S.unlock(); Dice.achieve('pad'); Input.fire(a, 'pad'); }
+          else if (['up', 'down', 'left', 'right'].includes(a) && now >= held[k].rep) { held[k].rep = now + 110; Input.fire(a, 'pad'); }
+        } else delete held[k];
+      }
+    }
+  };
+  window.addEventListener('gamepadconnected', (e) => {
+    Input.setSource('pad');
+    Dice.notify({ icon: 'pad', c: '#7c9cff', title: 'Controller connected', text: e.gamepad.id.replace(/\(.*?\)/g, '').trim().slice(0, 60) || 'Ready to play' });
+    Dice.emit('pads');
+  });
+  window.addEventListener('gamepaddisconnected', () => { Dice.emit('pads'); Dice.toast({ icon: 'pad', c: '#96969f', title: 'Controller disconnected', text: 'The keyboard still works.' }); });
+
+  // ---- Moving around: focus that follows arrows, sticks and the mouse --------------
+  const Nav = Dice.nav = { el: null, roots: [] };
+  // The layer on top decides where focus can go: a dialog, then search, then the side menus, then the page.
+  Nav.root = function () {
+    for (const sel of ['#dialog.open', '#search.open', '#qam.open', '#menu.open']) { const r = Dice.$(sel); if (r) return r; }
+    if (Dice.$('#app').classList.contains('running')) return Dice.$('#run');
+    return Dice.$('#view');
+  };
+  const visible = (el) => { if (!el.isConnected || el.closest('[hidden]') || el.disabled) return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  Nav.items = (root) => Dice.$$('[data-nav]', root || Nav.root()).filter(visible);
+  Nav.focus = function (el, opts) {
+    opts = opts || {};
+    if (!el) return;
+    if (Nav.el && Nav.el !== el) Nav.el.classList.remove('is-focus');
+    Nav.el = el;
+    el.classList.add('is-focus');
+    if (document.activeElement !== el && !(opts.keepTyping && typing(document.activeElement))) { if (!el.hasAttribute('tabindex') && !/^(BUTTON|A|INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) el.tabIndex = -1; el.focus({ preventScroll: true }); }
+    const row = el.closest('[data-row]');
+    if (row) { row._last = el; }
+    if (opts.scroll !== false) Nav.reveal(el);
+    Dice.emit('focus', el);
+  };
+  Nav.reveal = function (el) {
+    const smooth = Dice.reduced() ? 'auto' : 'smooth';
+    const row = el.closest('[data-row]');
+    if (row && row.scrollWidth > row.clientWidth) {
+      const pad = parseFloat(getComputedStyle(row).scrollPaddingLeft) || 0;
+      const left = el.offsetLeft - row.offsetLeft;
+      if (row.dataset.row === 'snap') row.scrollTo({ left: Math.max(0, left - pad), behavior: smooth });
+      else {
+        const r = el.getBoundingClientRect(), rr = row.getBoundingClientRect();
+        if (r.left < rr.left + pad) row.scrollBy({ left: r.left - rr.left - pad, behavior: smooth });
+        else if (r.right > rr.right - pad) row.scrollBy({ left: r.right - rr.right + pad, behavior: smooth });
+      }
+    }
+    const pane = el.closest('[data-scroll]');
+    if (pane) {
+      const r = el.getBoundingClientRect(), pr = pane.getBoundingClientRect();
+      const block = el.closest('[data-block]') || el;
+      const br = block.getBoundingClientRect();
+      const top = pr.top + (parseFloat(pane.dataset.scroll) || 90), bottom = pr.bottom - 90;
+      if (br.top < top) pane.scrollBy({ top: br.top - top, behavior: smooth });
+      else if (r.bottom > bottom) pane.scrollBy({ top: Math.min(r.bottom - bottom, br.top - top), behavior: smooth });
+    }
+  };
+  Nav.first = function (root) {
+    root = root || Nav.root();
+    const pref = Dice.$('[data-first]', root);
+    const items = Nav.items(root);
+    const el = pref && visible(pref) ? pref : items[0];
+    if (el) Nav.focus(el, { scroll: true });
+    return el;
+  };
+  Nav.move = function (dir) {
+    const root = Nav.root();
+    let cur = Nav.el;
+    if (!cur || !root.contains(cur) || !visible(cur)) { Nav.first(root); return true; }
+    if ((dir === 'left' || dir === 'right') && cur._lr && cur._lr(dir === 'left' ? -1 : 1)) return true;
+    const items = Nav.items(root).filter((e) => e !== cur);
+    const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; };
+    const best = L.pickNext(box(cur), items.map((e) => ({ e, r: box(e) })), dir);
+    if (!best) { S.play('error'); return false; }
+    let to = best.e;
+    // going into a row you were in before: back to where you were in it
+    const row = to.closest('[data-row]');
+    if (row && row !== cur.closest('[data-row]') && row._last && row.contains(row._last) && visible(row._last) && (dir === 'up' || dir === 'down')) to = row._last;
+    Nav.focus(to);
+    S.play('move', dir);
+    return true;
+  };
+  Nav.press = function () {
+    const el = Nav.el;
+    if (!el || !el.isConnected) return false;
+    if (typing(el)) { el.focus(); return true; }
+    if (el.dataset.sound !== 'none') S.play(el.dataset.sound || 'select');
+    el.click();
+    return true;
+  };
+  // the mouse moves focus too, without scrolling things about
+  document.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const el = e.target.closest && e.target.closest('[data-nav]');
+    if (el && el !== Nav.el && Nav.root().contains(el)) Nav.focus(el, { scroll: false, keepTyping: true });
+  }, { passive: true });
+
+  // ---- The legend along the bottom: what each button does here ----------------
+  const GLYPH = {
+    keys: { a: 'Enter', b: 'Esc', x: 'X', y: 'Y', menu: 'M', quick: 'Q', lb: '[', rb: ']', search: '/' },
+    pad: { a: 'A', b: 'B', x: 'X', y: 'Y', menu: '☰', quick: '⋯', lb: 'LB', rb: 'RB', search: 'Y' },
+  };
+  Dice.btn = function (b) {
+    const src = Input.source === 'pad' ? 'pad' : 'keys';
+    const label = GLYPH[src][b] || b;
+    return '<span class="bt bt-' + src + ' bt-' + b + '">' + Dice.esc(label) + '</span>';
+  };
+})();

@@ -1,0 +1,30 @@
+// Dice boot splash: a pixel die on black whose six dots light up, one colour
+// at a time, as the Raspberry Pi starts.
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+for (i = 0; i <= 6; i++)
+  frame[i] = Image("die" + i + ".png");
+die = Sprite(frame[0]);
+die.SetX(Window.GetX() + Window.GetWidth() / 2 - frame[0].GetWidth() / 2);
+die.SetY(Window.GetY() + Window.GetHeight() / 2 - frame[0].GetHeight() / 2 - 40);
+
+word_image = Image("word.png");
+word = Sprite(word_image);
+word.SetX(Window.GetX() + Window.GetWidth() / 2 - word_image.GetWidth() / 2);
+word.SetY(die.GetY() + frame[0].GetHeight() + 40);
+
+fun progress_callback(duration, progress) {
+  n = Math.Int(progress * 7);
+  if (n > 6) n = 6;
+  die.SetImage(frame[n]);
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+message = Sprite();
+fun message_callback(text) {
+  message.SetImage(Image.Text(text, 0.6, 0.6, 0.65));
+  message.SetX(Window.GetX() + Window.GetWidth() / 2 - message.GetImage().GetWidth() / 2);
+  message.SetY(Window.GetY() + Window.GetHeight() - 60);
+}
+Plymouth.SetMessageFunction(message_callback);
