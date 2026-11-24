@@ -485,3 +485,74 @@ html[data-fit] body { transform: scale(var(--fit)); transform-origin: 50% 50%; b
 #ambient.am-dark { background: #000; }
 #ambient.am-dark .am-bg, #ambient.am-dark .am-veil { display: none; }
 .srow.srow-wide { flex-wrap: wrap; } .srow.srow-wide > div:first-child { flex: 1 1 260px; }
+#osk .osk-help { white-space: normal; text-align: right; max-width: 300px; line-height: 1.6; }
+#osk .osk-kb { display: block; }
+
+/* ---------- DiceTV's Home: a table top ----------
+   The time and today down the left, your apps as solid little blocks standing in the
+   world, and under the grass (or sand, or snow) the rows: Live, News and Watch. What's
+   picked gets a pixel-art frame that moves to it, like a game's menu. */
+#app[data-view=home] #veil { background: linear-gradient(to right, color-mix(in srgb, var(--bg) 30%, transparent) 0, transparent 34%); }
+.page.tvb { padding-bottom: 0; }
+.tvb-top { display: grid; grid-template-columns: clamp(250px, 22vw, 350px) minmax(0, 1fr); gap: clamp(28px, 4.4vw, 84px); align-items: center;
+  min-height: calc(100vh - 76px - 92px); padding: 0 var(--gut) 30px; box-sizing: border-box; }
+.tvb-now { display: flex; flex-direction: column; border-radius: 28px; padding: 8px; }
+.tvb-now .tcard { position: relative; width: auto; min-height: 0; padding: 11px 14px; border-radius: 18px; background: none; box-shadow: none; display: grid; gap: 3px; text-align: left; color: var(--ink); }
+.tvb-now .tcard + .tcard::before { content: ""; position: absolute; left: 14px; right: 14px; top: 0; height: 1px; background: var(--line); }
+.tvb-now .tcard.is-focus { transform: none; box-shadow: none; background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.tvb-now .t-time { padding: 14px 14px 16px; }
+.tvb-now .t-time .tbig { font: 500 clamp(3.2rem, 5.2vw, 5.4rem)/.9 var(--pixel); letter-spacing: -.01em; }
+.tvb-now .t-time .tbig small { font: 700 .28em/1 var(--read); margin-left: .35em; color: var(--muted); letter-spacing: 0; }
+.tvb-now .t-time .tsub { font-size: .98rem; color: var(--ink); opacity: .8; margin-top: 8px; }
+.tvb-now .tmid { font: 500 clamp(1.02rem, 1.3vw, 1.25rem)/1.15 var(--pixel); }
+.tvb-now .tsub { font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tvb-now .twx { gap: 8px; } .tvb-now .twx .st-wxsvg { width: 30px; height: 30px; } .tvb-now .twx .tbig { font-size: 1.6rem; }
+.tvb-now .tdue li:nth-child(n+3) { display: none; }
+.tvb-now .t-np .eqmini { top: 14px; }
+@media (max-height: 760px) { .tvb-now .tsub:not(.t-time .tsub) { display: none; } .tvb-now .tcard { padding: 8px 14px; } }
+
+.tvb-main { display: flex; flex-direction: column; align-items: flex-start; gap: clamp(20px, 3vh, 34px); min-width: 0; }
+.tvb-board { --blk: clamp(84px, 8vw, 146px); display: grid; grid-template-columns: repeat(4, var(--blk)); gap: clamp(18px, 2.6vh, 30px) clamp(20px, 2.4vw, 40px); }
+.dblock { position: relative; display: flex; flex-direction: column; align-items: center; gap: 13px; width: var(--blk); padding: 0; background: none; color: var(--ink); }
+.dblock .bk { position: relative; display: block; width: var(--blk); height: var(--blk);
+  filter: drop-shadow(0 calc(var(--blk) * .05) 0 color-mix(in srgb, var(--tc) 48%, #000)) drop-shadow(0 calc(var(--blk) * .12) calc(var(--blk) * .1) rgba(0, 0, 0, .26)); }
+.dblock .bk .appicon { display: block; width: 100% !important; height: 100% !important; }
+.dblock .bk .libicon { border-radius: 24%; image-rendering: pixelated; }
+.dblock .bn { max-width: calc(var(--blk) + 30px); padding: 5px 10px 6px; border-radius: 9px; font: 500 clamp(.86rem, 1vw, 1.05rem)/1.1 var(--pixel); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: color-mix(in srgb, var(--bg) 70%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.dblock.is-focus .bn { background: var(--ink); color: var(--bg); }
+.dblock .bflag { position: absolute; top: -8px; right: -10px; padding: 4px 7px; border-radius: 7px; font: 700 .7rem/1 var(--read); background: #3fa26b; color: #fff; }
+.tvb-cap { max-width: min(640px, 100%); margin: 0; padding: 15px 20px 16px; border-radius: 20px; background: color-mix(in srgb, var(--bg) 66%, transparent); -webkit-backdrop-filter: blur(14px) saturate(160%); backdrop-filter: blur(14px) saturate(160%); }
+.tvb-cap h1 { font-size: clamp(1.7rem, 2.8vw, 2.7rem); margin-bottom: 8px; }
+.tvb-cap p { font-size: 1rem; }
+.tvb-cap .kicker { margin-bottom: 8px; }
+
+.tvb-ground { position: relative; margin-top: calc(var(--px) * 8); padding: 34px 0 150px; color: #fff; image-rendering: pixelated;
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .38) 100%), var(--soil) 0 0 / calc(var(--px) * 32) calc(var(--px) * 32) repeat, var(--soilc); }
+.tvb-ground::before { content: ""; position: absolute; left: 0; right: 0; top: calc(var(--px) * -8 + 1px); height: calc(var(--px) * 8); background: var(--edge) 0 0 / calc(var(--px) * 16) 100% repeat-x; }
+.tvb-ground > * { image-rendering: auto; }
+.tvb-ground .shelf { display: grid; grid-template-columns: clamp(140px, 12vw, 210px) minmax(0, 1fr); align-items: center; margin-top: 30px; }
+.tvb-ground .shelf > h2 { display: block; margin: 0; padding-right: 18px; color: #fff; font-size: clamp(1.3rem, 1.8vw, 1.7rem); text-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
+.tvb-ground .shelf > h2 small { display: block; margin-top: 8px; font: 600 .84rem/1.35 var(--read); color: rgba(255, 255, 255, .78); text-shadow: none; }
+.tvb-ground .row { margin: -14px calc(-1 * var(--gut)) -8px 0; padding: 14px var(--gut) 22px 6px; scroll-padding: 0 var(--gut) 0 6px; }
+.tvb .ltile.is-focus, .tvb .wtile.is-focus { transform: none; box-shadow: 0 14px 26px -20px rgba(0, 0, 0, .6); }
+.tvb-ground .wtile.add, .tvb-ground .ltile.lall { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .28); }
+.tvb-ground .wtile.add .wname, .tvb-ground .ltile.lall .lname { color: #fff; }
+
+/* the frame that moves to what's picked */
+#tvcur { position: absolute; left: 0; top: 0; z-index: 5; box-sizing: border-box; border: 12px solid transparent; pointer-events: none; image-rendering: pixelated;
+  border-image-outset: 10px; transition: transform .12s var(--ease), width .12s var(--ease), height .12s var(--ease); }
+@media (prefers-reduced-motion: reduce) { #tvcur { transition: none; } }
+
+/* Watch and News tiles: the site's own icon on its colour */
+.wtile .wbg { position: absolute; right: -14%; top: -34%; height: 150%; aspect-ratio: 1; object-fit: contain; opacity: .3; filter: blur(16px) saturate(1.7); pointer-events: none; }
+.wtile .wico-box { position: relative; width: 36%; aspect-ratio: 1; border-radius: 24%; display: grid; place-items: center; margin-bottom: 8%; }
+.wtile.has-ico .wico-box { background: rgba(255, 255, 255, .96); box-shadow: 0 12px 22px -12px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(0, 0, 0, .05); }
+.wtile .wico { width: 72%; height: 72%; object-fit: contain; }
+.wtile.ico-small .wico { image-rendering: pixelated; }
+.wtile.has-ico .wmono { display: none; }
+.wtile .wico-box .wmono { position: static; }
+.ntile .nlive { position: absolute; left: 10px; top: 9px; padding: 3px 7px 4px; border-radius: 6px; background: #e5484d; color: #fff; font: 700 .7rem/1 var(--read); display: inline-flex; align-items: center; gap: 5px; }
+.ntile .nlive::before { content: ""; width: 6px; height: 6px; border-radius: 1px; background: #fff; animation: oskblink 1.6s steps(1) infinite; }
+@media (max-width: 900px) { .tvb-top { grid-template-columns: 1fr; padding-top: 10px; } .tvb-board { grid-template-columns: repeat(4, minmax(0, 1fr)); --blk: 21vw; } .tvb-ground .shelf { grid-template-columns: 1fr; } }
+.tvb-lib .lib-blocks { --blk: clamp(84px, 7.4vw, 132px); display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--blk) + 36px), 1fr)); gap: 30px 12px; padding: 18px var(--gut) 40px; justify-items: center; }

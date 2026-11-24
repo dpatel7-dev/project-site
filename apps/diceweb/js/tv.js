@@ -49,7 +49,8 @@
   async function paintToday(fresh) {
     if (!today || (!fresh && !today.isConnected)) return; // (a fresh row isn't on the page yet)
     const q = (k) => today.querySelector('[data-key="td:' + k + '"]');
-    q('time').innerHTML = '<span class="tlab">' + D.glyph('timer', 1) + 'Now</span><b class="tbig">' + esc(timeNow()) + '</b><span class="tsub">' + esc(dateNow()) + '</span>';
+    const ampm = new Date().getHours() < 12 ? 'am' : 'pm';
+    q('time').innerHTML = '<b class="tbig">' + esc(timeNow()) + '<small>' + ampm + '</small></b><span class="tsub">' + esc(dateNow()) + '</span>';
     const due = dueList(), dc = q('due');
     dc.innerHTML = '<span class="tlab">' + D.glyph('bell', 1) + 'Due today</span>' + (!due ? '<b class="tmid">Nothing planned</b><span class="tsub">Add classes and tasks in Axiom.</span>'
       : !due.length ? '<b class="tmid">All done</b><span class="tsub">Nothing due today.</span>'
@@ -75,10 +76,12 @@
       : '<span class="tlab">' + D.glyph('nowifi', 1) + esc(p.name) + '</span><b class="tmid">No weather</b><span class="tsub">It needs the internet.</span>';
     D.legend.update();
   }
-  function todayRow() {
-    const s = h('<section class="shelf" data-block><h2>Today</h2><div class="row" data-row id="today"></div></section>');
-    today = s.querySelector('#today');
+  // Home's left column: the time, then the rest of today, one line each
+  TV.now = function (col) {
+    col.id = 'today';
+    today = col;
     const time = card('time', 't-time', 'Open Clock'), wxc = card('wx', 't-wx', 'Change town'), due = card('due', 't-due', 'Open Axiom'), np = card('np', 't-np', 'Play', 'Open Music'), sleep = card('sleep', 't-sleep', 'Change');
+    [time, wxc, due, np, sleep].forEach((c) => c.classList.remove('glass'));
     time.onclick = () => D.launch('clock');
     wxc.onclick = () => TV.askTown();
     due.onclick = () => D.launch('calendar');
@@ -86,26 +89,57 @@
     np._x = () => D.launch('music');
     sleep.onclick = () => D.tools.setSleep(L.nextSleep(D.tools.sleepMins()));
     const alarm = card('alarm', 't-alarm', 'Alarms');
+    alarm.classList.remove('glass');
     alarm.onclick = () => D.launch('clock', { arg: 'alarm' });
     today.append(time, wxc, due, np, sleep, alarm);
     paintToday(true);
-    return s;
-  }
+  };
   setInterval(paintToday, 20000);
   M.on(() => paintToday());
   D.on('sleeptimer', () => paintToday());
   D.on('alarms', () => paintToday());
 
   // ---- Watch: your streaming sites ---------------------------------------------------------
-  // Plain letters on a colour, not anybody's logo. They open in the real browser.
+  // Each shows the site's own icon, fetched as the tile appears (the way a browser shows
+  // a site's icon on its shortcuts), on that site's colour; with no internet, its first
+  // letters instead. They open in the real browser.
   TV.WATCH = [
     { name: 'YouTube', url: 'https://www.youtube.com', c: '#d9443c' },
     { name: 'Netflix', url: 'https://www.netflix.com', c: '#a3202a' },
     { name: 'Disney+', url: 'https://www.disneyplus.com', c: '#2a4fb8' },
     { name: 'Prime Video', url: 'https://www.primevideo.com', c: '#1f8fc0' },
+    { name: 'HBO Max', url: 'https://www.hbomax.com', c: '#3b2bb3' },
+    { name: 'Hulu', url: 'https://www.hulu.com', c: '#14a865' },
+    { name: 'Spotify', url: 'https://open.spotify.com', c: '#1f9e58', icon: 'spotify.com' },
     { name: 'Twitch', url: 'https://www.twitch.tv', c: '#7a4fd8' },
-    { name: 'Spotify', url: 'https://open.spotify.com', c: '#1f9e58' },
+    { name: 'Tubi', url: 'https://tubitv.com', c: '#5b2bd6' },
   ];
+  // more to pick from when adding one
+  TV.MORE = [
+    { name: 'Apple TV', url: 'https://tv.apple.com', c: '#2b2b30' },
+    { name: 'Peacock', url: 'https://www.peacocktv.com', c: '#2b2f6b' },
+    { name: 'Paramount+', url: 'https://www.paramountplus.com', c: '#0b5fd8' },
+    { name: 'Crunchyroll', url: 'https://www.crunchyroll.com', c: '#e8691c' },
+    { name: 'Pluto TV', url: 'https://pluto.tv', c: '#2d2d6b' },
+    { name: 'YouTube Music', url: 'https://music.youtube.com', c: '#c4302b' },
+  ];
+  // the site's own icon, big (not for a box at home: its address stays at home)
+  TV.icon = function (w) {
+    const host = (w.icon || TV.host(w.url)).split(':')[0];
+    if (!host || !host.includes('.') || /^(\d+\.){3}\d+$|^localhost$|\.(local|lan|home|internal)$/i.test(host)) return null;
+    return 'https://www.google.com/s2/favicons?domain=' + encodeURIComponent(host) + '&sz=256';
+  };
+  // an icon on a tile: the letters stay underneath until it loads, and come back if it can't
+  TV.iconOn = function (tile, src, cls) {
+    if (!src) return;
+    const big = h('<img class="' + (cls || 'wico') + '" alt="" referrerpolicy="no-referrer" decoding="async">');
+    const glow = h('<img class="wbg" alt="" referrerpolicy="no-referrer" decoding="async" aria-hidden="true">');
+    big.onload = () => { tile.classList.add('has-ico'); if (big.naturalWidth < 64) tile.classList.add('ico-small'); glow.src = src; };
+    big.onerror = () => { big.remove(); glow.remove(); };
+    tile.prepend(glow);
+    (tile.querySelector('.wico-box') || tile).appendChild(big);
+    big.src = src;
+  };
   const PALETTE = ['#d9443c', '#e0753a', '#c9a227', '#2f9e6e', '#1f8fc0', '#3a5fd8', '#7a4fd8', '#c0438f'];
   const watchList = () => (Array.isArray(D.state.watch) ? D.state.watch : TV.WATCH);
   TV.mono = L.monogram;
@@ -123,7 +157,8 @@
     else window.open(url, '_blank', 'noopener');
   };
   function watchTile(w, i) {
-    const b = h('<button class="wtile" data-nav data-key="w:' + i + '" data-a="Watch" data-x="Remove" style="--wc:' + esc(w.c) + '" aria-label="' + esc(w.name) + '"><span class="wmono">' + esc(TV.mono(w.name)) + '</span><span class="wname">' + esc(w.name) + '</span></button>');
+    const b = h('<button class="wtile" data-nav data-key="w:' + i + '" data-a="Watch" data-x="Remove" style="--wc:' + esc(w.c) + '" aria-label="' + esc(w.name) + '"><span class="wico-box"><span class="wmono">' + esc(TV.mono(w.name)) + '</span></span><span class="wname">' + esc(w.name) + '</span></button>');
+    TV.iconOn(b, TV.icon(w));
     b.onclick = () => { S.play('select'); TV.open(w.url); };
     b._x = () => removeWatch(i);
     return b;
@@ -135,6 +170,14 @@
     list.splice(i, 1); D.set('watch', list); paintWatch(Math.max(0, i - 1));
   }
   async function addWatch() {
+    // one of the usual ones, or your own
+    const have = watchList().map((w) => w.url);
+    const more = TV.WATCH.concat(TV.MORE).filter((w) => !have.includes(w.url)).slice(0, 6);
+    if (more.length) {
+      const pick = await D.ask({ title: 'Add to Watch', text: 'Pick one, or add any site (or a media box at home, like Plex).', buttons: more.map((w, k) => ({ label: w.name, value: 'm' + k, go: k === 0 })).concat([{ label: 'Something else', value: 'own' }, { label: 'Cancel', value: null }]) });
+      if (!pick) return;
+      if (pick !== 'own') { const list = watchList().slice(); list.push(Object.assign({}, more[+pick.slice(1)])); D.set('watch', list); paintWatch(list.length - 1); return; }
+    }
     const n = await D.ask({ title: 'Add a site to Watch', text: 'What\'s it called?', input: { label: 'Name', placeholder: 'Crunchyroll' }, buttons: [{ label: 'Next', value: true, go: true }, { label: 'Cancel', value: false }] });
     const name = n && n.value && n.value.trim().slice(0, 24);
     if (!name) return;
@@ -151,7 +194,7 @@
     if (!watch || (!fresh && !watch.isConnected)) return;
     watch.replaceChildren();
     watchList().forEach((w, i) => watch.appendChild(watchTile(w, i)));
-    const add = h('<button class="wtile add" data-nav data-key="w:add" data-a="Add"><span class="wmono">' + D.glyph('plus', 3) + '</span><span class="wname">Add a site</span></button>');
+    const add = h('<button class="wtile add" data-nav data-key="w:add" data-a="Add"><span class="wico-box"><span class="wmono">' + D.glyph('plus', 3) + '</span></span><span class="wname">Add a site</span></button>');
     add.onclick = addWatch;
     watch.appendChild(add);
     if (focusAt !== undefined) D.nav.focus(watch.querySelector('[data-key="w:' + focusAt + '"]') || add);
@@ -191,10 +234,109 @@
     return s;
   }
 
-  TV.rows = function (page) { page.append(todayRow()); if (D.channels && D.app('channels')) page.append(liveRow()); page.append(watchRow()); };
+  // ---- News: the news channels' own live streams --------------------------------------------------
+  function newsRow() {
+    const s = h('<section class="shelf" data-block><h2>News <small>Live, from each channel\'s own stream.</small></h2><div class="row" data-row id="news"></div></section>');
+    const row = s.querySelector('#news'), all = D.channels.all();
+    D.channels.news().forEach((c) => {
+      const num = all.findIndex((x) => x.id === c.id) + 1;
+      const b = h('<button class="wtile ntile" data-nav data-key="nw:' + esc(c.id) + '" data-a="Watch" style="--wc:' + esc(c.c) + '" aria-label="' + esc(c.name) + '"><span class="wico-box"><span class="wmono">' + esc(c.mono || TV.mono(c.name)) + '</span></span><span class="wname">' + esc(c.name) + '</span><span class="nlive">Live</span><span class="wnum">' + num + '</span></button>');
+      if (c.site) TV.iconOn(b, TV.icon({ url: 'https://' + c.site }));
+      b.onclick = () => D.launch('channels', { arg: c.id, swap: true });
+      row.appendChild(b);
+    });
+    const add = h('<button class="wtile add" data-nav data-key="nw:add" data-a="Add"><span class="wico-box"><span class="wmono">' + D.glyph('plus', 3) + '</span></span><span class="wname">Add a channel</span></button>');
+    add.onclick = () => D.launch('channels', { arg: (D.channels.news()[0] || {}).id, swap: true });
+    row.appendChild(add);
+    return s;
+  }
+
+  // ---- underground: the rows sit in the ground of your world, under the grass (or sand, or snow) -----------
+  const STRATA = {
+    grass: ['#6fae4e', '#4f8a38', '#7a5434', '#5e4129', '#8d8e97'], gold: ['#c2a64a', '#94802f', '#7a5531', '#5c3f24', '#9a8f80'],
+    stone: ['#a3a5ad', '#7d7f88', '#5d5f69', '#43454d', '#8b8d96'], sand: ['#ecd59c', '#d6b877', '#c99f5f', '#a57c45', '#e8d9b0'],
+    snow: ['#f1f6fb', '#c9daea', '#9fb8d2', '#7894b4', '#e6eef7'], dune: ['#e8c27a', '#c99a52', '#b07c3e', '#8a5b2c', '#e2c58f'],
+  };
+  const KIND = { autumn: 'gold', city: 'stone', town: 'stone', beach: 'sand', ice: 'snow', snow: 'snow', desert: 'dune' };
+  function strata(el) {
+    const world = D.state.world || 'hills', s = STRATA[KIND[world] || 'grass'], night = D.night();
+    const dim = (hex, k) => { const n = parseInt(hex.slice(1), 16); return 'rgb(' + [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * k)).join(',') + ')'; };
+    const k = night ? 0.55 : 1;
+    let seed = [...world].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    // the edge: tufts on top, then a darker band
+    const e = G.canvas(16, 8), eg = e.getContext('2d');
+    eg.fillStyle = dim(s[0], k); eg.fillRect(0, 2, 16, 4);
+    [[1, 1], [2, 0], [3, 1], [6, 1], [9, 1], [10, 0], [13, 1]].forEach(([x, y]) => eg.fillRect(x, y, 1, 2 - y));
+    eg.fillStyle = dim(s[1], k); eg.fillRect(0, 5, 16, 1); [[2, 4], [7, 4], [12, 4]].forEach(([x, y]) => eg.fillRect(x, y, 1, 1));
+    eg.fillStyle = dim(s[2], k); eg.fillRect(0, 6, 16, 2); eg.fillStyle = dim(s[1], k); [[4, 6], [11, 6], [15, 6]].forEach(([x, y]) => eg.fillRect(x, y, 1, 1));
+    // the soil: specks and the odd pebble
+    const t = G.canvas(32, 32), tg = t.getContext('2d');
+    tg.fillStyle = dim(s[2], k); tg.fillRect(0, 0, 32, 32);
+    for (let i = 0; i < 46; i++) { tg.fillStyle = dim(i % 3 ? s[3] : s[1], k * (0.9 + rnd() * 0.2)); tg.fillRect(Math.floor(rnd() * 32), Math.floor(rnd() * 32), 1, 1); }
+    for (let i = 0; i < 3; i++) { const x = Math.floor(rnd() * 29), y = Math.floor(rnd() * 30); tg.fillStyle = dim(s[4], k * 0.8); tg.fillRect(x, y, 3, 2); tg.fillStyle = dim(s[4], k); tg.fillRect(x, y, 2, 1); }
+    const cell = Math.max(3, D.scapeCell ? D.scapeCell() + 1 : 3);
+    el.style.setProperty('--edge', 'url(' + e.toDataURL() + ')');
+    el.style.setProperty('--soil', 'url(' + t.toDataURL() + ')');
+    el.style.setProperty('--soilc', dim(s[2], k));
+    el.style.setProperty('--px', cell + 'px');
+  }
+
+  TV.rows = function (ground) {
+    strata(ground);
+    if (D.channels && D.app('channels')) { ground.append(liveRow()); ground.append(newsRow()); }
+    ground.append(watchRow());
+  };
+
+  // ---- the selection frame: a pixel-art frame that moves to whatever's picked on Home ----------------
+  const FRAME = (() => {
+    const c = G.canvas(12, 12), g = c.getContext('2d');
+    const px = (x, y, col) => { g.fillStyle = col; g.fillRect(x, y, 1, 1); };
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) {
+      const cx = x < 4 ? x : x > 7 ? 11 - x : 4, cy = y < 4 ? y : y > 7 ? 11 - y : 4; // fold into the corner
+      if (cx >= 4 && cy >= 4) continue; // the middle stays clear
+      const ex = Math.min(cx, 3), ey = Math.min(cy, 3), d = ex + ey;
+      if (cx >= 4 || cy >= 4) { const v = cx >= 4 ? cy : cx; if (v === 0) px(x, y, '#141416'); else if (v <= 2) px(x, y, '#ffffff'); continue; }
+      if (d >= 3 && d <= 5 && ex >= 1 && ey >= 1) px(x, y, '#ffffff');
+      else if (d === 2 || (ex === 0 && ey >= 3) || (ey === 0 && ex >= 3)) px(x, y, '#141416');
+    }
+    return c.toDataURL();
+  })();
+  let cur = null, curRaf = 0;
+  function cursor() {
+    if (!cur) {
+      cur = h('<div id="tvcur" aria-hidden="true" hidden></div>');
+      cur.style.borderImage = 'url(' + FRAME + ') 4 / 12px / 7px';
+      D.$('#view').appendChild(cur);
+    }
+    return cur;
+  }
+  function placeCursor() {
+    curRaf = 0;
+    const el = D.nav.el, c = cursor();
+    const on = el && el.isConnected && el.closest('.tvb, .tvb-lib') && !(D.desk && D.desk.on) && !D.$('#app').classList.contains('running');
+    if (!on) { c.hidden = true; return; }
+    if (c.parentElement !== D.$('#view')) D.$('#view').appendChild(c);
+    const target = el.querySelector('.bk') || el, r = target.getBoundingClientRect(), vr = D.$('#view').getBoundingClientRect();
+    if (r.bottom < vr.top + 60 || r.top > vr.bottom) { c.hidden = true; return; }
+    c.hidden = false;
+    c.style.transform = 'translate(' + Math.round(r.left - vr.left) + 'px,' + Math.round(r.top - vr.top) + 'px)';
+    c.style.width = Math.round(r.width) + 'px'; c.style.height = Math.round(r.height) + 'px';
+  }
+  const placeSoon = () => { if (!curRaf) curRaf = requestAnimationFrame(placeCursor); };
+  D.on('focus', placeSoon);
+  document.addEventListener('scroll', placeSoon, { capture: true, passive: true });
+  addEventListener('resize', placeSoon);
+  D.on('desk', placeSoon);
+  setInterval(placeSoon, 400); // (rows that glide into place after a press)
 
   // what the big words over the world say when one of these is focused
   TV.spot = function (key) {
+    if (key.startsWith('nw:')) {
+      if (key === 'nw:add') return { kick: 'News', name: 'Add a channel', line: 'Any YouTube channel that streams live, like your local news. In the Channels guide.' };
+      const c = D.channels.find(key.slice(3));
+      return { kick: 'News · channel ' + (D.channels.all().findIndex((x) => x.id === c.id) + 1), name: c.name, line: c.line + ' Live, in YouTube\'s own player.', c: c.c };
+    }
     if (key.startsWith('lv:')) {
       if (key === 'lv:all') return { kick: 'Live', name: 'Channels', line: 'A fireplace, an aquarium, rain, the northern lights, space, every world and every city. Up and down change channel; numbers jump.' };
       const c = D.channels.find(key.slice(3));

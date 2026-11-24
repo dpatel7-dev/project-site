@@ -18,7 +18,7 @@
     brightness: dev.backlight ? 0.9 : null, battery: dev.battery ? { percent: 76, charging: false } : null,
     settings: cfg.settings || {},
   };
-  window.DICE_SYS = { token: 'emulator', version: cfg.version || '1.7.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
+  window.DICE_SYS = { token: 'emulator', version: cfg.version || '1.8.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
   const NETS = [[cfg.wifi && cfg.wifi.ssid ? cfg.wifi.ssid : 'Home', 84, true], ['Upstairs 5G', 61, true], ['Library Guest', 42, false], ['Printer-4F2A', 23, true]];
   const tell = (msg) => { try { parent.postMessage(Object.assign({ dice: 'emu' }, msg), location.origin); } catch (e) { /* not in the emulator after all */ } };
   const reply = (data, status) => new Response(JSON.stringify(data), { status: status || 200, headers: { 'Content-Type': 'application/json' } });

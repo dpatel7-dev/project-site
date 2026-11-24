@@ -129,7 +129,7 @@
     const v = val(), shown = K.field.type === 'password' ? '•'.repeat(v.length) : v;
     const t = box.querySelector('.osk-text');
     t.innerHTML = shown ? esc(shown.slice(0, K.caret)) + '<i class="osk-caret"></i>' + esc(shown.slice(K.caret)) : '<span class="osk-ph">' + esc(K.field.placeholder || K.field.getAttribute('aria-label') || 'Type here') + '</span><i class="osk-caret"></i>';
-    box.querySelector('.osk-help').innerHTML = D.btn('x') + ' delete &nbsp; ' + D.btn('b') + ' close';
+    box.querySelector('.osk-help').innerHTML = D.btn('x') + ' delete &nbsp; ' + D.btn('y') + ' space &nbsp; ' + D.btn('b') + ' close &nbsp; <span class="osk-kb">Or just type on a keyboard</span>';
   }
   function paintKeys(focusKey) {
     const keys = box.querySelector('.osk-keys');
@@ -199,7 +199,35 @@
     if (a === 'menu') { K.close(true); return true; }
     return true;
   };
-  const wanted = () => (D.state.osk || 'auto') === 'always' || ((D.state.osk || 'auto') !== 'never' && (D.input.source === 'pad' || D.input.source === 'remote'));
+  // When it comes up by itself: on DiceTV whatever you point with (a remote, an air mouse,
+  // a controller), and on the desktop with a remote or a controller, until you type on a
+  // real keyboard (like the one on the back of an air mouse). Then it keeps out of the way
+  // for half an hour, and comes back if you stop.
+  K.hwAt = 0;
+  K.hwRecent = () => Date.now() - K.hwAt < 30 * 60000;
+  const mode = () => D.state.osk || 'auto';
+  const wanted = () => {
+    const m = mode();
+    if (m === 'never') return false;
+    if (m === 'always') return true;
+    if (K.hwRecent()) return false;
+    return !(D.desk && D.desk.on) || D.input.source === 'pad' || D.input.source === 'remote';
+  };
+  K.wanted = wanted;
+  // a letter typed on a real keyboard: put the on-screen one away, and keep the letter
+  D.keyFirst.push((e) => {
+    if (!e.isTrusted || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1 || /\d/.test(e.key)) return false;
+    const fresh = !K.hwRecent();
+    K.hwAt = Date.now();
+    if (!K.open || !K.field || !K.field.isConnected) return false;
+    e.preventDefault(); e.stopPropagation();
+    const f = K.field, ch = e.key;
+    K.close(false);
+    try { f.setRangeText(ch, f.selectionStart, f.selectionEnd, 'end'); } catch (x) { if (f.isContentEditable) f.textContent += ch; else f.value += ch; }
+    f.dispatchEvent(new Event('input', { bubbles: true }));
+    if (fresh) R.osd('keys', 'Typing on your keyboard: the on-screen one stays away');
+    return true;
+  });
   // moving onto a box with the arrows doesn't open it; pressing OK on it does
   let moving = false;
   const move0 = D.nav.move;
@@ -214,7 +242,8 @@
   const fire0 = D.input.fire;
   D.input.fire = function (a, src) {
     if (K.open) { if (!K.field || !K.field.isConnected) K.close(false); else { K.action(a); return; } }
-    if (a === 'a' && (src === 'pad' || src === 'remote' || D.input.source === 'pad' || D.input.source === 'remote') && D.state.osk !== 'never' && isField(D.nav.el) && !D.booting && !D.asleep) { K.show(D.nav.el); return; }
+    // (Enter in a box you're already typing in means "done", not "show the keyboard")
+    if (a === 'a' && wanted() && isField(D.nav.el) && !D.booting && !D.asleep && !(src === 'keys' && document.activeElement === D.nav.el)) { K.show(D.nav.el); return; }
     return fire0.call(D.input, a, src);
   };
 

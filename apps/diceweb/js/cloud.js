@@ -92,6 +92,7 @@
     home: Object.assign(whole(() => D.state.home || null, (v) => { if (v) D.state.home = v; }), { name: 'Dice Home', legacy: () => D.state.home || null }),
     watch: Object.assign(whole(() => (Array.isArray(D.state.watch) ? D.state.watch : null), (v) => { if (Array.isArray(v)) D.state.watch = v; }), { name: 'The Watch list on DiceTV' }),
     widgets: Object.assign(whole(() => (Array.isArray(D.state.widgets) ? D.state.widgets : null), (v) => { if (Array.isArray(v)) D.state.widgets = v; }), { name: 'Desktop widgets and sticky notes' }),
+    news: Object.assign(whole(() => (Array.isArray(D.state.news) ? D.state.news : null), (v) => { if (Array.isArray(v)) D.state.news = v; }), { name: 'News channels you added' }),
   };
   C.SECTIONS = SECTIONS;
   C.what = 'your notes, Axiom, SereneTab, Dice Home, the Watch list, your widgets, your name and the look';

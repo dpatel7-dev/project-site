@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.8.0
+
+- DiceTV has a look of its own now, instead of rows of tiles like every other TV:
+  - Your world fills the whole screen.
+  - The time and today (weather, what's due, music, the sleep timer, the next alarm) run down a glass column on the left.
+  - Your apps stand in the world as solid little blocks.
+  - Go down and you go underground, into the soil (or sand, or snow) of your world, where the rows are: Live, News and Watch, each with its name on the left.
+  - What's picked gets a pixel-art frame that moves to it, like a game's menu.
+  - The Library uses the same blocks.
+- News channels: ABC News Live, NBC News NOW, CBS News 24/7, BBC News, Sky News, DW News, France 24, Al Jazeera English and Bloomberg Television.
+  - Each is that channel's own round-the-clock live stream, in YouTube's own player.
+  - They're on a News row on Home and in Channels after the pictures, numbered 22 and up, so CH + and −, the numbers and the guide work as for any channel.
+  - Play and pause on a remote pause the news. Add any other YouTube channel that streams live (your local news, say) by its channel ID, and Dice Cloud shares the ones you add.
+- Watch tiles show each site's own icon on its colour, with a soft glow of it behind. The icons are fetched from the internet; with no internet, the tiles show letters. HBO Max, Hulu and Tubi are there too, and adding one offers Apple TV, Peacock, Paramount+, Crunchyroll, Pluto TV and YouTube Music before "Something else".
+- The on-screen keyboard comes up on DiceTV whenever you pick a box to type in, with a remote, an air mouse or a controller. Start typing on a real keyboard (like the one on the back of an air mouse) and it gets out of the way, keeping what you typed, and stays away while you use the keyboard.
+
 ## 1.7.0
 
 - Dice Cloud, much more of it:

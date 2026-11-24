@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.0
+
+- DiceWeb 1.8:
+  - DiceTV has its own look: your world full screen, a clock-first column, apps as blocks, and the rows underground with a pixel-art frame on what's picked.
+  - News channels (ABC, NBC, CBS, BBC, Sky, DW, France 24, Al Jazeera, Bloomberg), as their own live streams in YouTube's player.
+  - Watch tiles with each site's own icon.
+  - An on-screen keyboard that steps aside when you type on a real one.
+
 ## 1.7.0
 
 - Air mice (like the iPazzPort remote with a keyboard on the back) and media keyboards. Their power button no longer switches the whole computer off:

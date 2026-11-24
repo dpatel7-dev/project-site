@@ -148,7 +148,7 @@
         pane.appendChild(test);
         const off = D.on('remote', (r) => { const el = test.querySelector('.rm-last'); if (el && el.isConnected) el.textContent = 'You pressed ' + r.key + (r.key !== r.a ? ' (' + r.a + ')' : '') + '.'; else off(); });
         pane.appendChild(row('Show buttons as', 'What the hints at the bottom of the screen look like.', seg([['auto', 'By what you use'], ['keys', 'Keyboard'], ['pad', 'Controller'], ['remote', 'TV remote']], D.state.btns || 'auto', (v) => { D.set('btns', v); D.legend.update(); }, 'rm:btns')));
-        pane.appendChild(row('On-screen keyboard', 'For typing with a remote or a controller. It comes up when you press OK on a box to type in. If your remote has a keyboard on the back, pick Never.', seg([['auto', 'With a remote or controller'], ['always', 'Always'], ['never', 'Never']], D.state.osk || 'auto', (v) => D.set('osk', v), 'rm:osk')));
+        pane.appendChild(row('On-screen keyboard', 'Comes up when you pick a box to type in on DiceTV. Type on a real keyboard (like the one on the back of an air mouse) and it gets out of the way by itself.', seg([['auto', 'Until I type on a keyboard'], ['always', 'Always'], ['never', 'Never']], D.state.osk || 'auto', (v) => D.set('osk', v), 'rm:osk')));
         // air mice: a remote you point at the screen, often with a keyboard on the back
         const air = D.air.get();
         pane.appendChild(h('<h3 style="margin:22px 0 4px">Air mouse</h3>'));

@@ -1,8 +1,9 @@
 // Channels: live pictures to leave on, like TV channels. A crackling fireplace,
 // an aquarium, rain on a window at night, the northern lights, deep space, every
 // world and every city. They're drawn here as they play, so there's nothing to
-// download and they never run out. Up and down (or CH + and CH −, or a number)
-// change channel; OK or Info shows the guide; play puts Dice Radio on.
+// download and they never run out. Then the news: the 24-hour live streams news
+// channels put on YouTube themselves, in YouTube's own player. Up and down (or
+// CH + and CH −, or a number) change channel; OK shows the guide.
 // D.channels.make() is used elsewhere too (Axiom's study sessions).
 (function () {
   'use strict';
@@ -268,7 +269,25 @@
   ].concat(Object.keys(WORLD_NAMES).map((w) => ({ id: 'w:' + w, name: WORLD_NAMES[w], line: 'One of DiceOS\'s worlds, as the day goes by.', c: (D.WORLDS && D.WORLDS[w]) || '#7cc4ff', world: w })))
     .concat(Object.keys(CITY_NAMES).map((c) => ({ id: 'c:' + c, name: CITY_NAMES[c], line: 'The skyline, live under its own sky.', c: '#d4a857', city: c })));
   const CH = D.channels = { LIST };
-  CH.find = (id) => LIST.find((c) => c.id === id) || LIST[0];
+  // ---- the news: each channel's own round-the-clock stream on YouTube ----------------------------------------
+  // (live_stream?channel= always plays whatever that channel has live right now)
+  CH.NEWS = [
+    { id: 'n:abc', mono: 'ABC', name: 'ABC News Live', yt: 'UCBi2mrWuNuyYy4gbM6fU18Q', site: 'abcnews.go.com', c: '#2a3d8f', line: 'Breaking news and live events from the U.S.' },
+    { id: 'n:nbc', mono: 'NBC', name: 'NBC News NOW', yt: 'UCeY0bbntWzzVIaj2z3QigXg', site: 'nbcnews.com', c: '#4a3c9c', line: 'News from NBC, live all day.' },
+    { id: 'n:cbs', mono: 'CBS', name: 'CBS News 24/7', yt: 'UC8p1vwvWtl6T73JiExfWs1g', site: 'cbsnews.com', c: '#1f2a44', line: 'CBS News\'s round-the-clock stream.' },
+    { id: 'n:bbc', mono: 'BBC', name: 'BBC News', yt: 'UC16niRr50-MSBwiO3YDb3RA', site: 'bbc.com', c: '#a3171d', line: 'The BBC News channel, from London.' },
+    { id: 'n:sky', mono: 'Sky', name: 'Sky News', yt: 'UCoMdktPbSTixAyNGwb-UYkQ', site: 'news.sky.com', c: '#b3121f', line: 'British and world news.' },
+    { id: 'n:dw', mono: 'DW', name: 'DW News', yt: 'UCknLrEdhRCp1aegoMqRaCZg', site: 'dw.com', c: '#0a5aa4', line: 'World news from Germany, in English.' },
+    { id: 'n:f24', mono: 'F24', name: 'France 24 English', yt: 'UCQfwfsi5VrQ8yKZ-UWmAEFg', site: 'france24.com', c: '#1b8fc0', line: 'World news from Paris, in English.' },
+    { id: 'n:aje', mono: 'AJE', name: 'Al Jazeera English', yt: 'UCNye-wNBqNL5ZzHSJj3l8Bg', site: 'aljazeera.com', c: '#c4862a', line: 'World news from Doha.' },
+    { id: 'n:bbg', mono: 'BTV', name: 'Bloomberg Television', yt: 'UCIALMKvObZNtJ6AmdCLP7Lg', site: 'bloomberg.com', c: '#2b2b2b', line: 'Business and markets.' },
+  ];
+  // yours too: any YouTube channel that streams live, by its channel ID (UC…)
+  CH.news = () => CH.NEWS.concat((Array.isArray(D.state.news) ? D.state.news : []).map((n) => Object.assign({ c: '#5a6270', line: 'A channel you added.', mine: true }, n, { id: 'n:' + n.yt })));
+  CH.all = () => LIST.concat(CH.news());
+  CH.ytId = (s) => { const m = /(UC[\w-]{22})/.exec(String(s || '')); return m ? m[1] : null; };
+  CH.embed = (yt) => 'https://www.youtube.com/embed/live_stream?channel=' + encodeURIComponent(yt) + '&autoplay=1&rel=0&playsinline=1&enablejsapi=1&origin=' + encodeURIComponent(location.origin);
+  CH.find = (id) => CH.all().find((c) => c.id === id) || LIST[0];
   // a picture W × H pixels wide: draw(g, seconds)
   CH.make = function (id, W, H) {
     const c = CH.find(id);
@@ -282,47 +301,104 @@
   // ---- the app -------------------------------------------------------------------------------------------------
   D.register({ id: 'channels', mount(root, ctx) {
     root.classList.add('chn');
-    root.innerHTML = '<canvas class="ch-cv"></canvas><div class="ch-banner glass" hidden></div><div class="ch-guide glass" hidden role="dialog" aria-label="Channel guide"><h2>Channels</h2><div class="ch-list" data-row></div></div><div class="ch-bar"><button class="b small" data-nav data-key="ch:prev" aria-label="Previous channel">' + D.glyph('prev', 2) + '</button><button class="b small" data-nav data-key="ch:guide">Guide</button><button class="b small" data-nav data-key="ch:next" aria-label="Next channel">' + D.glyph('next', 2) + '</button><button class="b small" data-nav data-key="ch:radio">' + D.glyph('music', 2) + '<span>Dice Radio</span></button></div>';
-    const cv = root.querySelector('.ch-cv'), g = cv.getContext('2d'), banner = root.querySelector('.ch-banner'), guide = root.querySelector('.ch-guide');
-    let idx = Math.max(0, LIST.findIndex((c) => c.id === (ctx.arg || D.state.channel))), scene = null, key = '', bannerT = 0, digits = '', digitT = 0, last = 0;
-    const cur = () => LIST[idx];
+    root.innerHTML = '<canvas class="ch-cv"></canvas><div class="ch-yt" hidden></div><div class="ch-banner glass" hidden></div><div class="ch-guide glass" hidden role="dialog" aria-label="Channel guide"><h2>Channels</h2><div class="ch-list" data-row></div></div><div class="ch-bar"><button class="b small" data-nav data-key="ch:prev" aria-label="Previous channel">' + D.glyph('prev', 2) + '</button><button class="b small" data-nav data-key="ch:guide">Guide</button><button class="b small" data-nav data-key="ch:next" aria-label="Next channel">' + D.glyph('next', 2) + '</button><button class="b small" data-nav data-key="ch:radio">' + D.glyph('music', 2) + '<span>Dice Radio</span></button></div>';
+    const cv = root.querySelector('.ch-cv'), g = cv.getContext('2d'), banner = root.querySelector('.ch-banner'), guide = root.querySelector('.ch-guide'), yt = root.querySelector('.ch-yt');
+    let all = CH.all();
+    let idx = Math.max(0, all.findIndex((c) => c.id === (ctx.arg || D.state.channel))), scene = null, key = '', bannerT = 0, digits = '', digitT = 0, last = 0, ytPaused = false;
+    const cur = () => all[idx];
     function showBanner(sticky) {
       const c = cur(), now = M.now;
-      banner.innerHTML = '<b class="ch-num" style="--c:' + c.c + '">' + (idx + 1) + '</b><div><b class="ch-name">' + esc(c.name) + '</b><span>' + esc(c.line) + '</span><small>' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + (now && now.playing ? ' · Dice Radio: ' + esc(now.name) : ' · Press ' + D.btn('a') + ' for the guide') + '</small></div>';
+      const extra = c.yt ? 'Live on YouTube · <span class="bt bt-keys">▶︎ ⏸</span> pauses · ' + D.btn('a') + ' guide' : (now && now.playing ? 'Dice Radio: ' + esc(now.name) : 'Press ' + D.btn('a') + ' for the guide');
+      banner.innerHTML = '<b class="ch-num" style="--c:' + c.c + '">' + (idx + 1) + '</b><div><b class="ch-name">' + (c.yt ? '<i class="ch-live">Live</i>' : '') + esc(c.name) + '</b><span>' + esc(c.line) + '</span><small>' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' · ' + extra + '</small></div>';
       banner.hidden = false; banner.classList.add('on');
       clearTimeout(bannerT);
       if (!sticky) bannerT = setTimeout(() => { banner.classList.remove('on'); setTimeout(() => { if (!banner.classList.contains('on')) banner.hidden = true; }, 400); }, 4200);
     }
+    // a news channel plays in YouTube's own player; the pictures are drawn here
+    function stage() {
+      const c = cur();
+      if (c.yt) {
+        if (yt.dataset.yt !== c.yt) {
+          yt.dataset.yt = c.yt; ytPaused = false;
+          yt.innerHTML = '<iframe title="' + esc(c.name) + '" src="' + esc(CH.embed(c.yt)) + '" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe><p class="ch-yt-note">If it says the stream is offline, ' + esc(c.name) + ' isn\'t live right now: try another.</p>';
+          if (M.now && M.now.playing) M.pause(); // not two things talking at once
+        }
+        yt.hidden = false; cv.hidden = true; root.classList.add('ch-news');
+      } else {
+        if (yt.dataset.yt) { yt.innerHTML = ''; yt.dataset.yt = ''; }
+        yt.hidden = true; cv.hidden = false; root.classList.remove('ch-news');
+      }
+    }
+    const ytSay = (func, args) => { const f = yt.querySelector('iframe'); if (f && f.contentWindow) f.contentWindow.postMessage(JSON.stringify({ event: 'command', func, args: args || [] }), 'https://www.youtube.com'); };
+    // the remote keeps working after a click in YouTube's player: keys come back here
+    const onBlur = () => setTimeout(() => { if (document.activeElement && yt.contains(document.activeElement) && root.isConnected) { const b = root.querySelector('[data-key="ch:guide"]'); if (b) b.focus({ preventScroll: true }); } }, 0);
+    addEventListener('blur', onBlur);
     function tune(i, quiet) {
-      idx = (i + LIST.length) % LIST.length; key = '';
+      all = CH.all();
+      idx = (i + all.length) % all.length; key = '';
       D.state.channel = cur().id; D.save();
       if (!quiet) S.play('tab');
       ctx.setTitle(cur().name + ' · Channels');
+      stage();
       showBanner();
       paintGuide();
     }
     function paintGuide() {
       const list = guide.querySelector('.ch-list');
       list.innerHTML = '';
-      LIST.forEach((c, i) => {
-        const b = h('<button class="ch-item' + (i === idx ? ' on' : '') + '" data-nav data-key="ch:' + c.id + '" style="--c:' + c.c + '"><b>' + (i + 1) + '</b><span>' + esc(c.name) + '</span></button>');
+      all.forEach((c, i) => {
+        if (i === 0) list.appendChild(h('<h3 class="ch-group">Pictures</h3>'));
+        if (c.yt && !(all[i - 1] || {}).yt) list.appendChild(h('<h3 class="ch-group">News, live</h3>'));
+        const b = h('<button class="ch-item' + (i === idx ? ' on' : '') + '" data-nav data-key="ch:' + esc(c.id) + '" style="--c:' + c.c + '"' + (c.mine ? ' data-x="Remove"' : '') + '><b>' + (i + 1) + '</b><span>' + esc(c.name) + '</span></button>');
         b.onclick = () => { tune(i); closeGuide(); };
+        if (c.mine) b._x = () => removeNews(c);
         list.appendChild(b);
       });
+      const add = h('<button class="ch-item ch-add" data-nav data-key="ch:addnews"><b>+</b><span>Add a news channel</span></button>');
+      add.onclick = addNews;
+      list.appendChild(add);
+    }
+    async function addNews() {
+      const r = await D.ask({ title: 'Add a news channel', text: 'Any YouTube channel that streams live, like your local news. Paste its channel link or ID: it starts with UC (on YouTube: the channel, then About, then Share channel, then Copy channel ID).', input: { label: 'Channel ID or link', placeholder: 'UC…' }, buttons: [{ label: 'Next', value: true, go: true }, { label: 'Cancel', value: false }] });
+      if (!r || !r.value) return;
+      const id = CH.ytId(r.value);
+      if (!id) return D.toast({ icon: 'tv', c: '#e5534b', title: 'That isn\'t a channel ID', text: 'It starts with UC and is 24 letters long.' });
+      const n = await D.ask({ title: 'What\'s it called?', input: { label: 'Name', placeholder: 'My local news' }, buttons: [{ label: 'Add it', value: true, go: true }, { label: 'Cancel', value: false }] });
+      if (!n) return;
+      const list = Array.isArray(D.state.news) ? D.state.news.slice() : [];
+      if (!list.some((x) => x.yt === id)) list.push({ yt: id, name: (n.value || '').trim().slice(0, 30) || 'News' });
+      D.set('news', list);
+      all = CH.all();
+      tune(all.findIndex((c) => c.yt === id));
+      closeGuide();
+    }
+    async function removeNews(c) {
+      const ok = await D.ask({ title: 'Take ' + c.name + ' off?', buttons: [{ label: 'Take it off', value: true, go: true }, { label: 'Keep it', value: false }] });
+      if (!ok) return;
+      D.set('news', (D.state.news || []).filter((x) => x.yt !== c.yt));
+      const was = cur().id;
+      all = CH.all(); idx = Math.max(0, all.findIndex((x) => x.id === was)); if (idx < 0) idx = 0;
+      tune(idx, true); openGuide();
     }
     const guideOpen = () => !guide.hidden;
-    function openGuide() { guide.hidden = false; banner.hidden = true; D.nav.focus(guide.querySelector('.ch-item.on') || guide.querySelector('[data-nav]')); S.play('open'); }
+    function openGuide() {
+      paintGuide(); guide.hidden = false; banner.hidden = true;
+      const on = guide.querySelector('.ch-item.on') || guide.querySelector('[data-nav]');
+      D.nav.focus(on, { scroll: false }); on.scrollIntoView({ block: 'center' });
+      S.play('open');
+    }
     function closeGuide() { guide.hidden = true; if (D.nav.el && guide.contains(D.nav.el)) D.nav.focus(root.querySelector('[data-key="ch:guide"]'), { scroll: false }); }
     root.querySelector('[data-key="ch:prev"]').onclick = () => tune(idx - 1);
     root.querySelector('[data-key="ch:next"]').onclick = () => tune(idx + 1);
     root.querySelector('[data-key="ch:guide"]').onclick = () => (guideOpen() ? closeGuide() : openGuide());
-    root.querySelector('[data-key="ch:radio"]').onclick = () => { if (M.now) M.toggle(); else M.play('radio', 0); setTimeout(() => showBanner(), 50); };
+    root.querySelector('[data-key="ch:radio"]').onclick = () => { if (cur().yt) { ytSay('pauseVideo'); ytPaused = true; } if (M.now) M.toggle(); else M.play('radio', 0); setTimeout(() => showBanner(), 50); };
     cv.addEventListener('click', () => (guideOpen() ? closeGuide() : showBanner()));
     paintGuide();
     tune(idx, true);
     ctx.legend([['a', 'Guide'], ['rb', 'Next channel'], ['x', 'Info'], ['b', 'Back']]);
     return {
       frame(now) {
+        if (cur().yt) return;
         const cell = CH.cell(), W = Math.ceil(root.clientWidth / cell), H = Math.ceil(root.clientHeight / cell);
         if (!W || !H) return;
         const k = cur().id + W + 'x' + H + (cur().world ? D.night() : '');
@@ -333,24 +409,27 @@
       },
       onAction(a) {
         if (guideOpen()) {
-          if (a === 'b' || a === 'x') { closeGuide(); return true; }
-          if (a === 'up' || a === 'down') { D.nav.move(a); return true; }
+          if (a === 'b') { closeGuide(); return true; }
+          if (a === 'x') { if (D.nav.el && D.nav.el._x) D.nav.el._x(); else closeGuide(); return true; }
+          if (a === 'up' || a === 'down') { D.nav.move(a); if (D.nav.el && guide.contains(D.nav.el)) D.nav.el.scrollIntoView({ block: 'nearest' }); return true; }
           if (a === 'a') { D.nav.press(); return true; }
           return true;
         }
         if (/^d\d$/.test(a)) {
           clearTimeout(digitT); digits = (digits + a[1]).slice(-2);
           if (D.remote) D.remote.osd('tv', 'Channel ' + digits + '…');
-          digitT = setTimeout(() => { const n = +digits; digits = ''; if (n >= 1 && n <= LIST.length) tune(n - 1); }, digits.length >= 2 ? 300 : 1300);
+          digitT = setTimeout(() => { const n = +digits; digits = ''; if (n >= 1 && n <= all.length) tune(n - 1); }, digits.length >= 2 ? 300 : 1300);
           return true;
         }
+        // on a news channel, play and pause go to YouTube's player
+        if (cur().yt && (a === 'play' || a === 'stop')) { ytPaused = a === 'stop' ? true : !ytPaused; ytSay(ytPaused ? 'pauseVideo' : 'playVideo'); if (D.remote) D.remote.osd(ytPaused ? 'pause' : 'play', cur().name); return true; }
         if (a === 'up' || a === 'rb') { tune(idx + 1); return true; }
         if (a === 'down' || a === 'lb') { tune(idx - 1); return true; }
         if (a === 'a') { openGuide(); return true; }
         if (a === 'x' || a === 'left' || a === 'right') { showBanner(); return true; }
         return false;
       },
-      unmount() { clearTimeout(bannerT); clearTimeout(digitT); },
+      unmount() { clearTimeout(bannerT); clearTimeout(digitT); removeEventListener('blur', onBlur); yt.innerHTML = ''; },
     };
   } });
 })();

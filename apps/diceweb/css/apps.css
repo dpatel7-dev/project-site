@@ -604,3 +604,13 @@ html[data-input="pad"] .dca-dev, html[data-input="remote"] .dca-dev { width: 240
 .cd-status .cd-msg { flex: 1; color: #9ad27a; }
 .cd-status .b { padding: 6px 12px; }
 @media (max-width: 760px) { .cda { grid-template-columns: 1fr; } .cd-side { display: none; } }
+
+/* Channels: the news, in YouTube's own player */
+.chn .ch-yt { position: absolute; inset: 0; background: #000; }
+.chn .ch-yt iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.chn .ch-yt-note { position: absolute; left: 0; right: 0; top: 50%; margin: 0; text-align: center; color: #8a8f99; font-size: .9rem; z-index: -1; }
+.ch-live { display: inline-block; margin-right: 10px; padding: 3px 8px 4px; border-radius: 6px; background: #e5484d; color: #fff; font: 700 .72rem/1 var(--read); font-style: normal; vertical-align: 4px; letter-spacing: .02em; }
+.ch-group { margin: 12px 6px 4px; font: 700 .8rem/1 var(--read); color: var(--muted); }
+.ch-group:first-child { margin-top: 2px; }
+.ch-add b { background: transparent !important; color: var(--ink) !important; box-shadow: inset 0 0 0 2px var(--line); }
+.chn.ch-news .ch-banner { bottom: auto; top: 5%; }

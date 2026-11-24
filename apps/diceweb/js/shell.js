@@ -1,5 +1,5 @@
 // The shell: DiceTV (it used to be called Big screen). The boot screen, the top bar, Home (with
-// the Today and Watch rows from tv.js), Library, each app's own page, the menu on the left,
+// the Now column and the Live, News and Watch rows from tv.js), Library, each app's own page, the menu on the left,
 // Quick access on the right, search, and running apps full screen.
 (function () {
   'use strict';
@@ -15,7 +15,7 @@
   // Behind Big screen: the world you picked, as a calm landscape across the top of the screen.
   // It stays the same as you move between apps; only the accent colour follows what's focused.
   Hero.size = function () {
-    const cell = D.scapeCell(), vh = Math.round(innerHeight * 0.66);
+    const cell = D.scapeCell(), vh = Math.round(innerHeight * (Hero.tall ? 1 : 0.66));
     const W = Math.ceil(innerWidth / cell), H = Math.ceil(vh / cell);
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
     cv.style.width = W * cell + 'px'; cv.style.height = H * cell + 'px';
@@ -154,6 +154,7 @@
     $('#app').classList.remove('scrolled');
     page.addEventListener('scroll', () => $('#app').classList.toggle('scrolled', page.scrollTop > 24), { passive: true });
     $('#app').dataset.view = view.v;
+    if (Hero.tall !== (view.v === 'home')) { Hero.tall = view.v === 'home'; Hero.set(null); }
     $('#where').textContent = view.v === 'page' ? (D.app(view.arg) || {}).name || '' : TITLES[view.v];
     if (restore && view.scroll) page.scrollTop = view.scroll;
     const want = restore && view.focusKey ? page.querySelector('[data-key="' + CSS.escape(view.focusKey) + '"]') : null;
@@ -183,31 +184,46 @@
   Shell.statusClass = statusClass;
 
   const Views = Shell.views = {};
+  // DiceTV's Home, laid out like a table top: a clock-first column of what's happening
+  // today down the left, your apps as solid little blocks in the middle of the world,
+  // and below the grass, underground, the rows: Live, News and Watch.
+  function block(app, opts) {
+    opts = opts || {};
+    const el = h('<button class="dblock" data-nav data-key="' + esc((opts.key || 'r') + ':' + app.id) + '" data-hero="' + app.id + '" data-a="' + esc(opts.a || 'Open') + '" style="--tc:' + app.c + '" aria-label="' + esc(app.name) + '">' +
+      '<span class="bk"></span><span class="bn">' + esc(app.name) + '</span>' + (opts.flag ? '<span class="bflag">' + esc(opts.flag) + '</span>' : '') + '</button>');
+    el.querySelector('.bk').appendChild(G.appIconEl(app.id, 160));
+    el.onclick = opts.onclick || (() => D.launch(app.id, { from: el }));
+    if (opts.x) el.dataset.x = opts.x;
+    return el;
+  }
+  Shell.block = block;
   Views.home = function () {
-    const page = h('<div class="home"><section class="home-hero"><div class="spot" aria-live="polite"><div class="kicker"><span class="dot"></span><span id="sp-k"></span></div><h1 id="sp-name"></h1><p id="sp-line"></p><div class="facts" id="sp-facts"></div></div>' +
-      '<div class="row" data-row="snap" id="recent" data-block></div></section></div>');
-    const recent = page.querySelector('#recent');
+    const page = h('<div class="home tvb"><section class="tvb-top"><aside class="tvb-now glass" aria-label="Today"></aside>' +
+      '<div class="tvb-main"><div class="tvb-board" id="recent"></div>' +
+      '<div class="spot tvb-cap" aria-live="polite"><div class="kicker"><span class="dot"></span><span id="sp-k"></span></div><h1 id="sp-name"></h1><p id="sp-line"></p><div class="facts" id="sp-facts"></div></div></div></section>' +
+      '<section class="tvb-ground"></section></div>');
+    const board = page.querySelector('#recent');
     const run = D.running();
     const ids = [];
     if (run) ids.push(run.id);
-    D.state.recent.forEach((id) => { if (!ids.includes(id) && D.app(id)) ids.push(id); });
-    ['music', 'files', 'browser', 'terminal', 'notes', 'calendar', 'calculator'].forEach((id) => { if (ids.length < 7 && D.app(id) && !ids.includes(id)) ids.push(id); });
-    ids.forEach((id, i) => {
-      const app = D.app(id);
-      const live = run && run.id === id;
-      const t = tile(app, { size: i === 0 ? 'big' : '', key: 'r', flag: live ? 'Running' : '', live, a: live ? 'Resume' : 'Open', x: live ? 'Close' : '' });
-      if (live) t.onclick = () => D.launch(id, { from: t });
+    D.state.recent.forEach((id) => { if (!ids.includes(id) && D.app(id) && !D.app(id).suite) ids.push(id); });
+    ['music', 'channels', 'browser', 'calendar', 'weather', 'files', 'notes', 'photos'].forEach((id) => { if (ids.length < 7 && D.app(id) && !ids.includes(id)) ids.push(id); });
+    ids.slice(0, 7).forEach((id, i) => {
+      const app = D.app(id), live = run && run.id === id;
+      const t = block(app, { flag: live ? 'Running' : '', a: live ? 'Resume' : 'Open', x: live ? 'Close' : '' });
       if (i === 0) t.setAttribute('data-first', '');
-      recent.appendChild(t);
+      board.appendChild(t);
     });
-    const all = h('<button class="tile" data-nav data-key="r:all" data-a="Open" style="--tc:var(--ink)"><span class="name">Library<span class="sub">Everything, ' + tvApps().length + ' apps</span></span></button>');
-    const lib = G.canvas(40, 60), lg = lib.getContext('2d');
-    lg.fillStyle = D.night() ? '#121214' : '#f4f4f6'; lg.fillRect(0, 0, 40, 60);
-    tvApps().slice(0, 16).forEach((a, i) => { lg.fillStyle = a.c; lg.fillRect(5 + (i % 4) * 8, 6 + Math.floor(i / 4) * 9, 6, 7); });
-    lib.className = 'art'; all.prepend(lib);
+    const all = h('<button class="dblock" data-nav data-key="r:all" data-a="Open" style="--tc:#3a3f4b" aria-label="Library"><span class="bk"></span><span class="bn">Library</span></button>');
+    const lib = G.canvas(16, 16), lg = lib.getContext('2d');
+    lg.fillStyle = '#2b2f38'; lg.fillRect(0, 0, 16, 16);
+    tvApps().slice(0, 9).forEach((a, i) => { lg.fillStyle = a.c; lg.fillRect(2 + (i % 3) * 4.5, 2 + Math.floor(i / 3) * 4.5, 3, 3); });
+    lib.className = 'appicon libicon';
+    all.querySelector('.bk').appendChild(lib);
     all.onclick = () => Shell.go('library');
-    recent.appendChild(all);
-    D.tv.rows(page); // Today, then Watch
+    board.appendChild(all);
+    D.tv.now(page.querySelector('.tvb-now'));
+    D.tv.rows(page.querySelector('.tvb-ground'));
     return page;
   };
   // the big words over the world follow what's focused
@@ -215,7 +231,7 @@
     const k = $('#sp-k'); if (!k) return;
     const key = el.dataset.key || '';
     let app = D.app(el.dataset.hero), kick = '', name = '', line = '', facts = [];
-    if (key.startsWith('td:') || key.startsWith('w:') || key.startsWith('lv:')) {
+    if (key.startsWith('td:') || key.startsWith('w:') || key.startsWith('lv:') || key.startsWith('nw:')) {
       const s = D.tv.spot(key) || {};
       kick = s.kick || ''; name = s.name || ''; line = s.line || '';
       if (s.c) document.documentElement.style.setProperty('--c', s.c);
@@ -244,9 +260,9 @@
 
   // Library: every app on this screen, from A to Z
   Views.library = function () {
-    const page = h('<div><div class="lib-head"><h1 class="title">Library</h1></div><div class="grid" id="lib"></div></div>');
+    const page = h('<div class="tvb-lib"><div class="lib-head"><h1 class="title">Library</h1></div><div class="lib-blocks" id="lib"></div></div>');
     const grid = page.querySelector('#lib');
-    tvApps().sort((a, b) => a.name.localeCompare(b.name)).forEach((a, i) => { const t = tile(a, { key: 'l', flag: D.running() && D.running().id === a.id ? 'Running' : '', live: true }); if (i === 0) t.setAttribute('data-first', ''); grid.appendChild(t); });
+    tvApps().sort((a, b) => a.name.localeCompare(b.name)).forEach((a, i) => { const t = block(a, { key: 'l', flag: D.running() && D.running().id === a.id ? 'Running' : '' }); if (i === 0) t.setAttribute('data-first', ''); grid.appendChild(t); });
     return page;
   };
 

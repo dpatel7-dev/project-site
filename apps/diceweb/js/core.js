@@ -204,6 +204,7 @@
   // ---- Input: keyboard, controllers, mouse and touch -------------------------------
   // Everything becomes one of: up down left right a b x y lb rb menu quick search
   const Input = Dice.input = { source: 'keys', handler: null, pads: {} };
+  Dice.keyFirst = [];
   const KEYS = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', Enter: 'a', ' ': 'a', Escape: 'b', Backspace: 'b',
     m: 'menu', M: 'menu', q: 'quick', Q: 'quick', '/': 'search', x: 'x', X: 'x', y: 'y', Y: 'y', '[': 'lb', ']': 'rb', Tab: null };
   const typing = (el) => el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(range|checkbox|radio|button)$/i.test(el.type)) || el.isContentEditable);
@@ -218,6 +219,7 @@
   };
   window.addEventListener('keydown', (e) => {
     S.unlock();
+    if (Dice.keyFirst.some((f) => f(e))) return; // (the on-screen keyboard listens here for a real one)
     if (Dice.keyHook && Dice.keyHook(e)) return;
     const t = e.target;
     let action = null;
