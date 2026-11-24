@@ -6,6 +6,7 @@
   - logind is told to ignore a quick press (system/logind-dice.conf, put in /etc/systemd/logind.conf.d/). Holding it for 5 seconds still shuts down.
   - diced watches every keyboard-like device that has a power or sleep key (/dev/input) and passes the press to the desktop. There it sleeps DiceOS, asks first, or does nothing (Settings, Remotes).
   - The Raspberry Pi 5's own power button now sleeps DiceOS too.
+  - Computers that get 1.7 as an update get the rule too: diced puts it in place when it starts.
 - Chromium leaves the media keys (play, pause, next) to DiceOS instead of keeping them for itself, so they work everywhere.
 - diced reports DiceOS's real version (it always said 1.0.0).
 - DiceWeb 1.7:

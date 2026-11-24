@@ -1316,6 +1316,32 @@ def make_server(port, web, settings_path, verbose=False, host='127.0.0.1'):
     return srv
 
 
+def ensure_system_files(root=ROOT, etc='/etc'):
+    """Things outside /opt/dice that this version needs, for computers that got it as an
+    update (which only swaps /opt/dice): the rule that makes a remote's power button
+    sleep DiceOS instead of switching everything off. Says whether anything changed."""
+    src = os.path.join(root, 'system', 'logind-dice.conf')
+    dst = os.path.join(etc, 'systemd', 'logind.conf.d', 'dice.conf')
+    try:
+        with open(src, 'rb') as f:
+            want = f.read()
+        try:
+            with open(dst, 'rb') as f:
+                if f.read() == want:
+                    return False
+        except OSError:
+            pass
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        with open(dst, 'wb') as f:
+            f.write(want)
+        os.chmod(dst, 0o644)
+        if etc == '/etc':
+            run(['systemctl', 'kill', '-s', 'HUP', 'systemd-logind'], timeout=10)
+        return True
+    except OSError:
+        return False
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description='DiceOS\'s system helper: serves the DiceOS desktop and does the real things for it.')
     ap.add_argument('--port', type=int, default=int(os.environ.get('DICE_PORT', DEFAULTS['port'])))
@@ -1323,6 +1349,8 @@ def main(argv=None):
     ap.add_argument('--settings', default=os.environ.get('DICE_SETTINGS', DEFAULTS['settings']))
     ap.add_argument('--verbose', action='store_true')
     a = ap.parse_args(argv)
+    if hasattr(os, 'geteuid') and os.geteuid() == 0 and os.path.isdir('/etc/systemd'):
+        ensure_system_files()
     srv = make_server(a.port, a.web, a.settings, a.verbose)
     print('diced %s: the DiceOS desktop is at http://127.0.0.1:%d/' % (VERSION, a.port), flush=True)
     try:
