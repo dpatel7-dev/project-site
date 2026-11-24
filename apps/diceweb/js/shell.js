@@ -186,7 +186,7 @@
   const Views = Shell.views = {};
   // DiceTV's Home, laid out like a table top: a clock-first column of what's happening
   // today down the left, your apps as solid little blocks in the middle of the world,
-  // and below the grass, underground, the rows: Live, News and Watch.
+  // and below, on frosted glass over the world, the rows: Live, News and Watch.
   function block(app, opts) {
     opts = opts || {};
     const el = h('<button class="dblock" data-nav data-key="' + esc((opts.key || 'r') + ':' + app.id) + '" data-hero="' + app.id + '" data-a="' + esc(opts.a || 'Open') + '" style="--tc:' + app.c + '" aria-label="' + esc(app.name) + '">' +

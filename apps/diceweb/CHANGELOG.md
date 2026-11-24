@@ -6,7 +6,7 @@
   - Your world fills the whole screen.
   - The time and today (weather, what's due, music, the sleep timer, the next alarm) run down a glass column on the left.
   - Your apps stand in the world as solid little blocks.
-  - Go down and you go underground, into the soil (or sand, or snow) of your world, where the rows are: Live, News and Watch, each with its name on the left.
+  - Below them, on frosted glass over your world, are the rows: Live, News and Watch, each with its name on the left.
   - What's picked gets a pixel-art frame that moves to it, like a game's menu.
   - The Library uses the same blocks.
 - News channels: ABC News Live, NBC News NOW, CBS News 24/7, BBC News, Sky News, DW News, France 24, Al Jazeera English and Bloomberg Television.

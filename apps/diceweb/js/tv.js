@@ -251,39 +251,8 @@
     return s;
   }
 
-  // ---- underground: the rows sit in the ground of your world, under the grass (or sand, or snow) -----------
-  const STRATA = {
-    grass: ['#6fae4e', '#4f8a38', '#7a5434', '#5e4129', '#8d8e97'], gold: ['#c2a64a', '#94802f', '#7a5531', '#5c3f24', '#9a8f80'],
-    stone: ['#a3a5ad', '#7d7f88', '#5d5f69', '#43454d', '#8b8d96'], sand: ['#ecd59c', '#d6b877', '#c99f5f', '#a57c45', '#e8d9b0'],
-    snow: ['#f1f6fb', '#c9daea', '#9fb8d2', '#7894b4', '#e6eef7'], dune: ['#e8c27a', '#c99a52', '#b07c3e', '#8a5b2c', '#e2c58f'],
-  };
-  const KIND = { autumn: 'gold', city: 'stone', town: 'stone', beach: 'sand', ice: 'snow', snow: 'snow', desert: 'dune' };
-  function strata(el) {
-    const world = D.state.world || 'hills', s = STRATA[KIND[world] || 'grass'], night = D.night();
-    const dim = (hex, k) => { const n = parseInt(hex.slice(1), 16); return 'rgb(' + [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * k)).join(',') + ')'; };
-    const k = night ? 0.55 : 1;
-    let seed = [...world].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7);
-    const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-    // the edge: tufts on top, then a darker band
-    const e = G.canvas(16, 8), eg = e.getContext('2d');
-    eg.fillStyle = dim(s[0], k); eg.fillRect(0, 2, 16, 4);
-    [[1, 1], [2, 0], [3, 1], [6, 1], [9, 1], [10, 0], [13, 1]].forEach(([x, y]) => eg.fillRect(x, y, 1, 2 - y));
-    eg.fillStyle = dim(s[1], k); eg.fillRect(0, 5, 16, 1); [[2, 4], [7, 4], [12, 4]].forEach(([x, y]) => eg.fillRect(x, y, 1, 1));
-    eg.fillStyle = dim(s[2], k); eg.fillRect(0, 6, 16, 2); eg.fillStyle = dim(s[1], k); [[4, 6], [11, 6], [15, 6]].forEach(([x, y]) => eg.fillRect(x, y, 1, 1));
-    // the soil: specks and the odd pebble
-    const t = G.canvas(32, 32), tg = t.getContext('2d');
-    tg.fillStyle = dim(s[2], k); tg.fillRect(0, 0, 32, 32);
-    for (let i = 0; i < 46; i++) { tg.fillStyle = dim(i % 3 ? s[3] : s[1], k * (0.9 + rnd() * 0.2)); tg.fillRect(Math.floor(rnd() * 32), Math.floor(rnd() * 32), 1, 1); }
-    for (let i = 0; i < 3; i++) { const x = Math.floor(rnd() * 29), y = Math.floor(rnd() * 30); tg.fillStyle = dim(s[4], k * 0.8); tg.fillRect(x, y, 3, 2); tg.fillStyle = dim(s[4], k); tg.fillRect(x, y, 2, 1); }
-    const cell = Math.max(3, D.scapeCell ? D.scapeCell() + 1 : 3);
-    el.style.setProperty('--edge', 'url(' + e.toDataURL() + ')');
-    el.style.setProperty('--soil', 'url(' + t.toDataURL() + ')');
-    el.style.setProperty('--soilc', dim(s[2], k));
-    el.style.setProperty('--px', cell + 'px');
-  }
-
+  // the rows sit on frosted glass over your world
   TV.rows = function (ground) {
-    strata(ground);
     if (D.channels && D.app('channels')) { ground.append(liveRow()); ground.append(newsRow()); }
     ground.append(watchRow());
   };

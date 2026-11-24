@@ -490,7 +490,7 @@ html[data-fit] body { transform: scale(var(--fit)); transform-origin: 50% 50%; b
 
 /* ---------- DiceTV's Home: a table top ----------
    The time and today down the left, your apps as solid little blocks standing in the
-   world, and under the grass (or sand, or snow) the rows: Live, News and Watch. What's
+   world, and below them on frosted glass the rows: Live, News and Watch. What's
    picked gets a pixel-art frame that moves to it, like a game's menu. */
 #app[data-view=home] #veil { background: linear-gradient(to right, color-mix(in srgb, var(--bg) 30%, transparent) 0, transparent 34%); }
 .page.tvb { padding-bottom: 0; }
@@ -527,17 +527,14 @@ html[data-fit] body { transform: scale(var(--fit)); transform-origin: 50% 50%; b
 .tvb-cap p { font-size: 1rem; }
 .tvb-cap .kicker { margin-bottom: 8px; }
 
-.tvb-ground { position: relative; margin-top: calc(var(--px) * 8); padding: 34px 0 150px; color: #fff; image-rendering: pixelated;
-  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .38) 100%), var(--soil) 0 0 / calc(var(--px) * 32) calc(var(--px) * 32) repeat, var(--soilc); }
-.tvb-ground::before { content: ""; position: absolute; left: 0; right: 0; top: calc(var(--px) * -8 + 1px); height: calc(var(--px) * 8); background: var(--edge) 0 0 / calc(var(--px) * 16) 100% repeat-x; }
-.tvb-ground > * { image-rendering: auto; }
+.tvb-ground { position: relative; padding: 120px 0 150px; margin-top: -60px; color: var(--ink);
+  background: color-mix(in srgb, var(--bg) 70%, transparent); -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 110px); mask-image: linear-gradient(to bottom, transparent 0, #000 110px); }
 .tvb-ground .shelf { display: grid; grid-template-columns: clamp(140px, 12vw, 210px) minmax(0, 1fr); align-items: center; margin-top: 30px; }
-.tvb-ground .shelf > h2 { display: block; margin: 0; padding-right: 18px; color: #fff; font-size: clamp(1.3rem, 1.8vw, 1.7rem); text-shadow: 0 3px 0 rgba(0, 0, 0, .3); }
-.tvb-ground .shelf > h2 small { display: block; margin-top: 8px; font: 600 .84rem/1.35 var(--read); color: rgba(255, 255, 255, .78); text-shadow: none; }
+.tvb-ground .shelf > h2 { display: block; margin: 0; padding-right: 18px; color: var(--ink); font-size: clamp(1.3rem, 1.8vw, 1.7rem); }
+.tvb-ground .shelf > h2 small { display: block; margin-top: 8px; font: 600 .84rem/1.35 var(--read); color: var(--muted); }
 .tvb-ground .row { margin: -14px calc(-1 * var(--gut)) -8px 0; padding: 14px var(--gut) 22px 6px; scroll-padding: 0 var(--gut) 0 6px; }
 .tvb .ltile.is-focus, .tvb .wtile.is-focus { transform: none; box-shadow: 0 14px 26px -20px rgba(0, 0, 0, .6); }
-.tvb-ground .wtile.add, .tvb-ground .ltile.lall { background: rgba(255, 255, 255, .14); color: #fff; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .28); }
-.tvb-ground .wtile.add .wname, .tvb-ground .ltile.lall .lname { color: #fff; }
 
 /* the frame that moves to what's picked */
 #tvcur { position: absolute; left: 0; top: 0; z-index: 5; box-sizing: border-box; border: 12px solid transparent; pointer-events: none; image-rendering: pixelated;
