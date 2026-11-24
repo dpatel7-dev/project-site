@@ -57,6 +57,18 @@
   /* the side: what's being tried, and what happened */
   .side { padding: 20px 20px 30px; overflow-y: auto; overflow-x: hidden; box-shadow: inset 1px 0 0 var(--line); display: flex; flex-direction: column; gap: 22px; }
   .side h2 { font: 700 1.25rem/1.1 var(--pixel); margin: 0 0 10px; }
+  .remote { margin: 12px auto 0; width: 210px; padding: 16px 14px 18px; border-radius: 34px; background: linear-gradient(180deg, #2a2b31, #1b1c21); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 18px 30px -18px rgba(0, 0, 0, .7); display: grid; gap: 10px; }
+  .remote button { border: 0; cursor: pointer; color: #e9e9ee; background: #34353c; font: 700 .78rem/1 var(--read); border-radius: 12px; padding: 9px 0; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .35); }
+  .remote button:active { transform: translateY(1px); box-shadow: none; }
+  .remote button:focus-visible { outline: 2px solid #e9e9ee; outline-offset: 2px; }
+  .remote .rrow { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; }
+  .remote .cols button { height: 12px; padding: 0; border-radius: 6px; background: var(--rc); }
+  .remote .dpad { position: relative; width: 150px; height: 150px; margin: 2px auto; border-radius: 50%; background: #2e2f36; }
+  .remote .dpad button { position: absolute; width: 46px; height: 46px; border-radius: 12px; background: transparent; box-shadow: none; font-size: .9rem; }
+  .remote .dpad .u { left: 52px; top: 4px; } .remote .dpad .d { left: 52px; bottom: 4px; } .remote .dpad .l { left: 4px; top: 52px; } .remote .dpad .r { right: 4px; top: 52px; }
+  .remote .dpad .ok { left: 45px; top: 45px; width: 60px; height: 60px; border-radius: 50%; background: #45464e; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .35); font-size: .9rem; }
+  .remote .digits { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .remote .digits button:last-child { grid-column: 2; }
   .side p { margin: 0; color: var(--muted); font-size: .92rem; }
   .src { display: grid; gap: 6px; }
   .src label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: start; padding: 10px 12px; border-radius: 12px; cursor: pointer; box-shadow: inset 0 0 0 1px var(--line); }
@@ -121,6 +133,19 @@
         <label><input type="radio" name="src" value="code"><b>A setup code</b><small>The code from Get a setup code.</small>
           <span class="more"><input type="text" id="code" maxlength="12" placeholder="Code" aria-label="Setup code" autocomplete="off" spellcheck="false"><button class="mini" type="button" id="getcode">Load</button></span></label>
         <label><input type="radio" name="src" value="none"><b>None</b><small>No dice.json: DiceOS asks its questions on the screen.</small></label>
+      </div>
+    </section>
+    <section>
+      <h2>TV remote</h2>
+      <p>Like your TV's own remote through the HDMI cable (HDMI-CEC). Try it on DiceTV.</p>
+      <div class="remote" id="remote" aria-label="Pretend TV remote">
+        <div class="rrow"><button data-a="home" data-k="Home">Home</button><button data-a="b" data-k="Back">Back</button><button data-a="menu" data-k="Menu">Menu</button></div>
+        <div class="dpad"><button class="u" data-a="up" data-k="Up" aria-label="Up">▲</button><button class="l" data-a="left" data-k="Left" aria-label="Left">◀</button><button class="ok" data-a="a" data-k="OK">OK</button><button class="r" data-a="right" data-k="Right" aria-label="Right">▶</button><button class="d" data-a="down" data-k="Down" aria-label="Down">▼</button></div>
+        <div class="rrow"><button data-a="x" data-k="Info">Info</button><button data-a="guide" data-k="Guide">Guide</button><button data-a="play" data-k="Play">▶︎ ⏸</button></div>
+        <div class="rrow cols"><button style="--rc:#e5484d" data-a="red" data-k="Red" aria-label="Red"></button><button style="--rc:#3fa26b" data-a="green" data-k="Green" aria-label="Green"></button><button style="--rc:#e5b62e" data-a="yellow" data-k="Yellow" aria-label="Yellow"></button><button style="--rc:#3a7bd5" data-a="blue" data-k="Blue" aria-label="Blue"></button></div>
+        <div class="rrow"><button data-a="rb" data-k="CH +">CH +</button><button data-a="volup" data-k="Vol +">Vol +</button></div>
+        <div class="rrow"><button data-a="lb" data-k="CH −">CH −</button><button data-a="voldown" data-k="Vol −">Vol −</button></div>
+        <div class="digits"><button data-a="d1" data-k="1">1</button><button data-a="d2" data-k="2">2</button><button data-a="d3" data-k="3">3</button><button data-a="d4" data-k="4">4</button><button data-a="d5" data-k="5">5</button><button data-a="d6" data-k="6">6</button><button data-a="d7" data-k="7">7</button><button data-a="d8" data-k="8">8</button><button data-a="d9" data-k="9">9</button><button data-a="d0" data-k="0">0</button></div>
       </div>
     </section>
     <section>
@@ -375,6 +400,13 @@
   setPower('off');
   fit();
 })();
+// the pretend TV remote: its buttons go to DiceOS as HDMI-CEC presses would
+document.querySelectorAll('#remote button').forEach((b) => {
+  b.addEventListener('click', () => {
+    const f = document.getElementById('os');
+    if (f && f.contentWindow) f.contentWindow.postMessage({ dice: 'remote', a: b.dataset.a, key: b.dataset.k }, location.origin);
+  });
+});
 </script>
 </body>
 </html>

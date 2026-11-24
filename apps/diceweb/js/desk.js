@@ -5,9 +5,10 @@
 (function () {
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, M = D.M, $ = D.$, esc = D.esc, h = D.h;
-  const Desk = D.desk = { on: false, wins: [], z: 10, world: null, last: 0 };
+  const Desk = D.desk = { on: false, wins: [], z: 10, world: null, last: 0, ws: 0 };
   const SIZES = { files: [900, 600], browser: [1060, 690], music: [880, 580], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [900, 620], pigeon: [1000, 680],
-    calculator: [330, 500], calendar: [1000, 660], clock: [560, 520], monitor: [760, 540] };
+    calculator: [330, 500], calendar: [1000, 660], clock: [560, 520], monitor: [760, 540],
+    channels: [960, 560], weather: [900, 660], photos: [980, 660], sketch: [920, 640] };
 
   let root, wall, wg;
   function build() {
@@ -133,7 +134,7 @@
   // ---- Windows -------------------------------------------------------------------------
   class Win {
     constructor(id, app, opts) {
-      this.id = id; this.app = app;
+      this.id = id; this.app = app; this.ws = Desk.ws; // which desktop it's on
       const [w, hh] = SIZES[id.replace('web:', '')] || [760, 520];
       const area = Desk.area();
       const n = Desk.wins.length;
@@ -159,21 +160,38 @@
       if (!D.reduced()) { this.el.classList.add('opening'); setTimeout(() => this.el.classList.remove('opening'), 260); }
     }
     place() {
-      const b = this.max ? Object.assign({ x: 0, y: 0 }, Desk.area()) : this.box;
+      const b = this.max ? Object.assign({ x: 0, y: 0 }, Desk.area()) : this.snap ? D.L.snapRect(this.snap, Desk.area()) : this.box;
       Object.assign(this.el.style, { left: b.x + 'px', top: b.y + 'px', width: b.w + 'px', height: b.h + 'px' });
       this.el.classList.toggle('max', !!this.max);
+      this.el.classList.toggle('snapped', !!this.snap);
       if (this.inst && this.inst.resize) this.inst.resize();
     }
     wire() {
       const head = this.el.querySelector('header');
+      // drag by the title; drop at an edge to snap (left, right, a corner, or the top for the whole screen)
       head.addEventListener('pointerdown', (e) => {
-        if (e.target.closest('button') || this.max) return;
+        if (e.target.closest('button') || e.button === 2) return;
         e.preventDefault();
         head.setPointerCapture(e.pointerId);
-        const sx = e.clientX - this.box.x, sy = e.clientY - this.box.y;
-        head.onpointermove = (ev) => { const a = Desk.area(); this.box.x = Math.max(-this.box.w + 80, Math.min(a.w - 80, ev.clientX - sx)); this.box.y = Math.max(0, Math.min(a.h - 40, ev.clientY - sy)); this.place(); };
-        head.onpointerup = () => { head.onpointermove = null; };
+        let sx = e.clientX - this.box.x, sy = e.clientY - this.box.y, moved = false, zone = null;
+        const x0 = e.clientX, y0 = e.clientY;
+        head.onpointermove = (ev) => {
+          if (!moved && Math.abs(ev.clientX - x0) + Math.abs(ev.clientY - y0) < 6) return;
+          if (!moved && (this.max || this.snap)) { // pull it out of a snap: back to its own size, under the pointer
+            const cur = this.el.getBoundingClientRect(), f = (x0 - cur.left) / cur.width;
+            this.max = false; this.snap = null; this.box.x = Math.round(x0 - this.box.w * f); this.box.y = Math.round(cur.top);
+            sx = x0 - this.box.x; sy = y0 - this.box.y;
+          }
+          moved = true;
+          const a = Desk.area();
+          this.box.x = Math.max(-this.box.w + 80, Math.min(a.w - 80, ev.clientX - sx)); this.box.y = Math.max(0, Math.min(a.h - 40, ev.clientY - sy));
+          this.place();
+          zone = D.state.snap === false ? null : D.L.edgeZone(ev.clientX, ev.clientY, a);
+          Desk.preview(zone);
+        };
+        head.onpointerup = () => { head.onpointermove = null; Desk.preview(null); if (moved && zone) this.snapTo(zone); };
       });
+      head.addEventListener('contextmenu', (e) => { e.preventDefault(); if (Desk.winMenu) Desk.winMenu(this, e.clientX, e.clientY); });
       head.addEventListener('dblclick', (e) => { if (!e.target.closest('button')) this.toggleMax(); });
       const grip = this.el.querySelector('.wgrip');
       grip.addEventListener('pointerdown', (e) => {
@@ -188,7 +206,9 @@
       this.el.querySelector('.wmin').onclick = () => this.minimise();
     }
     setTitle(t) { this.el.querySelector('.wt').textContent = t; }
-    toggleMax() { this.max = !this.max; this.place(); S.play('tab'); }
+    toggleMax() { this.max = !this.max; this.snap = null; this.place(); S.play('tab'); }
+    snapTo(zone) { if (zone === 'top') { this.max = true; this.snap = null; } else { this.max = false; this.snap = zone; } this.place(); S.play('tab'); }
+    unsnap() { this.max = false; this.snap = null; this.place(); S.play('tab'); }
     minimise() { this.min = true; this.el.hidden = true; this.task.classList.remove('on'); if (this.inst.pause) this.inst.pause(); S.play('close'); const t = Desk.top(); if (t) Desk.focus(t); }
     close() {
       this.account();
@@ -209,11 +229,13 @@
       p.classList.toggle('active', ws.includes(Desk.top()));
     });
   }
-  Desk.top = () => Desk.wins.filter((w) => !w.min).sort((a, b) => b.zi - a.zi)[0] || null;
+  Desk.top = () => Desk.wins.filter((w) => !w.min && w.ws === Desk.ws).sort((a, b) => b.zi - a.zi)[0] || null;
+  Desk.preview = function () {}; // deskplus.js shows where a window will snap
   Desk.focus = function (w) {
     if (!w) return;
+    if (w.ws !== Desk.ws && Desk.toDesktop) return Desk.toDesktop(w.ws, w);
     if (w.min) { w.min = false; w.el.hidden = false; if (w.inst.resume) w.inst.resume(); }
-    w.zi = ++Desk.z; w.el.style.zIndex = w.zi;
+    w.zi = ++Desk.z; w.el.style.zIndex = w.zi + (w.pinned ? 100000 : 0);
     Desk.wins.forEach((x) => { x.el.classList.toggle('active', x === w); x.task.classList.toggle('on', !x.min); x.task.classList.toggle('active', x === w); });
     dots();
     document.documentElement.style.setProperty('--c', w.app.c);
@@ -275,6 +297,7 @@
     }
     const w = Desk.top();
     if (w && w.inst.onAction && w.inst.onAction(a)) return;
+    if (D.remote && D.remote.global(a)) return;
     if (a === 'menu') return Desk.toggleStart();
     if (a === 'quick') return D.qam.open();
     if (a === 'b' && !root.querySelector('.start').hidden) return Desk.toggleStart(false);

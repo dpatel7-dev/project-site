@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.6.0
+
+- Numbers read clearly everywhere: the digits (clocks, temperatures, channel numbers) come from a small plain font set in front of the pixel one, so 2, 5 and 6 no longer look like letters.
+- TV remotes work. Back, Home, Info, Guide, the four colours (red Channels, green Axiom, yellow Weather, blue Quick settings), channel up and down, play and pause, volume and the numbers all do something, from TV remotes, media keyboards and air mice. Buttons can show as a TV remote's in Settings, TV remote. On DiceOS the TV's own remote works through the HDMI cable (HDMI-CEC), passed on by diced.
+- An on-screen keyboard comes up when you type with a remote or a controller (OK on a box to type in; X deletes, Y is a space).
+- A little bar shows the volume, the channel or the song when they change.
+- Channels: live pictures to leave on, made as they play. A fireplace, an aquarium, rain on a window, the northern lights, deep space, every world and every city, 21 in all. Up and down or CH + and − change channel, the numbers jump straight to one, OK shows the guide.
+- DiceTV's Home gets a Live row of channels playing in little tiles; the numbers on a remote tune them.
+- Weather: now, the next 12 hours and 7 days, with rain or snow falling behind it.
+- Photos: your pictures and screenshots big, with a slow slideshow; postcards from the worlds so it's never empty.
+- Sketch: pixel art with a pencil, fill, eraser and picker, by mouse, finger, controller or remote.
+- Axiom on DiceTV is a TV guide for school: this week's classes laid out like channels with a line for right now, what's due as big cards (OK ticks one off), tests coming up, and study sessions with a big timer over a fireplace, rain or the sea (with Dice Radio if you like). Classes can have times now (days, from, to, room), on the desktop too. A class starting in five minutes and what's due tomorrow come up as reminders. Adding a task is one question at a time, made for a remote.
+- The desktop: drag a window to an edge or a corner to snap it, or hold the pointer on maximise for layouts (halves, thirds, quarters). Four desktops (Ctrl + Alt + ← → or 1 to 4). Overview of every window (Super, F3 or the top-left corner). Alt + Tab. The Dice Bar (Ctrl + Space): apps, settings, sums, "5 km in miles", "timer 10", "todo read chapter 7 friday" straight into Axiom, open windows and web searches. Widgets on the desktop: a clock, the weather, Axiom, music, sticky notes and the computer. Clipboard history (Super + V). Right-click a window's title (keep on top, move to another desktop) or the desktop (widgets, the next world).
+- Settings has Desktop and TV remote sections; the keyboard shortcuts sheet lists the desktop's and the remote's buttons too.
+- A remote's colour buttons switch DiceTV straight to their app, without asking first.
+
 ## 1.5.0
 
 - DiceTV's Home has two new rows under your apps. Today: the time and date, the weather where you are, what's due in Axiom, what's playing (press to play or pause) and the sleep timer. Watch: YouTube, Netflix, Disney+, Prime Video, Twitch and Spotify as plain letters on a colour (nobody's logo), opening in the real browser; add your own site, or a media box at home like Plex or Jellyfin, and press X to take one off.

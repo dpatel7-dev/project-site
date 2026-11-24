@@ -6,6 +6,11 @@
 // reminder when a task with a time comes due. Two looks, as in Axiom:
 // Dawn (Mt. Fuji at sunrise) and Calm (a quiet green field).
 // Everything is kept in this browser (on Dice, on the computer).
+// Classes can have times (which days, from when to when). On DiceTV, Axiom becomes
+// a TV guide for school: this week's classes laid out like channels, what's due
+// as big cards you tick off with OK, tests coming up, and study sessions with a
+// fireplace or rain behind a big timer. A class starting soon and what's due
+// tomorrow come up as reminders.
 (function () {
   'use strict';
   const D = window.Dice, G = window.DiceGfx, L = D.L, h = D.h, esc = D.esc;
@@ -24,11 +29,25 @@
   const nice = (key, o) => { const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString([], o || { weekday: 'short', month: 'short', day: 'numeric' }); };
   const time12 = (t) => { if (!t) return ''; const [hh, mm] = t.split(':').map(Number); return (hh % 12 || 12) + ':' + two(mm) + (hh < 12 ? ' am' : ' pm'); };
 
-  // a reminder when a task with a time comes due (while DiceWeb is open)
+  // reminders (while DiceWeb is open): a task with a time comes due, a class starts in
+  // five minutes, and in the evening, what's due tomorrow
+  const told = {};
   setInterval(() => {
     const a = D.state && D.state.axiom;
     if (!a || !a.tasks) return;
     const now = new Date(), key = L.dayKey(now), hm = two(now.getHours()) + ':' + two(now.getMinutes());
+    const mins = now.getHours() * 60 + now.getMinutes();
+    L.classesOn(a.classes, key).forEach((s) => {
+      const k = key + s.cls.id + s.start;
+      if (told[k] || s.from - mins > 5 || s.from - mins < 0) return;
+      told[k] = true;
+      D.toast({ icon: 'bell', c: s.cls.color, title: s.cls.name + ' at ' + time12(s.start), text: (s.cls.room ? 'In ' + s.cls.room + ', i' : 'I') + 'n ' + Math.max(1, s.from - mins) + ' minute' + (s.from - mins === 1 ? '' : 's') + '.' });
+    });
+    if (now.getHours() >= 18 && a.digest !== key) {
+      const tmr = L.addDays(key, 1), due = a.tasks.filter((t) => !t.done && t.due === tmr);
+      a.digest = key; D.save();
+      if (due.length) D.notify({ icon: 'bell', c: '#d4a857', title: due.length + (due.length === 1 ? ' thing' : ' things') + ' due tomorrow', text: due.slice(0, 3).map((t) => t.title).join(', ') + (due.length > 3 ? '…' : '') });
+    }
     a.tasks.forEach((t) => {
       if (t.done || !t.time || t.due !== key || t.time > hm || t.rang) return;
       t.rang = true;
@@ -94,8 +113,272 @@
     return c;
   }
 
+  // the backdrop behind every page: Mt. Fuji at dawn, or the calm field
+  function backdrop(A) {
+    let bg = null, bgg = null, scene = null, sceneKey = '', root = null;
+    return {
+      attach(r) { root = r; bg = r.querySelector('.ax-bg'); bgg = bg.getContext('2d'); sceneKey = ''; },
+      reset() { sceneKey = ''; },
+      frame(now) {
+        if (!root) return;
+        const W = Math.ceil(root.clientWidth / 3), H = Math.ceil(root.clientHeight / 3);
+        if (!W || !H) return;
+        const look = A.theme === 'calm' ? 'calm' : 'dawn', night = D.night(), key = look + W + 'x' + H + night;
+        if (key !== sceneKey) {
+          sceneKey = key; bg.width = W; bg.height = H; bg.style.width = W * 3 + 'px'; bg.style.height = H * 3 + 'px';
+          scene = look === 'calm' ? new G.Scape({ world: 'meadow', night, W, H, seed: 'axiom' }) : { still: fuji(W, H, night) };
+        }
+        if (scene.still) { if (!scene.drawn) { bgg.drawImage(scene.still, 0, 0); scene.drawn = true; } }
+        else scene.draw(bgg, now / 1000, D.state.motion === 'less');
+      },
+    };
+  }
+
+  // ---- class times ---------------------------------------------------------------------------------
+  function when(c) {
+    if (!Array.isArray(c.days) || !c.days.length || !c.start) return '';
+    return c.days.slice().sort().map((d) => DAYS[d]).join(' ') + ', ' + time12(c.start) + (c.end ? ' to ' + time12(c.end) : '');
+  }
+  const shift = (t, m) => { let v = +t.slice(0, 2) * 60 + +t.slice(3) + m; v = Math.max(360, Math.min(1435, v)); return two(Math.floor(v / 60)) + ':' + two(v % 60); };
+  // a small panel for when a class meets: its days, from when to when, and the room.
+  // Every part is a button, so a remote works as well as the mouse.
+  function editTimes(root, A, c, done) {
+    const days = new Set(Array.isArray(c.days) && c.days.length ? c.days : [1, 2, 3, 4, 5]);
+    let start = c.start || '09:00', end = c.end || shift(c.start || '09:00', 50);
+    const box = h('<div class="ax-over navtrap"><div class="ax-times glass" role="dialog" aria-label="When ' + esc(c.name) + ' meets"><h3>When does ' + esc(c.name) + ' meet?</h3>' +
+      '<div class="ax-tdays" role="group" aria-label="Days">' + DAYS.map((d, i) => '<button class="ax-pill" data-nav data-key="axt:d' + i + '" aria-pressed="' + days.has(i) + '">' + d + '</button>').join('') + '</div>' +
+      ['s', 'e'].map((k) => '<div class="ax-trow"><span>' + (k === 's' ? 'Starts' : 'Ends') + '</span><button class="ax-btn" data-nav data-key="axt:' + k + 'H-">−1 h</button><button class="ax-btn" data-nav data-key="axt:' + k + '-">−5</button><b class="ax-t' + k + '"></b><button class="ax-btn" data-nav data-key="axt:' + k + '+">+5</button><button class="ax-btn" data-nav data-key="axt:' + k + 'H+">+1 h</button></div>').join('') +
+      '<input class="ax-room" data-nav data-key="axt:room" placeholder="Room (optional)" aria-label="Room" maxlength="30">' +
+      '<div class="ax-tacts"><button class="ax-btn gold" data-nav data-key="axt:save">Save</button><button class="ax-btn" data-nav data-key="axt:clear">No set times</button><button class="ax-btn" data-nav data-key="axt:cancel">Cancel</button></div></div></div>');
+    const paint = () => { box.querySelector('.ax-ts').textContent = time12(start); box.querySelector('.ax-te').textContent = time12(end); };
+    box.querySelector('.ax-room').value = c.room || '';
+    box.querySelectorAll('[data-key^="axt:d"]').forEach((b) => { b.onclick = () => { const d = +b.dataset.key.slice(5); if (days.has(d)) days.delete(d); else days.add(d); b.setAttribute('aria-pressed', String(days.has(d))); }; });
+    [['s-', -5], ['s+', 5], ['sH-', -60], ['sH+', 60]].forEach(([k, m]) => { box.querySelector('[data-key="axt:' + k + '"]').onclick = () => { const len = Math.max(5, (+end.slice(0, 2) * 60 + +end.slice(3)) - (+start.slice(0, 2) * 60 + +start.slice(3))); start = shift(start, m); end = shift(start, len); paint(); }; });
+    [['e-', -5], ['e+', 5], ['eH-', -60], ['eH+', 60]].forEach(([k, m]) => { box.querySelector('[data-key="axt:' + k + '"]').onclick = () => { const e2 = shift(end, m); if (e2 > start) end = e2; paint(); }; });
+    const close = (saved) => { box.remove(); E.over = null; if (done) done(saved); };
+    box.querySelector('[data-key="axt:save"]').onclick = () => { c.days = [...days].sort(); c.start = start; c.end = end; c.room = box.querySelector('.ax-room').value.trim(); D.save(); D.S.play('select'); close(true); };
+    box.querySelector('[data-key="axt:clear"]').onclick = () => { delete c.days; delete c.start; delete c.end; D.save(); close(true); };
+    box.querySelector('[data-key="axt:cancel"]').onclick = () => close(false);
+    paint();
+    root.appendChild(box);
+    D.nav.focus(box.querySelector('[data-key="axt:save"]'));
+    E.over = { action: (a) => overAction(a, () => close(false)) };
+  }
+  const E = { over: null }; // the panel on top, if any
+  function overAction(a, back) {
+    if (['up', 'down', 'left', 'right'].includes(a)) { D.nav.move(a); return true; }
+    if (a === 'a') { D.nav.press(); return true; }
+    if (a === 'b') { back(); return true; }
+    return true;
+  }
+
+  // ---- study sessions: a big timer over a fireplace, rain or the sea ----------------------------------
+  const SCENES = ['fire', 'rain', 'fish', 'aurora', 'space', 'w:forest'];
+  function studyStart(root, A, mins, classId, after) {
+    if (!Array.isArray(A.study)) A.study = [];
+    const c = A.classes.find((x) => x.id === classId);
+    let sceneAt = Math.max(0, SCENES.indexOf(A.studyScene || 'fire')), scene = null, key = '', last = 0, total = mins * 60000, endAt = Date.now() + total, left = 0, paused = false, finished = false, started = Date.now(), counted = 0;
+    const box = h('<div class="axs navtrap" role="dialog" aria-label="Study session"><canvas class="axs-bg" aria-hidden="true"></canvas><div class="axs-veil"></div><div class="axs-in">' +
+      '<span class="axs-what"></span><b class="axs-time" aria-live="off"></b><span class="axs-bar"><i></i></span><div class="axs-btns"></div></div></div>');
+    const cv = box.querySelector('.axs-bg'), g = cv.getContext('2d'), btns = box.querySelector('.axs-btns');
+    const what = () => (c ? c.name : 'Studying') + (paused ? ' · paused' : '');
+    function buttons() {
+      btns.innerHTML = finished
+        ? '<button class="ax-btn gold" data-nav data-key="axs:again">Another ' + mins + ' minutes</button><button class="ax-btn" data-nav data-key="axs:end">Finish</button>'
+        : '<button class="ax-btn gold" data-nav data-key="axs:pause">' + (paused ? 'Carry on' : 'Pause') + '</button><button class="ax-btn" data-nav data-key="axs:more">+5 minutes</button><button class="ax-btn" data-nav data-key="axs:scene">Change scene</button><button class="ax-btn" data-nav data-key="axs:music">' + (D.M.now && D.M.now.playing ? 'Music off' : 'Dice Radio') + '</button><button class="ax-btn" data-nav data-key="axs:end">End</button>';
+      const on = (k, f) => { const b = btns.querySelector('[data-key="axs:' + k + '"]'); if (b) b.onclick = f; };
+      on('pause', () => { if (paused) { endAt = Date.now() + left; paused = false; } else { left = endAt - Date.now(); paused = true; } buttons(); D.nav.focus(btns.querySelector('[data-key="axs:pause"]')); });
+      on('more', () => { if (paused) left += 300000; else endAt += 300000; total += 300000; tick(); });
+      on('scene', () => { sceneAt = (sceneAt + 1) % SCENES.length; A.studyScene = SCENES[sceneAt]; D.save(); key = ''; });
+      on('music', () => { if (D.M.now && D.M.now.playing) D.M.pause(); else if (D.M.now) D.M.resume(); else D.M.play('radio', 0); setTimeout(buttons, 60); });
+      on('again', () => { finished = false; total = mins * 60000; endAt = Date.now() + total; started = Date.now(); counted = 0; buttons(); D.nav.focus(btns.querySelector('[data-nav]')); });
+      on('end', () => stop());
+      box.querySelector('.axs-what').textContent = finished ? 'Done. Take a break.' : what();
+    }
+    function log() {
+      const m = Math.floor((Date.now() - started) / 60000) - counted;
+      if (m >= 1) { A.study.push({ day: L.dayKey(new Date()), mins: m, classId: classId || null }); counted += m; D.save(); }
+    }
+    function tick() {
+      const ms = paused ? left : Math.max(0, endAt - Date.now()), s = Math.ceil(ms / 1000);
+      box.querySelector('.axs-time').textContent = Math.floor(s / 60) + ':' + two(s % 60);
+      box.querySelector('.axs-bar i').style.width = (100 - ms / total * 100).toFixed(1) + '%';
+      if (!paused && !finished && ms <= 0) {
+        finished = true; log();
+        D.S.play('toast');
+        D.notify({ icon: 'timer', c: c ? c.color : '#d4a857', title: 'Study session done', text: mins + ' minutes' + (c ? ' of ' + c.name : '') + '. Take a five-minute break.', urgent: true });
+        buttons(); D.nav.focus(btns.querySelector('[data-nav]'));
+      }
+    }
+    const timer = setInterval(tick, 250);
+    function stop() { clearInterval(timer); if (!finished) log(); box.remove(); E.study = null; if (after) after(); }
+    root.appendChild(box);
+    buttons(); tick();
+    D.nav.focus(btns.querySelector('[data-nav]'));
+    E.study = {
+      action: (a) => overAction(a, () => stop()),
+      frame(now) {
+        const cell = D.channels ? D.channels.cell() : 4, W = Math.ceil(box.clientWidth / cell), H = Math.ceil(box.clientHeight / cell);
+        if (!W || !H || !D.channels) return;
+        if (key !== SCENES[sceneAt] + W + 'x' + H) { key = SCENES[sceneAt] + W + 'x' + H; cv.width = W; cv.height = H; cv.style.width = W * cell + 'px'; cv.style.height = H * cell + 'px'; scene = D.channels.make(SCENES[sceneAt], W, H); }
+        if (now - last < 40) return;
+        last = now; scene.draw(g, now / 1000);
+      },
+    };
+  }
+  // which class, then study
+  async function askStudy(root, A, mins, after) {
+    let cid = null;
+    if (A.classes.length) {
+      cid = await D.ask({ title: 'Study for ' + mins + ' minutes', text: 'What are you studying?', buttons: A.classes.slice(0, 8).map((c, i) => ({ label: c.name, value: c.id, go: i === 0, c: c.color })).concat([{ label: 'Something else', value: '-' }]) });
+      if (cid === null) return;
+      if (cid === '-') cid = null;
+    }
+    studyStart(root, A, mins, cid, after);
+  }
+  // adding a task, one question at a time (made for a remote: the keyboard comes up by itself)
+  async function askTask(A, presetClass) {
+    const r = await D.ask({ title: 'Add a task', text: 'What needs doing?', input: { label: 'Task', placeholder: 'Read chapter 7' }, buttons: [{ label: 'Next', value: true, go: true }, { label: 'Cancel', value: false }] });
+    const title = r && r.value && r.value.trim().slice(0, 120);
+    if (!title) return null;
+    let cid = presetClass;
+    if (cid === undefined && A.classes.length) {
+      cid = await D.ask({ title, text: 'Which class is it for?', buttons: A.classes.slice(0, 8).map((c, i) => ({ label: c.name, value: c.id, go: i === 0, c: c.color })).concat([{ label: 'No class', value: '-' }]) });
+      if (cid === null) return null;
+      if (cid === '-') cid = null;
+    }
+    const tk = L.dayKey(new Date());
+    const due = await D.ask({ title, text: 'When is it due?', buttons: [['Today', tk], ['Tomorrow', L.addDays(tk, 1)], ['In 2 days', L.addDays(tk, 2)], ['In 3 days', L.addDays(tk, 3)], ['Next week', L.addDays(tk, 7)]].map(([label, value], i) => ({ label, value, go: i === 1 })) });
+    if (!due) return null;
+    const type = /\b(test|exam)\b/i.test(title) ? 'test' : /quiz/i.test(title) ? 'quiz' : /essay/i.test(title) ? 'essay' : /project/i.test(title) ? 'project' : /\blab\b/i.test(title) ? 'lab' : /\b(study|review)\b/i.test(title) ? 'study' : 'homework';
+    const t = { id: uid(), title, classId: cid || null, type, due, time: '', done: false };
+    A.tasks.push(t); D.save(); D.S.play('select');
+    return t;
+  }
+
+  // ---- Axiom on DiceTV: school as a TV guide -------------------------------------------------------------
+  function tvMount(root, ctx, A, bd) {
+    root.classList.add('ax', 'axtv');
+    root.innerHTML = '<canvas class="ax-bg" aria-hidden="true"></canvas><div class="ax-veil"></div><div class="axt"></div>';
+    bd.attach(root);
+    const main = root.querySelector('.axt');
+    const cls = (id) => A.classes.find((c) => c.id === id);
+    const tday = () => L.dayKey(new Date());
+    const label = (due) => { const tk = tday(); return due < tk ? 'Late' : due === tk ? 'Today' : due === L.addDays(tk, 1) ? 'Tomorrow' : nice(due); };
+    const hm = (s) => Math.floor(s / 60) + 'h ' + two(s % 60) + 'm';
+    function guide() {
+      const tk = tday(), keys = [0, 1, 2, 3, 4].map((i) => L.addDays(tk, i)), rows = keys.map((k) => L.classesOn(A.classes, k));
+      const all = rows.flat();
+      if (!all.length) return '<section class="axt-sec"><h2>Guide</h2><div class="axt-empty glass"><b>Your week, like a TV guide</b><span>Give your classes times and they show up here like shows on channels, with a line for right now.</span><button class="ax-btn gold" data-nav data-key="axg:setup">' + (A.classes.length ? 'Set class times' : 'Add your first class') + '</button></div></section>';
+      let from = Math.floor(Math.min(...all.map((s) => s.from)) / 60), to = Math.ceil(Math.max(...all.map((s) => s.to)) / 60);
+      if (to - from < 3) to = from + 3;
+      const span = (to - from) * 60, pct = (m) => ((m - from * 60) / span * 100).toFixed(2) + '%', now = new Date(), nm = now.getHours() * 60 + now.getMinutes();
+      const hours = []; for (let hr = from; hr <= to; hr++) hours.push('<span style="left:' + pct(hr * 60) + '">' + ((hr % 12) || 12) + (hr < 12 ? ' am' : ' pm') + '</span>');
+      return '<section class="axt-sec"><h2>Guide <small>This week\'s classes, like channels. ' + D.btn('a') + ' for more.</small></h2><div class="axg glass"><div class="axg-hours"><span class="axg-lab"></span><div class="axg-track">' + hours.join('') + '</div></div>' +
+        keys.map((k, i) => '<div class="axg-row"><span class="axg-lab">' + (i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : esc(nice(k, { weekday: 'long' }))) + '</span><div class="axg-track" data-row>' +
+          rows[i].map((s) => '<button class="axg-b' + (i === 0 && s.from <= nm && nm < s.to ? ' now' : '') + (i === 0 && s.to <= nm ? ' past' : '') + '" data-nav data-key="axg:' + i + ':' + s.cls.id + '" style="left:' + pct(s.from) + ';width:calc(' + ((s.to - s.from) / span * 100).toFixed(2) + '% - 4px);--c:' + s.cls.color + '"><b>' + esc(s.cls.name) + '</b><span>' + esc(time12(s.start)) + (s.cls.room ? ', ' + esc(s.cls.room) : '') + '</span></button>').join('') +
+          (i === 0 && nm >= from * 60 && nm <= to * 60 ? '<i class="axg-now" style="left:' + pct(nm) + '"></i>' : '') + '</div></div>').join('') + '</div></section>';
+    }
+    function render(focusKey) {
+      const tk = tday(), b = L.planBuckets(A.tasks, tk), tmr = L.addDays(tk, 1);
+      const due = b.overdue.concat(b.today, A.tasks.filter((t) => !t.done && t.due === tmr));
+      const tests = A.tasks.filter((t) => !t.done && (t.type === 'test' || t.type === 'quiz') && t.due >= tk && t.due <= L.addDays(tk, 21)).sort((x, y) => x.due.localeCompare(y.due));
+      const sw = L.studyWeek(A.study, tk), cn = L.classNow(A.classes, new Date()), doneToday = A.tasks.filter((t) => t.doneAt === tk).length;
+      const hr = new Date().getHours(), name = D.state.name && D.state.name !== 'player' ? ', ' + D.state.name : '';
+      const nowLine = cn.now ? 'Now: ' + cn.now.cls.name + ' until ' + time12(cn.now.end) + (cn.next ? '. Next: ' + cn.next.cls.name + ' at ' + time12(cn.next.start) : '') : cn.next ? 'Next: ' + cn.next.cls.name + ' at ' + time12(cn.next.start) : '';
+      main.innerHTML = '<header class="axt-head"><div><h1>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + esc(name) + '.</h1><p>' +
+        esc(nice(tk, { weekday: 'long', month: 'long', day: 'numeric' })) + ' · ' + (b.overdue.length + b.today.length) + ' due today' + (b.overdue.length ? ', ' + b.overdue.length + ' late' : '') + (doneToday ? ' · ' + doneToday + ' done' : '') + (sw.total ? ' · ' + hm(sw.total) + ' studied this week' : '') + '</p>' +
+        (nowLine ? '<p class="axt-now">' + esc(nowLine) + '</p>' : '') + '</div></header>' +
+        guide() +
+        '<section class="axt-sec"><h2>Due <small>' + D.btn('a') + ' ticks one off. ' + D.btn('x') + ' for more.</small></h2><div class="axt-row" data-row>' +
+        due.slice(0, 14).map((t) => { const c = cls(t.classId); return '<button class="axd' + (t.due < tk ? ' late' : '') + '" data-nav data-key="axd:' + t.id + '" data-a="Done" data-x="More" style="--c:' + (c ? c.color : '#d4a857') + '"><span class="axd-meta">' + (c ? esc(c.name) : 'No class') + ' · ' + esc(TYPE[t.type] || 'Task') + '</span><b>' + esc(t.title) + '</b><span class="axd-when">' + esc(label(t.due)) + (t.time ? ', ' + esc(time12(t.time)) : '') + '</span><i class="axd-tick" aria-hidden="true"></i></button>'; }).join('') +
+        (due.length ? '' : '<div class="axd axd-none"><b>Nothing due</b><span>Today and tomorrow are clear.</span></div>') +
+        '<button class="axd axd-add" data-nav data-key="axd:add"><b>+ Add a task</b><span>The keyboard comes up by itself.</span></button></div></section>' +
+        (tests.length ? '<section class="axt-sec"><h2>Tests and quizzes</h2><div class="axt-row" data-row>' + tests.slice(0, 10).map((t) => { const c = cls(t.classId), n = Math.round((new Date(t.due + 'T12:00') - new Date(tk + 'T12:00')) / 864e5); return '<button class="axd axd-test" data-nav data-key="axq:' + t.id + '" data-x="More" style="--c:' + (c ? c.color : '#d4a857') + '"><span class="axd-meta">' + (c ? esc(c.name) : 'No class') + ' · ' + esc(TYPE[t.type]) + '</span><b>' + esc(t.title) + '</b><span class="axd-when">' + (n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : 'In ' + n + ' days') + '</span></button>'; }).join('') + '</div></section>' : '') +
+        '<section class="axt-sec"><h2>Study <small>A big timer over a fireplace, rain or the sea.</small></h2><div class="axt-row" data-row>' +
+        [10, 25, 50].map((m) => '<button class="axd axd-study" data-nav data-key="axs:' + m + '"><b>' + m + ' minutes</b><span>' + (m === 25 ? 'The classic' : m === 10 ? 'A quick one' : 'A long one') + '</span></button>').join('') +
+        '<div class="axd axd-stats"><b>' + (sw.total ? hm(sw.total) : 'Nothing yet') + '</b><span>studied in the last 7 days</span>' + Object.entries(sw.by).sort((x, y) => y[1] - x[1]).slice(0, 4).map(([id, m]) => { const c = cls(id); return '<i class="axd-bar" style="--c:' + (c ? c.color : '#d4a857') + ';--w:' + Math.round(m / sw.total * 100) + '%"><em>' + esc(c ? c.name : 'Other') + '</em><small>' + hm(m) + '</small></i>'; }).join('') + '</div></div></section>' +
+        '<section class="axt-sec"><h2>Classes</h2><div class="axt-row" data-row>' + A.classes.map((c) => { const open = A.tasks.filter((t) => t.classId === c.id && !t.done).length; return '<button class="axd axd-class" data-nav data-key="axc:' + c.id + '" data-a="Times" style="--c:' + c.color + '"><b>' + esc(c.name) + '</b><span>' + esc(when(c) || 'No times yet') + '</span><span class="axd-when">' + open + ' open task' + (open === 1 ? '' : 's') + '</span></button>'; }).join('') +
+        '<button class="axd axd-add" data-nav data-key="axc:add"><b>+ Add a class</b><span>With its own colour and times.</span></button></div></section>';
+      wire();
+      const f = (focusKey && main.querySelector('[data-key="' + focusKey + '"]')) || main.querySelector('.axd[data-nav]') || main.querySelector('[data-nav]');
+      if (f && D.input.source !== 'mouse') D.nav.focus(f, { scroll: !!focusKey });
+    }
+    function wire() {
+      const on = (sel, fn) => main.querySelectorAll(sel).forEach((el) => { el.onclick = () => fn(el); });
+      on('[data-key^="axd:"]:not([data-key="axd:add"])', (el) => {
+        const t = A.tasks.find((x) => x.id === el.dataset.key.slice(4));
+        if (!t) return;
+        t.done = true; t.doneAt = tday(); D.save(); D.S.play('select');
+        el.classList.add('ticked');
+        const next = el.nextElementSibling && el.nextElementSibling.dataset.key;
+        setTimeout(() => render(next), 650);
+      });
+      main.querySelectorAll('[data-key^="axd:"]:not([data-key="axd:add"]), [data-key^="axq:"]').forEach((el) => { el._x = () => more(el.dataset.key.slice(4), el.dataset.key); });
+      on('[data-key="axd:add"]', async () => { const t = await askTask(A); if (t) render('axd:' + t.id); });
+      on('[data-key^="axs:"]', (el) => askStudy(root, A, +el.dataset.key.slice(4), () => render(el.dataset.key)));
+      on('[data-key^="axc:"]:not([data-key="axc:add"])', (el) => { const c = cls(el.dataset.key.slice(4)); if (c) editTimes(root, A, c, () => render(el.dataset.key)); });
+      on('[data-key="axc:add"], [data-key="axg:setup"]', async (el) => {
+        if (el.dataset.key === 'axg:setup' && A.classes.length) { const c = A.classes.find((x) => !x.start) || A.classes[0]; return editTimes(root, A, c, () => render('axg:setup')); }
+        const r = await D.ask({ title: 'Add a class', text: 'What\'s it called?', input: { label: 'Class', placeholder: 'Period 4 Math' }, buttons: [{ label: 'Next', value: true, go: true }, { label: 'Cancel', value: false }] });
+        const n = r && r.value && r.value.trim().slice(0, 60);
+        if (!n) return;
+        const c = { id: uid(), name: n, teacher: '', color: SWATCH[A.classes.length % SWATCH.length] };
+        A.classes.push(c); D.save();
+        editTimes(root, A, c, () => render('axc:' + c.id));
+      });
+      on('[data-key^="axg:"]:not([data-key="axg:setup"])', async (el) => {
+        const c = cls(el.dataset.key.split(':')[2]);
+        if (!c) return;
+        const open = A.tasks.filter((t) => t.classId === c.id && !t.done);
+        const r = await D.ask({ title: c.name, text: [when(c), c.room ? 'Room ' + c.room : '', c.teacher || '', open.length ? open.length + ' open: ' + open.slice(0, 3).map((t) => t.title).join(', ') : 'Nothing open'].filter(Boolean).join(' · '),
+          buttons: [{ label: 'Add a task for ' + c.name, value: 'add', go: true, c: c.color }, { label: 'Study ' + c.name, value: 'study' }, { label: 'Change times', value: 'times' }, { label: 'Close', value: null }] });
+        if (r === 'add') { const t = await askTask(A, c.id); if (t) render('axd:' + t.id); }
+        if (r === 'study') studyStart(root, A, 25, c.id, () => render(el.dataset.key));
+        if (r === 'times') editTimes(root, A, c, () => render(el.dataset.key));
+      });
+    }
+    async function more(id, key) {
+      const t = A.tasks.find((x) => x.id === id);
+      if (!t) return;
+      const r = await D.ask({ title: t.title, text: (cls(t.classId) ? cls(t.classId).name + ' · ' : '') + (TYPE[t.type] || 'Task') + ' · due ' + label(t.due).toLowerCase(), buttons: [{ label: 'Done', value: 'done', go: true }, { label: 'Move to tomorrow', value: 'tmr' }, { label: 'Move a week on', value: 'week' }, { label: 'Delete', value: 'del', danger: true }, { label: 'Cancel', value: null }] });
+      if (r === 'done') { t.done = true; t.doneAt = tday(); }
+      if (r === 'tmr') t.due = L.addDays(tday(), 1);
+      if (r === 'week') t.due = L.addDays(t.due < tday() ? tday() : t.due, 7);
+      if (r === 'del') A.tasks = A.tasks.filter((x) => x !== t);
+      if (r) { D.save(); render(key); }
+    }
+    // keep what's focused in view as you move down the page
+    const offFocus = D.on('focus', (el) => { if (el && main.contains(el) && !el.closest('.axt-row')) el.scrollIntoView({ block: 'nearest', behavior: D.reduced() ? 'auto' : 'smooth' }); else if (el && main.contains(el)) el.closest('.axt-sec').scrollIntoView({ block: 'nearest', behavior: D.reduced() ? 'auto' : 'smooth' }); });
+    render();
+    const tick = setInterval(() => { if (!E.over && !E.study && !D.$('#dialog.open')) { const k = D.nav.el && main.contains(D.nav.el) ? D.nav.el.dataset.key : null; render(k); } }, 60000);
+    ctx.setTitle('Axiom');
+    ctx.legend([['a', 'Choose'], ['x', 'More'], ['b', 'Back']]);
+    return {
+      frame(now) { if (E.study) E.study.frame(now); else bd.frame(now); },
+      onAction(a) {
+        if (E.study) return E.study.action(a);
+        if (E.over) return E.over.action(a);
+        // up and down go one line at a time (a guide row, or a row of cards), to the nearest one across
+        if ((a === 'up' || a === 'down') && D.nav.el && main.contains(D.nav.el)) {
+          const lines = [...main.querySelectorAll('.axg-track[data-row], .axt-row, .axt-empty')].filter((l) => l.querySelector('[data-nav]'));
+          const at = lines.findIndex((l) => l.contains(D.nav.el)), to = lines[at + (a === 'down' ? 1 : -1)];
+          if (at < 0 || !to) return false;
+          const r = D.nav.el.getBoundingClientRect(), cx = r.left + r.width / 2;
+          const pick = [...to.querySelectorAll('[data-nav]')].sort((p, q) => { const pr = p.getBoundingClientRect(), qr = q.getBoundingClientRect(); return Math.abs(pr.left + pr.width / 2 - cx) - Math.abs(qr.left + qr.width / 2 - cx); })[0];
+          D.nav.focus(pick); D.S.play('move', a);
+          return true;
+        }
+        return false;
+      },
+      unmount() { clearInterval(tick); if (typeof offFocus === 'function') offFocus(); E.over = null; E.study = null; },
+    };
+  }
+
   D.register({ id: 'calendar', mount(root, ctx) {
     const A = data();
+    const bd = backdrop(A);
+    if (ctx.mode === 'run') return tvMount(root, ctx, A, bd);
     root.classList.add('ax');
     root.innerHTML = '<canvas class="ax-bg" aria-hidden="true"></canvas><div class="ax-veil"></div>' +
       '<nav class="ax-side" aria-label="Axiom"><div class="ax-brand"></div>' +
@@ -103,9 +386,9 @@
       '<div class="ax-look" role="group" aria-label="Look"><button data-nav data-key="ax:dawn" data-th="dawn">Dawn</button><button data-nav data-key="ax:calm" data-th="calm">Calm</button></div></nav>' +
       '<main class="ax-main"></main>';
     root.querySelector('.ax-brand').append(G.appIconEl('calendar', 30), h('<b>Axiom</b>'));
-    const main = root.querySelector('.ax-main'), bg = root.querySelector('.ax-bg'), bgg = bg.getContext('2d');
+    const main = root.querySelector('.ax-main');
+    bd.attach(root);
     let view = 'today', taskFilter = 'open', classFilter = '', calY = new Date().getFullYear(), calM = new Date().getMonth(), calPick = L.dayKey(new Date()), noteId = null, adding = false;
-    let scene = null, sceneKey = '';
     const save = () => D.save();
     const cls = (id) => A.classes.find((c) => c.id === id);
     const today = () => L.dayKey(new Date());
@@ -153,12 +436,16 @@
       const doneToday = A.tasks.filter((t) => t.doneAt === today()).length, total = doneToday + b.today.length;
       main.innerHTML = '<header class="ax-hero"><h1>' + (hr < 12 ? 'Good morning' : hr < 18 ? 'Good afternoon' : 'Good evening') + esc(name) + '.</h1><p>Here\'s where things stand.</p>' +
         '<div class="ax-stat"><b>' + doneToday + '</b><span>of ' + total + ' done today</span></div></header><div class="ax-quick"></div><div class="ax-cols"></div>';
+      const cn = L.classNow(A.classes, new Date()), sw = L.studyWeek(A.study, today());
+      const line = [cn.now ? 'Now: ' + cn.now.cls.name + ' until ' + time12(cn.now.end) : '', cn.next ? 'Next: ' + cn.next.cls.name + ' at ' + time12(cn.next.start) : '', sw.total ? Math.floor(sw.total / 60) + 'h ' + two(sw.total % 60) + 'm studied this week' : ''].filter(Boolean).join(' · ');
+      if (line) main.querySelector('.ax-hero p').textContent = line + '.';
       const q = main.querySelector('.ax-quick');
       if (adding) q.appendChild(taskForm({ due: today() }));
       else {
         const add = h('<button class="ax-btn gold" data-nav data-key="ax:quick">+ Quick task</button>'); add.onclick = () => { adding = true; render(); setTimeout(() => main.querySelector('.ax-form input').focus(), 0); };
         const cl = h('<button class="ax-btn" data-nav data-key="ax:qclass">+ Class</button>'); cl.onclick = () => { view = 'classes'; adding = true; render(); };
-        q.append(add, cl);
+        const st = h('<button class="ax-btn" data-nav data-key="ax:study">Study for 25 minutes</button>'); st.onclick = () => askStudy(root, A, 25, () => render());
+        q.append(add, cl, st);
       }
       const cols = main.querySelector('.ax-cols');
       [['Overdue', b.overdue, 'Nothing overdue.', 'late'], ['Due today', b.today, 'Nothing due today.'], ['This week', b.week, 'A clear week.'], ['Tests and quizzes', b.tests, 'No tests coming up.']].forEach(([t, arr, empty, cl]) => {
@@ -196,7 +483,8 @@
       if (!A.classes.length) grid.innerHTML = '<p class="ax-empty">Add your first class above. Tasks and notes can then belong to it.</p>';
       A.classes.forEach((c) => {
         const open = A.tasks.filter((t) => t.classId === c.id && !t.done).length;
-        const card = h('<div class="ax-class" style="--c:' + c.color + '"><button class="ax-classgo" data-nav data-key="ax:cl-' + c.id + '"><b>' + esc(c.name) + '</b><span>' + esc(c.teacher || 'No teacher set') + '</span><em>' + open + ' open task' + (open === 1 ? '' : 's') + '</em></button><button class="ax-link small" data-nav data-key="ax:cr-' + c.id + '">Remove</button></div>');
+        const card = h('<div class="ax-class" style="--c:' + c.color + '"><button class="ax-classgo" data-nav data-key="ax:cl-' + c.id + '"><b>' + esc(c.name) + '</b><span>' + esc([c.teacher, when(c) || 'No times set'].filter(Boolean).join(' · ')) + '</span><em>' + open + ' open task' + (open === 1 ? '' : 's') + '</em></button><button class="ax-link small" data-nav data-key="ax:ctimes-' + c.id + '">Times</button><button class="ax-link small" data-nav data-key="ax:cr-' + c.id + '">Remove</button></div>');
+        card.querySelector('[data-key="ax:ctimes-' + c.id + '"]').onclick = () => editTimes(root, A, c, () => render());
         card.querySelector('.ax-classgo').onclick = () => { view = 'tasks'; classFilter = c.id; taskFilter = 'open'; render(); };
         const rm = card.querySelector('.ax-link');
         rm.onclick = () => {
@@ -262,24 +550,16 @@
       ctx.setTitle('Axiom');
     }
     root.querySelectorAll('.ax-tab').forEach((b) => { b.onclick = () => { view = b.dataset.v; adding = false; render(); main.scrollTop = 0; }; });
-    root.querySelectorAll('[data-th]').forEach((b) => { b.onclick = () => { A.theme = b.dataset.th; save(); sceneKey = ''; render(); }; });
+    root.querySelectorAll('[data-th]').forEach((b) => { b.onclick = () => { A.theme = b.dataset.th; save(); bd.reset(); render(); }; });
     render();
     setTimeout(() => { if (ctx.mode === 'run') D.nav.first(root); }, 40);
     ctx.legend([['a', 'Choose'], ['b', 'Back'], ['lb', 'Last month'], ['rb', 'Next month']]);
 
     return {
-      frame(now) {
-        const W = Math.ceil(root.clientWidth / 3), H = Math.ceil(root.clientHeight / 3);
-        if (!W || !H) return;
-        const night = D.night(), key = look() + W + 'x' + H + night;
-        if (key !== sceneKey) {
-          sceneKey = key; bg.width = W; bg.height = H; bg.style.width = W * 3 + 'px'; bg.style.height = H * 3 + 'px';
-          scene = look() === 'calm' ? new G.Scape({ world: 'meadow', night, W, H, seed: 'axiom' }) : { still: fuji(W, H, night) };
-        }
-        if (scene.still) { if (!scene.drawn) { bgg.drawImage(scene.still, 0, 0); scene.drawn = true; } }
-        else scene.draw(bgg, now / 1000, D.state.motion === 'less');
-      },
+      frame(now) { if (E.study) E.study.frame(now); else bd.frame(now); },
       onAction(a) {
+        if (E.study) return E.study.action(a);
+        if (E.over) return E.over.action(a);
         if (a === 'a') { const el = document.activeElement; if (el && root.contains(el) && el.form && el.tagName !== 'BUTTON') { el.form.requestSubmit(); return true; } if (el && root.contains(el) && el.tagName === 'BUTTON') { el.click(); return true; } return false; }
         if (view === 'calendar' && (a === 'lb' || a === 'rb')) { main.querySelector('[data-key="ax:' + (a === 'lb' ? 'prev' : 'next') + '"]').click(); return true; }
         if (a === 'b' && view !== 'today') { view = 'today'; adding = false; render(); return true; }

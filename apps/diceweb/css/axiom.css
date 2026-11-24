@@ -135,3 +135,78 @@
   .ax-grid button { min-height: 42px; }
 }
 @container (max-height: 520px) { .ax-main h1 { font-size: 1.8rem; } .ax-stat b { font-size: 2.1rem; } }
+
+/* ---------- Axiom on DiceTV: school as a TV guide ---------- */
+.ax.axtv { display: block; font-size: 19px; }
+.axt { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; padding: clamp(24px, 4vh, 48px) clamp(28px, 5vw, 72px) 120px; scroll-padding: 60px 0 120px; }
+.axt-head h1 { font: 400 clamp(2.4rem, 4.4vw, 3.6rem)/1.05 var(--ax-serif); margin: 0; }
+.axt-head p { margin: 8px 0 0; font: 500 1rem/1.4 var(--ax-sans); color: var(--ax-dim); }
+.axt-head .axt-now { color: var(--ax-gold-hot); font-weight: 600; }
+.axt-sec { margin-top: 30px; }
+.axt-sec > h2 { font: 400 1.6rem/1.2 var(--ax-serif); margin: 0 0 12px; display: flex; align-items: baseline; gap: 14px; }
+.axt-sec > h2 small { font: 500 .85rem/1 var(--ax-sans); color: var(--ax-faint); display: inline-flex; align-items: center; gap: 6px; }
+.axt-row { display: flex; gap: 14px; overflow-x: auto; padding: 6px 4px 10px; scroll-padding: 0 40px; scrollbar-width: none; }
+.axd { flex: none; position: relative; width: clamp(220px, 19vw, 300px); min-height: 138px; padding: 16px 18px 16px 22px; border-radius: 18px; text-align: left; display: grid; align-content: start; gap: 6px;
+  background: var(--ax-panel); border: 1px solid var(--ax-line); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); transition: transform .16s, background .16s; overflow: hidden; }
+.axd::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: var(--c, var(--ax-gold)); }
+.axd b { font: 400 1.32rem/1.2 var(--ax-serif); }
+.axd span { font: 500 .88rem/1.35 var(--ax-sans); color: var(--ax-dim); }
+.axd .axd-meta { color: var(--c, var(--ax-gold)); font-weight: 600; }
+.axd .axd-when { margin-top: auto; color: var(--ax-ink); font-weight: 600; }
+.axd.late .axd-when { color: var(--ax-danger); }
+.axd.is-focus { transform: scale(1.04); background: rgba(30, 32, 40, .82); outline: 3px solid var(--ax-gold-hot) !important; outline-offset: 3px; z-index: 1; }
+.axd .axd-tick { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10, 12, 16, .78); opacity: 0; transition: opacity .2s; }
+.axd .axd-tick::after { content: "✓"; font: 700 3.4rem/1 var(--ax-sans); color: var(--ax-gold-hot); transform: scale(.6); transition: transform .3s cubic-bezier(.3, 1.6, .5, 1); }
+.axd.ticked .axd-tick { opacity: 1; } .axd.ticked .axd-tick::after { transform: scale(1); }
+.axd-add, .axd-none { background: rgba(243, 234, 217, .05); border-style: dashed; }
+.axd-add::before, .axd-none::before, .axd-study::before, .axd-stats::before { display: none; }
+.axd-study b { font-size: 1.8rem; }
+.axd-stats { width: clamp(280px, 26vw, 380px); }
+.axd-stats b { font: 400 1.8rem/1.1 var(--ax-serif); }
+.axd-bar { display: grid; grid-template-columns: 1fr auto; font-style: normal; font: 500 .82rem/1.2 var(--ax-sans); margin-top: 4px; position: relative; padding-bottom: 6px; }
+.axd-bar::after { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: var(--w); border-radius: 2px; background: var(--c); }
+.axd-bar em { font-style: normal; } .axd-bar small { color: var(--ax-dim); }
+.axt-empty { display: grid; gap: 8px; justify-items: start; padding: 22px 24px; border-radius: 18px; background: var(--ax-panel); border: 1px solid var(--ax-line); max-width: 640px; }
+.axt-empty b { font: 400 1.5rem/1.2 var(--ax-serif); } .axt-empty span { font: 500 .95rem/1.4 var(--ax-sans); color: var(--ax-dim); }
+/* the guide: days as rows, classes as blocks along the hours, like a TV guide */
+.axg { border-radius: 18px; padding: 12px 14px 14px; background: var(--ax-panel); border: 1px solid var(--ax-line); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.axg-hours, .axg-row { display: grid; grid-template-columns: 8.5em minmax(0, 1fr); gap: 10px; align-items: center; }
+.axg-hours .axg-track { height: 22px; }
+.axg-hours .axg-track span { position: absolute; top: 0; transform: translateX(-50%); font: 600 .78rem/1 var(--ax-sans); color: var(--ax-faint); white-space: nowrap; }
+.axg-row { border-top: 1px solid var(--ax-line); padding: 6px 0; }
+.axg-lab { font: 600 .92rem/1.2 var(--ax-sans); color: var(--ax-dim); }
+.axg-track { position: relative; height: 58px; }
+.axg-b { position: absolute; top: 3px; bottom: 3px; padding: 6px 10px; border-radius: 10px; text-align: left; overflow: hidden; display: grid; align-content: center; gap: 2px;
+  background: color-mix(in oklab, var(--c) 30%, rgba(14, 16, 22, .8)); border: 1px solid color-mix(in oklab, var(--c) 60%, transparent); }
+.axg-b b { font: 600 .92rem/1.15 var(--ax-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.axg-b span { font: 500 .76rem/1.1 var(--ax-sans); color: var(--ax-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.axg-b.now { background: color-mix(in oklab, var(--c) 55%, rgba(14, 16, 22, .7)); box-shadow: 0 0 0 2px var(--c); }
+.axg-b.past { opacity: .55; }
+.axg-b.is-focus { z-index: 2; opacity: 1; }
+.axg-now { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ax-gold-hot); border-radius: 1px; box-shadow: 0 0 10px var(--ax-gold-hot); pointer-events: none; }
+.axg-now::before { content: ""; position: absolute; top: -3px; left: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--ax-gold-hot); }
+
+/* ---------- when a class meets (a panel on top, on the desktop too) ---------- */
+.ax-over { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; background: rgba(6, 8, 12, .55); }
+.ax-times { width: min(560px, 92%); padding: 22px 24px; border-radius: 20px; background: rgba(20, 22, 30, .92); border: 1px solid var(--ax-line); display: grid; gap: 14px; color: var(--ax-ink); }
+.ax-times h3 { margin: 0; font: 400 1.5rem/1.2 var(--ax-serif); }
+.ax-tdays { display: flex; flex-wrap: wrap; gap: 6px; }
+.ax-tdays .ax-pill[aria-pressed="true"] { background: var(--ax-gold); color: #17130a; border-color: transparent; }
+.ax-trow { display: flex; align-items: center; gap: 8px; font: 500 .92rem/1 var(--ax-sans); }
+.ax-trow span { width: 4.5em; color: var(--ax-dim); }
+.ax-trow b { min-width: 6.2em; text-align: center; font: 600 1.15rem/1 var(--ax-sans); }
+.ax-room { padding: 9px 12px; border-radius: 10px; border: 1px solid var(--ax-line); background: var(--ax-field); font: 500 .92rem/1.2 var(--ax-sans) !important; }
+.ax-tacts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---------- study sessions ---------- */
+.axs { position: absolute; inset: 0; z-index: 25; overflow: hidden; background: #000; }
+.axs-bg { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
+.axs-veil { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0, 0, 0, .45), rgba(0, 0, 0, .2) 70%); }
+.axs-in { position: absolute; inset: 0; display: grid; place-content: center; justify-items: center; gap: 14px; text-align: center; text-shadow: 0 2px 20px rgba(0, 0, 0, .6); }
+.axs-what { font: 400 1.6rem/1.2 var(--ax-serif); }
+.axs-time { font: 600 clamp(4.5rem, 16vmin, 10rem)/1 var(--ax-sans); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.axs-bar { width: min(420px, 70vw); height: 6px; border-radius: 3px; background: rgba(255, 255, 255, .2); overflow: hidden; }
+.axs-bar i { display: block; height: 100%; background: var(--ax-gold-hot); transition: width .25s linear; }
+.axs-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px; }
+.axs-btns .ax-btn { background: rgba(14, 16, 22, .66); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); font-size: .95rem; padding: 11px 18px; }
+.axs-btns .ax-btn.gold { background: var(--ax-gold); }

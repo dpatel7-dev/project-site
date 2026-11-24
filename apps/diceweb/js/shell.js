@@ -215,7 +215,7 @@
     const k = $('#sp-k'); if (!k) return;
     const key = el.dataset.key || '';
     let app = D.app(el.dataset.hero), kick = '', name = '', line = '', facts = [];
-    if (key.startsWith('td:') || key.startsWith('w:')) {
+    if (key.startsWith('td:') || key.startsWith('w:') || key.startsWith('lv:')) {
       const s = D.tv.spot(key) || {};
       kick = s.kick || ''; name = s.name || ''; line = s.line || '';
       if (s.c) document.documentElement.style.setProperty('--c', s.c);
@@ -561,7 +561,8 @@
       const k = (b, t) => '<span>' + D.btn(b) + '</span><span>' + t + '</span>';
       body.appendChild(h('<div class="keys">' + k('a', 'Select') + k('b', 'Back') + k('menu', 'The menu (or Ctrl+1)') + k('quick', 'Quick access (or Ctrl+2)') + k('search', 'Search') + k('x', 'More things to do, like taking a site off Watch') + k('lb', 'Previous tab') + k('rb', 'Next tab') + '<span>' + D.btn('a').replace(/>[^<]*</, '>↑↓←→<') + '</span><span>Move around</span></div>'));
       body.appendChild(h('<p class="qhint" style="margin-top:16px">Controllers work too: plug one in' + (D.sys ? ' or pair it in Bluetooth,' : '') + ' then press any button. The mouse and touch work everywhere as well.</p>'));
-      body.appendChild(h('<p class="qhint">Home has Today (the time, the weather, what\'s due and what\'s playing) and Watch, your streaming sites. Leave DiceTV alone for a while and a big clock comes up over your world; any key brings it back.</p>'));
+      body.appendChild(h('<p class="qhint">Home has Today (the time, the weather, what\'s due and what\'s playing), Live (channels to leave on) and Watch, your streaming sites. Leave DiceTV alone for a while and a big clock comes up over your world; any key brings it back.</p>'));
+      body.appendChild(h('<p class="qhint">With a TV remote: OK, Back and Home do what they say. Red is Channels, green Axiom, yellow the weather, blue Quick settings. The numbers tune Live channels; Guide opens Axiom\'s guide. On DiceOS your TV\'s own remote works through the HDMI cable.</p>'));
       const row = h('<div style="display:flex;gap:8px;padding:0 8px;flex-wrap:wrap"></div>');
       const ks = h('<button class="b small" data-nav data-key="q:keys">' + D.glyph('keys', 2) + 'All keyboard shortcuts</button>'); ks.onclick = () => { Qam.close(true); D.tools.shortcuts(); };
       const b = h('<button class="b small" data-nav data-key="q:tour">Show the welcome again</button>'); b.onclick = () => { Qam.close(true); welcome(true); };
@@ -716,6 +717,7 @@
       return;
     }
     if (Run.cur && Run.cur.id === id) { resume(); return; }
+    if (Run.cur && opts.swap) { D.closeApp(true); return D.launch(id, Object.assign({}, opts, { swap: false })); } // a remote's colour buttons switch straight away
     if (Run.cur) {
       return D.ask({ title: 'Close ' + Run.cur.app.name + '?', text: 'Only one thing runs at a time. ' + Run.cur.app.name + ' will close so ' + app.name + ' can open.', buttons: [{ label: 'Close it and open ' + app.name, value: true, go: true, c: app.c }, { label: 'Cancel', value: false }] })
         .then((ok) => { if (ok) { D.closeApp(true); D.launch(id, opts); } });
@@ -818,6 +820,7 @@
     // a running app gets first go
     if (Run.cur && $('#app').classList.contains('running') && !Menu.isOpen() && !Qam.isOpen() && !Search.isOpen()) {
       if (Run.cur.inst.onAction && Run.cur.inst.onAction(a)) return;
+      if (D.remote && D.remote.global(a)) return;
       if (a === 'b') return D.suspend();
       if (a === 'menu') return Menu.open();
       if (a === 'quick') return Qam.open();
@@ -826,6 +829,7 @@
       if (a === 'x' && Nav.el && Nav.el._x) { S.play('select'); Nav.el._x(); }
       return;
     }
+    if (D.remote && D.remote.global(a)) return;
     switch (a) {
       case 'up': case 'down': case 'left': case 'right':
         if (Search.isOpen() && document.activeElement && document.activeElement.id === 'sq' && a === 'up') return;

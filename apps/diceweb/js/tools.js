@@ -112,7 +112,9 @@
   // ---- Keyboard shortcuts --------------------------------------------------------------------
   T.KEYS = [
     ['Everywhere', [['Ctrl + /', 'This list'], ['Q or Ctrl + 2', 'Quick settings'], ['M or Ctrl + 1', 'The menu, or all apps on the desktop'], ['/', 'Search'], ['Print Screen', 'Take a screenshot (DiceOS)']]],
-    ['DiceTV', [['Arrow keys', 'Move around'], ['Enter or Space', 'Pick'], ['Esc or Backspace', 'Back'], ['X', 'More things to do'], ['[  ]', 'Previous and next tab']]],
+    ['Desktop', [['Ctrl + Space', 'The Dice Bar: apps, sums, units, timers, tasks'], ['Super or F3', 'Overview of every window'], ['Super + ← → ↑ ↓', 'Snap a window (or Ctrl + Alt + arrows)'], ['Ctrl + Alt + 1 to 4', 'Desktops 1 to 4 (or Ctrl + Super + ← →)'], ['Super + Shift + ← →', 'Move a window to the next desktop'], ['Alt + Tab or Alt + `', 'Flip between windows'], ['Super + V', 'Clipboard history'], ['Super + D', 'Show the desktop'], ['Super + E', 'Files'], ['Super + L', 'Sleep'], ['Alt + F4', 'Close the window']]],
+    ['DiceTV', [['Arrow keys', 'Move around'], ['Enter or Space', 'Pick'], ['Esc or Backspace', 'Back'], ['X', 'More things to do'], ['[  ]', 'Previous and next tab'], ['1 to 0', 'Tune a Live channel']]],
+    ['TV remote', [['OK, Back, Home', 'Pick, go back, go home'], ['Red', 'Channels'], ['Green', 'Axiom'], ['Yellow', 'Weather'], ['Blue', 'Quick settings'], ['Guide', 'Axiom\'s guide'], ['CH + and −', 'Next and previous'], ['▶︎ ⏸', 'Dice Radio, or what\'s playing'], ['Info', 'More about what\'s picked']]],
     ['SereneTab', [['Ctrl + T', 'New tab'], ['Ctrl + W', 'Close the tab'], ['Ctrl + Shift + T', 'Open the last closed tab again'], ['Ctrl + L', 'Type an address'], ['Ctrl + H', 'History'], ['Alt + ← →', 'Back and forward']]],
     ['Terminal', [['Tab', 'Finish a name'], ['↑ ↓', 'Earlier commands'], ['Ctrl + C', 'Stop what\'s running']]],
   ];
@@ -123,7 +125,7 @@
     box.classList.add('keysheet');
     const sheet = h('<div class="ksheet"></div>');
     T.KEYS.forEach(([title, rows]) => {
-      if (title === 'Everywhere' || title === 'DiceTV' || D.app(title === 'SereneTab' ? 'browser' : 'terminal')) {
+      if (title === 'Everywhere' || title === 'DiceTV' || title === 'Desktop' || title === 'TV remote' || D.app(title === 'SereneTab' ? 'browser' : 'terminal')) {
         sheet.appendChild(h('<section><h3>' + esc(title) + '</h3>' + rows.filter((r) => D.sys || !/DiceOS/.test(r[1])).map(([k, t]) => '<div><kbd>' + esc(k) + '</kbd><span>' + esc(t) + '</span></div>').join('') + '</section>'));
       }
     });

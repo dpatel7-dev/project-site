@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.0
+
+- Your TV's own remote works, through the HDMI cable (HDMI-CEC). diced keeps cec-client (from libcec, what Kodi uses) running when there's a CEC port and passes each press to the desktop (/api/events, a stream only the desktop can open). DiceOS can turn the TV on and switch it to DiceOS when it starts, turn it off when DiceOS sleeps, and send the volume buttons to the TV (/api/remote; Settings, TV remote). cec-utils is installed with DiceOS. Remotes that plug in by USB or pair by Bluetooth work too.
+- DiceWeb 1.6: TV remote buttons everywhere and an on-screen keyboard; clear numbers; Channels, Weather, Photos and Sketch; DiceTV's Live row; Axiom as a TV guide with study sessions; and on the desktop: snapping and layouts, four desktops, an overview, Alt + Tab, the Dice Bar (Ctrl + Space), widgets and clipboard history.
+- Photos shows Pictures, Pictures/Screenshots and Pictures/Sketches; Sketch saves into Pictures/Sketches.
+
 ## 1.5.0
 
 - Fixed the PC image stopping on "authentication error" instead of showing the desktop. The desktop borrowed the "login" sign-in rules, which also check the account, and that check failed for the live system's user. It now has its own small rules file (/etc/pam.d/dice-session) that only opens the session, keeps trying if it ever stops, and waits for the live system to make its user.

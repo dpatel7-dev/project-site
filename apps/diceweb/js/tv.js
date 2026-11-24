@@ -103,6 +103,13 @@
   TV.mono = L.monogram;
   TV.host = (u) => { try { return new URL(u).host.replace(/^www\./, ''); } catch (e) { return u; } };
   TV.cleanUrl = L.cleanUrl;
+  TV.openWatch = function (i) {
+    const w = watchList()[i];
+    if (!w) return false;
+    if (D.remote) D.remote.osd('tv', ((i + 1) % 10) + '  ' + w.name);
+    TV.open(w.url);
+    return true;
+  };
   TV.open = function (url) {
     if (D.sys) D.sys.open(url);
     else window.open(url, '_blank', 'noopener');
@@ -149,10 +156,42 @@
   }
   D.on('source', () => { if (watch && watch.isConnected) { const sm = watch.parentElement.querySelector('h2 small'); if (sm) sm.innerHTML = 'Opens in the browser. ' + D.btn('x') + ' takes one off.'; } });
 
-  TV.rows = function (page) { page.append(todayRow(), watchRow()); };
+  // ---- Live: Channels' pictures, playing in little tiles ----------------------------------------
+  const thumbs = new Map();
+  function thumb(id, cv) {
+    const W = 160, H = 90;
+    cv.width = W; cv.height = H;
+    if (!thumbs.has(id)) {
+      const c = G.canvas(W, H), s = D.channels.make(id, W, H);
+      try { for (let i = 0; i < 40; i++) s.draw(c.getContext('2d'), 1 + i / 20); } catch (e) { /* a picture that needs the page */ }
+      thumbs.set(id, c);
+    }
+    cv.getContext('2d').drawImage(thumbs.get(id), 0, 0);
+  }
+  function liveRow() {
+    const s = h('<section class="shelf" data-block><h2>Live <small>Pictures to leave on, like TV channels.</small></h2><div class="row" data-row id="live"></div></section>');
+    const row = s.querySelector('#live');
+    D.channels.LIST.slice(0, 9).forEach((c, i) => {
+      const b = h('<button class="ltile" data-nav data-key="lv:' + c.id + '" data-a="Watch" style="--lc:' + esc(c.c) + '"><canvas aria-hidden="true"></canvas><span class="lnum">' + (i + 1) + '</span><span class="lname">' + esc(c.name) + '</span></button>');
+      thumb(c.id, b.querySelector('canvas'));
+      b.onclick = () => D.launch('channels', { arg: c.id });
+      row.appendChild(b);
+    });
+    const all = h('<button class="ltile lall" data-nav data-key="lv:all" data-a="Open"><span class="lname">All ' + D.channels.LIST.length + ' channels</span></button>');
+    all.onclick = () => D.launch('channels');
+    row.appendChild(all);
+    return s;
+  }
+
+  TV.rows = function (page) { page.append(todayRow()); if (D.channels && D.app('channels')) page.append(liveRow()); page.append(watchRow()); };
 
   // what the big words over the world say when one of these is focused
   TV.spot = function (key) {
+    if (key.startsWith('lv:')) {
+      if (key === 'lv:all') return { kick: 'Live', name: 'Channels', line: 'A fireplace, an aquarium, rain, the northern lights, space, every world and every city. Up and down change channel; numbers jump.' };
+      const c = D.channels.find(key.slice(3));
+      return { kick: 'Live · channel ' + (D.channels.LIST.indexOf(c) + 1), name: c.name, line: c.line + ' Made here as it plays, so it never runs out.', c: c.c };
+    }
     if (key.startsWith('w:')) {
       if (key === 'w:add') return { kick: 'Watch', name: 'Add a site', line: 'Any streaming site, or anything else you open a lot.' };
       const w = watchList()[+key.slice(2)];

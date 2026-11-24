@@ -520,8 +520,136 @@
     return d;
   }
 
+  // ---- the Dice Bar: units, timers and quick tasks ---------------------------------------
+  // "5 km in miles", "72 f to c", "3 cups in ml", "2 gb in mb"
+  const U = {};
+  const unit = (kind, f, ...names) => names.forEach((n) => { U[n] = [kind, f, names[0]]; });
+  unit('len', 0.001, 'mm', 'millimetre', 'millimetres', 'millimeter', 'millimeters'); unit('len', 0.01, 'cm', 'centimetre', 'centimetres', 'centimeter', 'centimeters');
+  unit('len', 1, 'm', 'metre', 'metres', 'meter', 'meters'); unit('len', 1000, 'km', 'kilometre', 'kilometres', 'kilometer', 'kilometers');
+  unit('len', 0.0254, 'in', 'inch', 'inches'); unit('len', 0.3048, 'ft', 'foot', 'feet'); unit('len', 0.9144, 'yd', 'yard', 'yards'); unit('len', 1609.344, 'mi', 'mile', 'miles');
+  unit('mass', 0.001, 'mg', 'milligram', 'milligrams'); unit('mass', 1, 'g', 'gram', 'grams'); unit('mass', 1000, 'kg', 'kilo', 'kilos', 'kilogram', 'kilograms');
+  unit('mass', 28.349523125, 'oz', 'ounce', 'ounces'); unit('mass', 453.59237, 'lb', 'lbs', 'pound', 'pounds'); unit('mass', 6350.29318, 'st', 'stone', 'stones');
+  unit('vol', 0.001, 'ml', 'millilitre', 'millilitres', 'milliliter', 'milliliters'); unit('vol', 1, 'l', 'litre', 'litres', 'liter', 'liters');
+  unit('vol', 0.00492892159375, 'tsp', 'teaspoon', 'teaspoons'); unit('vol', 0.01478676478125, 'tbsp', 'tablespoon', 'tablespoons'); unit('vol', 0.0295735295625, 'floz', 'fl oz');
+  unit('vol', 0.2365882365, 'cup', 'cups'); unit('vol', 0.473176473, 'pt', 'pint', 'pints'); unit('vol', 0.946352946, 'qt', 'quart', 'quarts'); unit('vol', 3.785411784, 'gal', 'gallon', 'gallons');
+  unit('time', 1, 's', 'sec', 'secs', 'second', 'seconds'); unit('time', 60, 'min', 'mins', 'minute', 'minutes'); unit('time', 3600, 'h', 'hr', 'hrs', 'hour', 'hours');
+  unit('time', 86400, 'day', 'days'); unit('time', 604800, 'week', 'weeks'); unit('time', 31557600, 'year', 'years');
+  unit('data', 1, 'byte', 'bytes'); unit('data', 1e3, 'kb', 'kilobyte', 'kilobytes'); unit('data', 1e6, 'mb', 'megabyte', 'megabytes'); unit('data', 1e9, 'gb', 'gigabyte', 'gigabytes'); unit('data', 1e12, 'tb', 'terabyte', 'terabytes');
+  unit('speed', 1, 'm/s'); unit('speed', 1 / 3.6, 'km/h', 'kmh', 'kph'); unit('speed', 0.44704, 'mph');
+  const TEMP = { c: 'c', '°c': 'c', celsius: 'c', f: 'f', '°f': 'f', fahrenheit: 'f', k: 'k', kelvin: 'k' };
+  function convert(q) {
+    const m = /^\s*(-?\d[\d,]*(?:\.\d+)?|-?\.\d+)\s*([a-z°/ ]+?)\s+(?:in|to|as|into)\s+([a-z°/ ]+?)\s*$/i.exec(String(q || ''));
+    if (!m) return null;
+    const v = parseFloat(m[1].replace(/,/g, '')), a = m[2].trim().toLowerCase(), b = m[3].trim().toLowerCase();
+    let out, from, to;
+    if (TEMP[a] && TEMP[b]) {
+      from = TEMP[a]; to = TEMP[b];
+      const c = from === 'c' ? v : from === 'f' ? (v - 32) * 5 / 9 : v - 273.15;
+      out = to === 'c' ? c : to === 'f' ? c * 9 / 5 + 32 : c + 273.15;
+      from = from === 'k' ? 'K' : '°' + from.toUpperCase(); to = to === 'k' ? 'K' : '°' + to.toUpperCase();
+    } else {
+      const ua = U[a] || U[a.replace(/s$/, '')], ub = U[b] || U[b.replace(/s$/, '')];
+      if (!ua || !ub || ua[0] !== ub[0]) return null;
+      out = v * ua[1] / ub[1]; from = ua[2]; to = ub[2];
+    }
+    const nice = (n) => calcText(+n.toPrecision(6));
+    return { value: out, text: nice(v) + ' ' + from + ' = ' + nice(out) + ' ' + to };
+  }
+  // "timer 10", "timer 90s", "set a timer for 1.5 hours": how long, in milliseconds
+  function parseTimer(q) {
+    const m = /^\s*(?:set\s+(?:a\s+)?)?timer(?:\s+for)?\s+(\d+(?:\.\d+)?)\s*(s|secs?|seconds?|m|mins?|minutes?|h|hrs?|hours?)?\s*$/i.exec(String(q || ''));
+    if (!m) return 0;
+    const n = parseFloat(m[1]), u = (m[2] || 'm').toLowerCase();
+    const ms = n * (u[0] === 's' ? 1000 : u[0] === 'h' ? 3600000 : 60000);
+    return ms > 0 && ms <= 24 * 3600000 ? Math.round(ms) : 0;
+  }
+  // "todo read chapter 7 friday", "task lab report tomorrow": a task for Axiom
+  const WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  function parseTask(q, today) {
+    const m = /^\s*(?:todo|to do|task|remind me to|add task)\s*:?\s+(.+?)\s*$/i.exec(String(q || ''));
+    if (!m) return null;
+    let title = m[1], due = today;
+    const tail = /\s+(?:(?:due|by|on|for)\s+)?(today|tonight|tomorrow|next week|(?:this\s+|next\s+)?(?:sun|mon|tues?|wed(?:nes)?|thu(?:rs?)?|fri|sat(?:ur)?)(?:day)?)$/i.exec(title);
+    if (tail) {
+      title = title.slice(0, tail.index).trim();
+      const w = tail[1].toLowerCase();
+      if (w === 'tomorrow') due = addDays(today, 1);
+      else if (w === 'next week') due = addDays(today, 7);
+      else if (w !== 'today' && w !== 'tonight') {
+        const day = WEEK.findIndex((d) => d.startsWith(w.replace(/^(this|next)\s+/, '').slice(0, 3)));
+        const [y, mo, d] = today.split('-').map(Number), now = new Date(y, mo - 1, d).getDay();
+        let ahead = (day - now + 7) % 7 || 7;
+        if (/^next\s/.test(w) && ahead < 7) ahead += 7;
+        due = addDays(today, ahead);
+      }
+    }
+    title = title.replace(/^["']|["']$/g, '').trim();
+    return title ? { title: title.charAt(0).toUpperCase() + title.slice(1), due } : null;
+  }
+
+  // ---- Axiom: when classes meet ---------------------------------------------------------------
+  // a class can meet on some days of the week (0 is Sunday), from start to end ('09:00')
+  const hm = (t) => /^\d\d:\d\d$/.test(t || '') ? +t.slice(0, 2) * 60 + +t.slice(3, 5) : NaN;
+  function classesOn(classes, key) {
+    const [y, m, d] = String(key).split('-').map(Number), wd = new Date(y, m - 1, d).getDay();
+    return (classes || []).filter((c) => Array.isArray(c.days) && c.days.includes(wd) && hm(c.start) < hm(c.end))
+      .map((c) => ({ cls: c, start: c.start, end: c.end, from: hm(c.start), to: hm(c.end) })).sort((a, b) => a.from - b.from);
+  }
+  // what's on now, and what's next, today
+  function classNow(classes, date) {
+    const key = dayKey(date), mins = date.getHours() * 60 + date.getMinutes(), list = classesOn(classes, key);
+    return { now: list.find((s) => s.from <= mins && mins < s.to) || null, next: list.find((s) => s.from > mins) || null, mins };
+  }
+  // how much was studied, per class, in the 7 days up to today
+  function studyWeek(study, today) {
+    const from = addDays(today, -6), by = {};
+    let total = 0;
+    (study || []).forEach((s) => { if (s.day >= from && s.day <= today) { total += s.mins; by[s.classId || ''] = (by[s.classId || ''] || 0) + s.mins; } });
+    return { total, by };
+  }
+
+  // ---- the desktop: where a window goes when it's snapped ---------------------------------------
+  // zones: left, right, top (the whole screen), tl tr bl br (quarters), and thirds l3 c3 r3, l23 r23
+  function snapRect(zone, area, gap) {
+    gap = gap === undefined ? 6 : gap;
+    const W = area.w, H = area.h, hw = Math.round(W / 2), hh = Math.round(H / 2), t3 = Math.round(W / 3);
+    const R = { top: [0, 0, W, H], left: [0, 0, hw, H], right: [hw, 0, W - hw, H], tl: [0, 0, hw, hh], tr: [hw, 0, W - hw, hh], bl: [0, hh, hw, H - hh], br: [hw, hh, W - hw, H - hh],
+      l3: [0, 0, t3, H], c3: [t3, 0, t3, H], r3: [2 * t3, 0, W - 2 * t3, H], l23: [0, 0, 2 * t3, H], r23: [t3, 0, W - t3, H] }[zone];
+    if (!R) return null;
+    return { x: R[0] + gap, y: R[1] + gap, w: R[2] - gap * 2, h: R[3] - gap * 2 };
+  }
+  // which zone the pointer is in while dragging a window (null when it's nowhere near an edge)
+  function edgeZone(x, y, area, edge) {
+    edge = edge || 14;
+    const corner = Math.min(120, area.h / 4), L = x <= edge, Rt = x >= area.w - edge, T = y <= edge;
+    if (T && x < corner) return 'tl';
+    if (T && x > area.w - corner) return 'tr';
+    if (T) return 'top';
+    if (L) return y < corner ? 'tl' : y > area.h - corner ? 'bl' : 'left';
+    if (Rt) return y < corner ? 'tr' : y > area.h - corner ? 'br' : 'right';
+    return null;
+  }
+  // n windows in a grid for the overview: the box each one fits in
+  function fitGrid(n, W, H, pad) {
+    pad = pad === undefined ? 24 : pad;
+    if (!n) return [];
+    const cols = Math.max(1, Math.ceil(Math.sqrt(n * (W / H) / 1.5))), rows = Math.ceil(n / cols), cw = W / cols, ch = H / rows;
+    return Array.from({ length: n }, (_, i) => {
+      const r = Math.floor(i / cols), inRow = r === rows - 1 ? n - r * cols : cols, off = (W - inRow * cw) / 2;
+      return { x: Math.round(off + (i % cols) * cw + pad / 2), y: Math.round(r * ch + pad / 2), w: Math.round(cw - pad), h: Math.round(ch - pad) };
+    });
+  }
+
+  // ---- remotes: the keys TV remotes, media keyboards and air mice send ----------------------------
+  const REMOTE = { BrowserBack: 'b', GoBack: 'b', Exit: 'b', Back: 'b', Select: 'a', Accept: 'a', Execute: 'a', ContextMenu: 'menu', Info: 'x', Guide: 'guide', BrowserHome: 'home',
+    MediaPlayPause: 'play', MediaPlay: 'play', MediaPause: 'play', MediaStop: 'stop', MediaTrackNext: 'next', MediaTrackPrevious: 'prev', MediaFastForward: 'ff', MediaRewind: 'rew',
+    AudioVolumeUp: 'volup', AudioVolumeDown: 'voldown', AudioVolumeMute: 'mute', ChannelUp: 'rb', ChannelDown: 'lb', ColorF0Red: 'red', ColorF1Green: 'green', ColorF2Yellow: 'yellow', ColorF3Blue: 'blue',
+    Settings: 'quick', Sleep: 'sleep', StandBy: 'sleep', BrowserSearch: 'search' };
+  const remoteKey = (key) => REMOTE[key] || null;
+
   const api = { clockNight, pickNext, newDisk, calc, calcText, monthGrid, dayKey, resolve, walk, writeFile, makeDir, remove, tokens, parseDice, run, HELP, score,
-    sunPos, moonPos, cityTime, ENGINES, omni, howToShow, hostOf, weatherWords, addDays, planBuckets, eventsToTasks, remember, suggest, monogram, cleanUrl, nextSleep, readBackup };
+    sunPos, moonPos, cityTime, ENGINES, omni, howToShow, hostOf, weatherWords, addDays, planBuckets, eventsToTasks, remember, suggest, monogram, cleanUrl, nextSleep, readBackup,
+    convert, parseTimer, parseTask, classesOn, classNow, studyWeek, snapRect, edgeZone, fitGrid, remoteKey, REMOTE };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DiceLogic = api;
 })(this);

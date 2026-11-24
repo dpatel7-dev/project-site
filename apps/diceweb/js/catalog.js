@@ -1,7 +1,7 @@
 // Everything DiceWeb knows about: its own apps, the apps for your computer,
 // and the friends (the mascots). The suite list matches the website's.
 window.CATALOG = {
-  version: '1.5.0',
+  version: '1.6.0',
   site: 'https://djp7.pythonanywhere.com',
 
   // Cubby: DiceWeb's own mascot, a die with feet.
@@ -48,6 +48,14 @@ window.CATALOG = {
       line: 'Classes, tasks by class, a calendar with a dot for each class, and notes. Today sorts out what\'s overdue and what\'s due.', words: 'axiom planner calendar homework tasks classes school notes reminders date schedule' },
     { id: 'clock', name: 'Clock', kind: 'app', c: '#2bc4b2', who: null, land: 'hills', blurb: 'World clocks, a timer and a stopwatch',
       line: 'The time here and in other cities, a timer that rings, and a stopwatch with laps.', words: 'time timer stopwatch alarm world cities' },
+    { id: 'channels', name: 'Channels', kind: 'app', c: '#e0753a', who: null, land: 'screen', blurb: 'A fireplace, an aquarium and more, live',
+      line: 'Live pictures to leave on, like TV channels: a crackling fireplace, an aquarium, rain on the window, the northern lights, space, every world and every city.', words: 'tv channel fireplace fire aquarium fish rain aurora space ambient screensaver relax' },
+    { id: 'weather', name: 'Weather', kind: 'app', c: '#3a9be8', who: null, land: 'hills', blurb: 'Now, the next 12 hours and the week',
+      line: 'The weather where you are: right now, hour by hour, and the week ahead.', words: 'forecast rain snow temperature sun wind' },
+    { id: 'photos', name: 'Photos', kind: 'app', c: '#d9576b', who: null, land: 'paper', blurb: 'Your pictures, big, and a slideshow',
+      line: 'Your pictures and screenshots, big on the screen, with a slow slideshow for the TV.', words: 'pictures images gallery slideshow screenshots' },
+    { id: 'sketch', name: 'Sketch', kind: 'app', c: '#9b4fc9', who: null, land: 'paper', blurb: 'Draw pixel art',
+      line: 'Pixel art in DiceOS\'s own style. Draw with the mouse, a finger, a controller or a remote.', words: 'draw paint pixel art drawing picture' },
     { id: 'monitor', name: 'System Monitor', kind: 'system', c: '#4fc16b', who: null, land: 'screen', blurb: 'How busy the computer is',
       line: 'How busy it is, memory and storage, and what\'s open.', words: 'task manager activity cpu memory processes performance' },
     { id: 'store', name: 'Store', kind: 'system', c: '#2bc4b2', who: 'cubby', land: 'market', blurb: 'Every app for your computer',

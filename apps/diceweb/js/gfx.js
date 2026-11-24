@@ -172,7 +172,8 @@
   // ---- App icons: a white picture on a rounded tile of the app's colour -----------------
   // Clean and flat, so they read at a glance in the dock and the app grid.
   const TILES = { files: '#e39a32', home: '#e39a32', browser: '#3d86d6', terminal: '#2b2f3a', notes: '#e8913a', music: '#a862dc', store: '#ef5f74',
-    settings: '#66789c', calculator: '#4a5568', calendar: '#d4a857', clock: '#2f9e8f', monitor: '#3a9d68', gaming: '#2a2a32' };
+    settings: '#66789c', calculator: '#4a5568', calendar: '#d4a857', clock: '#2f9e8f', monitor: '#3a9d68', gaming: '#2a2a32',
+    channels: '#e0753a', weather: '#3a9be8', photos: '#d9576b', sketch: '#9b4fc9' };
   function glyph(id, day) {
     const g = [];
     for (let i = 0; i < 16; i++) g.push(new Array(16).fill(''));
@@ -226,6 +227,21 @@
         rect(1, 2, 14, 10, 'W'); rect(2, 3, 12, 8, 'D');
         [[2, 9], [4, 8], [5, 9], [7, 5], [9, 7], [11, 4], [13, 6]].reduce((p, q) => { line(p[0], p[1], q[0], q[1], 'G'); return q; });
         rect(6, 12, 4, 1, 'w'); rect(4, 13, 8, 1, 'w');
+        break;
+      case 'channels':
+        line(5, 1, 8, 4, 'W'); line(11, 1, 8, 4, 'W'); rect(1, 4, 14, 10, 'W'); rect(2, 5, 12, 8, 'D');
+        rect(3, 7, 3, 5, 'R'); rect(6, 7, 3, 5, 'O'); rect(9, 7, 3, 5, 'G'); rect(5, 14, 6, 1, 'w');
+        break;
+      case 'weather':
+        disc(10.5, 5, 3.4, 'O'); disc(5, 10, 3, 'W'); disc(9, 9, 3.6, 'W'); disc(12.5, 11, 2.5, 'W'); rect(4, 11, 10, 3, 'W');
+        break;
+      case 'photos':
+        rect(1, 3, 14, 11, 'W'); rect(2, 4, 12, 9, 'A'); disc(11, 6.5, 1.6, 'O');
+        for (let x = 2; x <= 13; x++) { const top = 12 - Math.round(5 * Math.max(0, 1 - Math.abs(x - 6) / 4.5)); rect(x, top, 1, 13 - top, 'G'); }
+        break;
+      case 'sketch':
+        disc(7.5, 8, 6.4, 'W'); disc(10.5, 11.5, 1.6, '');
+        disc(4.6, 6.5, 1.3, 'R'); disc(8, 4.4, 1.3, 'O'); disc(11.4, 6.4, 1.3, 'G'); disc(4.6, 10.4, 1.3, 'A');
         break;
       default:
         disc(7.5, 7.5, 5, 'W');

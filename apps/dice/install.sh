@@ -38,7 +38,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 CHROME=chromium
 apt-cache show chromium >/dev/null 2>&1 || CHROME=chromium-browser
-PKGS="cage $CHROME python3 curl ca-certificates plymouth plymouth-themes wlr-randr pipewire pipewire-pulse wireplumber fonts-noto-color-emoji network-manager rfkill iw alsa-utils bluez grim"
+PKGS="cage $CHROME python3 curl ca-certificates plymouth plymouth-themes wlr-randr pipewire pipewire-pulse wireplumber fonts-noto-color-emoji network-manager rfkill iw alsa-utils bluez grim cec-utils"
 # a PC also wants the drivers for its graphics, and a sound card's firmware where Debian has them
 if [ "$PI" = 0 ]; then
   for p in libgl1-mesa-dri mesa-vulkan-drivers firmware-linux-free firmware-sof-signed; do apt-cache show "$p" >/dev/null 2>&1 && PKGS="$PKGS $p"; done

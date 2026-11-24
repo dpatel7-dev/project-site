@@ -18,7 +18,7 @@
     brightness: dev.backlight ? 0.9 : null, battery: dev.battery ? { percent: 76, charging: false } : null,
     settings: cfg.settings || {},
   };
-  window.DICE_SYS = { token: 'emulator', version: cfg.version || '1.5.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
+  window.DICE_SYS = { token: 'emulator', version: cfg.version || '1.6.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
   const NETS = [[cfg.wifi && cfg.wifi.ssid ? cfg.wifi.ssid : 'Home', 84, true], ['Upstairs 5G', 61, true], ['Library Guest', 42, false], ['Printer-4F2A', 23, true]];
   const tell = (msg) => { try { parent.postMessage(Object.assign({ dice: 'emu' }, msg), location.origin); } catch (e) { /* not in the emulator after all */ } };
   const reply = (data, status) => new Response(JSON.stringify(data), { status: status || 200, headers: { 'Content-Type': 'application/json' } });
@@ -29,8 +29,21 @@
     let body = null;
     try { body = init && typeof init.body === 'string' ? JSON.parse(init.body) : null; } catch (e) { body = null; }
     const method = ((init && init.method) || 'GET').toUpperCase();
+    if (url.pathname === '/api/events') return Promise.resolve(events());
     return new Promise((res) => setTimeout(() => res(route(method, url.pathname, body || {})), 80 + Math.random() * 160));
   };
+  // the pretend TV remote beside the screen sends its buttons here, as HDMI-CEC would through diced
+  const streams = new Set(), enc = new TextEncoder();
+  function events() {
+    let ctl;
+    const stream = new ReadableStream({ start(c) { ctl = c; streams.add(c); }, cancel() { streams.delete(ctl); } });
+    return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+  }
+  addEventListener('message', (e) => {
+    if (e.origin !== location.origin || !e.data || e.data.dice !== 'remote' || typeof e.data.a !== 'string') return;
+    const line = enc.encode('data: ' + JSON.stringify({ a: e.data.a, key: e.data.key || e.data.a }) + '\n\n');
+    streams.forEach((c) => { try { c.enqueue(line); } catch (err) { streams.delete(c); } });
+  });
   let updateAsked = 0;
   // a pretend Bluetooth: a controller and a speaker already paired, two more nearby when you look
   const BT = { powered: true, devices: [
@@ -88,6 +101,10 @@
         tell({ event: 'log', text: 'Bluetooth: ' + b.action + (d ? ' ' + d.name : '') + ' (pretend)' });
         return reply(btState());
       }
+      case '/api/remote':
+        if (method === 'GET') return reply({ ok: true, available: true, tv: 'the pretend TV', why: '' });
+        tell({ event: 'log', text: 'TV remote: ' + (b.cmd || '?') + ' (pretend HDMI-CEC)' });
+        return reply({ ok: true });
       case '/api/screenshot': {
         const p = '~/Pictures/Screenshots/Screenshot ' + new Date().toISOString().slice(0, 19).replace('T', ' at ').replace(/:/g, '.') + '.png';
         tell({ event: 'log', text: 'Took a screenshot: ' + p + ' (pretend)' });

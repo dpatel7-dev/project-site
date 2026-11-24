@@ -221,7 +221,7 @@
     if (Dice.keyHook && Dice.keyHook(e)) return;
     const t = e.target;
     let action = null;
-    if (e.ctrlKey && (e.key === '1' || e.key === '2')) action = e.key === '1' ? 'menu' : 'quick';
+    if (e.ctrlKey && !e.altKey && !e.metaKey && (e.key === '1' || e.key === '2')) action = e.key === '1' ? 'menu' : 'quick';
     else if (e.ctrlKey || e.metaKey || e.altKey) return;
     else if (typing(t)) {
       // in a text box, keep the keys for typing except a few that move about
@@ -274,7 +274,7 @@
   const Nav = Dice.nav = { el: null, roots: [] };
   // The layer on top decides where focus can go: a dialog, then search, then the side menus, then the page.
   Nav.root = function () {
-    for (const sel of ['#dialog.open', '#wall.on', '#search.open', '#qam.open', '#menu.open']) { const r = Dice.$(sel); if (r) return r; }
+    for (const sel of ['#osk.open', '#dialog.open', '.navtrap', '.dov.on', '.dbar.on', '#wall.on', '#search.open', '#qam.open', '#menu.open']) { const r = Dice.$(sel); if (r) return r; }
     if (Dice.$('#app').classList.contains('running')) return Dice.$('#run');
     return Dice.$('#view');
   };
@@ -359,13 +359,15 @@
   const GLYPH = {
     keys: { a: 'Enter', b: 'Esc', x: 'X', y: 'Y', menu: 'M', quick: 'Q', lb: '[', rb: ']', search: '/' },
     pad: { menu: '☰', quick: '⋯', lb: 'L', rb: 'R' },
+    remote: { a: 'OK', b: 'Back', x: 'Info', y: 'Yellow', menu: 'Menu', quick: 'Blue', lb: 'CH −', rb: 'CH +', search: 'Search' },
   };
   // On a controller the four face buttons are shown by where they are (a little
   // diamond of dots with one filled in), not by a letter or a colour, so any
   // controller makes sense.
   const FACE = { a: [7, 12], b: [12, 7], x: [2, 7], y: [7, 2], search: [7, 2] };
   Dice.btn = function (b) {
-    const src = Input.source === 'pad' ? 'pad' : 'keys';
+    const forced = Dice.state && Dice.state.btns && Dice.state.btns !== 'auto' ? Dice.state.btns : null; // Settings can pick how buttons are shown
+    const src = forced || (Input.source === 'pad' ? 'pad' : Input.source === 'remote' ? 'remote' : 'keys');
     if (src === 'pad' && FACE[b]) {
       const dots = [[7, 2], [12, 7], [7, 12], [2, 7]].map(([x, y]) => '<circle cx="' + x + '" cy="' + y + '" r="' + (x === FACE[b][0] && y === FACE[b][1] ? 2.4 : 1.5) + '"' + (x === FACE[b][0] && y === FACE[b][1] ? '' : ' fill="none" stroke="currentColor" stroke-width="1"') + '/>').join('');
       return '<span class="bt bt-pad bt-face" aria-label="' + ({ a: 'bottom button', b: 'right button', x: 'left button', y: 'top button', search: 'top button' })[b] + '"><svg viewBox="0 0 14 14" width="14" height="14" fill="currentColor" aria-hidden="true">' + dots + '</svg></span>';

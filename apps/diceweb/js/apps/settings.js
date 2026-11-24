@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, esc = D.esc, h = D.h;
-  const SECTIONS = [['you', 'You', 'person', '#ff707a'], ['look', 'Look', 'sun', '#f5c431'], ['sound', 'Sound', 'volume', '#d39cf5'], ['pads', 'Controllers and keys', 'pad', '#7c9cff'],
+  const SECTIONS = [['you', 'You', 'person', '#ff707a'], ['look', 'Look', 'sun', '#f5c431'], ['desk', 'Desktop', 'desktop', '#2f9e6e'], ['sound', 'Sound', 'volume', '#d39cf5'], ['pads', 'Controllers and keys', 'pad', '#7c9cff'], ['remote', 'TV remote', 'tv', '#3a7bd5'],
     ['perf', 'Performance', 'chart', '#8fd16a'], ['start', 'Starting up', 'power', '#ef6a1f'], ['cloud', 'Dice Cloud', 'link', '#3a9be8'], ['storage', 'Storage', 'lock', '#2bc4b2'], ['about', 'About', 'help', '#96969f']];
 
   // on a computer running Dice, there's more to set: Wi-Fi, the screen, power and updates
@@ -12,6 +12,7 @@
     SECTIONS.splice(2, 0, ['wifi', 'Wi-Fi', 'wifi', '#2bc4b2'], ['bt', 'Bluetooth', 'bt', '#3a7bd5'], ['display', 'Screen', 'desktop', '#7cc4ff']);
     SECTIONS.splice(SECTIONS.findIndex((x) => x[0] === 'storage'), 0, ['system', 'Power and updates', 'restart', '#ef6a1f']);
   }
+  D.settingsSections = () => SECTIONS.map((s) => [s[0], s[1]]); // for the Dice Bar
   const gb = (n) => (n / 1073741824).toFixed(1) + ' GB';
 
   D.register({ id: 'settings', mount(root, ctx) {
@@ -117,6 +118,45 @@
         const t = h('<button class="b small" data-nav data-key="snd:test">' + D.glyph('volume', 2) + 'Play a test chime</button>');
         t.onclick = () => S.play('achieve');
         pane.appendChild(row('Test', 'Can\'t hear anything? Check the volume on your computer too.', t));
+      },
+      desk() {
+        pane.appendChild(h('<h2>Desktop</h2>'));
+        pane.appendChild(row('Snap windows', 'Drag a window to an edge or a corner and it fills that part of the screen. Hold the pointer on its maximise button for more layouts.', sw(D.state.snap !== false, (v) => D.set('snap', v), 'dk:snap', 'Snap windows')));
+        pane.appendChild(row('Hot corner', 'Push the pointer into the top-left corner for the overview of every window.', sw(D.state.hotCorner !== false, (v) => D.set('hotCorner', v), 'dk:hot', 'Hot corner')));
+        const wl = Array.isArray(D.state.widgets) ? D.state.widgets : null;
+        const wb = h('<button class="b small" data-nav data-key="dk:wid">' + D.glyph('plus', 2) + 'Add a widget</button>');
+        wb.onclick = () => { if (D.desk.on && D.deskplus) D.deskplus.gallery(innerWidth / 2 - 200, innerHeight / 3); else D.toast({ icon: 'desktop', title: 'On the desktop', text: 'Right-click the desktop, then Widgets.' }); };
+        pane.appendChild(row('Widgets', (wl ? wl.length : 3) + ' on the desktop now: a clock, the weather, Axiom, music, sticky notes and more. Drag them by their name.', wb));
+        const rs = h('<button class="b small" data-nav data-key="dk:wreset">Put the first ones back</button>');
+        rs.onclick = () => { delete D.state.widgets; D.save(); D.emit('look'); D.toast({ icon: 'desktop', title: 'Widgets reset', text: 'The clock, the weather and Axiom are back.' }); };
+        pane.appendChild(row('Start the widgets again', 'Takes away the ones you added.', rs));
+        pane.appendChild(h('<div class="srow" style="display:block"><b>Quick ways round</b><div class="keys" style="padding:10px 0 0;grid-template-columns:auto 1fr">' +
+          [['Ctrl + Space', 'The Dice Bar: apps, settings, sums, units, timers, tasks'], ['Super, F3', 'Overview of every window'], ['Ctrl + Alt + ← →', 'The other desktops (or Ctrl + Alt + 1 to 4)'], ['Super + ← → ↑ ↓', 'Snap the window (Ctrl + Alt + Shift works too)'], ['Alt + Tab', 'Flip between windows (Alt + ` too)'], ['Super + V', 'Things you copied lately'], ['Super + D', 'Show the desktop']].map(([k, t]) => '<span class="bt bt-keys">' + esc(k) + '</span><span>' + esc(t) + '</span>').join('') + '</div></div>'));
+      },
+      remote() {
+        pane.appendChild(h('<h2>TV remote</h2>'));
+        pane.appendChild(h('<p class="muted" style="margin:0 0 8px">Remotes work on DiceTV and everywhere else: OK picks, Back goes back, the arrows move, Home goes home. The colours: <b style="color:#e5484d">red</b> Channels, <b style="color:#3fa26b">green</b> Axiom, <b style="color:#c99a10">yellow</b> Weather, <b style="color:#3a7bd5">blue</b> Quick settings. Guide opens Axiom\'s guide, the numbers tune Live channels, CH + and − change channel.</p>'));
+        const test = h('<div class="srow"><div><b>Try a button</b><span class="muted rm-last">Press anything on your remote.</span></div></div>');
+        pane.appendChild(test);
+        const off = D.on('remote', (r) => { const el = test.querySelector('.rm-last'); if (el && el.isConnected) el.textContent = 'You pressed ' + r.key + (r.key !== r.a ? ' (' + r.a + ')' : '') + '.'; else off(); });
+        pane.appendChild(row('Show buttons as', 'What the hints at the bottom of the screen look like.', seg([['auto', 'By what you use'], ['keys', 'Keyboard'], ['pad', 'Controller'], ['remote', 'TV remote']], D.state.btns || 'auto', (v) => { D.set('btns', v); D.legend.update(); }, 'rm:btns')));
+        pane.appendChild(row('On-screen keyboard', 'For typing with a remote or a controller. It comes up when you press OK on a box to type in.', seg([['auto', 'With a remote or controller'], ['always', 'Always'], ['never', 'Never']], D.state.osk || 'auto', (v) => D.set('osk', v), 'rm:osk')));
+        if (!D.sys) { pane.appendChild(h('<p class="note">On DiceOS, your TV\'s own remote works too, through the HDMI cable (HDMI-CEC).</p>')); return; }
+        const cec = h('<div class="spane" style="gap:6px;padding:0"><p class="muted">Looking for the TV…</p></div>');
+        pane.appendChild(cec);
+        const paint = (r) => {
+          if (cur !== 'remote') return;
+          cec.innerHTML = '';
+          if (!r || !r.available) { cec.appendChild(h('<p class="note">' + esc((r && r.why) || 'No HDMI-CEC here.') + ' A remote that plugs in by USB or pairs by Bluetooth works anyway. On a Raspberry Pi, your TV\'s remote works once CEC is on in the TV\'s settings: it\'s called Anynet+ (Samsung), Bravia Sync (Sony), SimpLink (LG) or just HDMI-CEC.</p>')); return; }
+          cec.appendChild(row('Your TV\'s remote', r.tv ? 'Working, through the HDMI cable. ' + (r.tv === true ? '' : 'TV: ' + r.tv) : 'Ready. If it doesn\'t answer, turn on CEC in the TV\'s settings (Anynet+, Bravia Sync, SimpLink).', null));
+          cec.appendChild(row('Turn the TV on with DiceOS', 'When DiceOS starts, the TV comes on and switches to it.', sw(D.sys.settings.cec_tv_on !== false, (v) => D.sys.saveSettings({ cec_tv_on: v }), 'rm:on', 'Turn the TV on')));
+          cec.appendChild(row('Turn the TV off when DiceOS sleeps', 'And back on when it wakes.', sw(!!D.sys.settings.cec_tv_off, (v) => D.sys.saveSettings({ cec_tv_off: v }), 'rm:off', 'Turn the TV off')));
+          cec.appendChild(row('Volume buttons change', 'The TV\'s own volume, or DiceOS\'s.', seg([['tv', 'The TV'], ['dice', 'DiceOS']], D.sys.settings.cec_volume === 'tv' ? 'tv' : 'dice', (v) => D.sys.saveSettings({ cec_volume: v }), 'rm:vol')));
+          const b = h('<button class="b small" data-nav data-key="rm:switch">Switch the TV to DiceOS</button>');
+          b.onclick = () => D.sys.post('/api/remote', { cmd: 'active' });
+          cec.appendChild(row('On the wrong input?', 'Ask the TV to show DiceOS.', b));
+        };
+        D.sys.get('/api/remote').then(paint);
       },
       pads() {
         pane.appendChild(h('<h2>Controllers</h2>'));

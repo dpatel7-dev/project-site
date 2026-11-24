@@ -4,7 +4,7 @@ diced: DiceOS's system helper. Runs on the Pi or PC as a system service and
 serves the DiceOS desktop (DiceWeb, in "system" mode) to the screen's browser,
 plus a small API that does the real things: Wi-Fi, Bluetooth, sound,
 brightness, files, screenshots, a real Terminal, opening the web browser,
-power, and updates.
+power, updates, and the TV's own remote through the HDMI cable (HDMI-CEC).
 
 Only the computer itself can reach it (it listens on 127.0.0.1). Every API call
 needs a secret that changes each time diced starts; only the desktop page
@@ -16,6 +16,8 @@ Standard library only.  python3 diced.py --help
 
 import argparse
 import base64
+import glob
+import queue
 import hashlib
 import json
 import mimetypes
@@ -203,6 +205,7 @@ def model():
 class System:
     def __init__(self, settings_path):
         self.settings_path = settings_path
+        self.remote = Remote(settings_path)
 
     # -- status --
     def status(self):
@@ -469,6 +472,123 @@ class System:
         with open(log, 'w') as f:
             subprocess.Popen([tool], stdout=f, stderr=subprocess.STDOUT, start_new_session=True)
         return {'ok': True}
+
+
+# -- the TV's own remote, through the HDMI cable (HDMI-CEC) ------------------------------------------
+# cec-client (from libcec, what Kodi uses too) talks to the TV. Each button pressed on
+# the TV's remote comes out as a line like "key pressed: up (1) ...", which becomes one
+# of DiceWeb's buttons and goes to the desktop through /api/events.
+CEC_KEYS = {0x00: 'a', 0x01: 'up', 0x02: 'down', 0x03: 'left', 0x04: 'right', 0x09: 'menu', 0x0A: 'quick', 0x0B: 'menu', 0x0D: 'b',
+            0x10: 'menu', 0x11: 'x', 0x30: 'rb', 0x31: 'lb', 0x35: 'x', 0x41: 'volup', 0x42: 'voldown', 0x43: 'mute',
+            0x44: 'play', 0x45: 'stop', 0x46: 'play', 0x48: 'rew', 0x49: 'ff', 0x4B: 'next', 0x4C: 'prev', 0x53: 'guide',
+            0x71: 'blue', 0x72: 'red', 0x73: 'green', 0x74: 'yellow', 0x91: 'b'}
+CEC_KEYS.update({0x20 + n: 'd%d' % n for n in range(10)})
+CEC_KEY_LINE = re.compile(r'key pressed: (.+?) \(([0-9a-f]{1,2})\)', re.I)
+CEC_CMDS = {'tv-on': 'on 0', 'tv-off': 'standby 0', 'active': 'as', 'volup': 'volup', 'voldown': 'voldown', 'mute': 'mute'}
+
+
+def parse_cec_key(line):
+    """A 'key pressed' line from cec-client, as (DiceWeb button, the key's name), or None."""
+    m = CEC_KEY_LINE.search(line or '')
+    if not m:
+        return None
+    a = CEC_KEYS.get(int(m.group(2), 16))
+    return (a, m.group(1).strip()) if a else None
+
+
+class Remote:
+    """Keeps cec-client running while there's an HDMI-CEC port, and passes the presses on."""
+    def __init__(self, settings_path):
+        self.settings_path = settings_path
+        self.proc = None
+        self.available = False
+        self.tv = None
+        self.why = ''
+        self.subs = set()
+        self.lock = threading.Lock()
+        self.last = (None, 0.0)
+        self.started = False
+
+    def ports(self):
+        return glob.glob('/dev/cec[0-9]*') + glob.glob('/dev/serial/by-id/*Pulse-Eight*')
+
+    def start(self):
+        if self.started:
+            return
+        self.started = True
+        if not has('cec-client'):
+            self.why = "cec-client isn't installed. In Terminal: sudo apt install cec-utils"
+            return
+        if not self.ports():
+            self.why = 'This computer\'s HDMI has no CEC.'
+            return
+        threading.Thread(target=self.run, daemon=True).start()
+
+    def state(self):
+        return {'ok': True, 'available': self.available, 'tv': self.tv, 'why': self.why}
+
+    def send(self, cmd):
+        line = CEC_CMDS.get(cmd)
+        if not line:
+            return {'ok': False, 'error': 'Unknown command'}
+        p = self.proc
+        if not p or p.poll() is not None:
+            return {'ok': False, 'error': 'The TV isn\'t answering.'}
+        try:
+            p.stdin.write(line + '\n')
+            p.stdin.flush()
+            return {'ok': True}
+        except (OSError, ValueError) as e:
+            return {'ok': False, 'error': str(e)}
+
+    def push(self, ev):
+        with self.lock:
+            subs = list(self.subs)
+        for q in subs:
+            try:
+                q.put_nowait(ev)
+            except queue.Full:
+                pass
+
+    def press(self, line):
+        k = parse_cec_key(line)
+        if not k:
+            return None
+        now = time.monotonic()
+        if self.last[0] == k[0] and now - self.last[1] < 0.06:  # the same press, said twice
+            return None
+        self.last = (k[0], now)
+        ev = {'a': k[0], 'key': k[1]}
+        self.push(ev)
+        return ev
+
+    def run(self):
+        while True:
+            try:
+                self.proc = subprocess.Popen(['cec-client', '-t', 'p', '-o', 'DiceOS', '-d', '16'], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                             stderr=subprocess.STDOUT, text=True, bufsize=1)
+                woke = False
+                for line in self.proc.stdout:
+                    if not self.available and ('connection opened' in line or 'CEC client registered' in line):
+                        self.available, self.why = True, ''
+                        self.push({'cec': self.state()})
+                    if self.available and not woke:
+                        woke = True
+                        if load_settings(self.settings_path).get('cec_tv_on', True):
+                            self.send('tv-on')
+                            self.send('active')
+                    m = re.search(r'TV \(0\).*?(?:vendor|OSD name)[^\']*\'([^\']+)\'', line)
+                    if m:
+                        self.tv = m.group(1)
+                    self.press(line)
+                self.proc.wait()
+            except OSError as e:
+                self.why = str(e)
+            if self.available:
+                self.available = False
+                self.push({'cec': self.state()})
+            self.why = self.why or 'No TV answered. Is CEC on in the TV\'s settings?'
+            time.sleep(15)  # try again: the TV may have been off
 
 
 BT_MAC = re.compile(r'^[0-9A-F]{2}(?::[0-9A-F]{2}){5}$')
@@ -926,6 +1046,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, {'log': read(log)[-4000:]})
         if path == '/api/bluetooth':
             return self.send(200, sysm.bluetooth())
+        if path == '/api/remote':
+            sysm.remote.start()
+            return self.send(200, sysm.remote.state())
+        if path == '/api/events':
+            return self.events(sysm.remote)
         return self.fail(404, 'No such thing.')
 
     def api_post(self, path, q):
@@ -950,6 +1075,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, sysm.bluetooth_do(b.get('action'), b.get('mac')))
         if path == '/api/screenshot':
             return self.send(200, sysm.screenshot())
+        if path == '/api/remote':
+            return self.send(200, sysm.remote.send(str(b.get('cmd') or '')))
         if path == '/api/update':
             return self.send(200, sysm.update())
         if path == '/api/password':
@@ -985,6 +1112,35 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail(400, 'Unknown action.')
             return self.send(200, {'ok': True})
         return self.fail(404, 'No such thing.')
+
+    def events(self, remote):
+        """The TV remote's presses as they happen (server-sent events), for as long as the desktop listens."""
+        remote.start()
+        q = queue.Queue(maxsize=100)
+        with remote.lock:
+            remote.subs.add(q)
+        try:
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/event-stream')
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('Connection', 'close')
+            self.send_header('X-Content-Type-Options', 'nosniff')
+            self.end_headers()
+            self.wfile.write(('data: ' + json.dumps({'cec': remote.state()}) + '\n\n').encode())
+            self.wfile.flush()
+            while True:
+                try:
+                    chunk = 'data: ' + json.dumps(q.get(timeout=15)) + '\n\n'
+                except queue.Empty:
+                    chunk = ': still here\n\n'
+                self.wfile.write(chunk.encode())
+                self.wfile.flush()
+        except OSError:
+            pass
+        finally:
+            with remote.lock:
+                remote.subs.discard(q)
+            self.close_connection = True
 
     def terminal(self, q):
         if self.headers.get('Upgrade', '').lower() != 'websocket' or not self.trusted(q.get('token')):
