@@ -42,6 +42,7 @@
   const DEFAULTS = {
     v: 2, name: 'player', avatar: 'cubby', look: 'auto', volume: 0.7, ui: true, musicVol: 0.8, motion: 'full', boot: 'full', start: 'desk',
     perf: 0, fps: 30, bright: 1, friendPops: false, deskIcons: 'home', recent: [], played: {}, last: {}, seen: {}, notifs: [], said: {},
+    warm: 'off', warmth: 0.5, dnd: false, idle: 10,
     stats: { cmds: 0 }, disk: null, hist: [],
   };
   function load() {
@@ -156,7 +157,7 @@
     Dice.state.notifs = Dice.state.notifs.slice(0, 40);
     Dice.save();
     Dice.emit('notifs');
-    if (n.toast !== false) Dice.toast(item);
+    if (n.toast !== false && (!Dice.state.dnd || n.urgent)) Dice.toast(item); // Do not disturb: into the list, quietly
   };
   Dice.unread = () => Dice.state.notifs.filter((n) => !n.read).length;
   const toastQ = [];
@@ -186,16 +187,10 @@
     return 'Online';
   }
   Dice.friends.forEach((f) => { f.status = pickStatus(Math.random()); });
-  let lastFriendToast = Date.now();
   setInterval(() => {
     const f = Dice.friends[Math.floor(Math.random() * Dice.friends.length)];
-    const before = f.status;
     f.status = pickStatus(Math.random());
     Dice.emit('friends');
-    if (f.status !== before && /^Listening/.test(f.status) && Date.now() - lastFriendToast > 4 * 60000 && Dice.state.friendPops) {
-      lastFriendToast = Date.now();
-      Dice.notify({ who: f.id, title: f.name + ' is ' + f.status.toLowerCase(), text: 'Say hi from Quick access.', sound: 'toast' });
-    }
   }, 40000);
   Dice.sayHi = function (id) {
     const f = Dice.friends.find((x) => x.id === id);

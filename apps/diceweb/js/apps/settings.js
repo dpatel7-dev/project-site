@@ -1,13 +1,15 @@
-// Settings: you, the look, sound, controllers, performance, start up, storage.
+// Settings: you, the look (and Night light), sound (and Do not disturb), controllers and keys,
+// performance, start up, Dice Cloud, storage and backups. On DiceOS also Wi-Fi, Bluetooth,
+// the screen, power and updates.
 (function () {
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, esc = D.esc, h = D.h;
-  const SECTIONS = [['you', 'You', 'person', '#ff707a'], ['look', 'Look', 'sun', '#f5c431'], ['sound', 'Sound', 'volume', '#d39cf5'], ['pads', 'Controllers', 'pad', '#7c9cff'],
+  const SECTIONS = [['you', 'You', 'person', '#ff707a'], ['look', 'Look', 'sun', '#f5c431'], ['sound', 'Sound', 'volume', '#d39cf5'], ['pads', 'Controllers and keys', 'pad', '#7c9cff'],
     ['perf', 'Performance', 'chart', '#8fd16a'], ['start', 'Starting up', 'power', '#ef6a1f'], ['cloud', 'Dice Cloud', 'link', '#3a9be8'], ['storage', 'Storage', 'lock', '#2bc4b2'], ['about', 'About', 'help', '#96969f']];
 
   // on a computer running Dice, there's more to set: Wi-Fi, the screen, power and updates
   if (D.sys) {
-    SECTIONS.splice(2, 0, ['wifi', 'Wi-Fi', 'wifi', '#2bc4b2'], ['display', 'Screen', 'desktop', '#7cc4ff']);
+    SECTIONS.splice(2, 0, ['wifi', 'Wi-Fi', 'wifi', '#2bc4b2'], ['bt', 'Bluetooth', 'bt', '#3a7bd5'], ['display', 'Screen', 'desktop', '#7cc4ff']);
     SECTIONS.splice(SECTIONS.findIndex((x) => x[0] === 'storage'), 0, ['system', 'Power and updates', 'restart', '#ef6a1f']);
   }
   const gb = (n) => (n / 1073741824).toFixed(1) + ' GB';
@@ -84,6 +86,9 @@
         pane.appendChild(h('<p class="note">Light by day and dark at night, worked out from the time of sunrise and sunset. Or pick one to keep.</p>'));
         pane.appendChild(row('Day or night', D.state.look === 'auto' ? 'It\'s ' + (D.night() ? 'night' : 'day') + ' now.' : '', seg([['auto', 'Follow the clock'], ['day', 'Day'], ['night', 'Night']], D.state.look, (v) => { D.set('look', v); D.applyLook(true); }, 'look')));
         pane.appendChild(row('Brightness', 'Dims the whole screen.', ui.slider(D.state.bright, 0.3, 1, (v) => { D.set('bright', v); D.applyBright(); }, 'look:bright', 'Brightness')));
+        pane.appendChild(row('Night light', 'A warmer screen, kinder to your eyes in the evening. At night means sunset to sunrise.', seg([['off', 'Off'], ['night', 'At night'], ['on', 'Always']], D.state.warm || 'off', (v) => D.tools.setWarm(v), 'look:warm')));
+        pane.appendChild(row('How warm', 'For Night light.', ui.slider(typeof D.state.warmth === 'number' ? D.state.warmth : 0.5, 0, 1, (v) => { D.set('warmth', v); D.tools.applyWarm(); }, 'look:warmth', 'How warm')));
+        pane.appendChild(row('Ambient screen', 'On DiceTV, when nothing is open: a big clock over your world. Any key brings DiceTV back.', seg([[5, '5 min'], [10, '10 min'], [30, '30 min'], [0, 'Never']], D.state.idle === undefined ? 10 : D.state.idle, (v) => D.set('idle', v), 'look:idle')));
         const worlds = h('<div class="worlds" data-row></div>');
         const NAMES = { hills: 'Hills', mountains: 'Mountains', beach: 'Beach', city: 'City', forest: 'Forest', autumn: 'Autumn', desert: 'Desert', garden: 'Garden', ice: 'Ice', deep: 'Under the sea', meadow: 'Meadow', pond: 'Pond' };
         Object.keys(D.WORLDS).forEach((w) => {
@@ -108,6 +113,7 @@
         pane.appendChild(row(sv ? 'Dice sounds' : 'Volume', sv ? 'Clicks and Dice Radio, before the speaker.' : 'Everything ' + D.brand + ' plays.', ui.slider(D.state.volume, 0, 1, (v) => { D.set('volume', v); S.setVolume(v); }, 'snd:vol', 'Volume')));
         pane.appendChild(row('Music volume', 'Dice Radio and your songs.', ui.slider(D.state.musicVol, 0, 1, (v) => { D.set('musicVol', v); S.setMusic(v); }, 'snd:music', 'Music volume')));
         pane.appendChild(row('Interface sounds', 'Clicks and chimes as you move around.', sw(D.state.ui, (v) => { D.set('ui', v); S.setUi(v); if (v) S.play('select'); }, 'snd:ui', 'Interface sounds')));
+        pane.appendChild(row('Do not disturb', 'Notifications go in the list without popping up or chiming. Timers still ring.', sw(!!D.state.dnd, (v) => D.tools.setQuiet(v), 'snd:dnd', 'Do not disturb')));
         const t = h('<button class="b small" data-nav data-key="snd:test">' + D.glyph('volume', 2) + 'Play a test chime</button>');
         t.onclick = () => S.play('achieve');
         pane.appendChild(row('Test', 'Can\'t hear anything? Check the volume on your computer too.', t));
@@ -126,6 +132,14 @@
         raf = requestAnimationFrame(tick);
         const k = (b, t) => '<span>' + D.btn(b) + '</span><span>' + t + '</span>';
         pane.appendChild(h('<div class="srow" style="display:block"><b>Keys and buttons</b><div class="keys" style="padding:10px 0 0">' + k('a', 'Select') + k('b', 'Back') + k('x', 'More things to do') + k('menu', 'Menu (Ctrl+1 too)') + k('quick', 'Quick access (Ctrl+2 too)') + k('lb', 'Previous tab') + k('rb', 'Next tab') + '</div></div>'));
+        const ks = h('<button class="b small" data-nav data-key="pad:keys">' + D.glyph('keys', 2) + 'Show them all</button>');
+        ks.onclick = () => D.tools.shortcuts();
+        pane.appendChild(row('Keyboard shortcuts', 'For the desktop, DiceTV, SereneTab and Terminal. Ctrl + / shows them anywhere.', ks));
+        if (D.sys) {
+          const bt = h('<button class="b small" data-nav data-key="pad:bt">' + D.glyph('bt', 2) + 'Bluetooth</button>');
+          bt.onclick = () => show('bt');
+          pane.appendChild(row('Wireless controllers', 'Pair them in Bluetooth.', bt));
+        }
       },
       perf() {
         pane.appendChild(h('<h2>Performance</h2>'));
@@ -136,7 +150,6 @@
         pane.appendChild(h('<h2>Starting up</h2>'));
         pane.appendChild(row('Start-up animation', 'The die that rolls in when ' + D.brand + ' opens.', seg([['full', 'Full'], ['quick', 'Quick'], ['off', 'Off']], D.state.boot, (v) => D.set('boot', v), 'st:boot')));
         pane.appendChild(row('Start in', 'Where ' + D.brand + ' opens.', seg([['desk', 'Desktop'], ['game', 'DiceTV'], ['home', 'Dice Home']], D.state.start, (v) => D.set('start', v), 'st:in')));
-        pane.appendChild(row('Friends\' pop-ups', 'When a friend starts playing something.', sw(D.state.friendPops, (v) => D.set('friendPops', v), 'st:pops', 'Friends\' pop-ups')));
         const b = h('<button class="b small" data-nav data-key="st:restart">' + D.glyph('restart', 2) + 'Restart now</button>');
         b.onclick = () => D.restart();
         pane.appendChild(row('Restart', 'See the start-up animation again.', b));
@@ -189,6 +202,12 @@
         const songs = h('<button class="b small" data-nav data-key="sto:songs">Remove all</button>');
         songs.onclick = () => D.ask({ title: 'Remove all your songs?', text: 'They come out of ' + D.brand + '. The files on your computer stay where they are.', buttons: [{ label: 'Remove them', value: true, go: true, danger: true }, { label: 'Keep them', value: false }] }).then((ok) => { if (ok) { D.M.stop(); D.M.clear(); } });
         pane.appendChild(row('Your songs', 'Songs you added to Music.', songs));
+        const bk = h('<button class="b small go" data-nav data-key="sto:backup">' + D.glyph('box', 2) + 'Back up</button>');
+        bk.onclick = () => D.tools.backup();
+        pane.appendChild(row('Back up', 'Your settings, notes, files, Axiom, SereneTab and Dice Home, in one file' + (D.sys ? ' in your Home folder' : '') + '. Songs and your Dice Cloud code stay out.', bk));
+        const rs = h('<button class="b small" data-nav data-key="sto:restore">Pick a backup</button>');
+        rs.onclick = () => D.tools.restore();
+        pane.appendChild(row('Put a backup back', 'Replaces what\'s here with what\'s in the file.', rs));
         const reset = h('<button class="b small danger" data-nav data-key="sto:reset">Reset ' + D.brand + '</button>');
         reset.onclick = () => D.ask({ title: 'Reset ' + D.brand + '?', text: 'Your name, notes, the disk, songs and settings all go. ' + D.brand + ' starts fresh, like the first time.', buttons: [{ label: 'Reset everything', value: true, go: true, danger: true, c: '#ff4d5e' }, { label: 'Cancel', value: false }] }).then((ok) => { if (ok) D.reset(); });
         pane.appendChild(row('Start fresh', 'Takes everything away.', reset));
@@ -219,6 +238,54 @@
         const again = h('<button class="b small" data-nav data-key="wifi:again">' + D.glyph('restart', 2) + 'Look again</button>');
         again.onclick = () => show('wifi');
         pane.appendChild(again);
+      },
+      bt() {
+        pane.appendChild(h('<h2>Bluetooth</h2>'));
+        const box = h('<div class="spane" style="gap:6px;padding:0"><p class="muted">Looking…</p></div>');
+        pane.appendChild(box);
+        const BT = D.tools.bt;
+        const refocus = () => { if (D.input.source !== 'mouse' && (!D.nav.el || !D.nav.el.isConnected)) D.nav.focus(box.querySelector('[data-nav]')); };
+        const paint = (r) => {
+          if (cur !== 'bt') return;
+          box.innerHTML = '';
+          if (!r || !r.ok && !r.devices) { box.appendChild(h('<p class="note">' + esc((r && r.error) || 'Bluetooth isn\'t answering.') + '</p>')); return; }
+          if (!r.adapter) { box.appendChild(h('<p class="note">This computer has no Bluetooth. A small USB Bluetooth adapter adds it.</p>')); return; }
+          box.appendChild(row('Bluetooth', r.powered ? 'On. Paired things connect by themselves.' : 'Off.', sw(r.powered, async (v) => paint(await BT.power(v)), 'bt:power', 'Bluetooth')));
+          if (!r.powered) return refocus();
+          const mine = r.devices.filter((d) => d.paired), near = r.devices.filter((d) => !d.paired);
+          box.appendChild(h('<h3 class="shead">Your devices</h3>'));
+          if (!mine.length) box.appendChild(h('<p class="note">Nothing paired yet.</p>'));
+          mine.forEach((d, i) => {
+            const r2 = row(d.name, BT.kind(d.icon) + ', ' + (d.connected ? 'connected' : 'not connected') + (typeof d.battery === 'number' ? ', battery ' + d.battery + '%' : ''), null);
+            const btns = h('<div style="display:flex;gap:8px;flex-wrap:wrap"></div>');
+            const c = h('<button class="b small' + (d.connected ? '' : ' go') + '" data-nav data-key="bt:c' + i + '">' + (d.connected ? 'Disconnect' : 'Connect') + '</button>');
+            c.onclick = () => act(d.connected ? 'disconnect' : 'connect', d, c);
+            const f = h('<button class="b small" data-nav data-key="bt:f' + i + '">Forget</button>');
+            f.onclick = () => D.ask({ title: 'Forget ' + d.name + '?', text: 'To use it again, you\'ll pair it again.', buttons: [{ label: 'Forget it', value: true, go: true }, { label: 'Cancel', value: false }] }).then((y) => { if (y) act('remove', d, f); });
+            btns.append(c, f); r2.appendChild(btns); box.appendChild(r2);
+          });
+          const look = h('<button class="b small" data-nav data-key="bt:scan">' + D.glyph('search', 2) + 'Look for devices</button>');
+          look.onclick = async () => { look.disabled = true; look.textContent = 'Looking for 10 seconds…'; paint(await BT.scan()); };
+          box.appendChild(row('Add a device', 'Put it in pairing mode first. Controllers: hold the pair button until the light flashes fast. Headphones: hold the power button.', look));
+          if (near.length) {
+            box.appendChild(h('<h3 class="shead">Nearby</h3>'));
+            near.forEach((d, i) => {
+              const p = h('<button class="b small go" data-nav data-key="bt:p' + i + '">Pair</button>');
+              p.onclick = () => act('pair', d, p);
+              box.appendChild(row(d.name, BT.kind(d.icon), p));
+            });
+          }
+          refocus();
+        };
+        const act = async (action, d, btn) => {
+          btn.disabled = true;
+          btn.textContent = { pair: 'Pairing…', connect: 'Connecting…', disconnect: 'Disconnecting…', remove: 'Forgetting…' }[action];
+          const r = await BT.act(action, d.mac);
+          if (!r || !r.ok) D.toast({ icon: 'bt', c: '#ff4d5e', title: 'That didn\'t work', text: (r && r.error) || 'Is it still in pairing mode, and close by?' });
+          else if (action === 'pair') D.toast({ icon: 'bt', c: '#4fc16b', title: d.name + ' is paired', text: 'It connects by itself from now on.' });
+          paint(r && r.devices ? r : await BT.list());
+        };
+        BT.list().then(paint);
       },
       display() {
         pane.appendChild(h('<h2>Screen</h2>'));

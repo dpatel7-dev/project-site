@@ -374,3 +374,59 @@ a { color: inherit; }
 
 #runlegend .lg { display: inline-flex; align-items: center; gap: 8px; padding: 2px 6px; }
 [data-input=touch] #runlegend, [data-input=touch] .runhint { display: none; }
+
+/* ---------- Night light: a warm layer over everything ---------- */
+#warm { position: fixed; inset: 0; z-index: 2147483000; pointer-events: none; background: #ff8b2c; mix-blend-mode: multiply; opacity: 0; transition: opacity 1.4s var(--ease); }
+
+/* ---------- the tray's sleep timer ---------- */
+.tray .chip { font: 700 .82rem/1 var(--read); gap: 6px; }
+
+/* ---------- DiceTV's Today row ---------- */
+.tcard { flex: none; width: clamp(210px, 17vw, 290px); min-height: clamp(136px, 11vw, 168px); padding: 15px 18px 16px; border-radius: 20px; display: grid; align-content: space-between; gap: 6px;
+  transition: transform .18s var(--ease), box-shadow .18s; }
+.tcard.is-focus { transform: scale(1.03); z-index: 2; box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ink), var(--shadow); }
+.tcard .tlab { display: inline-flex; align-items: center; gap: 7px; font: 700 .8rem/1 var(--read); color: var(--muted); }
+.tcard .tbig { font: 500 clamp(2.2rem, 3.4vw, 3rem)/.95 var(--pixel); }
+.tcard .tmid { font: 500 clamp(1.2rem, 1.7vw, 1.5rem)/1.1 var(--pixel); }
+.tcard .tsub { font-size: .86rem; line-height: 1.3; color: var(--muted); }
+.tcard .twx { display: flex; align-items: center; gap: 10px; }
+.tcard .twx .st-wxsvg { width: 42px; height: 42px; }
+.tcard .tdue { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; }
+.tcard .tdue li { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .92rem; min-width: 0; }
+.tcard .tdue li::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 2px; background: var(--k); }
+.tcard .tdue li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tcard .tdue small { margin-left: auto; color: #e5534b; font-weight: 700; }
+.t-np { --tc: var(--c); }
+.t-np .eqmini { position: absolute; right: 18px; top: 16px; }
+.t-np .eqmini i { background: var(--tc); animation: eq .9s steps(4) infinite; }
+
+/* ---------- DiceTV's Watch row: plain letters on a colour ---------- */
+.wtile { position: relative; flex: none; width: calc(var(--tile) * 1.3); aspect-ratio: 16 / 10; border-radius: 16px; overflow: hidden; color: #fff; display: grid; place-items: center;
+  background: radial-gradient(120% 90% at 20% 0%, color-mix(in oklab, var(--wc) 70%, #fff) 0, var(--wc) 46%, color-mix(in oklab, var(--wc) 55%, #000) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), inset 0 0 0 1px rgba(255, 255, 255, .14), 0 14px 26px -20px rgba(0, 0, 0, .6); transition: transform .18s var(--ease), box-shadow .18s; }
+.wtile .wmono { font: 700 clamp(2rem, 3.2vw, 3.1rem)/1 var(--pixel); letter-spacing: .02em; text-shadow: 0 2px 0 rgba(0, 0, 0, .18); }
+.wtile .wname { position: absolute; left: 12px; bottom: 10px; font: 700 .88rem/1 var(--read); opacity: .94; }
+.wtile.is-focus { transform: scale(1.04); z-index: 2; box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ink), 0 18px 30px -18px var(--wc); }
+.wtile.add { background: var(--soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+.wtile.add .wname { color: var(--muted); }
+
+/* ---------- the ambient screen ---------- */
+#ambient { position: fixed; inset: 0; z-index: 58; overflow: hidden; background: #05070d; color: #fff; opacity: 0; transition: opacity 1.2s var(--ease); cursor: none; }
+#ambient.on { opacity: 1; }
+#ambient .am-bg { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
+#ambient .am-veil { position: absolute; inset: 0; background: linear-gradient(to top, rgba(4, 6, 14, .74) 0, rgba(4, 6, 14, .32) 40%, transparent 64%); }
+#ambient .am-in { position: absolute; left: 6vw; bottom: 8vh; display: grid; justify-items: start; gap: 1.3vh; transition: transform 2s ease; text-shadow: 0 2px 24px rgba(0, 0, 0, .45); }
+#ambient .am-clock { font: 700 clamp(4rem, 22vh, 14rem)/.86 var(--pixel); letter-spacing: .01em; }
+#ambient .am-date { font: 700 clamp(1rem, 3.6vh, 1.8rem)/1.2 var(--read); opacity: .94; }
+#ambient .am-wx, #ambient .am-np { display: inline-flex; align-items: center; gap: 10px; font: 700 clamp(.95rem, 2.7vh, 1.3rem)/1.2 var(--read); opacity: .86; }
+#ambient .am-wx:empty, #ambient .am-np:empty { display: none; }
+#ambient .am-wx .st-wxsvg { width: 1.7em; height: 1.7em; }
+#ambient .am-np .eqmini i { background: #fff; animation: eq .9s steps(4) infinite; }
+
+/* ---------- the keyboard shortcuts sheet ---------- */
+#dialog .box.keysheet { width: min(880px, calc(100vw - 40px)); }
+.ksheet { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px 30px; margin: 4px 0 20px; max-height: 62vh; overflow: auto; scrollbar-width: thin; }
+.ksheet h3 { font: 500 1.12rem/1.2 var(--pixel); margin: 0 0 8px; }
+.ksheet div { display: flex; gap: 12px; align-items: baseline; padding: 4px 0; font-size: .92rem; }
+.ksheet kbd { flex: none; min-width: 8.2em; font: 700 .78rem/1 var(--read); padding: 6px 8px; border-radius: 7px; background: var(--soft-2); box-shadow: inset 0 -2px 0 var(--line), inset 0 0 0 1px var(--line); text-align: center; }
+.seg button { white-space: nowrap; }

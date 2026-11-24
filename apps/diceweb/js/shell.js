@@ -1,6 +1,6 @@
-// The shell: DiceTV (it used to be called Big screen). The boot screen, the top bar, Home, Library, Store,
-// each app's own page, the menu on the left, Quick access on the right,
-// search, and running apps full screen.
+// The shell: DiceTV (it used to be called Big screen). The boot screen, the top bar, Home (with
+// the Today and Watch rows from tv.js), Library, each app's own page, the menu on the left,
+// Quick access on the right, search, and running apps full screen.
 (function () {
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, M = D.M, L = D.L, Nav = D.nav;
@@ -50,7 +50,8 @@
       '<button class="tb nowplay" id="tb-music" hidden aria-label="Now playing"><span class="eqmini"><i></i><i></i><i></i></span><span id="np-name"></span></button>' +
       '<button class="tb" id="tb-search" aria-label="Search (/)">' + D.glyph('search', 2) + '</button>' +
       '<button class="tb" id="tb-bell" aria-label="Notifications">' + D.glyph('bell', 2) + '<span class="badge" id="badge" hidden></span></button>' +
-      '<button class="tb" id="tb-friends" aria-label="Friends">' + D.glyph('friends', 2) + '</button>' +
+      '<button class="tb chip" id="tb-sleep" hidden aria-label="Sleep timer"></button>' +
+      '<span class="tb" id="tb-dnd" hidden title="Do not disturb is on">' + D.glyph('quiet', 2) + '</span>' +
       '<span class="tb" id="tb-wifi" title="Online">' + D.glyph('wifi', 2) + '</span>' +
       '<span class="tb batt" id="tb-batt" hidden><span id="batt-pc"></span><span class="battery"><i></i></span></span>' +
       '<span class="clock" id="clock"></span>' +
@@ -58,7 +59,14 @@
   $('#diebtn').onclick = () => Menu.toggle();
   $('#tb-search').onclick = () => Search.open();
   $('#tb-bell').onclick = () => Qam.open('notifs');
-  $('#tb-friends').onclick = () => Qam.open('friends');
+  $('#tb-sleep').onclick = () => Qam.open('quick');
+  function chips() {
+    const left = D.tools.sleepLeft(), sl = $('#tb-sleep');
+    sl.hidden = !left;
+    if (left) { sl.innerHTML = D.glyph('moon', 2) + '<span>' + left + ' min</span>'; sl.title = 'Going to sleep in ' + left + ' minutes'; }
+    $('#tb-dnd').hidden = !D.tools.quiet();
+  }
+  D.on('sleeptimer', chips); D.on('dnd', chips);
   $('#tb-music').onclick = () => D.launch('music');
   function clock() {
     const d = new Date();
@@ -104,12 +112,14 @@
   }
   M.on(nowPlaying);
   Shell.chrome = function () {
-    badge(); wifi();
+    badge(); wifi(); chips();
     $('#diebtn').innerHTML = D.icon('die', null, 3);
   };
 
   // ---- Pages ---------------------------------------------------------------------------
   const TITLES = { home: 'Home', library: 'Library', store: 'Store', page: '', settings: 'Settings' };
+  // DiceTV is for the apps on this screen: the apps you install on another computer live on the desktop and the website
+  const tvApps = () => D.all().filter((a) => !a.suite && a.id !== 'store');
   Shell.go = function (v, arg, opts) {
     opts = opts || {};
     if (Shell.view) {
@@ -190,20 +200,14 @@
       if (i === 0) t.setAttribute('data-first', '');
       recent.appendChild(t);
     });
-    const all = h('<button class="tile" data-nav data-key="r:all" data-a="Open" style="--tc:var(--ink)"><span class="name">Library<span class="sub">Everything, ' + D.all().length + ' apps</span></span></button>');
+    const all = h('<button class="tile" data-nav data-key="r:all" data-a="Open" style="--tc:var(--ink)"><span class="name">Library<span class="sub">Everything, ' + tvApps().length + ' apps</span></span></button>');
     const lib = G.canvas(40, 60), lg = lib.getContext('2d');
     lg.fillStyle = D.night() ? '#121214' : '#f4f4f6'; lg.fillRect(0, 0, 40, 60);
-    D.all().slice(0, 16).forEach((a, i) => { lg.fillStyle = a.c; lg.fillRect(5 + (i % 4) * 8, 6 + Math.floor(i / 4) * 9, 6, 7); });
+    tvApps().slice(0, 16).forEach((a, i) => { lg.fillStyle = a.c; lg.fillRect(5 + (i % 4) * 8, 6 + Math.floor(i / 4) * 9, 6, 7); });
     lib.className = 'art'; all.prepend(lib);
     all.onclick = () => Shell.go('library');
     recent.appendChild(all);
-
-    // for your computer: ones you haven't looked at yet first
-    const unseen = CATALOG.suite.filter((a) => !D.state.seen[a.id]).concat(CATALOG.suite.filter((a) => D.state.seen[a.id]));
-    const rec = h('<section class="shelf" data-block><h2>For your computer <small>One line in Terminal and it\'s yours</small></h2><div class="row" data-row id="suite"></div></section>');
-    unseen.slice(0, 8).forEach((a) => rec.querySelector('#suite').appendChild(tile(D.app(a.id), { size: 'wide', key: 's', sub: a.blurb })));
-    page.appendChild(rec);
-
+    D.tv.rows(page); // Today, then Watch
     return page;
   };
   // the big words over the world follow what's focused
@@ -211,12 +215,12 @@
     const k = $('#sp-k'); if (!k) return;
     const key = el.dataset.key || '';
     let app = D.app(el.dataset.hero), kick = '', name = '', line = '', facts = [];
-    if (key.startsWith('f:')) {
-      const f = D.friends.find((x) => x.id === el.dataset.hero);
-      kick = 'Friend'; name = f.name; line = f.name + ' ' + f.kind + ', from ' + (D.app(f.id) || {}).name + '. ' + f.status + '.';
-      facts = ['<b>' + Dice.btn('a') + '</b> say hi'];
+    if (key.startsWith('td:') || key.startsWith('w:')) {
+      const s = D.tv.spot(key) || {};
+      kick = s.kick || ''; name = s.name || ''; line = s.line || '';
+      if (s.c) document.documentElement.style.setProperty('--c', s.c);
     } else if (key === 'r:all') {
-      kick = 'Library'; name = 'Everything'; line = 'All ' + D.all().length + ' apps: the ones built in, and the apps for your computer.';
+      kick = 'Library'; name = 'Everything'; line = 'All ' + tvApps().length + ' apps on this screen, from A to Z.';
     } else if (app) {
       const run = D.running();
       kick = run && run.id === app.id ? 'Running now' : app.suite ? 'App for your computer' : 'Built into ' + D.brand;
@@ -237,22 +241,12 @@
     if (Shell.view && Shell.view.v === 'home' && $('#view').contains(el)) spotlight(el);
     Legend.update();
   });
-  D.on('friends', () => {
-    if (!Shell.view || Shell.view.v !== 'home') return;
-    D.friends.forEach((f) => { const c = $('[data-key="f:' + f.id + '"] .status'); if (c) { c.textContent = f.status; c.className = 'status ' + statusClass(f.status); } });
-  });
 
-  // Library: everything, in tabs
-  const LIB_TABS = [['all', 'All'], ['dice', 'Built in'], ['suite', 'For your computer']];
-  Views.library = function (arg, view) {
-    const tab = view.tab || 'all';
-    const page = h('<div><div class="lib-head"><h1 class="title">Library</h1><div class="tabs" role="tablist" data-block>' + '<span class="hint">' + D.btn('lb') + '</span>' +
-      LIB_TABS.map(([id, n]) => '<button class="tab" role="tab" data-nav data-key="tab:' + id + '" data-tab="' + id + '" aria-selected="' + (id === tab) + '" data-sound="tab">' + n + '</button>').join('') + '<span class="hint">' + D.btn('rb') + '</span></div></div><div class="grid" id="lib"></div></div>');
-    const apps = D.all().filter((a) => tab === 'all' || (tab === 'dice' && !a.suite) || (tab === 'suite' && a.suite));
+  // Library: every app on this screen, from A to Z
+  Views.library = function () {
+    const page = h('<div><div class="lib-head"><h1 class="title">Library</h1></div><div class="grid" id="lib"></div></div>');
     const grid = page.querySelector('#lib');
-    apps.forEach((a, i) => { const t = tile(a, { key: 'l', flag: D.running() && D.running().id === a.id ? 'Running' : '', live: true }); if (i === 0) t.setAttribute('data-first', ''); grid.appendChild(t); });
-    page.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { view.tab = b.dataset.tab; Shell.render(); Nav.focus($('[data-key="tab:' + b.dataset.tab + '"]')); }; });
-    view.tabs = LIB_TABS.map((t) => t[0]);
+    tvApps().sort((a, b) => a.name.localeCompare(b.name)).forEach((a, i) => { const t = tile(a, { key: 'l', flag: D.running() && D.running().id === a.id ? 'Running' : '', live: true }); if (i === 0) t.setAttribute('data-first', ''); grid.appendChild(t); });
     return page;
   };
 
@@ -410,8 +404,7 @@
     Qam.close(true); Search.close(true);
     Menu.prev = Nav.el;
     const v = Shell.view ? Shell.view.v : 'home';
-    const items = [['home', 'Home', 'home', '#ff707a'], ['library', 'Library', 'library', '#7cc4ff'], ['store', 'Store', 'store', '#2bc4b2'], ['music', 'Music', 'music', '#d39cf5'],
-      ['settings', 'Settings', 'gear', '#7c9cff']];
+    const items = [['home', 'Home', 'home', '#ff707a'], ['library', 'Library', 'library', '#7cc4ff'], ['music', 'Music', 'music', '#d39cf5'], ['settings', 'Settings', 'gear', '#7c9cff']];
     const run = D.running();
     menuEl.innerHTML = '<button class="me" data-nav data-key="m:me"><canvas width="58" height="58"></canvas><span><b>' + esc(D.state.name) + '</b><span>Your name and picture</span></span></button>' +
       '<div class="menu-list">' + (run ? '<button class="mi" data-nav data-key="m:resume" data-first>' + D.icon('play', run.app.c, 2) + 'Resume ' + esc(run.app.name) + '</button><button class="mi" data-nav data-key="m:exit">' + D.icon('close', '#ff4d5e', 3) + 'Close ' + esc(run.app.name) + '</button>' : '') +
@@ -459,7 +452,7 @@
   // ---- Quick access on the right ------------------------------------------------------
   const Qam = D.qam = { tab: 'notifs' };
   const qamEl = $('#qam');
-  const QTABS = [['notifs', 'bell', 'Notifications'], ['friends', 'friends', 'Friends'], ['quick', 'bright', 'Quick settings'], ['perf', 'chart', 'Performance'], ['music', 'music', 'Now playing'], ['help', 'help', 'Help']];
+  const QTABS = [['notifs', 'bell', 'Notifications'], ['quick', 'bright', 'Quick settings'], ['music', 'music', 'Now playing'], ['help', 'help', 'Help']];
   Qam.isOpen = () => qamEl.classList.contains('open');
   Qam.open = function (tab) {
     Menu.close(true); Search.close(true);
@@ -496,7 +489,7 @@
   const QPANES = {
     notifs(body) {
       const list = D.state.notifs;
-      if (!list.length) { body.appendChild(h('<p class="qhint">Nothing yet. Friends and controllers show up here.</p>')); return; }
+      if (!list.length) { body.appendChild(h('<p class="qhint">Nothing yet. Controllers, Dice Cloud and other news show up here.' + (D.tools.quiet() ? ' Do not disturb is on, so they won\'t pop up.' : '') + '</p>')); return; }
       const clear = h('<button class="b small" data-nav data-key="q:clear" style="margin:0 0 12px 6px">' + D.glyph('trash', 2) + 'Clear all</button>');
       clear.onclick = () => { D.state.notifs = []; D.save(); D.emit('notifs'); Qam.show('notifs'); };
       body.appendChild(clear);
@@ -507,16 +500,6 @@
         body.appendChild(r);
       });
       setTimeout(() => { D.state.notifs.forEach((n) => { n.read = true; }); D.save(); D.emit('notifs'); }, 1500);
-    },
-    friends(body) {
-      body.appendChild(h('<p class="qhint">The suite\'s mascots, up to their own things. Say hi to one.</p>'));
-      D.friends.slice().sort((a, b) => (b.status !== 'Snoozing') - (a.status !== 'Snoozing')).forEach((f) => {
-        const r = h('<button class="qrow" data-nav data-key="q:f' + f.id + '" data-a="Open" data-x="Say hi"><span><b>' + esc(f.name) + '</b><span class="status ' + statusClass(f.status) + '">' + esc(f.status) + '</span></span></button>');
-        r.prepend(face(f.id, 40));
-        r.onclick = () => D.friendCard(f.id);
-        r._x = () => D.sayHi(f.id);
-        body.appendChild(r);
-      });
     },
     quick(body) {
       const s = D.state;
@@ -534,24 +517,26 @@
       else g.appendChild(sliderRow('Volume', s.volume, 0, 1, (v) => { D.set('volume', v); S.setVolume(v); }, 'q:vol', 'volume'));
       g.appendChild(toggleRow('Interface sounds', 'Clicks and chimes as you move around', s.ui, (v) => { D.set('ui', v); S.setUi(v); }, 'q:ui'));
       g.appendChild(toggleRow('Less motion', 'Calmer screens, no dissolves', s.motion === 'less', (v) => { D.set('motion', v ? 'less' : 'full'); document.documentElement.dataset.motion = v ? 'less' : 'full'; }, 'q:motion'));
-      g.appendChild(toggleRow('Full screen', 'Hide the browser around ' + D.brand, !!document.fullscreenElement, (v) => { if (v) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen && document.exitFullscreen().catch(() => {}); }, 'q:full'));
+      if (!D.sys) g.appendChild(toggleRow('Full screen', 'Hide the browser around ' + D.brand, !!document.fullscreenElement, (v) => { if (v) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen().catch(() => {}); else document.exitFullscreen && document.exitFullscreen().catch(() => {}); }, 'q:full'));
       body.appendChild(g);
+      // for the evening: a warmer screen, no pop-ups, and falling asleep to something
+      const ev = h('<div class="qgroup"></div>');
+      ev.appendChild(toggleRow('Night light', D.state.warm === 'night' ? 'Comes on by itself at sunset' : 'A warmer screen, easier on your eyes', D.tools.warmOn(), (v) => D.tools.setWarm(v ? 'on' : 'off'), 'q:warm'));
+      ev.appendChild(toggleRow('Do not disturb', 'Notifications wait in the list, without popping up', D.tools.quiet(), (v) => D.tools.setQuiet(v), 'q:dnd'));
+      ev.appendChild(segRow('Sleep timer', [[0, 'Off'], [15, '15 min'], [30, '30'], [60, '60'], [90, '90']], D.tools.sleepMins(), (v) => D.tools.setSleep(v), 'q:sleep'));
+      body.appendChild(ev);
       if (D.sys) {
-        const row = h('<div style="display:flex;gap:8px;padding:4px 8px;flex-wrap:wrap"></div>');
+        const bt = h('<button class="toggle-row" data-nav data-key="q:bt"><span>Bluetooth<small>Controllers, headphones and speakers</small></span>' + D.glyph('bt', 2) + '</button>');
+        bt.onclick = () => { Qam.close(true); D.launch('settings', { arg: 'bt' }); };
+        body.appendChild(bt);
+        D.tools.bt.list().then((r) => { if (!bt.isConnected || !r || !r.ok) return; const on = (r.devices || []).filter((d) => d.connected); bt.querySelector('small').textContent = !r.adapter ? 'This computer has no Bluetooth' : !r.powered ? 'Off' : on.length ? 'Connected: ' + on.map((d) => d.name).join(', ') : 'On, nothing connected'; });
+        const row = h('<div style="display:flex;gap:8px;padding:10px 8px 4px;flex-wrap:wrap"></div>');
+        const shot = h('<button class="b small" data-nav data-key="q:shot">' + D.glyph('camera', 2) + 'Screenshot</button>');
+        shot.onclick = () => { Qam.close(true); D.tools.screenshot(); };
+        row.appendChild(shot);
         [['restart', 'Restart', 'reboot'], ['power', 'Shut down', 'shutdown']].forEach(([ic, n, a]) => { const b = h('<button class="b small" data-nav data-key="q:' + a + '">' + D.glyph(ic, 2) + n + '</button>'); b.onclick = () => { Qam.close(true); D.sys.power(a); }; row.appendChild(b); });
         body.appendChild(row);
       }
-    },
-    perf(body) {
-      const s = D.state;
-      body.appendChild(h('<p class="qhint">What the screen is doing, and how hard. A lower frame limit saves battery.</p>'));
-      const g = h('<div class="qgroup"></div>');
-      g.appendChild(segRow('Overlay', [[0, 'Off'], [1, 'FPS'], [2, 'Graph'], [3, 'All']], s.perf, (v) => { D.set('perf', v); Perf.show(); }, 'q:perf'));
-      g.appendChild(segRow('Frame limit for worlds', [[15, '15'], [30, '30'], [60, '60'], [0, 'None']], s.fps, (v) => D.set('fps', v), 'q:fps'));
-      body.appendChild(g);
-      const live = h('<div class="qset"><div class="lab">Right now<small id="q-fps"></small></div><canvas id="q-graph" width="320" height="60" style="width:100%;height:60px"></canvas></div>');
-      body.appendChild(live);
-      Perf.mini = live;
     },
     music(body) {
       const now = M.now;
@@ -574,14 +559,18 @@
     },
     help(body) {
       const k = (b, t) => '<span>' + D.btn(b) + '</span><span>' + t + '</span>';
-      body.appendChild(h('<div class="keys">' + k('a', 'Select') + k('b', 'Back') + k('menu', 'The menu (or Ctrl+1)') + k('quick', 'Quick access (or Ctrl+2)') + k('search', 'Search') + k('x', 'More things to do') + k('lb', 'Previous tab') + k('rb', 'Next tab') + '<span>' + D.btn('a').replace(/>[^<]*</, '>↑↓←→<') + '</span><span>Move around</span></div>'));
-      body.appendChild(h('<p class="qhint" style="margin-top:16px">Controllers work too: plug one in and press any button. The mouse and touch work everywhere as well.</p>'));
-      const b = h('<button class="b small" data-nav data-key="q:tour" style="margin-left:8px">Show the welcome again</button>'); b.onclick = () => { Qam.close(true); welcome(true); };
-      body.appendChild(b);
+      body.appendChild(h('<div class="keys">' + k('a', 'Select') + k('b', 'Back') + k('menu', 'The menu (or Ctrl+1)') + k('quick', 'Quick access (or Ctrl+2)') + k('search', 'Search') + k('x', 'More things to do, like taking a site off Watch') + k('lb', 'Previous tab') + k('rb', 'Next tab') + '<span>' + D.btn('a').replace(/>[^<]*</, '>↑↓←→<') + '</span><span>Move around</span></div>'));
+      body.appendChild(h('<p class="qhint" style="margin-top:16px">Controllers work too: plug one in' + (D.sys ? ' or pair it in Bluetooth,' : '') + ' then press any button. The mouse and touch work everywhere as well.</p>'));
+      body.appendChild(h('<p class="qhint">Home has Today (the time, the weather, what\'s due and what\'s playing) and Watch, your streaming sites. Leave DiceTV alone for a while and a big clock comes up over your world; any key brings it back.</p>'));
+      const row = h('<div style="display:flex;gap:8px;padding:0 8px;flex-wrap:wrap"></div>');
+      const ks = h('<button class="b small" data-nav data-key="q:keys">' + D.glyph('keys', 2) + 'All keyboard shortcuts</button>'); ks.onclick = () => { Qam.close(true); D.tools.shortcuts(); };
+      const b = h('<button class="b small" data-nav data-key="q:tour">Show the welcome again</button>'); b.onclick = () => { Qam.close(true); welcome(true); };
+      row.append(ks, b);
+      body.appendChild(row);
     },
   };
   D.on('notifs', () => { if (Qam.isOpen() && Qam.tab === 'notifs') { const b = qamEl.querySelector('[data-tab=notifs] .badge'); if (b && !D.unread()) b.remove(); } });
-  D.on('friends', () => { if (Qam.isOpen() && Qam.tab === 'friends') Qam.show('friends', true); });
+  D.on('dnd', () => { if (Qam.isOpen() && Qam.tab === 'quick') Qam.show('quick', true); });
 
   // little controls, shared with Settings
   function segRow(label, opts, cur, set, key) {
@@ -633,11 +622,20 @@
     { name: 'Dice Home', words: 'wall clock weather home assistant lights', icon: 'home', run: () => D.wall.enter() },
     { name: 'Controller test', words: 'gamepad joystick buttons', icon: 'pad', run: () => D.launch('settings', { arg: 'pads' }) },
     { name: 'Library', words: 'all apps', icon: 'library', run: () => { D.suspendIfRunning(); Shell.go('library'); } },
+    { name: 'Night light', words: 'warm screen eyes evening blue light', icon: 'warm', run: () => D.tools.setWarm(D.tools.warmOn() ? 'off' : 'on') },
+    { name: 'Do not disturb', words: 'quiet silence notifications focus', icon: 'quiet', run: () => { D.tools.setQuiet(!D.tools.quiet()); D.toast({ icon: 'quiet', title: D.tools.quiet() ? 'Do not disturb is on' : 'Do not disturb is off', text: D.tools.quiet() ? 'Notifications will wait in the list.' : 'Notifications pop up again.' }); } },
+    { name: 'Sleep timer', words: 'sleep timer bed night music stop', icon: 'moon', run: () => Qam.open('quick') },
+    { name: 'Your town', words: 'weather town city place', icon: 'sun', run: () => D.tv.askTown() },
+    { name: 'Keyboard shortcuts', words: 'keys keyboard shortcuts help', icon: 'keys', run: () => D.tools.shortcuts() },
+    { name: 'Back up', words: 'backup save export restore', icon: 'box', run: () => D.launch('settings', { arg: 'storage' }) },
   ];
+  if (D.sys) ACTIONS.push(
+    { name: 'Bluetooth', words: 'bluetooth pair controller headphones speaker', icon: 'bt', run: () => D.launch('settings', { arg: 'bt' }) },
+    { name: 'Take a screenshot', words: 'screenshot screen capture picture print', icon: 'camera', run: () => D.tools.screenshot() });
   Search.open = function () {
     Menu.close(true); Qam.close(true);
     Search.prev = Nav.el;
-    searchEl.innerHTML = '<div class="sbox glass">' + D.glyph('search', 3) + '<input id="sq" data-nav data-key="s:q" placeholder="Search apps, friends and settings" autocomplete="off" spellcheck="false" aria-label="Search"></div><div class="sres" id="sres"></div>';
+    searchEl.innerHTML = '<div class="sbox glass">' + D.glyph('search', 3) + '<input id="sq" data-nav data-key="s:q" placeholder="Search apps and settings" autocomplete="off" spellcheck="false" aria-label="Search"></div><div class="sres" id="sres"></div>';
     searchEl.classList.add('open');
     const q = $('#sq');
     q.oninput = () => Search.run(q.value);
@@ -658,11 +656,11 @@
     const out = $('#sres');
     out.innerHTML = '';
     const items = [];
-    D.all().forEach((a) => items.push({ kind: a.suite ? 'App for your computer' : 'Built in', name: a.name, words: (a.words || '') + ' ' + a.blurb, app: a }));
-    D.friends.forEach((f) => items.push({ kind: 'Friend', name: f.name, words: f.kind + ' ' + f.id, who: f.id }));
+    tvApps().forEach((a) => items.push({ kind: 'App', name: a.name, words: (a.words || '') + ' ' + a.blurb, app: a }));
+    (Array.isArray(D.state.watch) ? D.state.watch : D.tv.WATCH).forEach((w) => items.push({ kind: 'Watch', name: w.name, words: 'watch stream video tv ' + D.tv.host(w.url), icon: 'tv', run: () => D.tv.open(w.url) }));
     ACTIONS.forEach((a) => items.push(Object.assign({ kind: 'Do it' }, a)));
-    const hits = q.trim() ? items.map((it) => [L.score(q, it), it]).filter((x) => x[0] > 0).sort((a, b) => b[0] - a[0]).map((x) => x[1]) : items.filter((it) => it.app && !it.app.suite).concat(items.filter((it) => it.kind === 'Do it').slice(0, 3));
-    if (!hits.length) { out.appendChild(h('<p class="qhint">Nothing called "' + esc(q) + '". Try a word like music, chat or passwords.</p>')); return; }
+    const hits = q.trim() ? items.map((it) => [L.score(q, it), it]).filter((x) => x[0] > 0).sort((a, b) => b[0] - a[0]).map((x) => x[1]) : items.filter((it) => it.app).concat(items.filter((it) => it.kind === 'Do it').slice(0, 3));
+    if (!hits.length) { out.appendChild(h('<p class="qhint">Nothing called "' + esc(q) + '". Try a word like music, weather or night.</p>')); return; }
     hits.slice(0, 12).forEach((it, i) => {
       const r = h('<button class="qrow glass" data-nav data-key="s:' + i + '"><span><b>' + esc(it.name) + '</b><span class="kind">' + esc(it.kind) + (it.app ? ': ' + esc(it.app.blurb) : '') + '</span></span></button>');
       if (it.app) { const c = D.coverEl(it.app, 'square'); c.className = 'pic art'; r.prepend(c); }
@@ -714,7 +712,7 @@
       D.suspendIfRunning();
       D.touch(id);
       if (id === 'store') Shell.go('store');
-      else { if (Shell.view && Shell.view.v === 'settings') { Shell.view.section = opts.arg; Shell.render(); } else Shell.go('settings', opts.arg); }
+      else { if (Shell.view && Shell.view.v === 'settings') { Shell.view.section = Shell.view.arg = opts.arg; Shell.render(); } else Shell.go('settings', opts.arg); }
       return;
     }
     if (Run.cur && Run.cur.id === id) { resume(); return; }
@@ -1008,6 +1006,7 @@
   function loop(now) {
     D.input.pollPads(now);
     if (D.wall && D.wall.on) D.wall.frame(now); // Dice Home covers everything, so nothing else needs drawing
+    else if (D.ambient && D.ambient.on) D.ambient.frame(now); // and so does the ambient screen
     else if (!D.desk.on && !document.hidden) Hero.draw(now);
     if (D.desk.on && !(D.wall && D.wall.on)) D.desk.frame(now);
     Perf.tick(now);

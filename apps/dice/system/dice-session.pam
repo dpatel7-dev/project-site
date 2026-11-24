@@ -1,0 +1,18 @@
+# /etc/pam.d/dice-session: how DiceOS's desktop signs its person in.
+#
+# The desktop is started for one person who is already chosen (the computer's
+# own user), so there's no password to ask for here. The only job is to open a
+# proper session, so the desktop may use the screen, keyboard and sound.
+#
+# It used to borrow "login"'s rules, which also check the account. On the PC
+# image the live system makes its user as it starts, and that check said
+# "Authentication failure", so the desktop never came up.
+auth     required  pam_permit.so
+account  required  pam_permit.so
+password required  pam_deny.so
+session  optional  pam_loginuid.so
+session  optional  pam_keyinit.so force revoke
+session  required  pam_limits.so
+session  required  pam_env.so readenv=1
+session  optional  pam_env.so readenv=1 envfile=/etc/default/locale
+session  optional  pam_systemd.so

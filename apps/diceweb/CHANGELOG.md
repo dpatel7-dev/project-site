@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.0
+
+- DiceTV's Home has two new rows under your apps. Today: the time and date, the weather where you are, what's due in Axiom, what's playing (press to play or pause) and the sleep timer. Watch: YouTube, Netflix, Disney+, Prime Video, Twitch and Spotify as plain letters on a colour (nobody's logo), opening in the real browser; add your own site, or a media box at home like Plex or Jellyfin, and press X to take one off.
+- The ambient screen: leave DiceTV alone on Home for 10 minutes (or 5 or 30, or never, in Settings, Look) and a big clock comes up over your world, with the date, the weather and what's playing. Any key, button or touch brings DiceTV back without doing anything else.
+- A sleep timer (15, 30, 60 or 90 minutes; then the music stops and the screen sleeps), shown in the top bar while it counts down.
+- Night light: a warmer screen in the evening, at night only or always, with how warm it is up to you.
+- Do not disturb: notifications wait in the list without popping up or chiming. Timers still ring.
+- Back up everything to one file, and put a backup back, in Settings, Storage. Your Dice Cloud code stays out.
+- Keyboard shortcuts: Ctrl + / (or ?) shows them all, for the desktop, DiceTV, SereneTab and Terminal.
+- On DiceOS: Bluetooth in Settings and Quick settings (pair controllers, headphones and speakers; connect, disconnect, forget), and screenshots (Print Screen, or the button in Quick settings) saved to Pictures/Screenshots.
+- Taken off DiceTV because they didn't do much on a TV: Friends (the top bar button, the Quick access tab and their search results), the Performance tab (it's still in Settings), the Store and the "For your computer" row (the apps you install on another computer are on the desktop and the website). Library is one list, A to Z.
+- Fixed: opening Settings at another section while Settings was already open stayed on the first one. The emulator's volume slider showed empty.
+
 ## 1.4.0
 
 - The Dice family. DiceOS is the operating system; with it come DiceWeb (this, in a browser tab), DiceTV (Big screen's new name), Dice Home, Dice Cloud and the Dice Emulator, each with its own mark (the logo die inside a window, a TV, a house, a cloud, a screen).

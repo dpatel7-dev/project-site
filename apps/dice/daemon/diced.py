@@ -2,8 +2,9 @@
 """
 diced: DiceOS's system helper. Runs on the Pi or PC as a system service and
 serves the DiceOS desktop (DiceWeb, in "system" mode) to the screen's browser,
-plus a small API that does the real things: Wi-Fi, sound, brightness, files,
-a real Terminal, opening the web browser, power, and updates.
+plus a small API that does the real things: Wi-Fi, Bluetooth, sound,
+brightness, files, screenshots, a real Terminal, opening the web browser,
+power, and updates.
 
 Only the computer itself can reach it (it listens on 127.0.0.1). Every API call
 needs a secret that changes each time diced starts; only the desktop page
@@ -388,6 +389,77 @@ class System:
         except OSError as e:
             return {'ok': False, 'error': str(e)}
 
+    # -- Bluetooth (bluetoothctl, from BlueZ): controllers, headphones and speakers --
+    def bt(self, args, timeout=10):
+        return run(['bluetoothctl'] + args, timeout=timeout)
+
+    def bluetooth(self):
+        if not has('bluetoothctl'):
+            return {'ok': False, 'error': "Bluetooth isn't installed. In Terminal: sudo apt install bluez"}
+        code, out = self.bt(['show'], timeout=6)
+        if code != 0 or 'No default controller' in out or 'Controller' not in out:
+            return {'ok': True, 'adapter': False, 'powered': False, 'devices': []}
+        powered = 'Powered: yes' in out
+        devices = []
+        if powered:
+            _, out = self.bt(['devices'], timeout=6)
+            for d in parse_bt_devices(out)[:40]:
+                _, info = self.bt(['info', d['mac']], timeout=4)
+                d.update(parse_bt_info(info))
+                devices.append(d)
+        devices.sort(key=lambda d: (not d['connected'], not d['paired'], d['name'].lower()))
+        return {'ok': True, 'adapter': True, 'powered': powered, 'devices': devices}
+
+    def bluetooth_do(self, action, mac=None):
+        if not has('bluetoothctl'):
+            return self.bluetooth()
+        mac = str(mac or '').upper()
+        if action in ('pair', 'connect', 'disconnect', 'remove') and not BT_MAC.match(mac):
+            return {'ok': False, 'error': "That isn't a Bluetooth device."}
+        if action in ('on', 'off'):
+            if action == 'on':
+                run(['rfkill', 'unblock', 'bluetooth'], timeout=4)
+            code, out = self.bt(['power', action], timeout=8)
+        elif action == 'scan':
+            self.bt(['--timeout', '10', 'scan', 'on'], timeout=16)
+            code, out = 0, ''  # finding nothing new isn't a failure
+        elif action == 'pair':
+            # controllers and headphones pair with no code to type ("just works")
+            code, out = self.bt(['--agent', 'NoInputNoOutput', '--timeout', '25', 'pair', mac], timeout=32)
+            if bt_worked(code, out) or 'AlreadyExists' in out:
+                self.bt(['trust', mac], timeout=6)  # so it connects by itself next time
+                code, out = self.bt(['--timeout', '15', 'connect', mac], timeout=20)
+        elif action in ('connect', 'disconnect', 'remove'):
+            code, out = self.bt(['--timeout', '15', action, mac], timeout=20)
+        else:
+            return {'ok': False, 'error': 'Unknown action'}
+        state = self.bluetooth()
+        if not bt_worked(code, out):
+            state['ok'] = False
+            state['error'] = friendly_bt(out)
+        return state
+
+    # -- screenshots (grim), into ~/Pictures/Screenshots --
+    def screenshot(self):
+        user = desktop_user()
+        if not has('grim'):
+            return {'ok': False, 'error': 'Screenshots need grim. In Terminal: sudo apt install grim'}
+        env = user_env(user) if user != 'root' else dict(os.environ)
+        if not env.get('WAYLAND_DISPLAY'):
+            return {'ok': False, 'error': "The screen isn't running."}
+        files = Files(user)
+        folder = os.path.join(files.home, 'Pictures', 'Screenshots')
+        for d in (os.path.dirname(folder), folder):
+            if not os.path.isdir(d):
+                os.makedirs(d, exist_ok=True)
+                files.chown(d)
+        path = os.path.join(folder, time.strftime('Screenshot %Y-%m-%d at %H.%M.%S.png'))
+        code, out = run(['grim', path], user=user if user != 'root' else None, env=env, timeout=15)
+        if code != 0 or not os.path.exists(path):
+            return {'ok': False, 'error': out or "grim couldn't take it."}
+        files.chown(path)
+        return {'ok': True, 'path': files.show(path)}
+
     # -- updates --
     def update(self):
         tool = os.path.join(ROOT, 'bin', 'dice-update')
@@ -397,6 +469,60 @@ class System:
         with open(log, 'w') as f:
             subprocess.Popen([tool], stdout=f, stderr=subprocess.STDOUT, start_new_session=True)
         return {'ok': True}
+
+
+BT_MAC = re.compile(r'^[0-9A-F]{2}(?::[0-9A-F]{2}){5}$')
+
+
+def parse_bt_devices(text):
+    """The 'Device AA:BB:CC:DD:EE:FF Name' lines bluetoothctl lists."""
+    out, seen = [], set()
+    for line in (text or '').splitlines():
+        m = re.match(r'^\s*Device ([0-9A-Fa-f]{2}(?::[0-9A-Fa-f]{2}){5})\s*(.*)$', line)
+        if m and m.group(1).upper() not in seen:
+            seen.add(m.group(1).upper())
+            out.append({'mac': m.group(1).upper(), 'name': m.group(2).strip() or m.group(1).upper()})
+    return out
+
+
+def parse_bt_info(text):
+    """The useful lines of 'bluetoothctl info'."""
+    info = {'paired': False, 'connected': False, 'trusted': False, 'icon': '', 'battery': None}
+    for line in (text or '').splitlines():
+        k, _, v = line.strip().partition(': ')
+        v = v.strip()
+        if k in ('Paired', 'Connected', 'Trusted'):
+            info[k.lower()] = v == 'yes'
+        elif k == 'Icon':
+            info['icon'] = v
+        elif k in ('Name', 'Alias') and v and 'name' not in info:
+            info['name'] = v
+        elif k == 'Battery Percentage':
+            m = re.search(r'\((\d+)\)', v)
+            if m:
+                info['battery'] = int(m.group(1))
+    return info
+
+
+def bt_worked(code, out):
+    out = out or ''
+    if re.search(r'successful|Changing power \w+ succeeded|Device has been removed', out):
+        return True
+    return code == 0 and not re.search(r'Failed|Error|not available|Unable', out)
+
+
+def friendly_bt(out):
+    out = out or ''
+    if re.search(r'Authentication(Failed|Canceled|Rejected)', out):
+        return "It didn't pair. Put it in pairing mode again (its light flashing fast), then press Pair."
+    if re.search(r'not available|DoesNotExist', out):
+        return "That device isn't nearby any more. Look for devices again."
+    if re.search(r'ConnectionAttemptFailed|Failed to connect|br-connection', out):
+        return "It didn't connect. Is it switched on and close by?"
+    if re.search(r'Blocked|rfkill|NotReady', out):
+        return 'Bluetooth is switched off on this computer.'
+    lines = [l for l in out.splitlines() if l.strip() and not l.startswith('[')]
+    return (lines[-1] if lines else 'Bluetooth said no.')[:160]
 
 
 def split_nm(line):
@@ -798,6 +924,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/update':
             log = '/var/log/dice-update.log' if os.getuid() == 0 else os.path.expanduser('~/.dice-update.log')
             return self.send(200, {'log': read(log)[-4000:]})
+        if path == '/api/bluetooth':
+            return self.send(200, sysm.bluetooth())
         return self.fail(404, 'No such thing.')
 
     def api_post(self, path, q):
@@ -818,6 +946,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, sysm.power(b.get('action')))
         if path == '/api/open':
             return self.send(200, sysm.open_url(b.get('url')))
+        if path == '/api/bluetooth':
+            return self.send(200, sysm.bluetooth_do(b.get('action'), b.get('mac')))
+        if path == '/api/screenshot':
+            return self.send(200, sysm.screenshot())
         if path == '/api/update':
             return self.send(200, sysm.update())
         if path == '/api/password':

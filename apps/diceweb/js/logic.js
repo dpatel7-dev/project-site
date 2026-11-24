@@ -492,8 +492,36 @@
     return out;
   }
 
+  // ---- DiceTV: Watch shortcuts, the sleep timer, and backups -----------------------------
+  // the letters on a Watch tile: the first letter, or two for two words (Prime Video: PV)
+  function monogram(name) {
+    const s = String(name || '?').trim() || '?', words = s.split(/\s+/);
+    return (words.length > 1 ? words[0][0] + words[1][0] : s[0] + (/\+$/.test(s) ? '+' : '')).toUpperCase();
+  }
+  // what someone typed as a web address, made whole (or null if it isn't one). Things on
+  // your own network (a Plex or Jellyfin box at 192.168.1.20:32400, or name.local) get http.
+  function cleanUrl(u) {
+    u = String(u || '').trim();
+    if (!u || /\s/.test(u)) return null;
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(u) && !/^(javascript|data|mailto|file|about|blob):/i.test(u)) u = (/^(\d{1,3}(\.\d{1,3}){3}|[\w-]+\.local)(:\d+)?(\/|$)/i.test(u) ? 'http://' : 'https://') + u;
+    try {
+      const x = new URL(u), ip = /^\d{1,3}(\.\d{1,3}){3}$/.test(x.hostname);
+      return /^https?:$/.test(x.protocol) && (ip || /\.[a-z]{2,}$/i.test(x.hostname)) ? x.href : null;
+    } catch (e) { return null; }
+  }
+  // the sleep timer goes round: off, 15, 30, 60, 90, off
+  const SLEEPS = [0, 15, 30, 60, 90];
+  function nextSleep(mins) { const i = SLEEPS.indexOf(mins); return SLEEPS[(i + 1) % SLEEPS.length]; }
+  // a backup file, if it is one
+  function readBackup(text) {
+    let d = null;
+    try { d = JSON.parse(text); } catch (e) { return null; }
+    if (!d || d.kind !== 'dice-backup' || !d.state || typeof d.state !== 'object' || Array.isArray(d.state)) return null;
+    return d;
+  }
+
   const api = { clockNight, pickNext, newDisk, calc, calcText, monthGrid, dayKey, resolve, walk, writeFile, makeDir, remove, tokens, parseDice, run, HELP, score,
-    sunPos, moonPos, cityTime, ENGINES, omni, howToShow, hostOf, weatherWords, addDays, planBuckets, eventsToTasks, remember, suggest };
+    sunPos, moonPos, cityTime, ENGINES, omni, howToShow, hostOf, weatherWords, addDays, planBuckets, eventsToTasks, remember, suggest, monogram, cleanUrl, nextSleep, readBackup };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DiceLogic = api;
 })(this);

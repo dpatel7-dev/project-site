@@ -1,12 +1,14 @@
 [Unit]
 Description=Dice desktop for %i
-After=systemd-user-sessions.service plymouth-quit-wait.service dice.service
+After=systemd-user-sessions.service plymouth-quit-wait.service dice.service live-config.service
 Wants=dice.service
+# keep trying however many times it stops (the default gives up after 5 quick tries)
+StartLimitIntervalSec=0
 Conflicts=getty@tty1.service
 
 [Service]
 User=%i
-PAMName=login
+PAMName=dice-session
 TTYPath=/dev/tty1
 TTYReset=yes
 TTYVHangup=yes

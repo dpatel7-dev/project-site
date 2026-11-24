@@ -38,7 +38,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 CHROME=chromium
 apt-cache show chromium >/dev/null 2>&1 || CHROME=chromium-browser
-PKGS="cage $CHROME python3 curl ca-certificates plymouth plymouth-themes wlr-randr pipewire pipewire-pulse wireplumber fonts-noto-color-emoji network-manager rfkill iw alsa-utils"
+PKGS="cage $CHROME python3 curl ca-certificates plymouth plymouth-themes wlr-randr pipewire pipewire-pulse wireplumber fonts-noto-color-emoji network-manager rfkill iw alsa-utils bluez grim"
 # a PC also wants the drivers for its graphics, and a sound card's firmware where Debian has them
 if [ "$PI" = 0 ]; then
   for p in libgl1-mesa-dri mesa-vulkan-drivers firmware-linux-free firmware-sof-signed; do apt-cache show "$p" >/dev/null 2>&1 && PKGS="$PKGS $p"; done
@@ -66,6 +66,7 @@ mkdir -p /etc/dice /var/lib/dice
 
 say "3 of 5: Setting DiceOS to start with $THIS..."
 cp /opt/dice/system/*.service /opt/dice/system/*.timer /etc/systemd/system/
+install -m 644 /opt/dice/system/dice-session.pam /etc/pam.d/dice-session  # the desktop's own sign-in rules
 systemctl daemon-reload 2>/dev/null || true
 systemctl enable dice.service dice-boot.service dice-update.timer
 # DiceOS takes the screen, so the usual desktop (if there is one) steps aside

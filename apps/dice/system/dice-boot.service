@@ -1,6 +1,6 @@
 [Unit]
 Description=Dice start-up (applies dice.json, then starts the desktop)
-After=local-fs.target NetworkManager.service userconfig.service systemd-user-sessions.service dice.service
+After=local-fs.target NetworkManager.service userconfig.service live-config.service systemd-user-sessions.service dice.service
 Wants=dice.service
 
 [Service]

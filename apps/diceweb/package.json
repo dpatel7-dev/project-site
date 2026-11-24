@@ -1,6 +1,6 @@
 {
   "name": "diceweb",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "DiceWeb: a whole console in your browser, with a SteamOS-style Gaming Mode, a desktop, pixel worlds, games, music, notes and a Terminal. On a Raspberry Pi it becomes Dice.",
   "private": true,
   "scripts": {

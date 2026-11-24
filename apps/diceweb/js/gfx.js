@@ -125,6 +125,14 @@
     bright: ['.....K.....', '.K...K...K.', '..K.....K..', '....KKK....', '...K...K...', 'KK.K...K.KK', '...K...K...', '....KKK....', '..K.....K..', '.K...K...K.', '.....K.....'],
     copy: ['...KKKKKKK', '...K.....K', 'KKKKKKK..K', 'K.....K..K', 'K.....K..K', 'K.....K..K', 'K.....KKKK', 'K.....K...', 'KKKKKKK...'],
     link: ['......KKKK', '.......KKK', '......K.KK', '.....K...K', '....K.....', 'KK.K......', 'K...KKKKKK', 'K........K', 'KKKKKKKKKK'],
+    bt: ['.....K......', '.....KK.....', '..K..K.K....', '...K.K..K...', '....KK.K....', '.....KK.....', '....KK.K....', '...K.K..K...', '..K..K.K....', '.....KK.....', '.....K......'],
+    timer: ['.KKKKKKKKKK.', '..K......K..', '..K.AAAA.K..', '...K.AA.K...', '....K..K....', '.....KK.....', '....K..K....', '...K....K...', '..K..AA..K..', '..K.AAAA.K..', '.KKKKKKKKKK.'],
+    camera: ['............', '...KKKK.....', '.KKKKKKKKKK.', 'KK........KK', 'K...KKKK...K', 'K..K....K..K', 'K..K.AA.K..K', 'K..K....K..K', 'K...KKKK...K', 'KK........KK', '.KKKKKKKKKK.'],
+    warm: ['...KKKKKK...', '..K......K..', '.K........K.', 'KKKKKKKKKKKK', '.....KK.....', '..A..KK..A..', '.A...KK...A.', '.....KK.....', '.....KK.....', '...KKKKKK...'],
+    quiet: ['...KKKKKK...', '..K......K..', '.K........K.', 'K..........K', 'K.KKKKKKKK.K', 'K.KKKKKKKK.K', 'K..........K', '.K........K.', '..K......K..', '...KKKKKK...'],
+    keys: ['............', 'KKKKKKKKKKKK', 'K..........K', 'K.K.K.K.K..K', 'K..........K', 'K.K.K.K.K.KK', 'K..........K', 'K..KKKKKK..K', 'K..........K', 'KKKKKKKKKKKK'],
+    box: ['.....KK.....', '.....KK.....', '...K.KK.K...', '....KKKK....', '.....KK.....', 'K..........K', 'K..........K', 'KKKKKKKKKKKK', 'KKKKKKKKKKKK'],
+    tv: ['..K......K..', '...K....K...', '....K..K....', 'KKKKKKKKKKKK', 'K..........K', 'K..........K', 'K..........K', 'K..........K', 'K..........K', 'KKKKKKKKKKKK'],
   };
   const PIPS = { R: '#ff707a', B: '#7cc4ff', Y: '#f5c431', G: '#8fd16a', P: '#d39cf5' };
   const iconCache = new Map();

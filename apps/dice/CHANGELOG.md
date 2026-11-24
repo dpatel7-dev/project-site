@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.0
+
+- Fixed the PC image stopping on "authentication error" instead of showing the desktop. The desktop borrowed the "login" sign-in rules, which also check the account, and that check failed for the live system's user. It now has its own small rules file (/etc/pam.d/dice-session) that only opens the session, keeps trying if it ever stops, and waits for the live system to make its user.
+- If the emulator test still doesn't see the desktop, it signs in on the second text screen and copies the start-up log out through the serial port (serial.log, attached to the run), and prints the parts about the desktop.
+- Bluetooth: pair controllers, headphones and speakers, connect, disconnect and forget them, in Settings, Bluetooth (and a row in Quick settings). diced does it with bluetoothctl (/api/bluetooth; only real device addresses are taken). bluez is installed with DiceOS.
+- Screenshots: Print Screen, or Screenshot in Quick settings, saves the screen to Pictures/Screenshots (diced runs grim as you; /api/screenshot). grim is installed with DiceOS.
+- DiceWeb 1.5: DiceTV gets Today (the time, the weather, Axiom, what's playing, a sleep timer), Watch (your streaming sites, opening in Chromium over DiceOS) and an ambient clock when it's left alone; Night light, Do not disturb, backups and a keyboard shortcuts sheet everywhere. Friends, the Performance tab and the Store are gone from DiceTV.
+- The Tests workflow passes again: test_boot no longer tries to write to /var/log.
+
 ## 1.4.0
 
 - It's called DiceOS everywhere now: the start-up splash, the installer, the helper's messages, the desktop's welcome and About.
