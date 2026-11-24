@@ -198,10 +198,10 @@
   }
   Shell.block = block;
   Views.home = function () {
-    const page = h('<div class="home tvb"><section class="tvb-top"><aside class="tvb-now glass" aria-label="Today"></aside>' +
-      '<div class="tvb-main"><div class="tvb-board" id="recent"></div>' +
+    const page = h('<div class="home tvb"><section class="tvb-top"><aside class="tvb-now glass" aria-label="Today" data-nav-down=".tvb-ground"></aside>' +
+      '<div class="tvb-main"><div class="tvb-board" id="recent" data-nav-down=".tvb-ground"></div>' +
       '<div class="spot tvb-cap" aria-live="polite"><div class="kicker"><span class="dot"></span><span id="sp-k"></span></div><h1 id="sp-name"></h1><p id="sp-line"></p><div class="facts" id="sp-facts"></div></div></div></section>' +
-      '<section class="tvb-ground"></section></div>');
+      '<div class="tvb-strip" aria-hidden="true"></div><section class="tvb-ground" data-nav-up=".tvb-board"></section></div>');
     const board = page.querySelector('#recent');
     const run = D.running();
     const ids = [];
@@ -211,6 +211,7 @@
     ids.slice(0, 7).forEach((id, i) => {
       const app = D.app(id), live = run && run.id === id;
       const t = block(app, { flag: live ? 'Running' : '', a: live ? 'Resume' : 'Open', x: live ? 'Close' : '' });
+      t.style.setProperty('--i', i);
       if (i === 0) t.setAttribute('data-first', '');
       board.appendChild(t);
     });
@@ -221,8 +222,10 @@
     lib.className = 'appicon libicon';
     all.querySelector('.bk').appendChild(lib);
     all.onclick = () => Shell.go('library');
+    all.style.setProperty('--i', 7);
     board.appendChild(all);
     D.tv.now(page.querySelector('.tvb-now'));
+    D.tv.strip(page.querySelector('.tvb-strip'));
     D.tv.rows(page.querySelector('.tvb-ground'));
     return page;
   };
@@ -540,6 +543,9 @@
       ev.appendChild(toggleRow('Night light', D.state.warm === 'night' ? 'Comes on by itself at sunset' : 'A warmer screen, easier on your eyes', D.tools.warmOn(), (v) => D.tools.setWarm(v ? 'on' : 'off'), 'q:warm'));
       ev.appendChild(toggleRow('Do not disturb', 'Notifications wait in the list, without popping up', D.tools.quiet(), (v) => D.tools.setQuiet(v), 'q:dnd'));
       ev.appendChild(segRow('Sleep timer', [[0, 'Off'], [15, '15 min'], [30, '30'], [60, '60'], [90, '90']], D.tools.sleepMins(), (v) => D.tools.setSleep(v), 'q:sleep'));
+      const po = h('<button class="toggle-row" data-nav data-key="q:picoff"><span>Picture off<small>A black screen, and the sound keeps going</small></span>' + D.glyph('tv', 2) + '</button>');
+      po.onclick = () => D.tools.pictureOff();
+      ev.appendChild(po);
       body.appendChild(ev);
       if (D.sys) {
         const bt = h('<button class="toggle-row" data-nav data-key="q:bt"><span>Bluetooth<small>Controllers, headphones and speakers</small></span>' + D.glyph('bt', 2) + '</button>');
@@ -550,6 +556,9 @@
         const shot = h('<button class="b small" data-nav data-key="q:shot">' + D.glyph('camera', 2) + 'Screenshot</button>');
         shot.onclick = () => { Qam.close(true); D.tools.screenshot(); };
         row.appendChild(shot);
+        const lk = h('<button class="b small" data-nav data-key="q:lock">' + D.glyph('lock', 2) + 'Lock</button>');
+        lk.onclick = () => { Qam.close(true); D.lock(); };
+        row.appendChild(lk);
         [['restart', 'Restart', 'reboot'], ['power', 'Shut down', 'shutdown']].forEach(([ic, n, a]) => { const b = h('<button class="b small" data-nav data-key="q:' + a + '">' + D.glyph(ic, 2) + n + '</button>'); b.onclick = () => { Qam.close(true); D.sys.power(a); }; row.appendChild(b); });
         body.appendChild(row);
       }
@@ -634,6 +643,7 @@
     { name: 'Night look', words: 'dark theme black', icon: 'moon', run: () => { D.set('look', 'night'); D.applyLook(true); } },
     { name: 'Follow the clock', words: 'auto look theme time', icon: 'sun', run: () => { D.set('look', 'auto'); D.applyLook(true); } },
     { name: 'Sleep', words: 'power off screen', icon: 'moon', run: () => D.sleep() },
+    { name: 'Lock', words: 'pin password lock screen away', icon: 'lock', run: () => D.lock() },
     { name: 'Restart', words: 'reboot power', icon: 'restart', run: () => D.restart() },
     { name: 'Switch to Desktop', words: 'windows desktop mode', icon: 'desktop', run: () => D.desk.enter() },
     { name: 'Dice Home', words: 'wall clock weather home assistant lights', icon: 'home', run: () => D.wall.enter() },
@@ -642,6 +652,7 @@
     { name: 'Night light', words: 'warm screen eyes evening blue light', icon: 'warm', run: () => D.tools.setWarm(D.tools.warmOn() ? 'off' : 'on') },
     { name: 'Do not disturb', words: 'quiet silence notifications focus', icon: 'quiet', run: () => { D.tools.setQuiet(!D.tools.quiet()); D.toast({ icon: 'quiet', title: D.tools.quiet() ? 'Do not disturb is on' : 'Do not disturb is off', text: D.tools.quiet() ? 'Notifications will wait in the list.' : 'Notifications pop up again.' }); } },
     { name: 'Sleep timer', words: 'sleep timer bed night music stop', icon: 'moon', run: () => Qam.open('quick') },
+    { name: 'Picture off', words: 'screen off black listen sound only audio', icon: 'tv', run: () => D.tools.pictureOff() },
     { name: 'Your town', words: 'weather town city place', icon: 'sun', run: () => D.tv.askTown() },
     { name: 'Keyboard shortcuts', words: 'keys keyboard shortcuts help', icon: 'keys', run: () => D.tools.shortcuts() },
     { name: 'Back up', words: 'backup save export restore', icon: 'box', run: () => D.launch('settings', { arg: 'storage' }) },
@@ -742,8 +753,10 @@
     if (!def) return;
     Menu.close(true); Qam.close(true); Search.close(true);
     const host = $('#run');
-    host.innerHTML = '<div class="runbody" style="position:absolute;inset:0"></div><button class="runhome glass" aria-label="Home">' + D.icon('die', null, 2) + '</button><div class="runhint glass">' + D.btn('b') + ' Home &nbsp; ' + D.btn('menu') + ' Menu</div><div id="runlegend" class="glass" style="position:absolute;right:var(--gut);bottom:18px;z-index:3;display:flex;gap:6px;padding:7px 10px;border-radius:999px;font:700 .88rem/1 var(--read)"></div>';
+    pipOn(false);
+    host.innerHTML = '<div class="runbody" style="position:absolute;inset:0"></div><button class="pip-hit" aria-label="Back to full screen"><span class="pip-name"></span></button><button class="runhome glass" aria-label="Home">' + D.icon('die', null, 2) + '</button><div class="runhint glass">' + D.btn('b') + ' Home &nbsp; ' + D.btn('menu') + ' Menu</div><div id="runlegend" class="glass" style="position:absolute;right:var(--gut);bottom:18px;z-index:3;display:flex;gap:6px;padding:7px 10px;border-radius:999px;font:700 .88rem/1 var(--read)"></div>';
     host.querySelector('.runhome').onclick = () => D.suspend();
+    host.querySelector('.pip-hit').onclick = () => resume();
     const start = () => {
       $('#app').classList.add('running');
       Hero.paused = true;
@@ -756,36 +769,55 @@
     const from = opts.from && opts.from.getBoundingClientRect ? opts.from : null;
     if (from && !D.reduced()) launchAnim(app, from, start); else { S.play('select'); start(); }
   };
+  // Opening an app: its colour opens out from the block you picked, while the icon (kept at its
+  // own size, never stretched) drifts to the middle and fades, then the app is there.
   function launchAnim(app, from, done) {
-    const r = from.getBoundingClientRect();
-    const el = $('#launch');
+    const box = from.querySelector('.bk') || from, r = box.getBoundingClientRect();
+    const el = $('#launch'), W = innerWidth, H = innerHeight;
+    const rad = Math.round(Math.min(r.width, r.height) * 0.24), size = Math.round(Math.max(48, Math.min(r.width, r.height, 160)));
+    const clip = (t, rt, bt, l, rr) => 'inset(' + Math.round(t) + 'px ' + Math.round(rt) + 'px ' + Math.round(bt) + 'px ' + Math.round(l) + 'px round ' + rr + 'px)';
+    el.className = 'opening';
     el.innerHTML = '';
-    el.appendChild(D.coverEl(app, r.width / r.height > 1.2 ? 'wide' : 'cover'));
-    el.style.cssText = 'left:' + r.left + 'px;top:' + r.top + 'px;width:' + r.width + 'px;height:' + r.height + 'px;opacity:1;transition:none;transform:none';
+    const icon = G.appIconEl(app.id, size);
+    el.appendChild(icon);
+    el.style.cssText = 'left:0;top:0;width:100%;height:100%;opacity:1;transition:none;transform:none;--lc:' + app.c + ';clip-path:' + clip(r.top, W - r.right, H - r.bottom, r.left, rad);
+    icon.style.cssText = 'position:absolute;left:0;top:0;width:' + size + 'px;height:' + size + 'px;transition:none;transform:translate(' + (r.left + r.width / 2 - size / 2) + 'px,' + (r.top + r.height / 2 - size / 2) + 'px)';
     el.hidden = false;
     S.play('open');
-    requestAnimationFrame(() => {
-      el.style.transition = 'transform .42s cubic-bezier(.2,.8,.2,1), opacity .25s .36s, border-radius .42s';
-      el.style.transform = 'translate(' + -r.left + 'px,' + -r.top + 'px) scale(' + innerWidth / r.width + ',' + innerHeight / r.height + ')';
-      el.style.borderRadius = '0';
-    });
-    setTimeout(() => { done(); el.style.opacity = '0'; setTimeout(() => { el.hidden = true; }, 300); }, 420);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      el.style.transition = 'clip-path .4s cubic-bezier(.2,.8,.2,1), opacity .24s';
+      el.style.clipPath = clip(0, 0, 0, 0, 0);
+      icon.style.transition = 'transform .4s cubic-bezier(.2,.8,.2,1), opacity .18s .2s';
+      icon.style.transform = 'translate(' + (W / 2 - size / 2) + 'px,' + (H / 2 - size / 2) + 'px)';
+      icon.style.opacity = '0';
+    }));
+    setTimeout(() => { done(); el.style.opacity = '0'; setTimeout(() => { el.hidden = true; el.className = ''; el.innerHTML = ''; }, 280); }, 410);
   }
   function resume() {
     if (!Run.cur) return;
     Menu.close(true); Qam.close(true);
+    const wasPip = D.pip();
+    pipOn(false);
     $('#app').classList.add('running');
+    if (wasPip && Run.cur.inst.unpip) Run.cur.inst.unpip();
     Hero.paused = true;
     Run.cur.since = performance.now();
     if (Run.cur.inst.resume) Run.cur.inst.resume();
     S.play('select');
   }
+  // Picture in picture: an app that's playing something (the news, say) can stay on in a
+  // small box in the corner while you're on Home. Its block on Home (or the box) brings it back.
+  const pipOn = (on) => { $('#app').classList.toggle('pip', !!on); if (on) $('#run .pip-hit .pip-name').textContent = Run.cur.inst.pipName ? Run.cur.inst.pipName() : Run.cur.app.name; };
+  D.pip = () => $('#app').classList.contains('pip');
+  D.on('desk', (on) => { if (on && D.pip()) D.closeApp(true); }); // the desktop has its own windows
   D.suspend = function () {
     if (!Run.cur || !$('#app').classList.contains('running')) return;
     accountPlay();
     $('#app').classList.remove('running');
     Hero.paused = false;
-    if (Run.cur.inst.pause) Run.cur.inst.pause();
+    const pip = Run.cur.inst.pip && Run.cur.inst.pip() && D.state.pip !== false;
+    pipOn(pip);
+    if (!pip && Run.cur.inst.pause) Run.cur.inst.pause();
     S.play('back');
     Shell.go('home', null, { root: true, quiet: true });
     Hero.set(Run.cur.app);
@@ -797,6 +829,7 @@
     try { if (Run.cur.inst.unmount) Run.cur.inst.unmount(); } catch (e) { console.error(e); }
     const was = Run.cur;
     Run.cur = null;
+    $('#app').classList.remove('pip');
     $('#run').innerHTML = '';
     const wasShowing = $('#app').classList.contains('running');
     $('#app').classList.remove('running');
@@ -931,7 +964,7 @@
     $('#sleep').classList.remove('on');
     S.play('wake');
     if (D.wasPlaying) M.resume();
-    if (Run.cur && $('#app').classList.contains('running')) { Run.cur.since = performance.now(); if (Run.cur.inst.resume) Run.cur.inst.resume(); }
+    if (Run.cur && ($('#app').classList.contains('running') || D.pip())) { Run.cur.since = performance.now(); if (Run.cur.inst.resume) Run.cur.inst.resume(); }
   };
   D.restart = function () {
     if (Run.cur) D.closeApp(true);

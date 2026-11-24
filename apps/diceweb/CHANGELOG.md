@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.9.0
+
+- DiceTV's ground is back, as ground: a strip of your world's grass and soil (sand at the beach, snow in the snow, stone in the city) runs under the apps, and the rows start below it on their own frosted glass, so the rows never sit on dirt.
+- Opening an app looks better: the app grows out of its own block, its icon stays its own size in the middle, and nothing stretches.
+- Little animations, kept small and quick:
+  - Buttons dip a little when pressed.
+  - Home's blocks settle in one after another.
+  - A card on the clock column fades when what it says really changes.
+  - Channels dip like a TV changing channel.
+  - The on-screen keyboard, the Dice Bar, the emoji picker and pictures in picture slide in.
+  - Dice Cloud's sync button turns while it syncs.
+  - A wrong PIN gives a little shake.
+  None of them bounce up and down. All of them stop with Settings, Look, Less motion, or when the computer asks for less motion.
+- New on DiceTV:
+  - Picture in picture: go Home while a news channel plays, and it keeps playing in a corner. Pick it to go back to it full screen.
+  - Picture off: a black screen while the sound goes on, for the news or the radio while you do something else. It's in Quick settings and search; any button brings the picture back.
+  - Last channel: yellow on a remote (Y on a controller) jumps back to the channel you were just on.
+  - The Live tile you're on plays, as a little preview of the channel.
+  - Lock is in search and, on DiceOS, in Quick settings.
+- New on the desktop:
+  - A lock screen: Super + L, Lock in the power menu, or Lock in the Dice Bar. Give it a PIN in Settings, You (4 to 8 numbers; type it, or pick the numbers with a remote). Without a PIN, any key opens it. It can lock itself after sleep too.
+  - Emoji and symbols: Super + . (or Ctrl + Alt + .) opens a picker that puts what you pick where you were typing. Search it by name. In the Dice Bar, type ":heart" or ":fire".
+  - The Dice Bar finds your files by name, and opens them in the right app. On DiceOS it looks through your real Home folder.
+
 ## 1.8.0
 
 - DiceTV has a look of its own now, instead of rows of tiles like every other TV:

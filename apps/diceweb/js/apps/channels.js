@@ -304,7 +304,7 @@
     root.innerHTML = '<canvas class="ch-cv"></canvas><div class="ch-yt" hidden></div><div class="ch-banner glass" hidden></div><div class="ch-guide glass" hidden role="dialog" aria-label="Channel guide"><h2>Channels</h2><div class="ch-list" data-row></div></div><div class="ch-bar"><button class="b small" data-nav data-key="ch:prev" aria-label="Previous channel">' + D.glyph('prev', 2) + '</button><button class="b small" data-nav data-key="ch:guide">Guide</button><button class="b small" data-nav data-key="ch:next" aria-label="Next channel">' + D.glyph('next', 2) + '</button><button class="b small" data-nav data-key="ch:radio">' + D.glyph('music', 2) + '<span>Dice Radio</span></button></div>';
     const cv = root.querySelector('.ch-cv'), g = cv.getContext('2d'), banner = root.querySelector('.ch-banner'), guide = root.querySelector('.ch-guide'), yt = root.querySelector('.ch-yt');
     let all = CH.all();
-    let idx = Math.max(0, all.findIndex((c) => c.id === (ctx.arg || D.state.channel))), scene = null, key = '', bannerT = 0, digits = '', digitT = 0, last = 0, ytPaused = false;
+    let idx = Math.max(0, all.findIndex((c) => c.id === (ctx.arg || D.state.channel))), scene = null, key = '', bannerT = 0, digits = '', digitT = 0, last = 0, ytPaused = false, lastIdx = -1;
     const cur = () => all[idx];
     function showBanner(sticky) {
       const c = cur(), now = M.now;
@@ -335,10 +335,13 @@
     addEventListener('blur', onBlur);
     function tune(i, quiet) {
       all = CH.all();
-      idx = (i + all.length) % all.length; key = '';
+      const to = (i + all.length) % all.length;
+      if (to !== idx) lastIdx = idx;
+      idx = to; key = '';
       D.state.channel = cur().id; D.save();
       if (!quiet) S.play('tab');
       ctx.setTitle(cur().name + ' · Channels');
+      if (!quiet) { root.classList.remove('ch-switch'); void root.offsetWidth; root.classList.add('ch-switch'); } // a quick dip, like a TV changing channel
       stage();
       showBanner();
       paintGuide();
@@ -395,7 +398,7 @@
     cv.addEventListener('click', () => (guideOpen() ? closeGuide() : showBanner()));
     paintGuide();
     tune(idx, true);
-    ctx.legend([['a', 'Guide'], ['rb', 'Next channel'], ['x', 'Info'], ['b', 'Back']]);
+    ctx.legend([['a', 'Guide'], ['rb', 'Next channel'], ['y', 'Last channel'], ['b', 'Back']]);
     return {
       frame(now) {
         if (cur().yt) return;
@@ -425,11 +428,18 @@
         if (cur().yt && (a === 'play' || a === 'stop')) { ytPaused = a === 'stop' ? true : !ytPaused; ytSay(ytPaused ? 'pauseVideo' : 'playVideo'); if (D.remote) D.remote.osd(ytPaused ? 'pause' : 'play', cur().name); return true; }
         if (a === 'up' || a === 'rb') { tune(idx + 1); return true; }
         if (a === 'down' || a === 'lb') { tune(idx - 1); return true; }
+        if (a === 'y' || a === 'yellow') { if (lastIdx >= 0 && lastIdx < all.length) tune(lastIdx); else showBanner(); return true; } // the last channel, like a TV's "Pre-Ch"
         if (a === 'a') { openGuide(); return true; }
         if (a === 'x' || a === 'left' || a === 'right') { showBanner(); return true; }
         return false;
       },
       unmount() { clearTimeout(bannerT); clearTimeout(digitT); removeEventListener('blur', onBlur); yt.innerHTML = ''; },
+      // going Home: the news keeps playing in a corner; anything else rests
+      pip: () => !!cur().yt && !ytPaused,
+      pipName: () => cur().name,
+      pause() { if (cur().yt) { ytSay('pauseVideo'); ytPaused = true; } },
+      resume() { if (cur().yt && ytPaused) { ytSay('playVideo'); ytPaused = false; } showBanner(); },
+      unpip() { showBanner(); },
     };
   } });
 })();

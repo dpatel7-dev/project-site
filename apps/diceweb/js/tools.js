@@ -21,6 +21,25 @@
   T.setWarm = (mode) => { D.set('warm', mode); T.applyWarm(); };
   setInterval(T.applyWarm, 60000);
 
+  // ---- Picture off: a black screen while the sound goes on (the news, the radio) ---------------
+  const po = { on: false, el: null, t: 0 };
+  T.picOff = () => po.on;
+  T.pictureOff = function () {
+    if (!po.el) {
+      po.el = D.h('<div id="picoff" hidden><p>Picture off. The sound keeps going; any button brings the picture back.</p></div>');
+      document.body.appendChild(po.el);
+      po.el.addEventListener('pointerdown', () => T.pictureOn());
+    }
+    if (D.qam && D.qam.isOpen()) D.qam.close(true);
+    po.on = true; po.el.hidden = false; po.el.classList.remove('quiet');
+    clearTimeout(po.t); po.t = setTimeout(() => { if (po.el) po.el.classList.add('quiet'); }, 3500);
+  };
+  T.pictureOn = function () { if (!po.on) return; po.on = false; po.el.hidden = true; clearTimeout(po.t); };
+  // the button that brings the picture back does nothing else
+  D.keyFirst.push((e) => { if (!po.on) return false; e.preventDefault(); T.pictureOn(); return true; });
+  const fire0 = D.input.fire;
+  D.input.fire = function (a, src) { if (po.on) { T.pictureOn(); return; } return fire0.call(D.input, a, src); };
+
   // ---- Do not disturb --------------------------------------------------------------------
   // Notifications still go in the list; they just don't pop up or chime. Things you
   // asked for yourself (a timer ringing) still come through.
@@ -112,7 +131,7 @@
   // ---- Keyboard shortcuts --------------------------------------------------------------------
   T.KEYS = [
     ['Everywhere', [['Ctrl + /', 'This list'], ['Q or Ctrl + 2', 'Quick settings'], ['M or Ctrl + 1', 'The menu, or all apps on the desktop'], ['/', 'Search'], ['Print Screen', 'Take a screenshot (DiceOS)']]],
-    ['Desktop', [['Ctrl + Space', 'The Dice Bar: apps, sums, units, timers, tasks'], ['Super or F3', 'Overview of every window'], ['Super + ← → ↑ ↓', 'Snap a window (or Ctrl + Alt + arrows)'], ['Ctrl + Alt + 1 to 4', 'Desktops 1 to 4 (or Ctrl + Super + ← →)'], ['Super + Shift + ← →', 'Move a window to the next desktop'], ['Alt + Tab or Alt + `', 'Flip between windows'], ['Super + V', 'Clipboard history'], ['Super + D', 'Show the desktop'], ['Super + E', 'Files'], ['Super + L', 'Sleep'], ['Alt + F4', 'Close the window']]],
+    ['Desktop', [['Ctrl + Space', 'The Dice Bar: apps, sums, units, timers, tasks'], ['Super or F3', 'Overview of every window'], ['Super + ← → ↑ ↓', 'Snap a window (or Ctrl + Alt + arrows)'], ['Ctrl + Alt + 1 to 4', 'Desktops 1 to 4 (or Ctrl + Super + ← →)'], ['Super + Shift + ← →', 'Move a window to the next desktop'], ['Alt + Tab or Alt + `', 'Flip between windows'], ['Super + V', 'Clipboard history'], ['Super + D', 'Show the desktop'], ['Super + E', 'Files'], ['Super + L', 'Lock'], ['Super + .', 'Emoji and symbols'], ['Ctrl + Space, then :heart', 'An emoji by name'], ['Alt + F4', 'Close the window']]],
     ['DiceTV', [['Arrow keys', 'Move around'], ['Enter or Space', 'Pick'], ['Esc or Backspace', 'Back'], ['X', 'More things to do'], ['[  ]', 'Previous and next tab'], ['1 to 0', 'Tune a Live channel']]],
     ['TV remote', [['OK, Back, Home', 'Pick, go back, go home'], ['Red', 'Channels'], ['Green', 'Axiom'], ['Yellow', 'Weather'], ['Blue', 'Quick settings'], ['Guide', 'Axiom\'s guide'], ['CH + and −', 'Next and previous'], ['▶︎ ⏸', 'Dice Radio, or what\'s playing'], ['Info', 'More about what\'s picked']]],
     ['Air mouse', [['Point and click', 'Pick anything'], ['Right button', 'Back, on DiceTV'], ['Rest at an edge', 'Scroll the row'], ['Power', 'Sleep (or ask)'], ['F3, Search', 'Search'], ['Zoom keys', 'Fit the picture to the TV']]],

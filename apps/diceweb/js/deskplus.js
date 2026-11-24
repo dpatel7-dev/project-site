@@ -207,7 +207,7 @@
   }
 
   // ---- the Dice Bar ------------------------------------------------------------------------------------------------
-  let barEl = null, barSel = 0, barItems = [];
+  let barEl = null, barSel = 0, barItems = [], barTarget = null, findQ = '', findT = 0, findItems = [];
   const clips = []; // things copied, newest first (only kept while DiceOS runs)
   const NAMES = { look: 'Look', sound: 'Sound', wifi: 'Wi-Fi', bt: 'Bluetooth', display: 'Screen', pads: 'Controllers and keys', start: 'Starting up', storage: 'Storage', about: 'About', cloud: 'Dice Cloud', me: 'You', remote: 'TV remote', desk: 'Desktop', power: 'Power' };
   function actions() {
@@ -220,7 +220,9 @@
       ['Keyboard shortcuts', 'keys help', 'keys', () => D.tools.shortcuts()],
       ['Widgets', 'clock weather sticky note desktop', 'dots', () => gallery(innerWidth / 2 - 150, innerHeight / 3)],
       ['Back up', 'backup export save everything', 'box', () => D.tools.backup()],
-      ['Sleep', 'lock screen away', 'moon', () => D.sleep()],
+      ['Lock', 'lock screen away pin', 'lock', () => D.lock()],
+      ['Emoji and symbols', 'emoji smiley symbol character special', 'dots', () => D.extras.emoji()],
+      ['Sleep', 'sleep screen off away', 'moon', () => D.sleep()],
       ['DiceTV', 'tv big screen couch controller', 'tv', () => Desk.exit()],
       ['Dice Home', 'wall clock home assistant', 'home', () => D.wall && D.wall.enter()],
     ];
@@ -244,6 +246,8 @@
     if (ms) out.push({ kind: 'Timer', name: 'Start a ' + (ms >= 60000 ? Math.round(ms / 6000) / 10 + '-minute' : Math.round(ms / 1000) + '-second') + ' timer', sub: 'The Clock rings when it\'s done', icon: 'timer', run: () => { const T = D.timer || (D.timer = {}); Object.assign(T, { total: ms, left: ms, end: Date.now() + ms, running: true }); D.toast({ icon: 'timer', c: '#2f9e8f', title: 'Timer started', text: 'It rings in ' + Math.round(ms / 60000 * 10) / 10 + ' minutes.' }); } });
     const task = L.parseTask(v, tk);
     if (task && D.app('calendar')) out.push({ kind: 'Axiom', name: 'Add "' + task.title + '"', sub: 'Due ' + (task.due === tk ? 'today' : task.due === L.addDays(tk, 1) ? 'tomorrow' : new Date(task.due + 'T12:00').toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })), icon: 'bell', run: () => { const A = D.state.axiom || (D.state.axiom = { classes: [], tasks: [], notes: [], theme: 'dawn' }); (A.tasks = A.tasks || []).push({ id: Date.now().toString(36), title: task.title, classId: null, type: 'homework', due: task.due, time: '', done: false }); D.save(); D.toast({ icon: 'bell', c: '#d4a857', title: 'Added to Axiom', text: task.title }); } });
+    // ":heart" and the like: emoji, straight in
+    if (/^:\S/.test(v)) D.extras.emojiFind(v).slice(0, 6).forEach((x) => out.push({ kind: 'Emoji', name: x.e + '  ' + x.words.split(' ')[0], sub: 'Enter puts it where you were typing, or copies it', icon: 'dots', run: () => D.extras.put(x.e, barTarget) }));
     // "send <a link or some words>": Dice Drop, to each of your other computers
     const snd = /^send\s+(?:to\s+tv\s+)?(.+)$/i.exec(v);
     if (snd && D.cloud && D.cloud.on()) {
@@ -260,6 +264,11 @@
     const strict = out.length > 0, lv = v.toLowerCase();
     items.filter((it) => (!strict && !(it.app && it.app.suite)) || it.name.toLowerCase().includes(lv))
       .map((it) => [L.score(v, it), it]).filter((x) => x[0] > 0).sort((a, b) => b[0] - a[0]).slice(0, 7).forEach((x) => out.push(x[1]));
+    // your files, by name (they arrive a moment later on DiceOS)
+    if (v.length >= 2 && !/^[:=]/.test(v)) {
+      if (findQ !== v) { findQ = v; clearTimeout(findT); findT = setTimeout(() => D.extras.findFiles(v).then((items) => { if (findQ === v) { findItems = items; if (barEl) paintBar(); } }), 140); findItems = []; }
+      findItems.slice(0, 4).forEach((f) => out.push({ kind: f.dir ? 'Folder' : 'File', name: f.name, sub: f.path, icon: f.dir ? 'box' : 'copy', run: () => D.extras.openFile(f) }));
+    }
     const o = L.omni(v, (D.state.st && D.state.st.engine) || 'ddg');
     if (o) out.push({ kind: 'Web', name: o.search ? 'Search the web for "' + v + '"' : 'Open ' + v, icon: 'link', run: () => Desk.open('browser', { arg: o.url }) });
     return out;
@@ -287,6 +296,8 @@
     if (!Desk.on) return;
     if (barEl) return P.closeBar();
     closeMenu(); P.closeOverview(); Desk.toggleStart(false);
+    const ae = document.activeElement;
+    barTarget = ae && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !/^(range|checkbox|radio|button)$/i.test(ae.type)) || ae.isContentEditable) ? ae : null;
     barEl = h('<div class="dbar on" role="dialog" aria-label="Dice Bar"><div class="dbar-box glass"><div class="dbar-in">' + D.glyph('search', 3) + '<input aria-label="Type a command, a sum or an app" placeholder="Apps, settings, 12 × 7, 5 km in miles, timer 10, todo…" autocomplete="off" spellcheck="false"></div><div class="dbar-list" role="listbox"></div></div></div>');
     D.$('#desk').appendChild(barEl);
     const input = barEl.querySelector('input');
@@ -443,7 +454,7 @@
     if ((meta || ca) && (k === 'v' || k === 'V')) { stop(); P.clipboard(); return; }
     if ((meta || ca) && (k === 'd' || k === 'D')) { stop(); showDesktop(); return; }
     if (meta && (k === 'e' || k === 'E')) { stop(); Desk.open('files'); return; }
-    if (meta && (k === 'l' || k === 'L')) { stop(); D.sleep(); return; }
+    if (meta && (k === 'l' || k === 'L')) { stop(); D.lock(); return; }
     if (ca && /^[1-4]$/.test(k)) { stop(); P.toDesktop(+k - 1); return; }
     if ((e.ctrlKey && meta) || (ca && !e.shiftKey && (k === 'PageUp' || k === 'PageDown'))) {
       if (k === 'ArrowLeft' || k === 'PageUp') { stop(); P.toDesktop(Desk.ws - 1); return; }

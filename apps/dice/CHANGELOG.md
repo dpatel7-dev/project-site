@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.9.0
+
+- diced can find files by name in your Home folder (/api/find), for the Dice Bar. It skips hidden folders and big ones like node_modules, and stops after a few thousand files so it's always quick.
+- DiceWeb 1.9:
+  - DiceTV's ground is a strip of your world's grass and soil under the apps, with the rows below it on frosted glass.
+  - Apps open from their own block, with the icon kept its own size.
+  - Small, quiet animations everywhere, all gone with Less motion.
+  - Picture in picture for the news, Picture off (just the sound) and Last channel on the yellow button.
+  - A lock screen with a PIN (Super + L), an emoji picker (Super + .) and files in the Dice Bar.
+
 ## 1.8.0
 
 - DiceWeb 1.8:

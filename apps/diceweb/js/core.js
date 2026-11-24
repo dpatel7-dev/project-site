@@ -332,6 +332,22 @@
     if ((dir === 'left' || dir === 'right') && cur._lr && cur._lr(dir === 'left' ? -1 : 1)) return true;
     const items = Nav.items(root).filter((e) => e !== cur);
     const box = (e) => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; };
+    // a group can say where to go when you leave it that way (Home's apps, then the rows below them),
+    // so a closer thing off to the side doesn't win
+    const grp = cur.closest('[data-nav-' + dir + ']');
+    if (grp && !L.pickNext(box(cur), items.filter((e) => grp.contains(e)).map((e) => ({ e, r: box(e) })), dir)) {
+      const tgt = Dice.$(grp.getAttribute('data-nav-' + dir), root);
+      const there = tgt ? items.filter((e) => tgt.contains(e) && visible(e)) : [];
+      if (there.length) {
+        const pick = L.pickNext(box(cur), there.map((e) => ({ e, r: box(e) })), dir);
+        let to = pick ? pick.e : there[0];
+        const row = to.closest('[data-row]');
+        if (row && row._last && row.contains(row._last) && visible(row._last)) to = row._last;
+        Nav.focus(to);
+        S.play('move', dir);
+        return true;
+      }
+    }
     const best = L.pickNext(box(cur), items.map((e) => ({ e, r: box(e) })), dir);
     if (!best) { S.play('error'); return false; }
     let to = best.e;
@@ -347,6 +363,9 @@
     if (!el || !el.isConnected) return false;
     if (typing(el)) { el.focus(); return true; }
     if (el.dataset.sound !== 'none') S.play(el.dataset.sound || 'select');
+    // a tiny press, so you can see it took (CSS keeps it small, and leaves it out with Less motion)
+    el.classList.remove('is-press'); void el.offsetWidth; el.classList.add('is-press');
+    setTimeout(() => el.classList.remove('is-press'), 220);
     el.click();
     return true;
   };

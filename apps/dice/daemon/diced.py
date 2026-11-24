@@ -869,6 +869,32 @@ class Files:
                         dirs[:] = []
         return {'path': self.show(real), 'real': real, 'home': self.home, 'items': items, 'drives': drives}
 
+    SKIP = {'node_modules', '__pycache__', 'snap', 'venv', '.venv'}
+
+    def find(self, query, limit=20, budget=6000):
+        """Files and folders in your home folder whose names contain the words, best first
+        (for the Dice Bar). Hidden folders and the usual heavy ones are skipped, links aren't
+        followed, and it stops after looking at a few thousand things."""
+        words = [w for w in (query or '').lower().split() if w][:4]
+        if not words:
+            return []
+        found, seen = [], 0
+        for root, dirs, names in os.walk(self.home, followlinks=False):
+            dirs[:] = sorted(d for d in dirs if not d.startswith('.') and d not in self.SKIP)
+            if root.count(os.sep) - self.home.count(os.sep) >= 6:
+                dirs[:] = []
+            for n, is_dir in [(d, True) for d in dirs] + [(f, False) for f in names if not f.startswith('.')]:
+                seen += 1
+                low = n.lower()
+                if all(w in low for w in words):
+                    full = os.path.join(root, n)
+                    score = (0 if low.startswith(words[0]) else 1, full.count(os.sep), len(n))
+                    found.append((score, {'name': n, 'path': self.show(full), 'dir': is_dir}))
+            if seen > budget:
+                break
+        found.sort(key=lambda x: x[0])
+        return [f for _, f in found[:limit]]
+
     def mkdir(self, path):
         real = self.resolve(path)
         os.makedirs(real, exist_ok=False)
@@ -1166,6 +1192,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, sysm.wifi_list())
         if path == '/api/settings':
             return self.send(200, public_settings(self.server.settings_path))
+        if path == '/api/find':
+            return self.send(200, {'ok': True, 'items': files.find(q.get('q', '')[:80])})
         if path == '/api/files':
             try:
                 return self.send(200, files.list(q.get('path', '~')))

@@ -121,8 +121,8 @@
       fillStart('');
       const row = root.querySelector('.srow2');
       row.innerHTML = '';
-      (D.sys ? [['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.sys.power('reboot')], ['power', 'Shut down', () => D.sys.power('shutdown')], ['die', 'DiceTV', () => Desk.exit()]]
-        : [['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.restart()], ['die', 'DiceTV', () => Desk.exit()]]).forEach(([ic, n, fn]) => {
+      (D.sys ? [['lock', 'Lock', () => D.lock()], ['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.sys.power('reboot')], ['power', 'Shut down', () => D.sys.power('shutdown')], ['die', 'DiceTV', () => Desk.exit()]]
+        : [['lock', 'Lock', () => D.lock()], ['moon', 'Sleep', () => D.sleep()], ['restart', 'Restart', () => D.restart()], ['die', 'DiceTV', () => Desk.exit()]]).forEach(([ic, n, fn]) => {
         if (ic === 'die') return;
         const b = h('<button class="b small">' + D.glyph(ic, 2) + esc(n) + '</button>'); b.onclick = () => { Desk.toggleStart(false); fn(); }; row.appendChild(b);
       });

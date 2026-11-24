@@ -59,7 +59,7 @@
       const counts = {};
       Object.entries(C.SECTIONS).forEach(([n, S]) => { try { counts[n] = Object.keys(S.items()).length; } catch (e) { counts[n] = 0; } });
       inner.innerHTML = '<header class="dca-hero"><div class="dca-ico"></div><div><h1>Dice Cloud</h1><p class="' + (C.error ? 'dca-err' : '') + '">' + esc(busyNote || status) + '</p></div>' +
-        '<button class="b small go" data-nav data-first data-key="dc:sync">' + D.glyph('restart', 2) + 'Sync now</button></header>' +
+        '<button class="b small go' + (C.busy ? ' syncing' : '') + '" data-nav data-first data-key="dc:sync">' + D.glyph('restart', 2) + (C.busy ? 'Syncing' : 'Sync now') + '</button></header>' +
         '<section><h2>Your computers</h2><div class="dca-devs" data-row>' + devs.map(devCard).join('') +
         '<button class="dca-dev dca-add glass" data-nav data-key="dc:add">' + D.glyph('plus', 3) + '<b>Add a computer</b><span>With the short code it shows</span></button></div></section>' +
         '<section><div class="dca-h2"><h2>Dice Drop</h2><button class="b small go" data-nav data-key="dc:send">' + D.glyph('link', 2) + 'Send a link or a note</button></div>' +

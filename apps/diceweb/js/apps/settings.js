@@ -81,6 +81,25 @@
         r.style.cssText = 'flex-direction:column;align-items:stretch';
         r.appendChild(av);
         pane.appendChild(r);
+        // the lock screen (Super + L, or Lock in the Dice Bar)
+        const X = D.extras;
+        const pinB = h('<div class="dca-btns"><button class="b small" data-nav data-key="you:pin">' + (X.hasPin() ? 'Change the PIN' : 'Set a PIN') + '</button>' + (X.hasPin() ? '<button class="b small" data-nav data-key="you:nopin">No PIN</button>' : '') + '<button class="b small" data-nav data-key="you:lock">Lock now</button></div>');
+        pinB.querySelector('[data-key="you:pin"]').onclick = async () => {
+          const a = await D.ask({ title: 'A PIN for the lock screen', text: '4 to 8 numbers. It keeps people off your screen; it isn\'t a password for the computer.', input: { type: 'password', label: 'PIN', placeholder: '••••' }, buttons: [{ label: 'Next', value: true, go: true }, { label: 'Cancel', value: false }] });
+          const pin = a && (a.value || '').trim();
+          if (!pin) return;
+          if (!/^\d{4,8}$/.test(pin)) return D.toast({ icon: 'lock', c: '#ff4d5e', title: 'That won\'t work', text: 'A PIN is 4 to 8 numbers.' });
+          const b = await D.ask({ title: 'Type it again', input: { type: 'password', label: 'PIN again', placeholder: '••••' }, buttons: [{ label: 'Save it', value: true, go: true }, { label: 'Cancel', value: false }] });
+          if (!b) return;
+          if ((b.value || '').trim() !== pin) return D.toast({ icon: 'lock', c: '#ff4d5e', title: 'They didn\'t match', text: 'Nothing changed. Try again.' });
+          await X.setPin(pin); show('you');
+          D.toast({ icon: 'lock', c: '#4fc16b', title: 'PIN set', text: 'Lock with Super + L, or Lock in the Dice Bar.' });
+        };
+        const no = pinB.querySelector('[data-key="you:nopin"]');
+        if (no) no.onclick = async () => { await X.setPin(null); show('you'); };
+        pinB.querySelector('[data-key="you:lock"]').onclick = () => D.lock();
+        pane.appendChild(row('Lock screen', X.hasPin() ? 'Opens with your PIN. Super + L locks it.' : 'Without a PIN, any key opens it. Super + L locks it.', pinB));
+        if (X.hasPin()) pane.appendChild(row('Lock when waking up', 'After sleep, the PIN opens it again.', sw(!!D.state.lockWake, (v) => D.set('lockWake', v), 'you:lockwake', 'Lock when waking up')));
       },
       look() {
         pane.appendChild(h('<h2>Look</h2>'));

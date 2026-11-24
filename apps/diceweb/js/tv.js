@@ -46,8 +46,20 @@
     const day = L.dayKey(new Date()), b = L.planBuckets(A.tasks, day);
     return b.overdue.concat(b.today).map((t) => Object.assign({ late: t.due < day, cls: (A.classes || []).find((c) => c.id === t.classId) }, t));
   }
+  // when something on a card really changes (the minute, the weather arriving), it fades in;
+  // painting the same thing again does nothing
+  function ticks(fn) {
+    const before = [...today.children].map((c) => c.innerHTML);
+    const r = fn();
+    const after = () => [...today.children].forEach((c, i) => { if (c._painted && c.innerHTML !== before[i]) { c.classList.remove('tick'); void c.offsetWidth; c.classList.add('tick'); } c._painted = true; });
+    if (r && r.then) r.then(after); else after();
+    return r;
+  }
   async function paintToday(fresh) {
     if (!today || (!fresh && !today.isConnected)) return; // (a fresh row isn't on the page yet)
+    return ticks(() => paintTodayNow());
+  }
+  async function paintTodayNow() {
     const q = (k) => today.querySelector('[data-key="td:' + k + '"]');
     const ampm = new Date().getHours() < 12 ? 'am' : 'pm';
     q('time').innerHTML = '<b class="tbig">' + esc(timeNow()) + '<small>' + ampm + '</small></b><span class="tsub">' + esc(dateNow()) + '</span>';
@@ -219,6 +231,27 @@
     }
     cv.getContext('2d').drawImage(thumbs.get(id), 0, 0);
   }
+  // Dice Home covers everything, so a picture in picture closes first
+  if (D.wall && D.wall.enter) { const we = D.wall.enter; D.wall.enter = function () { if (D.pip && D.pip()) D.closeApp(true); return we.apply(this, arguments); }; }
+
+  // the Live tile you're on plays, like a little preview of the channel
+  let prev = null;
+  function preview(el) {
+    if (prev) { cancelAnimationFrame(prev.raf); prev = null; }
+    if (!el || !el.classList.contains('ltile') || D.reduced() || !el.dataset.key.startsWith('lv:') || el.dataset.key === 'lv:all') return;
+    const cv = el.querySelector('canvas'), id = el.dataset.key.slice(3);
+    let scene = null;
+    try { scene = D.channels.make(id, 160, 90); } catch (e) { return; }
+    const g = cv.getContext('2d'), me = { raf: 0, last: 0 };
+    const step = (now) => {
+      if (prev !== me) return;
+      if (!el.isConnected || D.nav.el !== el) { prev = null; return; }
+      if (now - me.last > 66) { me.last = now; try { scene.draw(g, now / 1000); } catch (e) { prev = null; return; } }
+      me.raf = requestAnimationFrame(step);
+    };
+    prev = me; me.raf = requestAnimationFrame(step);
+  }
+  D.on('focus', preview);
   function liveRow() {
     const s = h('<section class="shelf" data-block><h2>Live <small>Pictures to leave on, like TV channels.</small></h2><div class="row" data-row id="live"></div></section>');
     const row = s.querySelector('#live');
@@ -251,7 +284,38 @@
     return s;
   }
 
-  // the rows sit on frosted glass over your world
+  // ---- the ground: a strip of your world's grass and soil (or sand, or snow) under the apps --------------
+  const STRATA = {
+    grass: ['#6fae4e', '#4f8a38', '#7a5434', '#5e4129', '#8d8e97'], gold: ['#c2a64a', '#94802f', '#7a5531', '#5c3f24', '#9a8f80'],
+    stone: ['#a3a5ad', '#7d7f88', '#5d5f69', '#43454d', '#8b8d96'], sand: ['#ecd59c', '#d6b877', '#c99f5f', '#a57c45', '#e8d9b0'],
+    snow: ['#f1f6fb', '#c9daea', '#9fb8d2', '#7894b4', '#e6eef7'], dune: ['#e8c27a', '#c99a52', '#b07c3e', '#8a5b2c', '#e2c58f'],
+  };
+  const KIND = { autumn: 'gold', city: 'stone', town: 'stone', beach: 'sand', ice: 'snow', snow: 'snow', desert: 'dune' };
+  TV.strip = function (el) {
+    if (!el) return;
+    const world = D.state.world || 'hills', s = STRATA[KIND[world] || 'grass'], k = D.night() ? 0.55 : 1;
+    const dim = (hex, m) => { const n = parseInt(hex.slice(1), 16); return 'rgb(' + [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * m)).join(',') + ')'; };
+    let seed = [...world].reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    const rnd = () => { seed = (seed + 0x6D2B79F5) >>> 0; let t = seed; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    // the top: tufts of grass, then a darker band where the soil starts
+    const e = G.canvas(16, 8), eg = e.getContext('2d');
+    eg.fillStyle = dim(s[0], k); eg.fillRect(0, 2, 16, 4);
+    [[1, 1], [2, 0], [3, 1], [6, 1], [9, 1], [10, 0], [13, 1]].forEach(([x, y]) => eg.fillRect(x, y, 1, 2 - y));
+    eg.fillStyle = dim(s[1], k); eg.fillRect(0, 5, 16, 1); [[2, 4], [7, 4], [12, 4]].forEach(([x, y]) => eg.fillRect(x, y, 1, 1));
+    eg.fillStyle = dim(s[2], k); eg.fillRect(0, 6, 16, 2); eg.fillStyle = dim(s[1], k); [[4, 6], [11, 6], [15, 6]].forEach(([x, y]) => eg.fillRect(x, y, 1, 1));
+    // the soil: specks and the odd pebble
+    const t = G.canvas(32, 32), tg = t.getContext('2d');
+    tg.fillStyle = dim(s[2], k); tg.fillRect(0, 0, 32, 32);
+    for (let i = 0; i < 46; i++) { tg.fillStyle = dim(i % 3 ? s[3] : s[1], k * (0.9 + rnd() * 0.2)); tg.fillRect(Math.floor(rnd() * 32), Math.floor(rnd() * 32), 1, 1); }
+    for (let i = 0; i < 3; i++) { const x = Math.floor(rnd() * 29), y = Math.floor(rnd() * 30); tg.fillStyle = dim(s[4], k * 0.8); tg.fillRect(x, y, 3, 2); tg.fillStyle = dim(s[4], k); tg.fillRect(x, y, 2, 1); }
+    el.style.setProperty('--edge', 'url(' + e.toDataURL() + ')');
+    el.style.setProperty('--soil', 'url(' + t.toDataURL() + ')');
+    el.style.setProperty('--soilc', dim(s[2], k));
+    el.style.setProperty('--soild', dim(s[3], k * 0.85));
+    el.style.setProperty('--px', Math.max(3, (D.scapeCell ? D.scapeCell() : 2) + 1) + 'px');
+  };
+
+  // the rows sit on frosted glass, below the ground
   TV.rows = function (ground) {
     if (D.channels && D.app('channels')) { ground.append(liveRow()); ground.append(newsRow()); }
     ground.append(watchRow());
@@ -337,6 +401,8 @@
   A.poke = () => { A.last = Date.now(); };
   A.can = function () {
     const mins = D.state.idle === undefined ? 10 : D.state.idle;
+    if (D.pip && D.pip()) return false; // something's playing in the corner
+    if (D.tools && D.tools.picOff && D.tools.picOff()) return false;
     if (!mins || D.booting || D.asleep || document.hidden) return false;
     if ((D.desk && D.desk.on) || (D.wall && D.wall.on)) return false;
     if (D.$('#dialog.open')) return false;
