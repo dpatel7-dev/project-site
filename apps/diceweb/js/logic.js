@@ -644,7 +644,7 @@
   const REMOTE = { BrowserBack: 'b', GoBack: 'b', Exit: 'b', Back: 'b', Select: 'a', Accept: 'a', Execute: 'a', ContextMenu: 'menu', Info: 'x', Guide: 'guide', BrowserHome: 'home',
     MediaPlayPause: 'play', MediaPlay: 'play', MediaPause: 'play', MediaStop: 'stop', MediaTrackNext: 'next', MediaTrackPrevious: 'prev', MediaFastForward: 'ff', MediaRewind: 'rew',
     AudioVolumeUp: 'volup', AudioVolumeDown: 'voldown', AudioVolumeMute: 'mute', ChannelUp: 'rb', ChannelDown: 'lb', ColorF0Red: 'red', ColorF1Green: 'green', ColorF2Yellow: 'yellow', ColorF3Blue: 'blue',
-    Settings: 'quick', Sleep: 'sleep', StandBy: 'sleep', BrowserSearch: 'search' };
+    Settings: 'quick', Sleep: 'sleep', StandBy: 'sleep', BrowserSearch: 'search', Power: 'power', PowerOff: 'power', WakeUp: 'power' };
   const remoteKey = (key) => REMOTE[key] || null;
 
   const api = { clockNight, pickNext, newDisk, calc, calcText, monthGrid, dayKey, resolve, walk, writeFile, makeDir, remove, tokens, parseDice, run, HELP, score,

@@ -26,6 +26,6 @@ CHROME=$(command -v chromium || command -v chromium-browser)
 mkdir -p "$HOME/.config/dice"
 exec "$CHROME" --kiosk --app=http://127.0.0.1:7070/ --ozone-platform=wayland \
   --user-data-dir="$HOME/.config/dice/shell" --no-first-run --noerrdialogs --disable-infobars \
-  --disable-session-crashed-bubble --disable-features=Translate,MediaRouter --password-store=basic \
+  --disable-session-crashed-bubble --disable-features=Translate,MediaRouter,HardwareMediaKeyHandling --password-store=basic \
   --autoplay-policy=no-user-gesture-required --check-for-update-interval=31536000 --enable-features=OverlayScrollbar \
   --touch-events=enabled --overscroll-history-navigation=0

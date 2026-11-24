@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.7.0
+
+- Dice Cloud, much more of it:
+  - It has its own app: your computers, Dice Drop, what's shared, how much room it takes, older versions, what happened lately and your code.
+  - It syncs item by item now. Each note, each Axiom task and class, and each study day is its own item, so a change on the TV and a different change on the laptop both survive. Deleting is a change too.
+  - It never loses a change when two computers save at once: the website only takes a save made on top of the version that computer saw, and otherwise it looks again first.
+  - Dice Drop: send a link or a note to another computer. Use Dice Cloud, SereneTab's menu ("Send to…") or the Dice Bar ("send example.com"). On DiceTV it pops up as it arrives and opens in SereneTab.
+  - Add a computer with a short code. The TV shows 8 letters, and you type them on a computer that already has Dice Cloud: no typing 20 letters with a remote.
+  - Your computers are listed with when each was last seen. Rename this one, take one out, or make a new code so a lost computer can't get back in.
+  - Older versions: the website keeps the last 5, and you can see what each had and go back to one.
+  - It checks for news every 20 seconds (cheaply: "nothing new" is a tiny answer) and syncs a few seconds after anything changes.
+  - It now also shares the Watch list, your desktop widgets and sticky notes, and your picture. Any part can be turned off.
+- Air mice, like the iPazzPort remote with a keyboard on the back:
+  - A big pointer on DiceTV that hides when it's still.
+  - Resting the pointer near the end of a row (or the top or bottom of the screen) scrolls it, since air mice have no wheel.
+  - The right button goes back on DiceTV, and so do a mouse's own back and forward buttons.
+  - F3 and Search open search. The power button sleeps DiceOS, or asks first (Sleep, Turn the TV off, Restart, Shut down), or does nothing.
+  - The zoom keys fit the picture to the TV for TVs that cut off the edges (also in Settings, Remotes). On DiceOS they no longer blow the screen up.
+  - Settings, TV remote is now Remotes, with an Air mouse part. The keyboard shortcuts sheet lists the air mouse's buttons.
+- The fireplace is properly pixelated: the flames are big blocks in a few flat colours, like an old game, moving at a steady 16 steps a second, with chunky logs, a glowing bed of embers and sparks.
+- Alarms, in Clock and on DiceTV's Today row. Pick the time and the days, and what wakes you: a chime, Dice Radio, or the fireplace with Dice Radio. DiceOS wakes and turns the TV on through the HDMI cable. OK snoozes for 9 minutes and Back stops it.
+- The ambient screen can show your world, a channel (fireplace, aquarium, northern lights, space) or just the clock on black, which is kindest to OLED TVs. Set it in Settings, Look, where "Try it now" shows it.
+- Code: a code editor for your own files.
+  - Your folders down the side and a tab for each file, with line numbers.
+  - Colours for JavaScript, Python, HTML, CSS, JSON, shell and Markdown.
+  - Auto-indent, Tab and Shift+Tab, Ctrl+/ to comment lines, and find with Ctrl+F.
+  - Run shows web pages, JavaScript (with what it logs) and Markdown beside the code, sealed off from the rest of DiceOS.
+  - It uses your real files on DiceOS, and opens ~/code first if there is one.
+
 ## 1.6.0
 
 - Numbers read clearly everywhere: the digits (clocks, temperatures, channel numbers) come from a small plain font set in front of the pixel one, so 2, 5 and 6 no longer look like letters.

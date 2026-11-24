@@ -6,7 +6,7 @@ WHO=$(getent passwd 1000 | cut -d: -f1)
 systemctl disable --now dice-update.timer dice-boot.service dice.service 2>/dev/null || true
 systemctl stop "dice-session@$WHO.service" 2>/dev/null || true
 rm -f /etc/systemd/system/dice.service /etc/systemd/system/dice-boot.service /etc/systemd/system/dice-session@.service /etc/systemd/system/dice-update.service /etc/systemd/system/dice-update.timer
-rm -f /etc/pam.d/dice-session
+rm -f /etc/pam.d/dice-session /etc/systemd/logind.conf.d/dice.conf
 systemctl daemon-reload
 if [ -f /var/lib/dice/display-managers ]; then
   while read -r dm; do systemctl enable "$dm"; done < /var/lib/dice/display-managers

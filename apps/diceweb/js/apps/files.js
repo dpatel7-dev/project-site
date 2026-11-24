@@ -52,6 +52,7 @@
     };
   }
 
+  D.fileSource = source; // Code uses the same
   D.register({ id: 'files', mount(root, ctx) {
     const fs = source();
     root.classList.add('files');

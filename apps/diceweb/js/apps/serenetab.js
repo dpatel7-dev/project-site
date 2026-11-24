@@ -259,7 +259,9 @@
       pop.innerHTML = '<button role="menuitem" data-nav data-key="st:m-new" data-m="new">' + icon('plus') + 'New tab<kbd>Ctrl T</kbd></button>' +
         '<button role="menuitem" data-nav data-key="st:m-reopen" data-m="reopen"' + (closed.length ? '' : ' disabled') + '>' + icon('undo') + 'Reopen closed tab<kbd>Ctrl Shift T</kbd></button>' +
         '<button role="menuitem" data-nav data-key="st:m-hist" data-m="history">' + icon('history') + 'History<kbd>Ctrl H</kbd></button>' +
-        '<button role="menuitem" data-nav data-key="st:m-keep" data-m="keep" aria-pressed="' + !S.noHistory + '">' + icon('check') + 'Remember sites I visit</button>';
+        '<button role="menuitem" data-nav data-key="st:m-keep" data-m="keep" aria-pressed="' + !S.noHistory + '">' + icon('check') + 'Remember sites I visit</button>' +
+        // Dice Drop: this page, on another computer (the TV, say)
+        (D.cloud && (cur.hist[cur.at] || {}).url ? '<button role="menuitem" data-nav data-key="st:m-send" data-m="send">' + icon('out') + 'Send to…</button>' : '');
       pop.style.left = 'auto'; pop.style.right = Math.max(8, rr.right - r.right) + 'px'; pop.style.top = (r.bottom - rr.top + 6) + 'px';
       pop.hidden = false;
       pop.querySelectorAll('[data-m]').forEach((b) => { b.onclick = () => {
@@ -267,6 +269,11 @@
         if (b.dataset.m === 'new') newTab();
         else if (b.dataset.m === 'reopen') reopen();
         else if (b.dataset.m === 'history') newTab('serene:history', { after: true });
+        else if (b.dataset.m === 'send') {
+          const e = cur.hist[cur.at] || {};
+          if (!D.cloud.on()) D.ask({ title: 'Send to another computer', text: 'This uses Dice Cloud, which shares between your computers. Turn it on first?', buttons: [{ label: 'Open Dice Cloud', value: true, go: true }, { label: 'Cancel', value: false }] }).then((y) => { if (y) D.launch('cloud'); });
+          else D.launch('cloud', { arg: 'send:' + encodeURIComponent(e.url) });
+        }
         else { S.noHistory = !S.noHistory; D.save(); D.toast({ icon: 'link', c: '#3d86d6', title: 'SereneTab', text: S.noHistory ? 'Sites you visit won\'t be remembered.' : 'SereneTab will remember the sites you visit, on this computer only.' }); }
       }; });
       setTimeout(() => pop.querySelector('button:not([disabled])').focus(), 0);

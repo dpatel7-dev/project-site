@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, esc = D.esc, h = D.h;
-  const SECTIONS = [['you', 'You', 'person', '#ff707a'], ['look', 'Look', 'sun', '#f5c431'], ['desk', 'Desktop', 'desktop', '#2f9e6e'], ['sound', 'Sound', 'volume', '#d39cf5'], ['pads', 'Controllers and keys', 'pad', '#7c9cff'], ['remote', 'TV remote', 'tv', '#3a7bd5'],
+  const SECTIONS = [['you', 'You', 'person', '#ff707a'], ['look', 'Look', 'sun', '#f5c431'], ['desk', 'Desktop', 'desktop', '#2f9e6e'], ['sound', 'Sound', 'volume', '#d39cf5'], ['pads', 'Controllers and keys', 'pad', '#7c9cff'], ['remote', 'Remotes', 'tv', '#3a7bd5'],
     ['perf', 'Performance', 'chart', '#8fd16a'], ['start', 'Starting up', 'power', '#ef6a1f'], ['cloud', 'Dice Cloud', 'link', '#3a9be8'], ['storage', 'Storage', 'lock', '#2bc4b2'], ['about', 'About', 'help', '#96969f']];
 
   // on a computer running Dice, there's more to set: Wi-Fi, the screen, power and updates
@@ -90,6 +90,14 @@
         pane.appendChild(row('Night light', 'A warmer screen, kinder to your eyes in the evening. At night means sunset to sunrise.', seg([['off', 'Off'], ['night', 'At night'], ['on', 'Always']], D.state.warm || 'off', (v) => D.tools.setWarm(v), 'look:warm')));
         pane.appendChild(row('How warm', 'For Night light.', ui.slider(typeof D.state.warmth === 'number' ? D.state.warmth : 0.5, 0, 1, (v) => { D.set('warmth', v); D.tools.applyWarm(); }, 'look:warmth', 'How warm')));
         pane.appendChild(row('Ambient screen', 'On DiceTV, when nothing is open: a big clock over your world. Any key brings DiceTV back.', seg([[5, '5 min'], [10, '10 min'], [30, '30 min'], [0, 'Never']], D.state.idle === undefined ? 10 : D.state.idle, (v) => D.set('idle', v), 'look:idle')));
+        if (D.ambient) {
+          const tryIt = h('<button class="b small" data-nav data-key="look:ambtry">Try it now</button>');
+          tryIt.onclick = () => { D.ambient.enter(); };
+          const r = row('Behind the clock', 'What the ambient screen shows. "Just the clock" is kindest to OLED TVs.', seg(D.ambient.CHOICES, D.state.amb || 'world', (v) => D.set('amb', v), 'look:amb'));
+          r.appendChild(tryIt);
+          r.classList.add('srow-wide');
+          pane.appendChild(r);
+        }
         const worlds = h('<div class="worlds" data-row></div>');
         const NAMES = { hills: 'Hills', mountains: 'Mountains', beach: 'Beach', city: 'City', forest: 'Forest', autumn: 'Autumn', desert: 'Desert', garden: 'Garden', ice: 'Ice', deep: 'Under the sea', meadow: 'Meadow', pond: 'Pond' };
         Object.keys(D.WORLDS).forEach((w) => {
@@ -134,13 +142,28 @@
           [['Ctrl + Space', 'The Dice Bar: apps, settings, sums, units, timers, tasks'], ['Super, F3', 'Overview of every window'], ['Ctrl + Alt + ← →', 'The other desktops (or Ctrl + Alt + 1 to 4)'], ['Super + ← → ↑ ↓', 'Snap the window (Ctrl + Alt + Shift works too)'], ['Alt + Tab', 'Flip between windows (Alt + ` too)'], ['Super + V', 'Things you copied lately'], ['Super + D', 'Show the desktop']].map(([k, t]) => '<span class="bt bt-keys">' + esc(k) + '</span><span>' + esc(t) + '</span>').join('') + '</div></div>'));
       },
       remote() {
-        pane.appendChild(h('<h2>TV remote</h2>'));
+        pane.appendChild(h('<h2>Remotes</h2>'));
         pane.appendChild(h('<p class="muted" style="margin:0 0 8px">Remotes work on DiceTV and everywhere else: OK picks, Back goes back, the arrows move, Home goes home. The colours: <b style="color:#e5484d">red</b> Channels, <b style="color:#3fa26b">green</b> Axiom, <b style="color:#c99a10">yellow</b> Weather, <b style="color:#3a7bd5">blue</b> Quick settings. Guide opens Axiom\'s guide, the numbers tune Live channels, CH + and − change channel.</p>'));
         const test = h('<div class="srow"><div><b>Try a button</b><span class="muted rm-last">Press anything on your remote.</span></div></div>');
         pane.appendChild(test);
         const off = D.on('remote', (r) => { const el = test.querySelector('.rm-last'); if (el && el.isConnected) el.textContent = 'You pressed ' + r.key + (r.key !== r.a ? ' (' + r.a + ')' : '') + '.'; else off(); });
         pane.appendChild(row('Show buttons as', 'What the hints at the bottom of the screen look like.', seg([['auto', 'By what you use'], ['keys', 'Keyboard'], ['pad', 'Controller'], ['remote', 'TV remote']], D.state.btns || 'auto', (v) => { D.set('btns', v); D.legend.update(); }, 'rm:btns')));
-        pane.appendChild(row('On-screen keyboard', 'For typing with a remote or a controller. It comes up when you press OK on a box to type in.', seg([['auto', 'With a remote or controller'], ['always', 'Always'], ['never', 'Never']], D.state.osk || 'auto', (v) => D.set('osk', v), 'rm:osk')));
+        pane.appendChild(row('On-screen keyboard', 'For typing with a remote or a controller. It comes up when you press OK on a box to type in. If your remote has a keyboard on the back, pick Never.', seg([['auto', 'With a remote or controller'], ['always', 'Always'], ['never', 'Never']], D.state.osk || 'auto', (v) => D.set('osk', v), 'rm:osk')));
+        // air mice: a remote you point at the screen, often with a keyboard on the back
+        const air = D.air.get();
+        pane.appendChild(h('<h3 style="margin:22px 0 4px">Air mouse</h3>'));
+        pane.appendChild(h('<p class="muted" style="margin:0 0 8px">For remotes you point at the screen, like the iPazzPort. Pair it in Bluetooth (or plug in its little USB stick) and it just works: OK picks, Back and the right button go back, Home goes home, and resting the pointer near the end of a row scrolls it.</p>'));
+        pane.appendChild(row('Pointer size', 'Big is easier to see from the sofa. Auto is big on DiceTV and the usual size on the desktop.', seg([['auto', 'Auto'], ['normal', 'Normal'], ['big', 'Big'], ['huge', 'Huge']], air.ptr, (v) => D.air.set('ptr', v), 'air:ptr')));
+        pane.appendChild(row('Hide the pointer when it\'s still', 'It comes back as soon as you move it.', sw(air.hide, (v) => D.air.set('hide', v), 'air:hide', 'Hide the pointer')));
+        pane.appendChild(row('Right button goes back', 'On DiceTV. The desktop keeps its menus.', sw(air.right, (v) => D.air.set('right', v), 'air:right', 'Right button goes back')));
+        pane.appendChild(row('Scroll at the edges', 'Rest the pointer near the end of a row, or the top or bottom of the screen.', sw(air.edge, (v) => D.air.set('edge', v), 'air:edge', 'Scroll at the edges')));
+        pane.appendChild(row('Power button', D.sys ? 'Holding it down for 5 seconds still turns the computer off.' : 'On DiceOS, the remote\'s power button.', seg([['sleep', 'Sleep'], ['ask', 'Ask'], ['off', 'Nothing']], air.power, (v) => D.air.set('power', v), 'air:power')));
+        const fit = h('<div class="fitbox"><button class="b small" data-nav data-key="air:fit-" aria-label="Smaller">−</button><b></b><button class="b small" data-nav data-key="air:fit+" aria-label="Bigger">+</button></div>');
+        const fitShow = () => { fit.querySelector('b').textContent = Math.round((D.state.fit || 1) * 100) + '%'; };
+        fit.querySelector('[data-key="air:fit-"]').onclick = () => { D.air.fit((D.state.fit || 1) - 0.01); fitShow(); };
+        fit.querySelector('[data-key="air:fit+"]').onclick = () => { D.air.fit((D.state.fit || 1) + 0.01); fitShow(); };
+        fitShow();
+        pane.appendChild(row('Fit the picture to the TV', 'If the TV cuts off the edges, make it smaller until you can see them. The zoom keys do this too.', fit));
         if (!D.sys) { pane.appendChild(h('<p class="note">On DiceOS, your TV\'s own remote works too, through the HDMI cable (HDMI-CEC).</p>')); return; }
         const cec = h('<div class="spane" style="gap:6px;padding:0"><p class="muted">Looking for the TV…</p></div>');
         pane.appendChild(cec);
@@ -196,37 +219,19 @@
       },
       cloud() {
         const C = D.cloud, c = D.state.cloud;
-        const head = h('<div class="cl-head"></div>'); head.append(G.productIcon('cloud', 48), h('<div><h2>Dice Cloud</h2><p class="note">Keeps ' + esc(C.what) + ' the same on every computer with DiceOS or DiceWeb.</p></div>'));
+        const head = h('<div class="cl-head"></div>'); head.append(G.productIcon('cloud', 48), h('<div><h2>Dice Cloud</h2><p class="note">Keeps ' + esc(C.what) + ' the same on every computer with DiceOS or DiceWeb, and sends links and notes between them with Dice Drop.</p></div>'));
         pane.appendChild(head);
+        const open = h('<button class="b small go" data-nav data-key="cl:open">Open Dice Cloud</button>');
+        open.onclick = () => D.launch('cloud');
         if (!C.on()) {
-          pane.appendChild(h('<p class="note">Everything is locked on this computer with your Dice Cloud code before it leaves, so the website only keeps a box it can\'t open.</p>'));
-          const on = h('<button class="b small go" data-nav data-key="cl:on">Turn on Dice Cloud</button>');
-          on.onclick = async () => { on.disabled = true; on.textContent = 'Turning on…'; await C.turnOn(); show('cloud'); };
-          pane.appendChild(row('New here', 'Makes a Dice Cloud code for you.', on));
-          const join = h('<form class="cl-join"><input data-nav data-key="cl:code" placeholder="XXXXX-XXXXX-XXXXX-XXXXX" aria-label="Your Dice Cloud code" autocomplete="off" spellcheck="false"><button class="b small" data-nav data-key="cl:join">Join</button></form>');
-          join.onsubmit = async (e) => {
-            e.preventDefault();
-            const v = join.querySelector('input').value;
-            if (!C.valid(v)) { D.toast({ icon: 'link', c: '#e5534b', title: 'That isn\'t a Dice Cloud code', text: 'It\'s 20 letters and numbers, like 7K2QM-…' }); return; }
-            join.querySelector('button').disabled = true;
-            const ok = await C.turnOn(v);
-            show('cloud');
-            if (ok) D.toast({ icon: 'link', c: '#3a9be8', title: 'Dice Cloud is on', text: 'This computer now shares with your others.' });
-          };
-          pane.appendChild(row('Already using it', 'Type the code from your other computer.', join));
+          pane.appendChild(row('Off here', 'Turn it on, type your code, or add this computer with a short code (best on a TV).', open));
         } else {
-          const when = c.last ? D.ago(c.last) : 'not yet';
-          pane.appendChild(h('<div class="cl-code"><span>Your Dice Cloud code</span><b>' + esc(c.code) + '</b><small>Type it on your other computers to share with them. Anyone who has it can open your Dice Cloud, so keep it like a password.</small></div>'));
-          const sync = h('<button class="b small go" data-nav data-key="cl:sync">' + (C.busy ? 'Syncing…' : 'Sync now') + '</button>');
-          sync.onclick = async () => { sync.disabled = true; sync.textContent = 'Syncing…'; await C.sync(); show('cloud'); };
-          pane.appendChild(row('Last synced', C.error ? C.error : when, sync));
-          const off = h('<button class="b small" data-nav data-key="cl:off">Turn off here</button>');
-          off.onclick = () => D.ask({ title: 'Turn off Dice Cloud here?', text: 'This computer stops sharing and forgets the code. What\'s in Dice Cloud stays for your other computers.', buttons: [{ label: 'Turn off', value: true, go: true }, { label: 'Cancel', value: false }] }).then(async (y) => { if (y) { await C.turnOff(false); show('cloud'); } });
-          pane.appendChild(row('This computer', 'Stop sharing on this one.', off));
-          const del = h('<button class="b small danger" data-nav data-key="cl:del">Delete from Dice Cloud</button>');
-          del.onclick = () => D.ask({ title: 'Delete your Dice Cloud?', text: 'The locked box on the website is deleted. Each computer keeps its own copy of everything.', buttons: [{ label: 'Delete it', value: true, go: true }, { label: 'Cancel', value: false }] }).then(async (y) => { if (y) { await C.turnOff(true); show('cloud'); } });
-          pane.appendChild(row('Delete', 'Takes your box off the website.', del));
+          pane.appendChild(row(C.busy ? 'Syncing…' : C.error ? 'Not synced' : 'On', C.error ? C.error : (c.last ? 'Synced ' + D.ago(c.last) : 'Not synced yet') + '. ' + C.devices().length + (C.devices().length === 1 ? ' computer.' : ' computers.'), open));
+          const sync = h('<button class="b small" data-nav data-key="cl:sync">Sync now</button>');
+          sync.onclick = async () => { sync.disabled = true; sync.textContent = 'Syncing…'; await C.sync({ force: true }); show('cloud'); };
+          pane.appendChild(row('Sync now', 'It also syncs by itself, every few seconds.', sync));
         }
+        pane.appendChild(h('<p class="note">Everything is locked on this computer with your Dice Cloud code before it leaves, so the website only keeps a box it can\'t open.</p>'));
       },
       storage() {
         pane.appendChild(h('<h2>Storage</h2>'));

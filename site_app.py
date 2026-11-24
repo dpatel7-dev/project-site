@@ -19,12 +19,14 @@ PythonAnywhere imports `application` from here. To try it on your own computer:
 """
 
 import glob
+import hashlib
 import html
 import importlib.util
 import json
 import os
 import re
 import secrets
+import shutil
 import sys
 import time
 
@@ -463,35 +465,104 @@ def save_setup(data):
 # DiceOS and DiceWeb lock everything with the person's code before sending it, so
 # all this keeps is {v, iv, ct}: scrambled bytes it can't read. The name of each box
 # is a hash of the code, so knowing a box's name doesn't open it either.
+#
+#   GET    /dice/cloud/<id>              the box (ETag; If-None-Match gives 304 when nothing changed)
+#   PUT    /dice/cloud/<id>              a new box (If-Match: only if nobody changed it since; else 412)
+#   DELETE /dice/cloud/<id>              the box and its old versions
+#   GET    /dice/cloud/<id>/history      the last few versions, newest first
+#   GET    /dice/cloud/<id>/history/<n>  one of them
+#   PUT/GET/DELETE /dice/cloud/pair/<id> a tiny box for adding a computer with a short code (10 minutes)
 CLOUD_MAX = 600 * 1024
+CLOUD_KEEP = 5           # old versions kept of each box
+CLOUD_GAP = 10 * 60      # at most one old version every ten minutes, so small changes don't push out real ones
+PAIR_MAX = 4096
+PAIR_TTL = 10 * 60
 CLOUD_CORS = [('Access-Control-Allow-Origin', '*'), ('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS'),
-              ('Access-Control-Allow-Headers', 'Content-Type'), ('Access-Control-Max-Age', '86400')]
+              ('Access-Control-Allow-Headers', 'Content-Type, If-Match, If-None-Match'), ('Access-Control-Expose-Headers', 'ETag'),
+              ('Access-Control-Max-Age', '86400')]
 
 
-def _cloud_dir():
+def _cloud_dir(*sub):
     base = os.environ.get('SITE_DATA') or os.path.join(os.path.expanduser('~'), 'site-data')
-    path = os.path.join(base, 'dice-cloud')
+    path = os.path.join(base, 'dice-cloud', *sub)
     os.makedirs(path, exist_ok=True)
     return path
 
 
-def _cloud_send(start_response, status, obj):
-    data = json.dumps(obj).encode('utf-8')
-    start_response(status, [('Content-Type', 'application/json'), ('Content-Length', str(len(data))), ('Cache-Control', 'no-store'),
-                            ('X-Content-Type-Options', 'nosniff')] + CLOUD_CORS)
+def _cloud_send(start_response, status, obj, etag=None):
+    data = json.dumps(obj).encode('utf-8') if obj is not None else b''
+    head = [('Content-Type', 'application/json'), ('Content-Length', str(len(data))), ('Cache-Control', 'no-store'), ('X-Content-Type-Options', 'nosniff')]
+    if etag:
+        head.append(('ETag', '"' + etag + '"'))
+    start_response(status, head + CLOUD_CORS)
     return [data]
 
 
-def cloud_box(data):
+def cloud_etag(raw):
+    return hashlib.sha256(raw).hexdigest()[:20]
+
+
+def _etags(header):
+    """The tags in an If-Match / If-None-Match header."""
+    return {t.strip().strip('"').replace('W/', '').strip('"') for t in (header or '').split(',') if t.strip()}
+
+
+def cloud_box(data, limit=CLOUD_MAX):
     """A locked box as DiceOS sends it, or None if it isn't one."""
     if not isinstance(data, dict) or data.get('v') != 1:
         return None
     iv, ct = data.get('iv'), data.get('ct')
     if not (isinstance(iv, str) and re.fullmatch(r'[A-Za-z0-9+/]{16}', iv)):
         return None
-    if not (isinstance(ct, str) and 24 <= len(ct) <= CLOUD_MAX and re.fullmatch(r'[A-Za-z0-9+/]+={0,2}', ct)):
+    if not (isinstance(ct, str) and 24 <= len(ct) <= limit and re.fullmatch(r'[A-Za-z0-9+/]+={0,2}', ct)):
         return None
     return {'v': 1, 'iv': iv, 'ct': ct}
+
+
+def _read_box(environ, limit):
+    try:
+        n = int(environ.get('CONTENT_LENGTH') or 0)
+    except ValueError:
+        n = 0
+    if n <= 0 or n > limit + 200:
+        return 'big'
+    try:
+        return cloud_box(json.loads(environ['wsgi.input'].read(n)), limit)
+    except (ValueError, KeyError):
+        return None
+
+
+def _keep_old(box_id, path):
+    """Before a box is replaced, keep the old one (now and then), dropping the oldest."""
+    hist = _cloud_dir('history')
+    name = lambda n: os.path.join(hist, '%s.%d.json' % (box_id, n))
+    try:
+        if os.path.exists(name(0)) and time.time() - os.path.getmtime(name(0)) < CLOUD_GAP:
+            return
+        for n in range(CLOUD_KEEP - 1, 0, -1):
+            if os.path.exists(name(n - 1)):
+                os.replace(name(n - 1), name(n))
+        shutil.copy2(path, name(0))
+        os.utime(name(0))  # when it was kept, which is about when it was replaced
+    except OSError:
+        pass
+
+
+def cloud_history(start_response, box_id, n=None):
+    hist = _cloud_dir('history')
+    if n is None:
+        out = []
+        for i in range(CLOUD_KEEP):
+            f = os.path.join(hist, '%s.%d.json' % (box_id, i))
+            if os.path.exists(f):
+                out.append({'n': i, 'at': int(os.path.getmtime(f)), 'size': os.path.getsize(f)})
+        return _cloud_send(start_response, '200 OK', {'versions': out})
+    try:
+        with open(os.path.join(hist, '%s.%d.json' % (box_id, n)), 'rb') as f:
+            raw = f.read()
+        return _cloud_send(start_response, '200 OK', json.loads(raw), cloud_etag(raw))
+    except (OSError, ValueError):
+        return _cloud_send(start_response, '404 Not Found', {'error': 'That version isn\'t kept any more.'})
 
 
 def cloud_route(environ, start_response, box_id, method):
@@ -500,14 +571,87 @@ def cloud_route(environ, start_response, box_id, method):
     if method == 'OPTIONS':
         start_response('204 No Content', [('Content-Length', '0')] + CLOUD_CORS)
         return [b'']
+    try:
+        with open(path, 'rb') as f:
+            raw = f.read()
+        tag = cloud_etag(raw)
+    except OSError:
+        raw = tag = None
+    if method == 'GET':
+        if raw is None:
+            return _cloud_send(start_response, '404 Not Found', {'error': 'Nothing in Dice Cloud with that code yet.'})
+        try:
+            os.utime(path)  # still in use
+        except OSError:
+            pass
+        if tag in _etags(environ.get('HTTP_IF_NONE_MATCH')):
+            start_response('304 Not Modified', [('ETag', '"' + tag + '"'), ('Content-Length', '0'), ('Cache-Control', 'no-store')] + CLOUD_CORS)
+            return [b'']
+        try:
+            return _cloud_send(start_response, '200 OK', json.loads(raw), tag)
+        except ValueError:
+            return _cloud_send(start_response, '404 Not Found', {'error': 'Nothing in Dice Cloud with that code yet.'})
+    if method == 'DELETE':
+        for f in [path] + [os.path.join(_cloud_dir('history'), '%s.%d.json' % (box_id, n)) for n in range(CLOUD_KEEP)]:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+        return _cloud_send(start_response, '200 OK', {'ok': True})
+    if method == 'PUT':
+        box = _read_box(environ, CLOUD_MAX)
+        if box == 'big':
+            return _cloud_send(start_response, '413 Payload Too Large', {'error': 'That\'s too much for Dice Cloud.'})
+        if box is None:
+            return _cloud_send(start_response, '400 Bad Request', {'error': 'That isn\'t a locked Dice Cloud box.'})
+        # two computers saving at once: the second is told to look again first, so nothing is lost
+        want, none = environ.get('HTTP_IF_MATCH'), environ.get('HTTP_IF_NONE_MATCH')
+        if (want and (tag is None or (tag not in _etags(want) and want.strip() != '*'))) or (none and none.strip() == '*' and tag is not None):
+            return _cloud_send(start_response, '412 Precondition Failed', {'error': 'Someone else changed it first.', 'etag': tag}, tag)
+        now = time.time()
+        names = os.listdir(folder)
+        for name in names:  # boxes nobody has opened for a year are tidied away
+            f = os.path.join(folder, name)
+            try:
+                if name.endswith('.json') and now - os.path.getmtime(f) > 365 * 86400:
+                    os.remove(f)
+            except OSError:
+                pass
+        if raw is None and len(names) > 20000:
+            return _cloud_send(start_response, '507 Insufficient Storage', {'error': 'Dice Cloud is full right now.'})
+        if raw is not None:
+            _keep_old(box_id, path)
+        data = json.dumps(box).encode('utf-8')
+        tmp = path + '.tmp'
+        with open(tmp, 'wb') as f:
+            f.write(data)
+        os.replace(tmp, path)
+        tag = cloud_etag(data)
+        return _cloud_send(start_response, '200 OK', {'ok': True, 'at': int(now), 'etag': tag, 'size': len(data)}, tag)
+    return _cloud_send(start_response, '405 Method Not Allowed', {'error': 'Not that.'})
+
+
+def cloud_pair(environ, start_response, slot, method):
+    """Adding a computer with a short code: the computer that has Dice Cloud leaves the real
+    code here, locked with the short one, and the new computer (watching this slot) picks it up."""
+    folder = _cloud_dir('pair')
+    path = os.path.join(folder, slot + '.json')
+    now = time.time()
+    for name in os.listdir(folder):  # nothing waits longer than ten minutes
+        try:
+            if now - os.path.getmtime(os.path.join(folder, name)) > PAIR_TTL:
+                os.remove(os.path.join(folder, name))
+        except OSError:
+            pass
+    if method == 'OPTIONS':
+        start_response('204 No Content', [('Content-Length', '0')] + CLOUD_CORS)
+        return [b'']
     if method == 'GET':
         try:
             with open(path) as f:
-                box = json.load(f)
-            os.utime(path)  # still in use
-            return _cloud_send(start_response, '200 OK', box)
+                return _cloud_send(start_response, '200 OK', json.load(f))
         except (OSError, ValueError):
-            return _cloud_send(start_response, '404 Not Found', {'error': 'Nothing in Dice Cloud with that code yet.'})
+            return _cloud_send(start_response, '404 Not Found', {'error': 'Nothing yet.'})
     if method == 'DELETE':
         try:
             os.remove(path)
@@ -515,33 +659,16 @@ def cloud_route(environ, start_response, box_id, method):
             pass
         return _cloud_send(start_response, '200 OK', {'ok': True})
     if method == 'PUT':
-        try:
-            n = int(environ.get('CONTENT_LENGTH') or 0)
-        except ValueError:
-            n = 0
-        if n <= 0 or n > CLOUD_MAX + 200:
-            return _cloud_send(start_response, '413 Payload Too Large', {'error': 'That\'s too much for Dice Cloud.'})
-        try:
-            box = cloud_box(json.loads(environ['wsgi.input'].read(n)))
-        except (ValueError, KeyError):
-            box = None
+        box = _read_box(environ, PAIR_MAX)
+        if box == 'big':
+            return _cloud_send(start_response, '413 Payload Too Large', {'error': 'Too big.'})
         if box is None:
-            return _cloud_send(start_response, '400 Bad Request', {'error': 'That isn\'t a locked Dice Cloud box.'})
-        now = time.time()
-        names = os.listdir(folder)
-        for name in names:  # boxes nobody has opened for a year are tidied away
-            try:
-                if now - os.path.getmtime(os.path.join(folder, name)) > 365 * 86400:
-                    os.remove(os.path.join(folder, name))
-            except OSError:
-                pass
-        if not os.path.exists(path) and len(names) > 20000:
-            return _cloud_send(start_response, '507 Insufficient Storage', {'error': 'Dice Cloud is full right now.'})
-        tmp = path + '.tmp'
-        with open(tmp, 'w') as f:
+            return _cloud_send(start_response, '400 Bad Request', {'error': 'That isn\'t a locked box.'})
+        if len(os.listdir(folder)) > 2000:
+            return _cloud_send(start_response, '507 Insufficient Storage', {'error': 'Too many at once. Try again in a few minutes.'})
+        with open(path, 'w') as f:
             json.dump(box, f)
-        os.replace(tmp, path)
-        return _cloud_send(start_response, '200 OK', {'ok': True, 'at': int(now)})
+        return _cloud_send(start_response, '200 OK', {'ok': True})
     return _cloud_send(start_response, '405 Method Not Allowed', {'error': 'Not that.'})
 
 
@@ -564,9 +691,20 @@ def dice_routes(environ, start_response, path, method):
         start_response('200 OK', [('Content-Type', 'application/gzip'), ('Content-Length', str(len(data))), ('Cache-Control', 'no-cache'),
                                   ('Content-Disposition', 'attachment; filename="dice.tar.gz"')])
         return [data]
+    m = re.fullmatch(r'/dice/cloud/pair/([0-9a-f]{32})', path)
+    if m:
+        return cloud_pair(environ, start_response, m.group(1), method)
     m = re.fullmatch(r'/dice/cloud/([0-9a-f]{32})', path)
     if m:
         return cloud_route(environ, start_response, m.group(1), method)
+    m = re.fullmatch(r'/dice/cloud/([0-9a-f]{32})/history(?:/([0-9]))?', path)
+    if m:
+        if method == 'OPTIONS':
+            start_response('204 No Content', [('Content-Length', '0')] + CLOUD_CORS)
+            return [b'']
+        if method != 'GET':
+            return _cloud_send(start_response, '405 Method Not Allowed', {'error': 'Not that.'})
+        return cloud_history(start_response, m.group(1), int(m.group(2)) if m.group(2) else None)
     if path == '/dice/setup':
         if method != 'POST':
             return _send(start_response, '405 Method Not Allowed', '{"error": "Send settings with POST."}', 'application/json')

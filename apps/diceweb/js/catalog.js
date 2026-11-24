@@ -1,7 +1,7 @@
 // Everything DiceWeb knows about: its own apps, the apps for your computer,
 // and the friends (the mascots). The suite list matches the website's.
 window.CATALOG = {
-  version: '1.6.0',
+  version: '1.7.0',
   site: 'https://djp7.pythonanywhere.com',
 
   // Cubby: DiceWeb's own mascot, a die with feet.
@@ -56,6 +56,10 @@ window.CATALOG = {
       line: 'Your pictures and screenshots, big on the screen, with a slow slideshow for the TV.', words: 'pictures images gallery slideshow screenshots' },
     { id: 'sketch', name: 'Sketch', kind: 'app', c: '#9b4fc9', who: null, land: 'paper', blurb: 'Draw pixel art',
       line: 'Pixel art in DiceOS\'s own style. Draw with the mouse, a finger, a controller or a remote.', words: 'draw paint pixel art drawing picture' },
+    { id: 'code', name: 'Code', kind: 'app', c: '#1f2430', who: null, land: 'screen', blurb: 'Write code, with colours and a preview',
+      line: 'A code editor for your own files: tabs, line numbers, colours for JavaScript, Python, HTML, CSS and more, and a preview that runs web pages beside the code.', words: 'editor programming code text ide javascript python html css developer' },
+    { id: 'cloud', name: 'Dice Cloud', kind: 'app', c: '#4b7bec', who: null, land: 'hills', blurb: 'Your stuff on every computer, and Dice Drop',
+      line: 'Your notes, Axiom and more, the same on every computer. Send a link to the TV with Dice Drop, see your computers, and go back to an older version.', words: 'sync cloud share devices send drop backup account pair' },
     { id: 'monitor', name: 'System Monitor', kind: 'system', c: '#4fc16b', who: null, land: 'screen', blurb: 'How busy the computer is',
       line: 'How busy it is, memory and storage, and what\'s open.', words: 'task manager activity cpu memory processes performance' },
     { id: 'store', name: 'Store', kind: 'system', c: '#2bc4b2', who: 'cubby', land: 'market', blurb: 'Every app for your computer',

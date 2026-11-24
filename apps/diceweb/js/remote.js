@@ -20,10 +20,14 @@
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     let a = L.remoteKey(e.key);
     if (!a && /^[0-9]$/.test(e.key) && !isField(e.target) && !(D.desk && D.desk.on) && !D.$('#osk.open')) a = 'd' + e.key;
+    // F3 is Search on air mice (on the desktop it's the window overview)
+    if (!a && e.key === 'F3' && !(D.desk && D.desk.on)) a = 'search';
     if (!a) return;
     e.preventDefault();
     S.unlock();
     if (a[0] !== 'd' || a.length !== 2) D.input.setSource('remote');
+    R.last = { a, key: e.key, at: Date.now() };
+    D.emit('remote', R.last);
     D.input.fire(a, 'remote');
   }, true);
   // On DiceOS a remote's Back key can also come as the browser going back: catch it
@@ -93,6 +97,7 @@
     if (a === 'ff' || a === 'rew') { const p = M.progress(); if (p) M.seek(Math.max(0, Math.min(1, (p.t + (a === 'ff' ? 10 : -10)) / p.d))); else M[a === 'ff' ? 'next' : 'prev'](); return true; }
     if (a === 'volup' || a === 'voldown' || a === 'mute') { R.volume(a); return true; }
     if (a === 'sleep') { D.sleep(); return true; }
+    if (a === 'power') return D.air ? D.air.power() : (D.sleep(), true);
     if (/^d\d$/.test(a)) {
       if (D.desk && D.desk.on) return false;
       if (D.running() && D.$('#app').classList.contains('running')) return false;

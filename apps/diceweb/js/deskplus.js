@@ -244,6 +244,13 @@
     if (ms) out.push({ kind: 'Timer', name: 'Start a ' + (ms >= 60000 ? Math.round(ms / 6000) / 10 + '-minute' : Math.round(ms / 1000) + '-second') + ' timer', sub: 'The Clock rings when it\'s done', icon: 'timer', run: () => { const T = D.timer || (D.timer = {}); Object.assign(T, { total: ms, left: ms, end: Date.now() + ms, running: true }); D.toast({ icon: 'timer', c: '#2f9e8f', title: 'Timer started', text: 'It rings in ' + Math.round(ms / 60000 * 10) / 10 + ' minutes.' }); } });
     const task = L.parseTask(v, tk);
     if (task && D.app('calendar')) out.push({ kind: 'Axiom', name: 'Add "' + task.title + '"', sub: 'Due ' + (task.due === tk ? 'today' : task.due === L.addDays(tk, 1) ? 'tomorrow' : new Date(task.due + 'T12:00').toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })), icon: 'bell', run: () => { const A = D.state.axiom || (D.state.axiom = { classes: [], tasks: [], notes: [], theme: 'dawn' }); (A.tasks = A.tasks || []).push({ id: Date.now().toString(36), title: task.title, classId: null, type: 'homework', due: task.due, time: '', done: false }); D.save(); D.toast({ icon: 'bell', c: '#d4a857', title: 'Added to Axiom', text: task.title }); } });
+    // "send <a link or some words>": Dice Drop, to each of your other computers
+    const snd = /^send\s+(?:to\s+tv\s+)?(.+)$/i.exec(v);
+    if (snd && D.cloud && D.cloud.on()) {
+      const what = snd[1].trim(), url = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(\/\S*)?$/i.test(what) && !/\s/.test(what) ? (/^https?:/i.test(what) ? what : 'https://' + what) : '';
+      D.cloud.devices().filter((d) => !d.me).slice(0, 4).forEach((d) => out.push({ kind: 'Dice Drop', name: 'Send to ' + d.name, sub: url || what.slice(0, 80), icon: d.tv ? 'tv' : 'desktop',
+        run: () => D.cloud.send(d.id, url ? { url } : { text: what }).then((ok) => D.toast({ icon: 'cloud', c: ok ? '#4b7bec' : '#e5534b', title: ok ? 'Sent to ' + d.name : 'Not sent yet', text: ok ? 'It shows up there in a few seconds.' : 'It goes as soon as Dice Cloud can be reached.' })) }));
+    }
     const items = [];
     Desk.wins.forEach((w) => items.push({ kind: 'Window', name: w.el.querySelector('.wt').textContent, words: w.app.name, icon: 'desktop', run: () => Desk.focus(w) }));
     D.all().filter((a) => !a.suite || D.state.seen).forEach((a) => items.push({ kind: a.suite ? 'For your computer' : 'App', name: a.name, words: (a.words || '') + ' ' + (a.blurb || ''), app: a }));

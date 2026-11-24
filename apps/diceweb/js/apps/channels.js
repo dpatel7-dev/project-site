@@ -9,8 +9,10 @@
   const D = window.Dice, G = D.G, M = D.M, S = D.S, h = D.h, esc = D.esc;
   const rnd = (a, b) => a + Math.random() * (b - a);
 
-  // ---- 1. a fireplace (the flames are the old Doom fire, from the bottom up) --------------------
-  const FIRE = [[7, 7, 7], [31, 7, 7], [47, 15, 7], [71, 15, 7], [87, 23, 7], [103, 31, 7], [119, 31, 7], [143, 39, 7], [159, 47, 7], [175, 63, 7], [191, 71, 7], [199, 71, 7], [223, 79, 7], [223, 87, 7], [223, 87, 7], [215, 95, 7], [215, 95, 7], [215, 103, 15], [207, 111, 15], [207, 119, 15], [207, 127, 15], [207, 135, 23], [199, 135, 23], [199, 143, 23], [199, 151, 31], [191, 159, 31], [191, 159, 31], [191, 167, 39], [191, 167, 39], [191, 175, 47], [183, 175, 47], [183, 183, 47], [183, 183, 55], [207, 207, 111], [223, 223, 159], [239, 239, 199], [255, 255, 255]];
+  // ---- 1. a fireplace (the flames are the old Doom fire, from the bottom up, in big chunky blocks) ----
+  // a few flat colours, like an old game, rather than a smooth blend
+  const FIRE = [null, [92, 14, 10], [158, 30, 14], [222, 66, 24], [246, 124, 32], [255, 182, 54], [255, 226, 122], [255, 247, 214]];
+  const BAND = (v) => (v < 4 ? 0 : v < 9 ? 1 : v < 14 ? 2 : v < 19 ? 3 : v < 25 ? 4 : v < 30 ? 5 : v < 34 ? 6 : 7);
   function fireplace(W, H) {
     const bg = G.canvas(W, H), b = bg.getContext('2d');
     const hx = Math.round(W * 0.28), hw = Math.round(W * 0.44), hy = Math.round(H * 0.38), hh = Math.round(H * 0.44);
@@ -24,7 +26,7 @@
     b.fillStyle = '#3b3430'; b.fillRect(hx - 10, hy - 8, hw + 20, hh + 8);
     b.fillStyle = '#4a423c'; b.fillRect(hx - 10, hy - 8, hw + 20, 2);
     b.fillStyle = '#080506'; b.fillRect(hx, hy, hw, hh);
-    for (let i = 0; i < hh; i++) { b.fillStyle = 'rgba(40,20,14,' + (0.5 * (1 - i / hh)) + ')'; b.fillRect(hx, hy + i, hw, 1); }
+    for (let i = 0; i < hh; i += 3) { b.fillStyle = 'rgba(40,20,14,' + (0.5 * (1 - i / hh)) + ')'; b.fillRect(hx, hy + i, hw, 3); }
     b.fillStyle = '#5a3a26'; b.fillRect(hx - 22, hy - 16, hw + 44, 8);
     b.fillStyle = '#6e4a32'; b.fillRect(hx - 22, hy - 16, hw + 44, 2);
     b.fillStyle = '#3a2416'; b.fillRect(hx - 22, hy - 9, hw + 44, 1);
@@ -36,32 +38,69 @@
     b.fillStyle = '#e8dcc0'; b.fillRect(hx + 6, hy - 26, 4, 10); b.fillRect(hx + hw - 14, hy - 24, 3, 8);
     b.fillStyle = '#2c2420'; b.fillRect(hx + hw / 2 - 7, hy - 30, 14, 14); b.fillStyle = '#d9cdb0'; b.fillRect(hx + hw / 2 - 5, hy - 28, 10, 10);
     b.fillStyle = '#2c2420'; b.fillRect(hx + hw / 2, hy - 26, 1, 4); b.fillRect(hx + hw / 2, hy - 23, 3, 1);
-    // the logs
-    const logs = G.canvas(hw, 14), lg = logs.getContext('2d');
-    [[0.12, 5, 0.42], [0.46, 4, 0.42], [0.28, 0, 0.44]].forEach(([x, y, w]) => {
-      lg.fillStyle = '#3a2214'; lg.fillRect(Math.round(x * hw), y + 2, Math.round(w * hw), 7);
-      lg.fillStyle = '#5c3820'; lg.fillRect(Math.round(x * hw), y + 2, Math.round(w * hw), 2);
-      lg.fillStyle = '#c9a27a'; lg.fillRect(Math.round(x * hw), y + 3, 3, 5); lg.fillRect(Math.round((x + w) * hw) - 3, y + 3, 3, 5);
-    });
-    const fw = hw - 6, fh = hh - 6, fire = new Uint8Array(fw * fh), fc = G.canvas(fw, fh), fg = fc.getContext('2d'), img = fg.createImageData(fw, fh);
-    let last = 0;
+    // the fire is worked out on a coarse grid (each square is px × px), then blown up without smoothing
+    const px = Math.max(3, Math.round(hw / 46));
+    const fw = Math.max(8, Math.floor((hw - 6) / px)), fh = Math.max(8, Math.floor((hh - 4) / px));
+    const fire = new Uint8Array(fw * fh), fc = G.canvas(fw, fh), fg = fc.getContext('2d'), img = fg.createImageData(fw, fh);
+    const fx = hx + Math.round((hw - fw * px) / 2), fy = hy + hh - fh * px;
+    // the logs, built from the same big squares: two along the bottom and one across them
+    const logs = G.canvas(hw, px * 5), lg = logs.getContext('2d');
+    const log = (x0, x1, row) => {
+      const a = Math.round(x0 * fw) * px, w = Math.round((x1 - x0) * fw) * px, y = row * px;
+      lg.fillStyle = '#3a2214'; lg.fillRect(a, y, w, px * 2);
+      lg.fillStyle = '#5c3820'; lg.fillRect(a, y, w, px);
+      lg.fillStyle = '#2a170d'; for (let x = a + px * 2; x < a + w - px * 2; x += px * 5) lg.fillRect(x, y + px, px * 2, px);
+      lg.fillStyle = '#c9a27a'; lg.fillRect(a, y, px, px * 2); lg.fillRect(a + w - px, y, px, px * 2);
+      lg.fillStyle = '#8a6040'; lg.fillRect(a, y + px, px, px); lg.fillRect(a + w - px, y, px, px);
+    };
+    log(0.30, 0.72, 0); log(0.08, 0.50, 2); log(0.50, 0.92, 2);
+    const ly = hy + hh - px * 5;
+    const cool = 36 / (fh * 0.85); // how fast it cools on the way up, so the tallest flames lick the top
+    const sparks = [];
+    let last = 0, acc = 0;
+    function tick() {
+      // feed the fire: hot where the logs are, cooler at the ends
+      for (let x = 0; x < fw; x++) { const k = Math.sin(((x + 0.5) / fw) * Math.PI); fire[(fh - 1) * fw + x] = Math.max(0, Math.min(36, Math.round(36 * Math.pow(k, 0.5) - rnd(0, 7)))); }
+      for (let x = 0; x < fw; x++) for (let y = 1; y < fh; y++) {
+        const i = y * fw + x, v = fire[i];
+        if (!v) { fire[i - fw] = 0; continue; }
+        const dst = i - fw + ((Math.random() * 3) | 0) - 1;
+        if (dst >= 0 && dst < fire.length) fire[dst] = Math.max(0, v - Math.floor(Math.random() * (2 * cool + 1)));
+      }
+      // now and then a spark jumps out of the hottest part
+      if (Math.random() < 0.22 && sparks.length < 14) sparks.push({ x: fx + Math.round(rnd(0.25, 0.75) * fw) * px, y: fy + (fh - 3) * px, vy: rnd(10, 22), wob: rnd(0, 6), life: 0, max: rnd(1.1, 2.4) });
+    }
     return {
       draw(g, t) {
-        // feed the fire: hot where the logs are, cooler at the ends, with a little wind
-        for (let x = 0; x < fw; x++) { const k = Math.sin((x / fw) * Math.PI); fire[(fh - 1) * fw + x] = Math.max(0, Math.min(36, Math.round(36 * Math.pow(k, 0.6) - rnd(0, 6)))); }
-        const steps = Math.min(3, Math.max(1, Math.round((t - last) * 30))); last = t;
-        for (let s = 0; s < steps; s++) for (let x = 0; x < fw; x++) for (let y = 1; y < fh; y++) {
-          const i = y * fw + x, v = fire[i];
-          if (!v) { fire[i - fw] = 0; continue; }
-          const r = (Math.random() * 3.99) | 0, dst = i - fw - r + 1;
-          if (dst >= 0 && dst < fire.length) fire[dst] = Math.max(0, v - (Math.random() < 0.44 ? 1 : 0));
-        }
+        const dt = Math.min(0.25, last ? t - last : 0); last = t;
+        // the flames move at a steady, slightly jerky 16 steps a second, like an old game
+        acc += dt; let n = 0;
+        while (acc > 1 / 16 && n < 3) { acc -= 1 / 16; tick(); n++; }
+        if (!n && !fire[(fh - 1) * fw + (fw >> 1)]) tick();
         const d = img.data;
-        for (let i = 0; i < fire.length; i++) { const c = FIRE[fire[i]], o = i * 4; d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = fire[i] < 2 ? 0 : 255; }
+        for (let i = 0; i < fire.length; i++) { const c = FIRE[BAND(fire[i])], o = i * 4; if (!c) { d[o + 3] = 0; continue; } d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255; }
         fg.putImageData(img, 0, 0);
         g.drawImage(bg, 0, 0);
-        g.drawImage(fc, hx + 3, hy + 6);
-        g.drawImage(logs, hx, hy + hh - 12);
+        const smooth = g.imageSmoothingEnabled;
+        g.imageSmoothingEnabled = false;
+        g.drawImage(fc, 0, 0, fw, fh, fx, fy, fw * px, fh * px);
+        g.imageSmoothingEnabled = smooth;
+        // a bed of embers glowing under the logs, square by square
+        for (let x = 0; x < fw; x++) {
+          const k = Math.sin(((x + 0.5) / fw) * Math.PI), f = 0.5 + 0.5 * Math.sin(t * 3.1 + x * 1.7) * Math.sin(t * 1.3 + x * 0.6);
+          if (k < 0.25) continue;
+          g.fillStyle = f > 0.75 ? '#ffb636' : f > 0.4 ? '#de4218' : '#7a1a0c';
+          g.fillRect(fx + x * px, hy + hh - px, px, px);
+        }
+        g.drawImage(logs, fx, ly);
+        // sparks: single squares that rise, drift and go dim
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          const s = sparks[i]; s.life += dt; s.y -= s.vy * dt;
+          if (s.life > s.max || s.y < hy + 2) { sparks.splice(i, 1); continue; }
+          const sx = Math.round((s.x + Math.sin(t * 4 + s.wob) * px) / px) * px, sy = Math.round(s.y / px) * px, k = s.life / s.max;
+          g.fillStyle = k < 0.35 ? '#fff6d6' : k < 0.7 ? '#ffb636' : '#de4218';
+          g.fillRect(sx, sy, Math.max(2, px - 1), Math.max(2, px - 1));
+        }
         // the room glows with it
         const f = 0.13 + 0.05 * Math.sin(t * 7.3) + 0.03 * Math.sin(t * 17.1) + rnd(0, 0.02);
         const glow = g.createRadialGradient(hx + hw / 2, hy + hh, 4, hx + hw / 2, hy + hh, W * 0.7);

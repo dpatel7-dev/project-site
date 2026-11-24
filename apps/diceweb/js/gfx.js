@@ -118,6 +118,7 @@
     pause: ['............', '..KKK..KKK..', '..KKK..KKK..', '..KKK..KKK..', '..KKK..KKK..', '..KKK..KKK..', '..KKK..KKK..', '..KKK..KKK..', '..KKK..KKK..', '..KKK..KKK..'],
     next: ['............', '.K.....K..KK', '.KK....KK.KK', '.KKK...KKKKK', '.KKKK..KKKKK', '.KKK...KKKKK', '.KK....KK.KK', '.K.....K..KK'],
     prev: ['............', 'KK..K.....K.', 'KK.KK....KK.', 'KKKKK...KKK.', 'KKKKK..KKKK.', 'KKKKK...KKK.', 'KK.KK....KK.', 'KK..K.....K.'],
+    cloud: ['.....KKK....', '....KAAAK...', '..KKAAAAAK..', '.KAAAAAAAAK.', 'KAAAAAAAAAAK', 'KAAAAAAAAAAK', '.KKKKKKKKKK.'],
     plus: ['....KK....', '....KK....', '....KK....', 'KKKKKKKKKK', 'KKKKKKKKKK', '....KK....', '....KK....', '....KK....'],
     lock: ['...KKKK...', '..K....K..', '..K....K..', '.KKKKKKKK.', '.KKKKKKKK.', '.KKKkkKKK.', '.KKKkkKKK.', '.KKKKKKKK.', '.KKKKKKKK.'],
     trash: ['...KKKK...', 'KKKKKKKKKK', '..........', '.KKKKKKKK.', '.K.K.K.KK.', '.K.K.K.KK.', '.K.K.K.KK.', '.K.K.K.KK.', '..KKKKKK..'],
@@ -173,7 +174,7 @@
   // Clean and flat, so they read at a glance in the dock and the app grid.
   const TILES = { files: '#e39a32', home: '#e39a32', browser: '#3d86d6', terminal: '#2b2f3a', notes: '#e8913a', music: '#a862dc', store: '#ef5f74',
     settings: '#66789c', calculator: '#4a5568', calendar: '#d4a857', clock: '#2f9e8f', monitor: '#3a9d68', gaming: '#2a2a32',
-    channels: '#e0753a', weather: '#3a9be8', photos: '#d9576b', sketch: '#9b4fc9' };
+    channels: '#e0753a', weather: '#3a9be8', photos: '#d9576b', sketch: '#9b4fc9', cloud: '#4b7bec', code: '#1f2430' };
   function glyph(id, day) {
     const g = [];
     for (let i = 0; i < 16; i++) g.push(new Array(16).fill(''));
@@ -238,6 +239,14 @@
       case 'photos':
         rect(1, 3, 14, 11, 'W'); rect(2, 4, 12, 9, 'A'); disc(11, 6.5, 1.6, 'O');
         for (let x = 2; x <= 13; x++) { const top = 12 - Math.round(5 * Math.max(0, 1 - Math.abs(x - 6) / 4.5)); rect(x, top, 1, 13 - top, 'G'); }
+        break;
+      case 'code':
+        rect(1, 2, 14, 12, 'W'); rect(2, 4, 12, 9, 'D'); rect(2, 2, 12, 1, 'w');
+        line(4, 6, 6, 8, 'G'); line(6, 8, 4, 10, 'G'); rect(8, 10, 4, 1, 'O'); rect(8, 6, 2, 1, 'A');
+        break;
+      case 'cloud':
+        disc(5, 9.5, 3.2, 'W'); disc(8.5, 7, 4.2, 'W'); disc(12, 9.8, 2.8, 'W'); rect(4, 9, 9, 4, 'W');
+        rect(6, 9, 1, 3, 'A'); rect(5, 9, 3, 1, 'A'); rect(10, 9, 1, 3, 'A'); rect(9, 11, 3, 1, 'A');
         break;
       case 'sketch':
         disc(7.5, 8, 6.4, 'W'); disc(10.5, 11.5, 1.6, '');

@@ -12,7 +12,9 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 | `/diceweb/` | [DiceWeb](https://github.com/dpatel7-dev/DiceWeb), the same desktop, in your browser |
 | `/dice/install.sh`, `/dice/dice.tar.gz` | Dice's installer, and Dice itself (with DiceWeb inside) for the installer and the updater |
 | `/dice/setup` | where the DiceOS page saves a setup code (never a password); `/dice/setup/CODE.json` gets it back, for 30 days |
-| `/dice/cloud/ID` | Dice Cloud's locked boxes (GET, PUT, DELETE). DiceOS and DiceWeb lock everything with the person's code before sending it, so this only ever keeps `{v, iv, ct}` it can't read. Boxes nobody opens for a year are tidied away |
+| `/dice/cloud/ID` | Dice Cloud's locked boxes (GET, PUT, DELETE). DiceOS and DiceWeb lock everything with the person's code before sending it, so this only ever keeps `{v, iv, ct}` it can't read. GET gives an ETag (and a tiny 304 when nothing changed); PUT with If-Match is turned back (412) if another computer saved first. Boxes nobody opens for a year are tidied away |
+| `/dice/cloud/ID/history` | The last 5 versions of a box (at most one every 10 minutes), and `/history/N` for one of them |
+| `/dice/cloud/pair/ID` | A tiny locked box for adding a computer with a short code; gone after 10 minutes |
 | `/gossip` | [gossip](https://github.com/dpatel7-dev/gossip)'s page. Its chat hub keeps `/api`, `/install.sh`, `/install.ps1` and `/healthz`, so every gossip already installed keeps working |
 | `/tot` | [Tree of Thought](https://github.com/dpatel7-dev/Tree-Of-Thought), plus `/tot/install.sh` and `/tot/install.ps1` |
 | `/pigeon` | [pigeon](https://github.com/dpatel7-dev/pigeon)'s web app (open it on your phone), its file server and installers |

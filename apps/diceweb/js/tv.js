@@ -60,6 +60,11 @@
     if (now) np.style.setProperty('--tc', now.c); else np.style.removeProperty('--tc');
     const left = D.tools.sleepLeft(), sc = q('sleep');
     sc.innerHTML = '<span class="tlab">' + D.glyph('moon', 1) + 'Sleep timer</span><b class="tmid">' + (left ? left + ' min left' : 'Off') + '</b><span class="tsub">' + (left ? 'Then the music stops and the screen sleeps.' : 'Press to fall asleep to something.') + '</span>';
+    const ac = q('alarm');
+    if (ac && D.alarm) {
+      const on = D.alarm.list().filter((a) => a.on).map((a) => [D.alarm.next(a), a]).filter((x) => x[0]).sort((x, y) => x[0] - y[0])[0];
+      ac.innerHTML = '<span class="tlab">' + D.glyph('bell', 1) + 'Alarm</span><b class="tmid">' + (on ? esc(D.alarm.t12(on[1].time)) : 'Off') + '</b><span class="tsub">' + (on ? esc(on[0].toLocaleDateString([], { weekday: 'long' }) + ', ' + D.alarm.daysText(on[1]).toLowerCase()) : 'Wake up to Dice Radio, with the TV on.') + '</span>';
+    }
     const wc = q('wx'), p = place();
     if (!p) { wc.dataset.a = 'Add your town'; wc.innerHTML = '<span class="tlab">' + D.glyph('sun', 1) + 'Weather</span><b class="tmid">Where are you?</b><span class="tsub">Add your town to see the weather.</span>'; return; }
     wc.dataset.a = 'Change town';
@@ -80,13 +85,16 @@
     np.onclick = () => { if (M.now) M.toggle(); else M.play('radio', 0); setTimeout(paintToday, 60); };
     np._x = () => D.launch('music');
     sleep.onclick = () => D.tools.setSleep(L.nextSleep(D.tools.sleepMins()));
-    today.append(time, wxc, due, np, sleep);
+    const alarm = card('alarm', 't-alarm', 'Alarms');
+    alarm.onclick = () => D.launch('clock', { arg: 'alarm' });
+    today.append(time, wxc, due, np, sleep, alarm);
     paintToday(true);
     return s;
   }
   setInterval(paintToday, 20000);
   M.on(() => paintToday());
   D.on('sleeptimer', () => paintToday());
+  D.on('alarms', () => paintToday());
 
   // ---- Watch: your streaming sites ---------------------------------------------------------
   // Plain letters on a colour, not anybody's logo. They open in the real browser.
@@ -202,6 +210,7 @@
     if (k === 'wx') { const p = place(); return p && wx ? { kick: 'Weather in ' + p.name, name: wx.t + '° and ' + wx.words.text.toLowerCase(), line: 'High ' + wx.hi + '°, low ' + wx.lo + '°.' } : { kick: 'Weather', name: 'Your town', line: 'Add it once; Dice Home and SereneTab use it too.' }; }
     if (k === 'due') { const d = dueList(); return { kick: 'Axiom', name: !d ? 'No plans yet' : d.length ? d.length + (d.length === 1 ? ' thing' : ' things') + ' due' : 'All done', line: d && d.length ? d.slice(0, 4).map((t) => t.title).join(', ') + '.' : 'Tasks due today show up here.' }; }
     if (k === 'np') return M.now ? { kick: M.now.playing ? 'Playing' : 'Paused', name: M.now.name, line: M.now.by || '', c: M.now.c } : { kick: 'Music', name: 'Dice Radio', line: 'Calm music, made as it plays. Nothing to download.' };
+    if (k === 'alarm') return { kick: 'Alarms', name: 'Wake up to DiceTV', line: 'DiceOS wakes, the TV comes on (through the HDMI cable) and plays Dice Radio, a chime or the fireplace. OK snoozes for 9 minutes, Back stops it.' };
     if (k === 'sleep') { const l = D.tools.sleepLeft(); return { kick: 'Sleep timer', name: l ? l + ' minutes left' : 'Off', line: 'Press to go through 15, 30, 60 and 90 minutes. When it ends, the music stops and the screen goes to sleep.' }; }
     return null;
   };
@@ -252,14 +261,24 @@
       amb.querySelector('.am-wx').innerHTML = w ? D.weather.icon(w.words.kind, D.night()) + '<span>' + w.t + '°, ' + esc(w.words.text.toLowerCase()) + ' in ' + esc(w.place) + '</span>' : '';
     }
   }
+  // what's behind the clock: your world, one of the Live channels, or just the clock on black
+  A.CHOICES = [['world', 'Your world'], ['fire', 'Fireplace'], ['fish', 'Aquarium'], ['aurora', 'Northern lights'], ['space', 'Space'], ['dark', 'Just the clock']];
   A.frame = function (now) {
     if (!A.on || !amb) return;
     const sec = Math.floor(now / 1000);
     if (sec !== lastSec) { lastSec = sec; paintAmbient(false); }
-    const cv = amb.querySelector('.am-bg'), cell = D.scapeCell ? D.scapeCell() : 3;
-    const Wd = Math.ceil(innerWidth / cell), Hd = Math.ceil(innerHeight / cell), night = D.night(), key = Wd + 'x' + Hd + night + D.state.world;
-    if (key !== sceneKey) { sceneKey = key; cv.width = Wd; cv.height = Hd; cv.style.width = Wd * cell + 'px'; cv.style.height = Hd * cell + 'px'; scene = new G.Scape({ world: D.state.world || 'hills', night, W: Wd, H: Hd, seed: 'ambient' }); scene.last = 0; }
-    if (now - (scene.last || 0) < 1000 / Math.min(20, D.state.fps || 20)) return;
+    const pick = D.state.amb || 'world', ch = pick !== 'world' && pick !== 'dark' && D.channels && D.channels.LIST.some((c) => c.id === pick);
+    const cv = amb.querySelector('.am-bg'), cell = ch ? D.channels.cell() : D.scapeCell ? D.scapeCell() : 3;
+    amb.classList.toggle('am-dark', pick === 'dark');
+    if (pick === 'dark') return;
+    const Wd = Math.ceil(innerWidth / cell), Hd = Math.ceil(innerHeight / cell), night = D.night(), key = Wd + 'x' + Hd + night + D.state.world + pick;
+    if (key !== sceneKey) {
+      sceneKey = key; cv.width = Wd; cv.height = Hd; cv.style.width = Wd * cell + 'px'; cv.style.height = Hd * cell + 'px';
+      if (ch) { const sc = D.channels.make(pick, Wd, Hd); scene = { draw: (g, t) => sc.draw(g, t) }; }
+      else scene = new G.Scape({ world: D.state.world || 'hills', night, W: Wd, H: Hd, seed: 'ambient' });
+      scene.last = 0;
+    }
+    if (now - (scene.last || 0) < 1000 / Math.min(ch ? 30 : 20, D.state.fps || 20)) return;
     scene.last = now;
     scene.draw(cv.getContext('2d'), now / 1000, D.reduced());
   };

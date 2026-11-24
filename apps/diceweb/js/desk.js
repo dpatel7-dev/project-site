@@ -8,7 +8,7 @@
   const Desk = D.desk = { on: false, wins: [], z: 10, world: null, last: 0, ws: 0 };
   const SIZES = { files: [900, 600], browser: [1060, 690], music: [880, 580], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [900, 620], pigeon: [1000, 680],
     calculator: [330, 500], calendar: [1000, 660], clock: [560, 520], monitor: [760, 540],
-    channels: [960, 560], weather: [900, 660], photos: [980, 660], sketch: [920, 640] };
+    channels: [960, 560], weather: [900, 660], photos: [980, 660], sketch: [920, 640], cloud: [900, 680], code: [1000, 660] };
 
   let root, wall, wg;
   function build() {
@@ -269,7 +269,7 @@
     if (!root) build();
     D.menu.close(true); D.qam.close(true); D.search.close(true);
     Desk.on = true;
-    document.documentElement.classList.add('desk-on');
+    document.documentElement.classList.add('desk-on'); D.emit('desk', true);
     root.hidden = false;
     D.hero.paused = true;
     icons(); pins(); tray();
@@ -280,7 +280,7 @@
     if (!Desk.on) return;
     Desk.wins.slice().forEach((w) => w.close());
     Desk.on = false;
-    document.documentElement.classList.remove('desk-on');
+    document.documentElement.classList.remove('desk-on'); D.emit('desk', false);
     root.hidden = true;
     D.hero.paused = false;
     D.hero.set(D.hero.app, true);

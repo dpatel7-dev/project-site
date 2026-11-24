@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.7.0
+
+- Air mice (like the iPazzPort remote with a keyboard on the back) and media keyboards. Their power button no longer switches the whole computer off:
+  - logind is told to ignore a quick press (system/logind-dice.conf, put in /etc/systemd/logind.conf.d/). Holding it for 5 seconds still shuts down.
+  - diced watches every keyboard-like device that has a power or sleep key (/dev/input) and passes the press to the desktop. There it sleeps DiceOS, asks first, or does nothing (Settings, Remotes).
+  - The Raspberry Pi 5's own power button now sleeps DiceOS too.
+- Chromium leaves the media keys (play, pause, next) to DiceOS instead of keeping them for itself, so they work everywhere.
+- diced reports DiceOS's real version (it always said 1.0.0).
+- DiceWeb 1.7:
+  - Dice Cloud syncs item by item and never loses a change when two computers save at once. Its new app lists your computers, sends links to the TV (Dice Drop), adds a TV with a short code and goes back to older versions.
+  - Air mouse support, and a pixelated fireplace.
+  - Alarms that wake the TV through the HDMI cable.
+  - A choice of what's behind the ambient clock.
+  - Code, a code editor for your files.
+
 ## 1.6.0
 
 - Your TV's own remote works, through the HDMI cable (HDMI-CEC). diced keeps cec-client (from libcec, what Kodi uses) running when there's a CEC port and passes each press to the desktop (/api/events, a stream only the desktop can open). DiceOS can turn the TV on and switch it to DiceOS when it starts, turn it off when DiceOS sleeps, and send the volume buttons to the TV (/api/remote; Settings, TV remote). cec-utils is installed with DiceOS. Remotes that plug in by USB or pair by Bluetooth work too.

@@ -475,3 +475,13 @@ html.osk-on #legend { opacity: 0; }
 .ltile.is-focus { transform: scale(1.04); z-index: 2; box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ink), 0 18px 30px -18px var(--lc); }
 .ltile.lall { background: var(--soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
 .ltile.lall .lname { background: none; color: var(--ink); top: 0; display: grid; place-items: center; padding: 10px; text-align: center; }
+
+/* air mice: the pointer hides when it's still; and fitting the picture to a TV that cuts off the edges */
+html.ptr-hide, html.ptr-hide * { cursor: none !important; }
+html[data-fit] { background: #000; }
+html[data-fit] body { transform: scale(var(--fit)); transform-origin: 50% 50%; border-radius: 6px; }
+.fitbox { display: flex; align-items: center; gap: 8px; }
+.fitbox b { min-width: 4.5ch; text-align: center; font-family: var(--pixel); }
+#ambient.am-dark { background: #000; }
+#ambient.am-dark .am-bg, #ambient.am-dark .am-veil { display: none; }
+.srow.srow-wide { flex-wrap: wrap; } .srow.srow-wide > div:first-child { flex: 1 1 260px; }

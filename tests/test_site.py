@@ -4,6 +4,7 @@
 """
 import io
 import json
+import time
 import re
 import os
 import shutil
@@ -317,6 +318,62 @@ class Site(unittest.TestCase):
         self.assertIn(call('/dice/cloud/not-a-box-name', method='PUT', body=b'{}')[0], (404, 405))
         self.assertEqual(call('/dice/cloud/' + box_id, method='DELETE')[0], 200)
         self.assertEqual(call('/dice/cloud/' + box_id)[0], 404)
+
+    def test_dice_cloud_never_loses_a_change(self):
+        box_id = 'cd' * 16
+        url = '/dice/cloud/' + box_id
+        box = lambda s: json.dumps({'v': 1, 'iv': 'AAAAAAAAAAAAAAAA', 'ct': s * 12}).encode()
+        code, h, _ = call(url, method='OPTIONS')
+        self.assertIn('If-Match', h['Access-Control-Allow-Headers'])
+        self.assertIn('ETag', h['Access-Control-Expose-Headers'])
+        # a new box, only if there isn't one already
+        code, h, body = call(url, method='PUT', body=box('AAAA'), headers={'HTTP_IF_NONE_MATCH': '*'})
+        self.assertEqual(code, 200)
+        first = json.loads(body)['etag']
+        self.assertEqual(h['ETag'], '"' + first + '"')
+        self.assertEqual(call(url, method='PUT', body=box('BBBB'), headers={'HTTP_IF_NONE_MATCH': '*'})[0], 412)
+        # nothing new: 304, cheaply
+        code, h, body = call(url, headers={'HTTP_IF_NONE_MATCH': '"' + first + '"'})
+        self.assertEqual((code, body), (304, b''))
+        # saving on top of what you saw works; on top of something older is turned back
+        code, _, body = call(url, method='PUT', body=box('CCCC'), headers={'HTTP_IF_MATCH': '"' + first + '"'})
+        self.assertEqual(code, 200)
+        second = json.loads(body)['etag']
+        code, h, body = call(url, method='PUT', body=box('DDDD'), headers={'HTTP_IF_MATCH': '"' + first + '"'})
+        self.assertEqual(code, 412)
+        self.assertEqual(json.loads(body)['etag'], second)
+        code, _, body = call(url)
+        self.assertEqual(json.loads(body)['ct'], 'CCCC' * 12)
+        # the old one is kept, and can be fetched
+        code, _, body = call(url + '/history')
+        versions = json.loads(body)['versions']
+        self.assertEqual([v['n'] for v in versions], [0])
+        code, _, body = call(url + '/history/0')
+        self.assertEqual((code, json.loads(body)['ct']), (200, 'AAAA' * 12))
+        self.assertEqual(call(url + '/history/3')[0], 404)
+        self.assertEqual(call(url + '/history', method='PUT', body=box('EEEE'))[0], 405)
+        # quick changes don't push out older versions
+        call(url, method='PUT', body=box('FFFF'))
+        self.assertEqual(len(json.loads(call(url + '/history')[2])['versions']), 1)
+        call(url, method='DELETE')
+        self.assertEqual(json.loads(call(url + '/history')[2])['versions'], [])
+
+    def test_dice_cloud_pairing_slot(self):
+        slot = '/dice/cloud/pair/' + 'ef' * 16
+        self.assertEqual(call(slot)[0], 404)
+        small = json.dumps({'v': 1, 'iv': 'AAAAAAAAAAAAAAAA', 'ct': 'c2VjcmV0IGNvZGUgaGVyZQ=='}).encode()
+        self.assertEqual(call(slot, method='PUT', body=small)[0], 200)
+        code, _, body = call(slot)
+        self.assertEqual((code, json.loads(body)['ct']), (200, 'c2VjcmV0IGNvZGUgaGVyZQ=='))
+        self.assertEqual(call(slot, method='PUT', body=json.dumps({'v': 1, 'iv': 'AAAAAAAAAAAAAAAA', 'ct': 'A' * 6000}).encode())[0], 413)
+        self.assertEqual(call(slot, method='PUT', body=b'{"code": "plain"}')[0], 400)
+        self.assertEqual(call(slot, method='DELETE')[0], 200)
+        self.assertEqual(call(slot)[0], 404)
+        # old ones vanish after ten minutes
+        call(slot, method='PUT', body=small)
+        f = os.path.join(os.environ['SITE_DATA'], 'dice-cloud', 'pair', 'ef' * 16 + '.json')
+        os.utime(f, (time.time() - 700, time.time() - 700))
+        self.assertEqual(call(slot)[0], 404)
 
     def test_reloads_itself_after_a_git_pull(self):
         # pretend PythonAnywhere's WSGI file lives here, and the code on disk just changed

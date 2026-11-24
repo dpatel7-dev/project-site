@@ -38,9 +38,20 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-VERSION = '1.0.0'
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
+
+
+def _version():
+    """DiceOS's version, from the VERSION file next to the daemon folder."""
+    try:
+        with open(os.path.join(ROOT, 'VERSION')) as f:
+            return f.read().strip() or '0'
+    except OSError:
+        return '0'
+
+
+VERSION = _version()
 DEFAULTS = {
     'web': os.path.join(ROOT, 'diceweb'),
     'settings': '/etc/dice/settings.json',
@@ -206,6 +217,7 @@ class System:
     def __init__(self, settings_path):
         self.settings_path = settings_path
         self.remote = Remote(settings_path)
+        self.power_keys = PowerKeys(self.remote.push)
 
     # -- status --
     def status(self):
@@ -589,6 +601,133 @@ class Remote:
                 self.push({'cec': self.state()})
             self.why = self.why or 'No TV answered. Is CEC on in the TV\'s settings?'
             time.sleep(15)  # try again: the TV may have been off
+
+
+# The power button on an air mouse or a media keyboard is an ordinary key (KEY_POWER).
+# Left alone, the system would turn the whole computer off when it's pressed, so
+# DiceOS tells logind to ignore it (system/logind-dice.conf) and catches it here
+# instead, passing it to the desktop like a remote button: there it sleeps, or asks.
+# (Holding it for 5 seconds still turns the computer off, through logind.)
+POWER_KEYS = {116: 'Power', 142: 'Sleep', 143: 'WakeUp'}  # KEY_POWER, KEY_SLEEP, KEY_WAKEUP
+EV_KEY = 1
+INPUT_EVENT = struct.Struct('llHHi')  # struct input_event: a time, then type, code and value
+
+
+def kernel_long_bits():
+    """How many bits the kernel's long has (a Pi can run a 64-bit kernel under 32-bit programs)."""
+    m = os.uname().machine.lower()
+    return 64 if m.endswith('64') or m in ('aarch64', 'x86_64', 's390x') else 32
+
+
+def key_bits(text, bits=None):
+    """The set of key codes a device has, from /sys/class/input/eventN/device/capabilities/key.
+
+    That file is hex words, each the size of the kernel's long, most significant first
+    (a Power Button reads '10000000000000 0' on a 64-bit kernel: bit 116, KEY_POWER)."""
+    words = (text or '').split()
+    if not words:
+        return set()
+    bits = bits or kernel_long_bits()
+    out = set()
+    for i, w in enumerate(reversed(words)):
+        try:
+            v = int(w, 16)
+        except ValueError:
+            return set()
+        n = 0
+        while v:
+            if v & 1:
+                out.add(i * bits + n)
+            v >>= 1
+            n += 1
+    return out
+
+
+def parse_input_events(data):
+    """(code, value) for each key event in raw bytes read from /dev/input/eventN."""
+    out = []
+    size = INPUT_EVENT.size
+    for i in range(0, len(data) - size + 1, size):
+        _, _, typ, code, value = INPUT_EVENT.unpack_from(data, i)
+        if typ == EV_KEY:
+            out.append((code, value))
+    return out
+
+
+class PowerKeys:
+    """Watches every keyboard-like device that has a power or sleep key (air mice, media
+    keyboards, some remotes) and sends a 'power' button to the desktop when one is pressed."""
+    def __init__(self, push, root='/dev/input'):
+        self.push = push
+        self.root = root
+        self.fds = {}
+        self.started = False
+        self.last = 0.0
+
+    def devices(self):
+        out = []
+        for path in sorted(glob.glob(os.path.join(self.root, 'event*'))):
+            cap = '/sys/class/input/%s/device/capabilities/key' % os.path.basename(path)
+            try:
+                with open(cap) as f:
+                    if key_bits(f.read()) & set(POWER_KEYS):
+                        out.append(path)
+            except OSError:
+                continue
+        return out
+
+    def start(self):
+        if self.started or not os.path.isdir(self.root):
+            return
+        self.started = True
+        threading.Thread(target=self.run, daemon=True).start()
+
+    def handle(self, data):
+        for code, value in parse_input_events(data):
+            if code in POWER_KEYS and value == 1:
+                now = time.monotonic()
+                if now - self.last < 0.5:  # one press can come from two devices at once
+                    continue
+                self.last = now
+                self.push({'a': 'power', 'key': POWER_KEYS[code]})
+
+    def run(self):
+        import select
+        scanned = 0.0
+        while True:
+            now = time.monotonic()
+            if now - scanned > 10:  # Bluetooth remotes come and go
+                scanned = now
+                for path in self.devices():
+                    if path not in self.fds:
+                        try:
+                            self.fds[path] = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+                        except OSError:
+                            pass
+            if not self.fds:
+                time.sleep(5)
+                continue
+            try:
+                ready, _, _ = select.select(list(self.fds.values()), [], [], 5)
+            except (OSError, ValueError):
+                ready = []
+            for fd in ready:
+                try:
+                    data = os.read(fd, INPUT_EVENT.size * 64)
+                except BlockingIOError:
+                    continue
+                except OSError:
+                    data = b''
+                if not data:  # the device went away
+                    for path, f in list(self.fds.items()):
+                        if f == fd:
+                            del self.fds[path]
+                    try:
+                        os.close(fd)
+                    except OSError:
+                        pass
+                    continue
+                self.handle(data)
 
 
 BT_MAC = re.compile(r'^[0-9A-F]{2}(?::[0-9A-F]{2}){5}$')
@@ -1050,6 +1189,7 @@ class Handler(BaseHTTPRequestHandler):
             sysm.remote.start()
             return self.send(200, sysm.remote.state())
         if path == '/api/events':
+            sysm.power_keys.start()
             return self.events(sysm.remote)
         return self.fail(404, 'No such thing.')
 
