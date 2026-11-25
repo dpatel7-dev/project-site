@@ -93,10 +93,23 @@
     watch: Object.assign(whole(() => (Array.isArray(D.state.watch) ? D.state.watch : null), (v) => { if (Array.isArray(v)) D.state.watch = v; }), { name: 'The Watch list on DiceTV' }),
     widgets: Object.assign(whole(() => (Array.isArray(D.state.widgets) ? D.state.widgets : null), (v) => { if (Array.isArray(v)) D.state.widgets = v; }), { name: 'Desktop widgets and sticky notes' }),
     news: Object.assign(whole(() => (Array.isArray(D.state.news) ? D.state.news : null), (v) => { if (Array.isArray(v)) D.state.news = v; }), { name: 'News channels you added' }),
+    // the list of your files in Dice Cloud (the files themselves are kept apart, in parts: js/drive.js)
+    files: {
+      name: 'Your files',
+      always: true,
+      split: (v) => (v && typeof v === 'object' ? Object.assign({}, v) : {}),
+      items: () => Object.assign({}, (D.state.drive && D.state.drive.items) || {}),
+      put: (ch) => {
+        const d = D.state.drive || (D.state.drive = { items: {} });
+        Object.entries(ch).forEach(([k, v]) => { if (v === undefined) delete d.items[k]; else d.items[k] = v; });
+        D.emit('drive');
+      },
+      legacy() { return this.items(); },
+    },
   };
   C.SECTIONS = SECTIONS;
-  C.what = 'your notes, Axiom, SereneTab, Dice Home, the Watch list, your widgets, your name and the look';
-  C.shares = (name) => { const c = st(); return !(c && c.skip && c.skip.includes(name)); };
+  C.what = 'your files, notes, Axiom, SereneTab, Dice Home, the Watch list, your widgets, your name and the look';
+  C.shares = (name) => { const c = st(); return !!(SECTIONS[name] && SECTIONS[name].always) || !(c && c.skip && c.skip.includes(name)); };
   C.setShare = function (name, on) {
     const c = st(); if (!c) return;
     c.skip = (c.skip || []).filter((n) => n !== name);
@@ -319,7 +332,7 @@
       // 6. save the box, only on top of the version we just read
       if (give) {
         const box = await lock(key, remote), body = JSON.stringify(box);
-        if (body.length > C.LIMIT) throw new Error('There\'s too much to keep in Dice Cloud (the limit is about 600 KB). Turn off a part you don\'t need, or make your notes smaller.');
+        if (body.length > C.LIMIT) throw new Error('There\'s too much to keep in Dice Cloud\'s list (the limit is about 600 KB, not counting what\'s in your files). Turn off a part you don\'t need, or make your notes smaller.');
         const p = await fetch(url(id), { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, etag ? { 'If-Match': '"' + etag + '"' } : { 'If-None-Match': '*' }), body });
         if (p.status === 412 && (opts.tries || 0) < 4) {
           // another computer saved first: look again (what we took is kept), then try again
@@ -392,7 +405,10 @@
       const code = C.newCode(), n = await keys(code);
       const put = await fetch(url(n.id), { method: 'PUT', headers: { 'Content-Type': 'application/json', 'If-None-Match': '*' }, body: JSON.stringify(await lock(n.key, box)) });
       if (!put.ok) throw new Error('The website answered ' + put.status + '.');
-      await fetch(url(o.id), { method: 'DELETE' });
+      // your files go with it (they're already locked with keys of their own, so they just move)
+      const mv = await fetch(url(n.id) + '/files-from/' + o.id, { method: 'POST' });
+      if (!mv.ok) { await fetch(url(n.id), { method: 'DELETE', headers: { 'X-Dice-Keep-Files': '1' } }).catch(() => {}); throw new Error('Couldn\'t move your files to the new code (the website answered ' + mv.status + '). Nothing changed.'); }
+      await fetch(url(o.id), { method: 'DELETE', headers: { 'X-Dice-Keep-Files': '1' } });
       c.code = code; c.etag = (await put.json().catch(() => ({}))).etag || null; c.devices = box.devices;
       log('Made a new code. The old one opens nothing now.');
       D.save(); D.emit('cloud');

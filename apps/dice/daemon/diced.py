@@ -213,11 +213,326 @@ def model():
         parts = parts[1:]
     return ' '.join(parts) or 'PC'
 
+# ---------------------------------------------------------------------------
+# Real apps: Linux apps from Flathub, installed with Flatpak for everyone on this computer,
+# and opened on top of Dice. Home on a remote (or Super + Esc on a keyboard) closes the
+# one on top, and Dice is back. Games from your own gaming PC come the same way, through
+# Moonlight (DiceGaming).
+APP_ID = re.compile(r'^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+){2,}$')
+HOST = re.compile(r'^[A-Za-z0-9._:\-\[\]%]{1,100}$')
+MOONLIGHT = 'com.moonlight_stream.Moonlight'
+XML_LANG = '{http://www.w3.org/XML/1998/namespace}lang'
+
+
+def parse_appstream(path):
+    """The apps Flathub has for this kind of computer, from Flatpak's own copy of its list
+    (appstream.xml or .xml.gz): id, name, one line about it, its categories."""
+    import gzip
+    import xml.etree.ElementTree as ET
+    out = []
+    with (gzip.open if path.endswith('.gz') else open)(path, 'rb') as f:
+        for _, el in ET.iterparse(f, events=('end',)):
+            if el.tag != 'component':
+                continue
+            if el.get('type') in ('desktop-application', 'desktop', 'console-application'):
+                cid = (el.findtext('id') or '').strip()
+                if cid.endswith('.desktop'):
+                    cid = cid[:-8]
+                plain = lambda tag: next(((e.text or '').strip() for e in el.findall(tag) if not e.get(XML_LANG)), '')
+                name, summary = plain('name'), plain('summary')
+                if APP_ID.match(cid) and name and el.get('type') != 'console-application':
+                    out.append({'id': cid, 'name': name[:60], 'summary': summary[:160],
+                                'cats': [c.text for c in el.findall('categories/category') if c.text][:6],
+                                'icon': any(i.get('type') == 'cached' for i in el.findall('icon'))})
+            el.clear()
+    return out
+
+
+class Apps:
+    FLATHUB = 'https://dl.flathub.org/repo/flathub.flatpakrepo'
+
+    def __init__(self, push=None, root='/var/lib/flatpak'):
+        self.push = push or (lambda ev: None)
+        self.root = root
+        self.lock = threading.Lock()
+        self.jobs = {}
+        self.running = []
+        self.cache = (None, [])
+        self.listed = (0.0, [])
+
+    @staticmethod
+    def arch():
+        m = os.uname().machine
+        return {'arm64': 'aarch64', 'amd64': 'x86_64'}.get(m, m)
+
+    def appstream(self):
+        return os.path.join(self.root, 'appstream', 'flathub', self.arch(), 'active')
+
+    def has_flatpak(self):
+        return bool(shutil.which('flatpak'))
+
+    def has_flathub(self):
+        if not self.has_flatpak():
+            return False
+        code, out = run(['flatpak', 'remotes', '--system', '--columns=name'], timeout=15)
+        return code == 0 and 'flathub' in out.split()
+
+    def catalog(self):
+        base = self.appstream()
+        path = next((p for p in (os.path.join(base, 'appstream.xml.gz'), os.path.join(base, 'appstream.xml')) if os.path.exists(p)), None)
+        if not path:
+            return []
+        stamp = (path, os.path.getmtime(path))
+        if self.cache[0] != stamp:
+            try:
+                self.cache = (stamp, parse_appstream(path))
+            except Exception:  # a half-written list: try again next time
+                return self.cache[1]
+        return self.cache[1]
+
+    def search(self, q='', cat='', limit=60):
+        words = [w for w in (q or '').lower().split() if w][:5]
+        out = []
+        for a in self.catalog():
+            if cat and cat not in a['cats']:
+                continue
+            if words:
+                name, rest = a['name'].lower(), (a['id'] + ' ' + a['summary']).lower()
+                if not all(w in name or w in rest for w in words):
+                    continue
+                score = (0 if name.startswith(words[0]) else 1 if words[0] in name else 2, len(a['name']))
+            else:
+                score = (0, a['name'].lower())
+            out.append((score, a))
+        out.sort(key=lambda x: x[0])
+        return [a for _, a in out[:limit]]
+
+    def icon(self, app_id):
+        if not APP_ID.match(app_id or ''):
+            return None
+        for size in ('128x128', '64x64'):
+            p = os.path.join(self.appstream(), 'icons', size, app_id + '.png')
+            if os.path.exists(p):
+                return p
+        return None
+
+    def installed(self, fresh=False):
+        if not self.has_flatpak():
+            return []
+        if not fresh and time.time() - self.listed[0] < 5:
+            return self.listed[1]
+        code, out = run(['flatpak', 'list', '--system', '--app', '--columns=application,name,version,size'], timeout=20)
+        apps = []
+        if code == 0:
+            for line in out.splitlines():
+                bits = line.split('\t')
+                if len(bits) >= 2 and APP_ID.match(bits[0]):
+                    apps.append({'id': bits[0], 'name': bits[1], 'version': bits[2] if len(bits) > 2 else '', 'size': bits[3] if len(bits) > 3 else ''})
+        self.listed = (time.time(), apps)
+        return apps
+
+    # -- jobs that take a while: getting set up, installing, removing ------------------------------------
+    def job(self, key, title, cmds, as_user=False, timeout=1800):
+        with self.lock:
+            j = self.jobs.get(key)
+            if j and j['state'] == 'working':
+                return dict(j)
+            j = self.jobs[key] = {'key': key, 'title': title, 'state': 'working', 'pct': 0, 'error': '', 'at': int(time.time())}
+        threading.Thread(target=self._work, args=(j, cmds, as_user, timeout), daemon=True).start()
+        return dict(j)
+
+    def _work(self, j, cmds, as_user, timeout):
+        user = desktop_user()
+        env = user_env(user) if as_user and user != 'root' else dict(os.environ, DEBIAN_FRONTEND='noninteractive', LANG='C.UTF-8')
+        for n, args in enumerate(cmds):
+            try:
+                p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, text=True, env=env,
+                                     preexec_fn=demote(user) if as_user and user != 'root' else None)
+                timer = threading.Timer(timeout, p.kill)
+                timer.start()
+                last = ''
+                for line in p.stdout:  # (universal newlines: the progress Flatpak redraws with \r arrives line by line)
+                    line = line.strip()
+                    if not line:
+                        continue
+                    last = line
+                    pct = re.findall(r'(\d{1,3})%', line)
+                    if pct:
+                        j['pct'] = int(min(99, (n + int(pct[-1]) / 100) / len(cmds) * 100))
+                code = p.wait()
+                timer.cancel()
+            except OSError as e:
+                code, last = 1, str(e)
+            if code:
+                j.update(state='failed', error=re.sub(r'^(error|warning):\s*', '', last, flags=re.I)[:300] or 'It stopped (code %d).' % code)
+                return
+            j['pct'] = max(j['pct'], int((n + 1) / len(cmds) * 100) - 1)
+        j.update(state='done', pct=100)
+        self.listed = (0.0, self.listed[1])
+
+    def setup(self):
+        cmds = []
+        if not self.has_flatpak():
+            cmds += [['apt-get', 'update'], ['apt-get', 'install', '-y', 'flatpak', 'xwayland']]
+        cmds += [['flatpak', 'remote-add', '--system', '--if-not-exists', 'flathub', self.FLATHUB], ['flatpak', 'update', '--system', '--appstream', '-y', 'flathub']]
+        return self.job('setup', 'Getting apps ready', cmds)
+
+    def install(self, app_id):
+        if not APP_ID.match(app_id or ''):
+            return {'state': 'failed', 'error': 'That isn\'t an app.'}
+        return self.job(app_id, 'Installing', [['flatpak', 'install', '--system', '-y', '--noninteractive', 'flathub', app_id]])
+
+    def remove(self, app_id):
+        if not APP_ID.match(app_id or ''):
+            return {'state': 'failed', 'error': 'That isn\'t an app.'}
+        return self.job(app_id, 'Removing', [['flatpak', 'uninstall', '--system', '-y', '--noninteractive', app_id]])
+
+    def update_all(self):
+        return self.job('update', 'Updating apps', [['flatpak', 'update', '--system', '-y', '--noninteractive']])
+
+    # -- opening, and closing what's on top -------------------------------------------------------------
+    def launch(self, args, name, kind, key):
+        user = desktop_user()
+        env = user_env(user) if user != 'root' else dict(os.environ)
+        try:
+            p = subprocess.Popen(args, env=env, preexec_fn=demote(user) if user != 'root' else None, stdin=subprocess.DEVNULL,
+                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        except OSError as e:
+            return {'ok': False, 'error': str(e)}
+        with self.lock:
+            self.running = [r for r in self.running if r['proc'].poll() is None]
+            self.running.append({'key': key, 'name': name, 'kind': kind, 'proc': p, 'at': time.time()})
+        return {'ok': True}
+
+    def open(self, app_id):
+        if not APP_ID.match(app_id or ''):
+            return {'ok': False, 'error': 'That isn\'t an app.'}
+        app = next((a for a in self.installed() if a['id'] == app_id), None)
+        if not app:
+            return {'ok': False, 'error': 'That app isn\'t installed.'}
+        return self.launch(['flatpak', 'run', app_id], app['name'], 'app', app_id)
+
+    def front(self):
+        with self.lock:
+            self.running = [r for r in self.running if r['proc'].poll() is None]
+            r = self.running[-1] if self.running else None
+        return {'name': r['name'], 'kind': r['kind'], 'key': r['key']} if r else None
+
+    def close_front(self):
+        """Close the app on top of Dice, if there is one. True if something closed."""
+        with self.lock:
+            self.running = [r for r in self.running if r['proc'].poll() is None]
+            if not self.running:
+                return False
+            r = self.running.pop()
+        if r['kind'] == 'app' and self.has_flatpak():
+            user = desktop_user()
+            try:
+                subprocess.run(['flatpak', 'kill', r['key']], env=user_env(user) if user != 'root' else None, preexec_fn=demote(user) if user != 'root' else None,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+            except (OSError, subprocess.SubprocessError):
+                pass
+        pid = r['proc'].pid
+        try:
+            os.killpg(pid, signal.SIGTERM)
+        except OSError:
+            pass
+
+        def finish():
+            time.sleep(3)
+            if r['proc'].poll() is None:
+                try:
+                    os.killpg(pid, signal.SIGKILL)
+                except OSError:
+                    pass
+        threading.Thread(target=finish, daemon=True).start()
+        return True
+
+    def status(self):
+        flatpak = self.has_flatpak()
+        with self.lock:
+            jobs = [dict(j) for j in self.jobs.values() if j['state'] == 'working' or time.time() - j['at'] < 600]
+        return {'ok': True, 'flatpak': flatpak, 'flathub': flatpak and self.has_flathub(), 'arch': self.arch(), 'catalog': len(self.catalog()),
+                'installed': self.installed(), 'jobs': jobs, 'front': self.front(), 'moonlight': bool(self.moonlight())}
+
+    # -- DiceGaming: games from your own PC, streamed with Moonlight (the PC runs Sunshine) ---------------
+    def moonlight(self):
+        for b in ('moonlight-qt', 'moonlight'):
+            p = shutil.which(b)
+            if p:
+                return [p]
+        if any(a['id'] == MOONLIGHT for a in self.installed()):
+            return ['flatpak', 'run', MOONLIGHT]
+        return None
+
+    def as_user(self, args, timeout):
+        user = desktop_user()
+        try:
+            r = subprocess.run(args, env=user_env(user) if user != 'root' else None, preexec_fn=demote(user) if user != 'root' else None,
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, text=True, timeout=timeout)
+            return r.returncode, r.stdout, r.stderr
+        except subprocess.TimeoutExpired:
+            return 124, '', 'Your gaming PC didn\'t answer in time. Is it on, with Sunshine running?'
+        except OSError as e:
+            return 1, '', str(e)
+
+    @staticmethod
+    def parse_games(out):
+        """Moonlight's list of a PC's games: one name a line (or CSV, with a header row)."""
+        lines = [l.strip() for l in (out or '').splitlines() if l.strip()]
+        if lines and lines[0].lower().startswith('name,'):
+            import csv
+            return [row[0].strip() for row in csv.reader(lines[1:]) if row and row[0].strip()]
+        return [l for l in lines if not re.match(r'^\d{2}:\d{2}:\d{2}', l) and not l.lower().startswith(('warning', 'error', 'info:', 'debug'))]
+
+    def games(self, host):
+        ml = self.moonlight()
+        if not ml:
+            return {'ok': False, 'error': 'Moonlight isn\'t installed yet.', 'need': 'moonlight'}
+        if not HOST.match(host or ''):
+            return {'ok': False, 'error': 'That isn\'t a computer\'s name or address.'}
+        code, out, err = self.as_user(ml + ['list', host], 30)
+        if code:
+            why = (err or out).strip().splitlines()
+            msg = why[-1] if why else 'Couldn\'t reach it.'
+            return {'ok': False, 'error': msg[:240], 'paired': not re.search(r'not paired|pair', msg, re.I)}
+        return {'ok': True, 'games': self.parse_games(out)}
+
+    def pair(self, host, pin):
+        ml = self.moonlight()
+        if not ml:
+            return {'state': 'failed', 'error': 'Moonlight isn\'t installed yet.'}
+        if not HOST.match(host or '') or not re.fullmatch(r'\d{4}', pin or ''):
+            return {'state': 'failed', 'error': 'That isn\'t a computer\'s name, or a 4-number PIN.'}
+        return self.job('pair:' + host, 'Pairing', [ml + ['pair', host, '--pin', pin]], as_user=True, timeout=180)
+
+    QUALITY = {'720p': ('1280x720', 10000), '1080p': ('1920x1080', 20000), '1440p': ('2560x1440', 40000), '4k': ('3840x2160', 80000)}
+
+    def play(self, host, game, quality='1080p', fps=60):
+        ml = self.moonlight()
+        if not ml:
+            return {'ok': False, 'error': 'Moonlight isn\'t installed yet.'}
+        if not HOST.match(host or '') or not game or len(game) > 120 or '\n' in game:
+            return {'ok': False, 'error': 'That isn\'t a game on a computer.'}
+        res, kbps = self.QUALITY.get(quality, self.QUALITY['1080p'])
+        fps = fps if fps in (30, 60, 90, 120) else 60
+        return self.launch(ml + ['stream', host, game, '--resolution', res, '--fps', str(fps), '--bitrate', str(kbps * (2 if fps > 60 else 1))], game, 'game', 'game:' + host)
+
+    def quit_game(self, host):
+        ml = self.moonlight()
+        if not ml or not HOST.match(host or ''):
+            return {'ok': False, 'error': 'Moonlight isn\'t installed yet.'}
+        code, out, err = self.as_user(ml + ['quit', host], 30)
+        return {'ok': code == 0, 'error': (err or out).strip()[-240:] if code else ''}
+
+
 class System:
     def __init__(self, settings_path):
         self.settings_path = settings_path
         self.remote = Remote(settings_path)
-        self.power_keys = PowerKeys(self.remote.push)
+        self.apps = Apps(self.remote.push)
+        self.remote.intercept = lambda ev: ev.get('a') in ('home', 'menu') and self.apps.close_front()  # a TV remote's Home is CEC's "root menu"
+        self.power_keys = PowerKeys(self.remote.push, home=self.apps.close_front)
 
     # -- status --
     def status(self):
@@ -388,7 +703,7 @@ class System:
         return {'ok': True}
 
     # -- opening the real web browser over the desktop --
-    def open_url(self, url):
+    def open_url(self, url, app=False):
         if not re.match(r'^https?://', url or ''):
             return {'ok': False, 'error': 'Only web addresses (http or https) can be opened.'}
         user = desktop_user()
@@ -397,12 +712,10 @@ class System:
             return {'ok': False, 'error': 'No web browser is installed.'}
         env = user_env(user) if user != 'root' else dict(os.environ)
         home = env.get('HOME', '/tmp')
-        args = [browser, '--ozone-platform=wayland', '--user-data-dir=%s/.config/dice/browser' % home, '--no-first-run', '--password-store=basic', '--new-window', url]
-        try:
-            subprocess.Popen(args, env=env, preexec_fn=demote(user) if user != 'root' else None, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-            return {'ok': True}
-        except OSError as e:
-            return {'ok': False, 'error': str(e)}
+        args = [browser, '--ozone-platform=wayland', '--user-data-dir=%s/.config/dice/browser' % home, '--no-first-run', '--password-store=basic']
+        # as an app (no address bar: a web app you installed, a cloud gaming service) or a browser window
+        args += ['--app=' + url] if app else ['--new-window', url]
+        return self.apps.launch(args, urllib.parse.urlsplit(url).hostname or url, 'web', url)
 
     # -- Bluetooth (bluetoothctl, from BlueZ): controllers, headphones and speakers --
     def bt(self, args, timeout=10):
@@ -512,6 +825,7 @@ class Remote:
     """Keeps cec-client running while there's an HDMI-CEC port, and passes the presses on."""
     def __init__(self, settings_path):
         self.settings_path = settings_path
+        self.intercept = None
         self.proc = None
         self.available = False
         self.tv = None
@@ -571,6 +885,8 @@ class Remote:
             return None
         self.last = (k[0], now)
         ev = {'a': k[0], 'key': k[1]}
+        if self.intercept and self.intercept(ev):  # Home while an app is open on top: diced closes it
+            return ev
         self.push(ev)
         return ev
 
@@ -609,6 +925,7 @@ class Remote:
 # instead, passing it to the desktop like a remote button: there it sleeps, or asks.
 # (Holding it for 5 seconds still turns the computer off, through logind.)
 POWER_KEYS = {116: 'Power', 142: 'Sleep', 143: 'WakeUp'}  # KEY_POWER, KEY_SLEEP, KEY_WAKEUP
+HOME_KEY, KEY_ESC, KEY_LEFTMETA, KEY_RIGHTMETA = 172, 1, 125, 126  # KEY_HOMEPAGE (a remote's Home), and Super + Esc
 EV_KEY = 1
 INPUT_EVENT = struct.Struct('llHHi')  # struct input_event: a time, then type, code and value
 
@@ -657,12 +974,14 @@ def parse_input_events(data):
 class PowerKeys:
     """Watches every keyboard-like device that has a power or sleep key (air mice, media
     keyboards, some remotes) and sends a 'power' button to the desktop when one is pressed."""
-    def __init__(self, push, root='/dev/input'):
+    def __init__(self, push, root='/dev/input', home=None):
         self.push = push
         self.root = root
+        self.home = home  # called for Home on a remote, or Super + Esc: closes an app that's on top of Dice
         self.fds = {}
         self.started = False
         self.last = 0.0
+        self.meta = set()
 
     def devices(self):
         out = []
@@ -670,8 +989,9 @@ class PowerKeys:
             cap = '/sys/class/input/%s/device/capabilities/key' % os.path.basename(path)
             try:
                 with open(cap) as f:
-                    if key_bits(f.read()) & set(POWER_KEYS):
-                        out.append(path)
+                    bits = key_bits(f.read())
+                if bits & set(POWER_KEYS) or (self.home and (HOME_KEY in bits or {KEY_ESC, KEY_LEFTMETA} <= bits)):
+                    out.append(path)
             except OSError:
                 continue
         return out
@@ -684,6 +1004,12 @@ class PowerKeys:
 
     def handle(self, data):
         for code, value in parse_input_events(data):
+            if code in (KEY_LEFTMETA, KEY_RIGHTMETA):
+                (self.meta.add if value else self.meta.discard)(code)
+                continue
+            if self.home and value == 1 and (code == HOME_KEY or (code == KEY_ESC and self.meta)):
+                self.home()
+                continue
             if code in POWER_KEYS and value == 1:
                 now = time.monotonic()
                 if now - self.last < 0.5:  # one press can come from two devices at once
@@ -910,26 +1236,165 @@ class Files:
             raise FileExistsError('Something called %s is already there.' % to)
         os.rename(src, dst)
 
+    # The Trash is the usual one for Linux (the freedesktop.org one): the thing goes in
+    # Trash/files, and a little .trashinfo note in Trash/info says where it came from and
+    # when, so it can go back (and other Linux apps understand it too).
+    def bin(self):
+        base = os.path.join(self.home, '.local', 'share', 'Trash')
+        for d in ('files', 'info'):
+            os.makedirs(os.path.join(base, d), exist_ok=True)
+        return os.path.join(base, 'files'), os.path.join(base, 'info')
+
+    @staticmethod
+    def free_name(folder, name):
+        stem, ext = os.path.splitext(name)
+        if name.startswith('.') and not ext:
+            stem, ext = name, ''
+        dst, n = os.path.join(folder, name), 1
+        while os.path.lexists(dst):
+            n += 1
+            dst = os.path.join(folder, '%s (%d)%s' % (stem, n, ext))
+        return dst
+
     def trash(self, path):
         src = self.resolve(path)
         if src == self.home:
             raise PermissionError('DiceOS won\'t put your whole home folder in the Trash.')
-        bin_ = os.path.join(self.home, '.local', 'share', 'Trash', 'files')
-        os.makedirs(bin_, exist_ok=True)
-        name, n = os.path.basename(src), 1
-        dst = os.path.join(bin_, name)
-        while os.path.exists(dst):
-            n += 1
-            dst = os.path.join(bin_, '%s (%d)' % (name, n))
+        files_dir, info_dir = self.bin()
+        if src == files_dir or src.startswith(files_dir + '/'):
+            raise PermissionError('That\'s already in the Trash.')
+        dst = self.free_name(files_dir, os.path.basename(src))
+        with open(os.path.join(info_dir, os.path.basename(dst) + '.trashinfo'), 'w') as f:
+            f.write('[Trash Info]\nPath=%s\nDeletionDate=%s\n' % (urllib.parse.quote(src), time.strftime('%Y-%m-%dT%H:%M:%S')))
         shutil.move(src, dst)
+        return os.path.basename(dst)
+
+    def trash_info(self, name):
+        _, info_dir = self.bin()
+        out = {}
+        try:
+            with open(os.path.join(info_dir, name + '.trashinfo')) as f:
+                for line in f:
+                    k, _, v = line.strip().partition('=')
+                    if k == 'Path':
+                        out['from'] = urllib.parse.unquote(v)
+                    elif k == 'DeletionDate':
+                        try:
+                            out['at'] = int(time.mktime(time.strptime(v[:19], '%Y-%m-%dT%H:%M:%S')))
+                        except ValueError:
+                            pass
+        except OSError:
+            pass
+        return out
+
+    @staticmethod
+    def size_of(path):
+        if not os.path.isdir(path) or os.path.islink(path):
+            try:
+                return os.lstat(path).st_size
+            except OSError:
+                return 0
+        total = 0
+        for root, _, names in os.walk(path):
+            for n in names:
+                try:
+                    total += os.lstat(os.path.join(root, n)).st_size
+                except OSError:
+                    pass
+        return total
+
+    def trash_list(self):
+        files_dir, _ = self.bin()
+        items = []
+        for e in os.scandir(files_dir):
+            info = self.trash_info(e.name)
+            try:
+                mtime = int(e.stat(follow_symlinks=False).st_mtime)
+            except OSError:
+                mtime = 0
+            frm = info.get('from', '')
+            items.append({'name': e.name, 'dir': e.is_dir(follow_symlinks=False), 'size': self.size_of(e.path), 'mtime': info.get('at', mtime),
+                          'from': self.show(frm) if frm else ''})
+        items.sort(key=lambda x: -x['mtime'])
+        return items
+
+    def in_bin(self, name):
+        files_dir, _ = self.bin()
+        if not name or '/' in name or name in ('.', '..'):
+            raise ValueError('That isn\'t in the Trash.')
+        p = os.path.join(files_dir, name)
+        if not os.path.lexists(p):
+            raise FileNotFoundError('That isn\'t in the Trash any more.')
+        return p
+
+    def restore(self, name):
+        src = self.in_bin(name)
+        frm = self.trash_info(name).get('from') or os.path.join(self.home, name)
+        folder = os.path.dirname(frm)
+        try:
+            folder = self.resolve(folder)
+        except PermissionError:
+            folder = self.home
+        if not os.path.isdir(folder):
+            folder = self.home  # its folder's gone: it comes back to Home
+        dst = self.free_name(folder, os.path.basename(frm))
+        shutil.move(src, dst)
+        try:
+            os.remove(os.path.join(self.bin()[1], name + '.trashinfo'))
+        except OSError:
+            pass
+        return self.show(dst)
+
+    def forget(self, name=None):
+        """Gone for good: one thing from the Trash, or (no name) all of it."""
+        files_dir, info_dir = self.bin()
+        names = [name] if name else os.listdir(files_dir)
+        for n in names:
+            p = self.in_bin(n)
+            if os.path.isdir(p) and not os.path.islink(p):
+                shutil.rmtree(p)
+            else:
+                os.remove(p)
+            try:
+                os.remove(os.path.join(info_dir, n + '.trashinfo'))
+            except OSError:
+                pass
+        return len(names)
+
+    def move(self, path, to_dir):
+        src, dst_dir = self.resolve(path), self.resolve(to_dir)
+        if not os.path.isdir(dst_dir):
+            raise NotADirectoryError('That folder isn\'t there.')
+        if dst_dir == src or dst_dir.startswith(src + '/'):
+            raise ValueError('A folder can\'t go inside itself.')
+        if os.path.dirname(src) == dst_dir:
+            return self.show(src)
+        dst = os.path.join(dst_dir, os.path.basename(src))
+        if os.path.lexists(dst):
+            raise FileExistsError('Something called %s is already there.' % os.path.basename(src))
+        shutil.move(src, dst)
+        return self.show(dst)
+
+    def usage(self):
+        u = shutil.disk_usage(self.home)
+        return {'used': u.used, 'quota': u.total, 'free': u.free, 'trash': self.size_of(self.bin()[0])}
 
     def copy(self, path, to_dir):
         src, dst_dir = self.resolve(path), self.resolve(to_dir)
+        if dst_dir == src or dst_dir.startswith(src + '/'):
+            raise ValueError('A folder can\'t go inside itself.')
         dst = os.path.join(dst_dir, os.path.basename(src))
-        if os.path.exists(dst):
+        if os.path.dirname(src) == dst_dir:  # a copy next to it
+            stem, ext = os.path.splitext(os.path.basename(src))
+            dst = self.free_name(dst_dir, stem + ' copy' + ext)
+        elif os.path.exists(dst):
             raise FileExistsError('Something with that name is already there.')
         (shutil.copytree if os.path.isdir(src) else shutil.copy2)(src, dst)
+        for root, dirs, names in os.walk(dst) if os.path.isdir(dst) else [(os.path.dirname(dst), [], [os.path.basename(dst)])]:
+            for n in dirs + names:
+                self.chown(os.path.join(root, n))
         self.chown(dst)
+        return self.show(dst)
 
     def write(self, path, data):
         real = self.resolve(path)
@@ -1194,6 +1659,25 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, public_settings(self.server.settings_path))
         if path == '/api/find':
             return self.send(200, {'ok': True, 'items': files.find(q.get('q', '')[:80])})
+        if path == '/api/trash':
+            return self.send(200, {'ok': True, 'items': files.trash_list()})
+        if path == '/api/apps':
+            return self.send(200, sysm.apps.status())
+        if path == '/api/apps/search':
+            if q.get('ids'):  # just these (the Store's picks: the ones Flathub has for this computer)
+                want = set(q['ids'].split(',')[:100])
+                return self.send(200, {'ok': True, 'items': [a for a in sysm.apps.catalog() if a['id'] in want]})
+            return self.send(200, {'ok': True, 'items': sysm.apps.search(q.get('q', '')[:80], q.get('cat', '')[:30], min(200, int(q.get('n', '60') or 60)))})
+        if path == '/api/apps/icon':
+            p = sysm.apps.icon(q.get('id', ''))
+            if not p:
+                return self.fail(404, 'No icon.')
+            with open(p, 'rb') as f:
+                return self.send(200, f.read(), 'image/png', {'Cache-Control': 'max-age=86400'})
+        if path == '/api/games':
+            return self.send(200, sysm.apps.games(q.get('host', '')))
+        if path == '/api/files/usage':
+            return self.send(200, dict(files.usage(), ok=True))
         if path == '/api/files':
             try:
                 return self.send(200, files.list(q.get('path', '~')))
@@ -1238,7 +1722,31 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/power':
             return self.send(200, sysm.power(b.get('action')))
         if path == '/api/open':
-            return self.send(200, sysm.open_url(b.get('url')))
+            return self.send(200, sysm.open_url(b.get('url'), bool(b.get('app'))))
+        if path == '/api/apps':
+            act, app_id, apps = b.get('action'), str(b.get('id') or ''), sysm.apps
+            if act == 'setup':
+                return self.send(200, {'ok': True, 'job': apps.setup()})
+            if act == 'install':
+                return self.send(200, {'ok': True, 'job': apps.install(app_id)})
+            if act == 'remove':
+                return self.send(200, {'ok': True, 'job': apps.remove(app_id)})
+            if act == 'update':
+                return self.send(200, {'ok': True, 'job': apps.update_all()})
+            if act == 'open':
+                return self.send(200, apps.open(app_id))
+            if act == 'close':
+                return self.send(200, {'ok': True, 'closed': apps.close_front()})
+            return self.fail(400, 'Unknown action.')
+        if path == '/api/games':
+            act, host, apps = b.get('action'), str(b.get('host') or ''), sysm.apps
+            if act == 'pair':
+                return self.send(200, {'ok': True, 'job': apps.pair(host, str(b.get('pin') or ''))})
+            if act == 'play':
+                return self.send(200, apps.play(host, str(b.get('game') or ''), str(b.get('quality') or '1080p'), int(b.get('fps') or 60)))
+            if act == 'quit':
+                return self.send(200, apps.quit_game(host))
+            return self.fail(400, 'Unknown action.')
         if path == '/api/bluetooth':
             return self.send(200, sysm.bluetooth_do(b.get('action'), b.get('mac')))
         if path == '/api/screenshot':
@@ -1265,20 +1773,26 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/ha':
             return self.send(200, ha_call(self.server.settings_path, b))
         if path == '/api/files':
-            files, op = Files(desktop_user()), b.get('op')
+            files, op, out = Files(desktop_user()), b.get('op'), None
             if op == 'mkdir':
                 files.mkdir(b.get('path'))
             elif op == 'rename':
                 files.rename(b.get('path'), b.get('to', ''))
             elif op == 'trash':
-                files.trash(b.get('path'))
+                out = files.trash(b.get('path'))
             elif op == 'copy':
-                files.copy(b.get('path'), b.get('to'))
+                out = files.copy(b.get('path'), b.get('to'))
+            elif op == 'move':
+                out = files.move(b.get('path'), b.get('to'))
+            elif op == 'restore':
+                out = files.restore(b.get('name'))
+            elif op == 'forget':
+                out = files.forget(b.get('name') or None)
             elif op == 'text':
                 files.write(b.get('path'), str(b.get('text', '')).encode())
             else:
                 return self.fail(400, 'Unknown action.')
-            return self.send(200, {'ok': True})
+            return self.send(200, {'ok': True, 'path': out} if isinstance(out, str) else {'ok': True, 'count': out} if isinstance(out, int) else {'ok': True})
         return self.fail(404, 'No such thing.')
 
     def events(self, remote):

@@ -270,24 +270,8 @@
   };
 
   // Store: the suite, with the line to get each one
-  Views.store = function () {
-    const page = h('<div><div class="lib-head"><h1 class="title">Store</h1><p class="muted" style="margin:0 0 6px">Free, made by Dhruv. Each one installs with one line in Terminal.</p></div><div class="store-feature" data-block></div></div>');
-    const pca = D.app('pca');
-    const f = h('<button class="feature" data-nav data-first data-key="st:pca" data-hero="store" data-a="Open"><h3>Get them all with pca</h3><p>One menu that installs every app here, opens them, keeps them up to date, and can take them all away again.</p></button>');
-    f.prepend(D.coverEl(pca, 'wide'));
-    f.onclick = () => Shell.go('page', 'pca');
-    const side = h('<div class="feature-side panel"><h3 style="font:500 1.2rem var(--pixel);margin:0">How it works</h3><p>Open Terminal on your computer, paste the line, press Return. That\'s it: no accounts, no app store, nothing to pay.</p>' +
-      '<div class="cmd" style="--c:' + pca.c + '"><code>curl -fsSL ' + esc(D.origin) + '/pca/install.sh | sh</code><button class="b small" data-nav data-key="st:copy" data-a="Copy">Copy</button></div></div>');
-    side.querySelector('button').onclick = (e) => copy(e.currentTarget.previousElementSibling.textContent, e.currentTarget);
-    page.querySelector('.store-feature').append(f, side);
-    CATALOG.groups.forEach(([g, title]) => {
-      const apps = CATALOG.suite.filter((a) => a.group === g && a.id !== 'pca');
-      if (!apps.length) return;
-      const s = h('<section class="shelf" data-block><h2>' + esc(title) + '</h2><div class="row" data-row></div></section>');
-      apps.forEach((a) => s.querySelector('.row').appendChild(tile(D.app(a.id), { size: 'wide', key: 'st', sub: a.blurb })));
-      page.appendChild(s);
-    });
-    return page;
+  Views.store = function () { // the Store (js/store.js): real apps, web apps and Dhruv's apps
+    return D.store.page('tv');
   };
   function copy(text, btn) {
     const done = () => { if (btn) { const t = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = t; }, 1400); } D.toast({ icon: 'copy', c: '#4fc16b', title: 'Copied', text: 'Paste it into Terminal on your computer.' }); };

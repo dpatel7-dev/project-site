@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>A file from Dice Cloud - djp7</title>
+<style>
+  .get { min-height: calc(100svh - 140px); display: grid; place-items: center; padding: 40px 0; }
+  .get-card { width: min(560px, 100%); text-align: center; }
+  .get h1 { font: 700 clamp(1.6rem, 4vw, 2.3rem)/1.15 var(--pixel); margin: 0 0 10px; overflow-wrap: anywhere; }
+  .get p { color: var(--muted); margin: 0 auto 18px; max-width: 32em; font-size: 1.06rem; }
+  .get .look { margin: 22px 0; }
+  .get .look img, .get .look video { max-width: 100%; max-height: 60vh; border-radius: 14px; display: block; margin: 0 auto; }
+  .get .look audio { width: 100%; }
+  .get .look pre { text-align: left; max-height: 50vh; overflow: auto; padding: 16px; border-radius: 12px; background: rgba(127,127,127,.12); white-space: pre-wrap; }
+  .get .bar { height: 8px; border-radius: 99px; background: rgba(127,127,127,.2); overflow: hidden; margin: 18px auto; max-width: 320px; }
+  .get .bar i { display: block; height: 100%; width: 0; background: #3a9be8; transition: width .2s; }
+  .get .lock { font-size: .92rem; }
+</style>
+</head>
+<body>
+<main class="wrap get">
+  <div class="get-card">
+    <h1 id="name">A file from Dice Cloud</h1>
+    <p id="what">Opening it…</p>
+    <div class="bar" id="bar"><i></i></div>
+    <div class="look" id="look"></div>
+    <p><a class="btn" id="save" href="#" hidden>Download</a></p>
+    <p class="lock">It was locked on the computer that shared it. The key is in this link (after the #), which your browser never sends to the website, so only people with the link can open it.</p>
+  </div>
+</main>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const say = (t) => { $('what').textContent = t; };
+  const size = (n) => (n < 1024 ? n + ' bytes' : n < 1048576 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB');
+  const unb64 = (s) => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
+  const q = new URLSearchParams(location.hash.slice(1));
+  const name = q.get('n') || 'file', type = q.get('t') || 'application/octet-stream', parts = (q.get('p') || '').split(',').filter((p) => /^[0-9a-f]{32}$/.test(p));
+  $('name').textContent = name;
+  document.title = name + ' - Dice Cloud';
+  if (!q.get('k') || !parts.length) { say('This link is missing a piece. Ask for it again.'); $('bar').hidden = true; return; }
+  if (!window.crypto || !crypto.subtle) { say('This browser can\'t unlock files.'); $('bar').hidden = true; return; }
+  (async () => {
+    try {
+      const key = await crypto.subtle.importKey('raw', unb64(q.get('k')), 'AES-GCM', false, ['decrypt']);
+      const out = [];
+      for (let i = 0; i < parts.length; i++) {
+        const r = await fetch('/dice/shared/' + parts[i], { cache: 'no-store' });
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'The website answered ' + r.status + '.');
+        const buf = new Uint8Array(await r.arrayBuffer());
+        out.push(new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: buf.slice(0, 12) }, key, buf.slice(12))));
+        $('bar').firstChild.style.width = Math.round((i + 1) / parts.length * 100) + '%';
+      }
+      const blob = new Blob(out, { type });
+      const url = URL.createObjectURL(blob);
+      $('bar').hidden = true;
+      say(size(blob.size) + ', shared from Dice Cloud.');
+      const look = $('look');
+      if (/^image\//.test(type) && !/svg/.test(type)) { const img = new Image(); img.alt = ''; img.src = url; look.appendChild(img); }
+      else if (/^video\//.test(type)) { const v = document.createElement('video'); v.controls = true; v.src = url; look.appendChild(v); }
+      else if (/^audio\//.test(type)) { const a = document.createElement('audio'); a.controls = true; a.src = url; look.appendChild(a); }
+      else if (/^text\/|json/.test(type) && blob.size < 400000) { const pre = document.createElement('pre'); pre.textContent = await blob.text(); look.appendChild(pre); }
+      const a = $('save');
+      a.href = url; a.download = name; a.hidden = false;
+    } catch (e) {
+      $('bar').hidden = true;
+      say(e && e.name === 'OperationError' ? 'The key in this link doesn\'t open the file. Was the link copied whole?' : (e && e.message) || 'Couldn\'t open it.');
+    }
+  })();
+})();
+</script>
+</body>
+</html>

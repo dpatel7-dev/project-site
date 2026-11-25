@@ -43,8 +43,13 @@ PKGS="cage $CHROME python3 curl ca-certificates plymouth plymouth-themes wlr-ran
 if [ "$PI" = 0 ]; then
   for p in libgl1-mesa-dri mesa-vulkan-drivers firmware-linux-free firmware-sof-signed; do apt-cache show "$p" >/dev/null 2>&1 && PKGS="$PKGS $p"; done
 fi
+# real apps (from Flathub, with Flatpak), and Xwayland for the ones that still need X11
+for p in flatpak xwayland; do apt-cache show "$p" >/dev/null 2>&1 && PKGS="$PKGS $p"; done
 # shellcheck disable=SC2086
 apt-get install -y --no-install-recommends $PKGS
+if command -v flatpak >/dev/null 2>&1; then
+  flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || say "Couldn't add Flathub now; the Dice Store can do it later."
+fi
 
 say "2 of 5: Putting DiceOS in /opt/dice..."
 if [ -n "${DICE_SRC:-}" ]; then

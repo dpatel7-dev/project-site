@@ -358,6 +358,76 @@ class Site(unittest.TestCase):
         call(url, method='DELETE')
         self.assertEqual(json.loads(call(url + '/history')[2])['versions'], [])
 
+    def test_dice_cloud_files(self):
+        box_id = '12' * 16
+        part, other = 'a1' * 16, 'b2' * 16
+        base = '/dice/cloud/' + box_id
+        # parts need a box first
+        self.assertEqual(call(base + '/files/' + part, method='PUT', body=b'x' * 64)[0], 404)
+        box = {'v': 1, 'iv': 'AAAAAAAAAAAAAAAA', 'ct': 'c2NyYW1ibGVkIGJ5dGVzIGhlcmU='}
+        self.assertEqual(call(base, method='PUT', body=json.dumps(box).encode())[0], 200)
+        code, h, body = call(base + '/files')
+        self.assertEqual((code, json.loads(body)['used']), (200, 0))
+        self.assertEqual(h['Access-Control-Allow-Origin'], '*')
+        # a part goes in and comes back as it was; too small or too big is refused
+        self.assertEqual(call(base + '/files/' + part, method='PUT', body=b'\x01' * 1000)[0], 200)
+        code, h, data = call(base + '/files/' + part)
+        self.assertEqual((code, data, h['Content-Type']), (200, b'\x01' * 1000, 'application/octet-stream'))
+        self.assertEqual(call(base + '/files/' + other, method='PUT', body=b'short')[0], 400)
+        self.assertEqual(call(base + '/files/' + other, method='PUT', body=b'x' * (site_app.CLOUD_PART_MAX + 1))[0], 413)
+        self.assertEqual(call(base + '/files/not-a-part', method='PUT', body=b'x' * 64)[0] in (404, 405), True)
+        listed = json.loads(call(base + '/files')[2])
+        self.assertEqual((listed['used'], [p['p'] for p in listed['parts']]), (1000, [part]))
+        # each Dice Cloud has a limit
+        os.environ['DICE_CLOUD_QUOTA_MB'] = '1'
+        try:
+            code, _, body = call(base + '/files/' + other, method='PUT', body=b'y' * (1024 * 1024))
+            self.assertEqual((code, json.loads(body)['error']), (507, 'Your Dice Cloud is full.'))
+        finally:
+            del os.environ['DICE_CLOUD_QUOTA_MB']
+        # sharing one part: the link works until it's stopped (or runs out)
+        self.assertEqual(call('/dice/shared/' + part)[0], 404)
+        self.assertEqual(call(base + '/share/' + other, method='PUT')[0], 404)
+        code, _, body = call(base + '/share/' + part, method='PUT', body=b'{"days": 2}')
+        self.assertEqual(code, 200)
+        self.assertAlmostEqual(json.loads(body)['until'], time.time() + 2 * 86400, delta=60)
+        self.assertEqual(call('/dice/shared/' + part)[2], b'\x01' * 1000)
+        self.assertEqual(call('/dice/cloud/' + '34' * 16 + '/share/' + part, method='DELETE')[0], 200)  # not theirs to stop
+        self.assertEqual(call('/dice/shared/' + part)[0], 200)
+        self.assertEqual(call(base + '/share/' + part, method='DELETE')[0], 200)
+        self.assertEqual(call('/dice/shared/' + part)[0], 404)
+        call(base + '/share/' + part, method='PUT')
+        marker = os.path.join(os.environ['SITE_DATA'], 'dice-cloud', 'shared', part)
+        with open(marker) as f:
+            m = json.load(f)
+        m['until'] = time.time() - 5
+        with open(marker, 'w') as f:
+            json.dump(m, f)
+        self.assertEqual(call('/dice/shared/' + part)[0], 404)
+        # a new code: the files move to the new box, and links keep working
+        new_id = '56' * 16
+        call(base + '/share/' + part, method='PUT')
+        self.assertEqual(call('/dice/cloud/' + new_id + '/files-from/' + box_id, method='POST')[0], 404)
+        call('/dice/cloud/' + new_id, method='PUT', body=json.dumps(box).encode())
+        self.assertEqual(call('/dice/cloud/' + new_id + '/files-from/' + box_id, method='POST')[0], 200)
+        self.assertEqual(call('/dice/cloud/' + new_id + '/files/' + part)[2], b'\x01' * 1000)
+        self.assertEqual(call(base + '/files/' + part)[0], 404)
+        self.assertEqual(call('/dice/shared/' + part)[0], 200)
+        self.assertEqual(call(base, method='DELETE', headers={'HTTP_X_DICE_KEEP_FILES': '1'})[0], 200)
+        self.assertEqual(call('/dice/cloud/' + new_id + '/files/' + part)[0], 200)
+        # deleting a part, then the whole box, takes everything with it
+        call('/dice/cloud/' + new_id + '/files/' + other, method='PUT', body=b'z' * 100)
+        self.assertEqual(call('/dice/cloud/' + new_id + '/files/' + other, method='DELETE')[0], 200)
+        self.assertEqual(call('/dice/cloud/' + new_id + '/files/' + other)[0], 404)
+        self.assertEqual(call('/dice/cloud/' + new_id, method='DELETE')[0], 200)
+        self.assertEqual(call('/dice/cloud/' + new_id + '/files/' + part)[0], 404)
+        self.assertEqual(call('/dice/shared/' + part)[0], 404)
+        # the page that opens shared links
+        code, _, body = call('/dice/get')
+        self.assertEqual(code, 200)
+        self.assertIn(b'crypto.subtle.decrypt', body)
+        self.assertIn(b'no-referrer', body)
+
     def test_dice_cloud_pairing_slot(self):
         slot = '/dice/cloud/pair/' + 'ef' * 16
         self.assertEqual(call(slot)[0], 404)

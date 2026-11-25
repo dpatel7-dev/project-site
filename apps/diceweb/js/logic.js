@@ -210,7 +210,8 @@
           const node = walk(env.disk, at(a));
           if (!node) say('cat: nothing called ' + a);
           else if (node.type === 'dir') say('cat: ' + a + ' is a folder (try ls ' + a + ')');
-          else node.text.split('\n').forEach(say);
+          else if (node.blob) say('cat: ' + a + ' isn\'t text you can read here (' + Math.max(1, Math.round((node.size || 0) / 1024)) + ' KB). Open it in Files.');
+          else (node.text || '').split('\n').forEach(say);
         }
         break;
       }

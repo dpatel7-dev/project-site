@@ -8,6 +8,8 @@ if [ "$1" = "--auto" ] && ! python3 -c "import json,sys;sys.exit(0 if json.load(
   echo "Automatic updates are off."; exit 0
 fi
 HAVE=$(cat /opt/dice/VERSION 2>/dev/null || echo 0)
+# apps from the Dice Store get their updates too (quietly; it's fine if there are none)
+if command -v flatpak >/dev/null 2>&1; then flatpak update --system -y --noninteractive >/dev/null 2>&1 || true; fi
 NEW=$(curl -fsSL "$SITE/versions.json" | python3 -c "import json,sys;print(json.load(sys.stdin).get('dice',''))")
 if [ -z "$NEW" ]; then echo "Couldn't reach $SITE to check for updates."; exit 1; fi
 if [ "$NEW" = "$HAVE" ] && [ "$1" != "--force" ]; then echo "DiceOS $HAVE is the newest."; exit 0; fi

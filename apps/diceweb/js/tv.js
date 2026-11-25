@@ -316,10 +316,88 @@
   };
 
   // the rows sit on frosted glass, below the ground
+  // ---- Dice Cloud: your newest photos, videos and songs, from any of your computers -------------------
+  function fillCloud(row) {
+    const F = D.drive;
+    row.innerHTML = '';
+    F.recent(12).forEach((f) => {
+      const k = F.kind(f), ext = (f.name.split('.').pop() || '').slice(0, 4).toUpperCase();
+      const b = h('<button class="ltile ctile k-' + k + '" data-nav data-key="cl:' + esc(f.id) + '" data-a="' + (k === 'photo' ? 'View' : k === 'song' || k === 'video' ? 'Play' : 'Open') + '" aria-label="' + esc(f.name) + '">' + (f.thumb ? '' : '<span class="cext">' + esc(ext) + '</span>') + '<span class="lname">' + esc(f.name) + '</span></button>');
+      if (f.thumb) F.thumbUrl(f.id).then((u) => { if (u) b.style.backgroundImage = 'url("' + u + '")'; });
+      b.onclick = () => (k === 'photo' && D.app('photos') ? D.launch('photos', { arg: 'cloud:' + f.id, swap: true }) : D.launch('files', { arg: 'cloud-open:' + f.id, swap: true }));
+      row.appendChild(b);
+    });
+    const all = h('<button class="ltile lall" data-nav data-key="cl:all" data-a="Open"><span class="lname">All your files</span></button>');
+    all.onclick = () => D.launch('files', { arg: 'cloud:/', swap: true });
+    row.appendChild(all);
+  }
+  function cloudRow() {
+    const s = h('<section class="shelf" data-block id="cloudshelf"><h2>Dice Cloud <small>Your photos, videos and songs, from all your computers.</small></h2><div class="row" data-row id="cloudrow"></div></section>');
+    fillCloud(s.querySelector('#cloudrow'));
+    return s;
+  }
+  const hasCloud = () => !!(D.drive && D.drive.on() && D.drive.files().length && D.app('files'));
+  let cloudT = 0;
+  D.on('drive', () => {
+    clearTimeout(cloudT);
+    cloudT = setTimeout(() => {
+      const ground = D.$('.tvb-ground'), shelf = D.$('#cloudshelf');
+      if (!ground) return;
+      if (!hasCloud()) { if (shelf && !shelf.contains(D.nav.el)) shelf.remove(); return; }
+      if (shelf) { if (!shelf.contains(D.nav.el)) fillCloud(shelf.querySelector('#cloudrow')); return; }
+      const watch = ground.querySelector('#watch');
+      ground.insertBefore(cloudRow(), watch ? watch.closest('.shelf') : null);
+    }, 500);
+  });
   TV.rows = function (ground) {
     if (D.channels && D.app('channels')) { ground.append(liveRow()); ground.append(newsRow()); }
+    if (hasCloud()) ground.append(cloudRow());
+    if (D.myApps && D.myApps.list().length) ground.append(myRow());
+    if (D.gaming && D.app('gaming')) ground.append(playRow());
     ground.append(watchRow());
   };
+  // ---- Play: DiceGaming's games from your PC, and the cloud gaming services -----------------------------
+  function playRow() {
+    const s = h('<section class="shelf" data-block><h2>Play <small>Games from your gaming PC, or the cloud.</small></h2><div class="row" data-row id="play"></div></section>');
+    const row = s.querySelector('#play'), g = D.gaming.G();
+    const dg = h('<button class="wtile" data-nav data-key="pl:dg" data-a="Open" style="--wc:#7c4dff" aria-label="DiceGaming"><span class="wmono">' + D.glyph('pad', 5) + '</span><span class="wname">DiceGaming</span></button>');
+    dg.onclick = () => D.launch('gaming');
+    row.appendChild(dg);
+    if (D.sys) g.recent.slice(0, 5).forEach((x) => {
+      const b = h('<button class="wtile" data-nav data-key="pl:g:' + esc(x.host + '|' + x.game) + '" data-a="Play" style="--wc:' + esc(['#ff707a', '#f5a623', '#3fb6a8', '#4b9bec', '#d27adf'][x.game.length % 5]) + '" aria-label="' + esc(x.game) + '"><span class="wmono">' + esc(TV.mono(x.game)) + '</span><span class="wname">' + esc(x.game) + '</span></button>');
+      b.onclick = () => D.gaming.play(x.host, x.game);
+      row.appendChild(b);
+    });
+    D.gaming.CLOUD.forEach((c) => {
+      const b = h('<button class="wtile" data-nav data-key="pl:c:' + c.id + '" data-a="Open" style="--wc:' + c.c + '" aria-label="' + esc(c.name) + '"><span class="wico-box"><span class="wmono">' + esc(c.mono) + '</span></span><span class="wname">' + esc(c.name) + '</span></button>');
+      TV.iconOn(b, TV.icon({ url: c.url }));
+      b.onclick = () => D.gaming.openCloud(c);
+      row.appendChild(b);
+    });
+    return s;
+  }
+  // ---- the apps you got from the Store: real ones and web ones ----------------------------------------
+  function myRow() {
+    const s = h('<section class="shelf" data-block id="myshelf"><h2>Your apps <small>From the Store. Home on the remote comes back here.</small></h2><div class="row" data-row id="myapps"></div></section>');
+    const row = s.querySelector('#myapps');
+    D.myApps.list().forEach((a) => {
+      const b = h('<button class="wtile mytile" data-nav data-key="my:' + esc(a.id) + '" data-a="Open" aria-label="' + esc(a.name) + '"><span class="wname">' + esc(a.name) + '</span></button>');
+      b.prepend(D.myApps.el(a, 64));
+      b.onclick = () => D.myApps.open(a);
+      row.appendChild(b);
+    });
+    const more = h('<button class="wtile add" data-nav data-key="my:store" data-a="Open"><span class="wmono">+</span><span class="wname">The Store</span></button>');
+    more.onclick = () => D.launch('store');
+    row.appendChild(more);
+    return s;
+  }
+  D.on('myapps', () => {
+    const ground = D.$('.tvb-ground'), shelf = D.$('#myshelf');
+    if (!ground || (shelf && shelf.contains(D.nav.el))) return;
+    const fresh = D.myApps.list().length ? myRow() : null;
+    if (shelf) { if (fresh) shelf.replaceWith(fresh); else shelf.remove(); return; }
+    if (fresh) { const watch = ground.querySelector('#watch'); ground.insertBefore(fresh, watch ? watch.closest('.shelf') : null); }
+  });
 
   // ---- the selection frame: a pixel-art frame that moves to whatever's picked on Home ----------------
   const FRAME = (() => {
@@ -394,7 +472,7 @@
   const A = D.ambient = { on: false, last: Date.now() };
   let amb = null, scene = null, sceneKey = '', lastMin = -1, lastSec = -1;
   function buildAmbient() {
-    amb = h('<div id="ambient" hidden aria-hidden="true"><canvas class="am-bg"></canvas><div class="am-veil"></div><div class="am-in"><b class="am-clock"></b><span class="am-date"></span><span class="am-wx"></span><span class="am-np"></span></div></div>');
+    amb = h('<div id="ambient" hidden aria-hidden="true"><canvas class="am-bg"></canvas><img class="am-ph" alt=""><img class="am-ph" alt=""><div class="am-veil"></div><div class="am-in"><b class="am-clock"></b><span class="am-date"></span><span class="am-wx"></span><span class="am-np"></span></div></div>');
     amb.addEventListener('pointerdown', () => A.exit());
     document.body.appendChild(amb);
   }
@@ -413,7 +491,7 @@
   A.enter = function () {
     if (A.on) return;
     if (!amb) buildAmbient();
-    A.on = true; lastMin = -1; lastSec = -1;
+    A.on = true; lastMin = -1; lastSec = -1; phNext = 0;
     amb.hidden = false;
     requestAnimationFrame(() => amb.classList.add('on'));
     paintAmbient(true);
@@ -439,7 +517,20 @@
     }
   }
   // what's behind the clock: your world, one of the Live channels, or just the clock on black
-  A.CHOICES = [['world', 'Your world'], ['fire', 'Fireplace'], ['fish', 'Aquarium'], ['aurora', 'Northern lights'], ['space', 'Space'], ['dark', 'Just the clock']];
+  A.CHOICES = [['world', 'Your world'], ['photos', 'Photos in Dice Cloud'], ['fire', 'Fireplace'], ['fish', 'Aquarium'], ['aurora', 'Northern lights'], ['space', 'Space'], ['dark', 'Just the clock']];
+  // your photos from Dice Cloud, one every 20 seconds, fading slowly from one to the next
+  let phAt = -1, phNext = 0, phLayer = 0;
+  function photoStep(list, now) {
+    if (now < phNext) return;
+    phNext = now + 20000;
+    phAt = (phAt + 1) % list.length;
+    D.drive.url(list[phAt].id).then((u) => {
+      if (!A.on) return;
+      const imgs = amb.querySelectorAll('.am-ph'), next = imgs[phLayer ^ 1], was = imgs[phLayer];
+      next.onload = () => { next.classList.add('on'); was.classList.remove('on'); phLayer ^= 1; };
+      next.src = u;
+    }).catch(() => { phNext = now + 4000; });
+  }
   A.frame = function (now) {
     if (!A.on || !amb) return;
     const sec = Math.floor(now / 1000);
@@ -448,6 +539,9 @@
     const cv = amb.querySelector('.am-bg'), cell = ch ? D.channels.cell() : D.scapeCell ? D.scapeCell() : 3;
     amb.classList.toggle('am-dark', pick === 'dark');
     if (pick === 'dark') return;
+    const photos = pick === 'photos' && D.drive && D.drive.on() ? D.drive.photos() : null;
+    amb.classList.toggle('am-photos', !!(photos && photos.length));
+    if (photos && photos.length) return photoStep(photos, now);
     const Wd = Math.ceil(innerWidth / cell), Hd = Math.ceil(innerHeight / cell), night = D.night(), key = Wd + 'x' + Hd + night + D.state.world + pick;
     if (key !== sceneKey) {
       sceneKey = key; cv.width = Wd; cv.height = Hd; cv.style.width = Wd * cell + 'px'; cv.style.height = Hd * cell + 'px';

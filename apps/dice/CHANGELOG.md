@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0
+
+- Real apps: diced installs Linux apps from Flathub with Flatpak (for everyone on the computer), shows their progress, opens them, and removes them. It reads Flatpak's own copy of Flathub's list, so searching works without asking a website each time. New installs get Flatpak, Flathub and Xwayland; older ones can get them from the Store with one button. `dice-update` updates the apps too.
+- Apps (and websites opened from Dice) open on top of Dice. Home on a remote (the HDMI one or the air mouse) or Super + Esc on a keyboard closes the one on top, and Dice is back.
+- DiceGaming: diced talks to Moonlight to pair with a gaming PC running Sunshine, list its games, start one (720p to 4K, 30 to 120 frames a second) and stop it.
+- Files: a proper Trash (the standard Linux one, with notes of where things came from, so they can go back), moving, copying next to itself, emptying the Trash, and how much room is left.
+- DiceWeb 2.0: Dice Cloud files, the new Files, the Store with real apps and web apps, and DiceGaming.
+
 ## 1.9.0
 
 - diced can find files by name in your Home folder (/api/find), for the Dice Bar. It skips hidden folders and big ones like node_modules, and stops after a few thousand files so it's always quick.

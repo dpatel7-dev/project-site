@@ -19,8 +19,8 @@
     upload: (path, blob) => call('POST', '/api/file?path=' + encodeURIComponent(path), blob, true),
     blob: (path) => fetch('/api/file?path=' + encodeURIComponent(path), { headers: { 'X-Dice': info.token } }).then((r) => (r.ok ? r.blob() : Promise.reject(new Error('Couldn\'t open it')))),
     termUrl: (cols, rows) => 'ws://' + location.host + '/api/term?token=' + encodeURIComponent(info.token) + '&cols=' + cols + '&rows=' + rows,
-    open: (url) => call('POST', '/api/open', { url }).then((r) => {
-      if (r.ok) D.toast({ icon: 'link', c: '#7c9cff', title: 'Opening in the browser', text: 'Close it (×) to come back to DiceOS.' });
+    open: (url, o) => call('POST', '/api/open', { url, app: !!(o && o.app) }).then((r) => {
+      if (r.ok) D.toast({ icon: 'link', c: '#7c9cff', title: o && o.name ? 'Opening ' + o.name : 'Opening in the browser', text: 'Press Home on the remote (or Super + Esc) to come back to DiceOS.' });
       else D.toast({ icon: 'link', c: '#96969f', title: 'Couldn\'t open it', text: r.error || '' });
       return r;
     }),

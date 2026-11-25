@@ -1,7 +1,7 @@
 // Everything DiceWeb knows about: its own apps, the apps for your computer,
 // and the friends (the mascots). The suite list matches the website's.
 window.CATALOG = {
-  version: '1.9.0',
+  version: '2.0.0',
   site: 'https://djp7.pythonanywhere.com',
 
   // Cubby: DiceWeb's own mascot, a die with feet.
@@ -60,10 +60,12 @@ window.CATALOG = {
       line: 'A code editor for your own files: tabs, line numbers, colours for JavaScript, Python, HTML, CSS and more, and a preview that runs web pages beside the code.', words: 'editor programming code text ide javascript python html css developer' },
     { id: 'cloud', name: 'Dice Cloud', kind: 'app', c: '#4b7bec', who: null, land: 'hills', blurb: 'Your stuff on every computer, and Dice Drop',
       line: 'Your notes, Axiom and more, the same on every computer. Send a link to the TV with Dice Drop, see your computers, and go back to an older version.', words: 'sync cloud share devices send drop backup account pair' },
+    { id: 'gaming', name: 'DiceGaming', kind: 'app', c: '#7c4dff', who: null, land: 'city', blurb: 'Your gaming PC\'s games, and cloud gaming',
+      line: 'Play the games on your gaming PC here, streamed over your home network with Moonlight and Sunshine, or open Xbox Cloud Gaming, GeForce NOW and Amazon Luna.', words: 'games play stream cloud gaming moonlight sunshine xbox geforce now luna controller pc steam' },
     { id: 'monitor', name: 'System Monitor', kind: 'system', c: '#4fc16b', who: null, land: 'screen', blurb: 'How busy the computer is',
       line: 'How busy it is, memory and storage, and what\'s open.', words: 'task manager activity cpu memory processes performance' },
-    { id: 'store', name: 'Store', kind: 'system', c: '#2bc4b2', who: 'cubby', land: 'market', blurb: 'Every app for your computer',
-      line: 'Every app in the suite, with the line to paste to get it.', words: 'shop get install download apps suite' },
+    { id: 'store', name: 'Store', kind: 'system', c: '#2bc4b2', who: 'cubby', land: 'market', blurb: 'Real apps, web apps and more',
+      line: 'Real apps from Flathub on DiceOS (VLC, Kodi, GIMP, LibreOffice, Steam on a PC and thousands more), any website as an app, and Dhruv\'s own apps.', words: 'shop get install download apps suite flathub flatpak web app' },
     { id: 'settings', name: 'Settings', kind: 'system', c: '#7c9cff', who: null, land: 'gears', blurb: 'Look, sound, controllers and more',
       line: 'Change the look, sounds, controllers, what happens at start-up, and more.', words: 'preferences options config setup' },
   ],

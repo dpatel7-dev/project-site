@@ -15,6 +15,9 @@ The website for every project, in one place: **https://djp7.pythonanywhere.com**
 | `/dice/cloud/ID` | Dice Cloud's locked boxes (GET, PUT, DELETE). DiceOS and DiceWeb lock everything with the person's code before sending it, so this only ever keeps `{v, iv, ct}` it can't read. GET gives an ETag (and a tiny 304 when nothing changed); PUT with If-Match is turned back (412) if another computer saved first. Boxes nobody opens for a year are tidied away |
 | `/dice/cloud/ID/history` | The last 5 versions of a box (at most one every 10 minutes), and `/history/N` for one of them |
 | `/dice/cloud/pair/ID` | A tiny locked box for adding a computer with a short code; gone after 10 minutes |
+| `/dice/cloud/ID/files` | Dice Cloud files: how much room is used, and `/files/PART` for one part (GET, PUT, DELETE). Each file is cut into 4 MB parts, each locked on the computer with the file's own key, so this only keeps scrambled parts. 100 MB for each Dice Cloud and 300 MB for all of them together, unless `DICE_CLOUD_QUOTA_MB` or `DICE_CLOUD_TOTAL_MB` say otherwise |
+| `/dice/cloud/ID/share/PART` | Lets a link open one part for a few days (PUT), or stops it (DELETE); `/dice/shared/PART` hands it out, and `/dice/get` is the page that unlocks it with the key in the link (after the #, which browsers never send) |
+| `/dice/cloud/NEW/files-from/OLD` | After a new Dice Cloud code, the files move to the new box (POST) |
 | `/gossip` | [gossip](https://github.com/dpatel7-dev/gossip)'s page. Its chat hub keeps `/api`, `/install.sh`, `/install.ps1` and `/healthz`, so every gossip already installed keeps working |
 | `/tot` | [Tree of Thought](https://github.com/dpatel7-dev/Tree-Of-Thought), plus `/tot/install.sh` and `/tot/install.ps1` |
 | `/pigeon` | [pigeon](https://github.com/dpatel7-dev/pigeon)'s web app (open it on your phone), its file server and installers |

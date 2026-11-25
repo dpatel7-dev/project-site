@@ -60,18 +60,22 @@
       Object.entries(C.SECTIONS).forEach(([n, S]) => { try { counts[n] = Object.keys(S.items()).length; } catch (e) { counts[n] = 0; } });
       inner.innerHTML = '<header class="dca-hero"><div class="dca-ico"></div><div><h1>Dice Cloud</h1><p class="' + (C.error ? 'dca-err' : '') + '">' + esc(busyNote || status) + '</p></div>' +
         '<button class="b small go' + (C.busy ? ' syncing' : '') + '" data-nav data-first data-key="dc:sync">' + D.glyph('restart', 2) + (C.busy ? 'Syncing' : 'Sync now') + '</button></header>' +
+        filesPart() +
         '<section><h2>Your computers</h2><div class="dca-devs" data-row>' + devs.map(devCard).join('') +
         '<button class="dca-dev dca-add glass" data-nav data-key="dc:add">' + D.glyph('plus', 3) + '<b>Add a computer</b><span>With the short code it shows</span></button></div></section>' +
         '<section><div class="dca-h2"><h2>Dice Drop</h2><button class="b small go" data-nav data-key="dc:send">' + D.glyph('link', 2) + 'Send a link or a note</button></div>' +
         (inbox.length ? '<div class="dca-drops glass">' + inbox.slice(0, 8).map(drop).join('') + '</div>' : '<p class="muted dca-empty">Links and notes sent here from your other computers show up here, and on DiceTV they pop up as they arrive. From SereneTab, use <b>Send to…</b> in its menu.</p>') + '</section>' +
-        '<section><h2>What\'s shared</h2><div class="dca-parts">' + Object.entries(C.SECTIONS).map(([n, S]) => '<div class="srow"><div><b>' + esc(S.name) + '</b><span>' + (counts[n] ? (S.whole ? 'Set up here' : counts[n] + (counts[n] === 1 ? ' thing' : ' things') + ' here') : 'Nothing here yet') + '</span></div><button class="switch ' + (C.shares(n) ? 'on' : '') + '" data-nav data-key="dc:part:' + n + '" role="switch" aria-checked="' + C.shares(n) + '" aria-label="Share ' + esc(S.name) + '"></button></div>').join('') + '</div></section>' +
-        '<section><h2>Room</h2><div class="srow"><div><b>' + (used ? KB(used) + ' of ' + KB(C.LIMIT) : 'Not measured yet') + '</b><span>Everything, locked. Notes take the most room.</span></div><span class="dca-meter" aria-hidden="true"><i style="width:' + (frac * 100).toFixed(1) + '%;--m:' + (frac > 0.85 ? '#e5534b' : frac > 0.6 ? '#e5b62e' : '#3fa26b') + '"></i></span></div></section>' +
+        '<section><h2>What\'s shared</h2><div class="dca-parts">' + Object.entries(C.SECTIONS).filter(([, S]) => !S.always).map(([n, S]) => '<div class="srow"><div><b>' + esc(S.name) + '</b><span>' + (counts[n] ? (S.whole ? 'Set up here' : counts[n] + (counts[n] === 1 ? ' thing' : ' things') + ' here') : 'Nothing here yet') + '</span></div><button class="switch ' + (C.shares(n) ? 'on' : '') + '" data-nav data-key="dc:part:' + n + '" role="switch" aria-checked="' + C.shares(n) + '" aria-label="Share ' + esc(S.name) + '"></button></div>').join('') + '</div></section>' +
+        '<section><h2>Room</h2>' + roomRow('Your files', room ? MB(room.used) + ' of ' + MB(room.quota) : 'Measuring…', 'Photos, songs, videos and documents, locked.', room ? room.used / room.quota : 0) +
+        roomRow('Everything else', used ? KB(used) + ' of ' + KB(C.LIMIT) : 'Not measured yet', 'Notes, Axiom, settings and the list of your files. Notes take the most room.', frac) + '</section>' +
         '<section><div class="dca-h2"><h2>Older versions</h2>' + (versions ? '' : '<button class="b small" data-nav data-key="dc:vers">See them</button>') + '</div>' +
         (versions ? (versions.length ? '<div class="dca-vers">' + versions.map((v) => '<div class="srow"><div><b>' + esc(new Date(v.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })) + '</b><span>' + D.ago(v.at) + ', ' + KB(v.size) + '</span></div><button class="b small" data-nav data-key="dc:back:' + v.n + '">Go back to this</button></div>').join('') + '</div>' : '<p class="muted dca-empty">None yet. The website keeps the last 5, one every 10 minutes or more apart.</p>') : '<p class="muted dca-empty">Changed or deleted something by mistake? The website keeps the last 5 versions.</p>') + '</section>' +
         '<section><h2>Lately</h2>' + ((c.log || []).length ? '<ul class="dca-log">' + c.log.slice(0, 8).map((l) => '<li><span>' + esc(l.text) + '</span><small>' + D.ago(l.at) + '</small></li>').join('') + '</ul>' : '<p class="muted dca-empty">Nothing yet.</p>') + '</section>' +
         '<section><h2>Your code</h2><div class="cl-code"><span>Type it on your other computers to share with them</span><b>' + (showCode ? esc(c.code) : '•••••-•••••-•••••-•••••') + '</b><small>Anyone who has it can open your Dice Cloud, so keep it like a password.</small></div>' +
         '<div class="dca-btns"><button class="b small" data-nav data-key="dc:show">' + (showCode ? 'Hide it' : 'Show it') + '</button><button class="b small" data-nav data-key="dc:newcode">Make a new code</button><button class="b small" data-nav data-key="dc:off">Turn off here</button><button class="b small danger" data-nav data-key="dc:del">Delete everything from Dice Cloud</button></div></section>';
       drawIcon();
+      wireFiles();
+      if (D.drive && (!room || Date.now() - room.at > 20000)) D.drive.room().then((r) => { const was = room; room = r; if (!was || was.used !== r.used) paint(); }).catch(() => {});
       const on = (sel, f) => inner.querySelectorAll(sel).forEach((b) => { b.onclick = () => f(b.dataset.key.split(':').slice(2).join(':'), b); });
       on('[data-key="dc:sync"]', async () => { await C.sync({ force: true }); });
       on('[data-key^="dc:dev:"]', (id) => device(devs.find((d) => d.id === id)));
@@ -87,9 +91,50 @@
         .then(async (y) => { if (!y) return; busy('Making a new code…'); const ok = await C.changeCode(); busyNote = ''; showCode = ok; paint(); }));
       on('[data-key="dc:off"]', () => D.ask({ title: 'Turn off Dice Cloud here?', text: 'This computer stops sharing and comes off the list. What\'s in Dice Cloud stays for your other computers, and everything here stays here.', buttons: [{ label: 'Turn off', value: true, go: true }, { label: 'Cancel', value: false }] })
         .then(async (y) => { if (y) { busy('Turning off…'); await C.turnOff(false); busyNote = ''; paint(); } }));
-      on('[data-key="dc:del"]', () => D.ask({ title: 'Delete your Dice Cloud?', text: 'The locked box and its older versions are deleted from the website. Each computer keeps its own copy of everything.', buttons: [{ label: 'Delete it', value: true, go: true, danger: true }, { label: 'Cancel', value: false }] })
+      on('[data-key="dc:del"]', () => D.ask({ title: 'Delete your Dice Cloud?', text: 'The locked box, its older versions and your files in Dice Cloud are deleted from the website, for every computer. Each computer keeps its own copy of everything else, and any files you saved on it.', buttons: [{ label: 'Delete it', value: true, go: true, danger: true }, { label: 'Cancel', value: false }] })
         .then(async (y) => { if (y) { await C.turnOff(true); paint(); } }));
     }
+
+    // ---- your files: the newest, big enough to see from the sofa ---------------------------------------
+    const MB = (n) => (n >= 1048576 * 10 ? Math.round(n / 1048576) + ' MB' : n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.round(n / 1024) + ' KB');
+    let room = D.drive && D.drive.lastRoom;
+    function roomRow(name, amount, about, f) {
+      f = Math.max(0, Math.min(1, f || 0));
+      return '<div class="srow"><div><b>' + esc(name) + ': ' + esc(amount) + '</b><span>' + esc(about) + '</span></div><span class="dca-meter" aria-hidden="true"><i style="width:' + (f * 100).toFixed(1) + '%;--m:' + (f > 0.85 ? '#e5534b' : f > 0.6 ? '#e5b62e' : '#3fa26b') + '"></i></span></div>';
+    }
+    function filesPart() {
+      const F = D.drive;
+      if (!F) return '';
+      const recent = F.recent(10), all = F.files().length, ups = F.uploads;
+      const tile = (f) => { const k = F.kind(f); return '<button class="dca-file k-' + k + '" data-nav data-key="dc:file:' + esc(f.id) + '" data-a="Open" data-x="More" aria-label="' + esc(f.name) + '"><span class="dca-fpic">' + (f.thumb ? '' : '<em>' + esc((f.name.split('.').pop() || '').slice(0, 4).toUpperCase()) + '</em>') + '</span><b>' + esc(f.name) + '</b><small>' + esc(F.size(f.size)) + '</small></button>'; };
+      return '<section><div class="dca-h2"><h2>Your files</h2><div class="dca-btns"><button class="b small go" data-nav data-key="dc:addfiles">' + D.glyph('plus', 2) + 'Add files</button>' +
+        (D.app('files') ? '<button class="b small" data-nav data-key="dc:allfiles">' + D.glyph('library', 2) + (all ? 'All ' + all + ' in Files' : 'Open in Files') + '</button>' : '') + '</div></div>' +
+        (ups.length ? '<div class="dca-ups">' + ups.map((u) => '<div class="fi-upi">' + D.glyph('cloud', 2) + '<span>' + esc(u.name) + '</span><i><b style="width:' + Math.round(u.done * 100) + '%"></b></i></div>').join('') + '</div>' : '') +
+        (recent.length ? '<div class="dca-files" data-row>' + recent.map(tile).join('') + '</div>' : '<p class="muted dca-empty">Photos, songs, videos and documents you put in Dice Cloud are on all your computers, and on DiceTV. They\'re locked here first, each with a key of its own. Add some, or drop them on this window.</p>') + '</section>';
+    }
+    function wireFiles() {
+      const F = D.drive;
+      if (!F) return;
+      inner.querySelectorAll('.dca-file').forEach((b) => {
+        const id = b.dataset.key.slice(8), f = F.item(id);
+        if (!f) return;
+        if (f.thumb) F.thumbUrl(id).then((u) => { if (u) b.querySelector('.dca-fpic').style.backgroundImage = 'url("' + u + '")'; });
+        b.onclick = () => openFile(f);
+        b._x = () => D.launch('files', { arg: 'cloud-open:' + id });
+      });
+      const add = inner.querySelector('[data-key="dc:addfiles"]');
+      if (add) add.onclick = async () => { const files = await F.pick(); if (files.length) F.add('/', files); };
+      const all = inner.querySelector('[data-key="dc:allfiles"]');
+      if (all) all.onclick = () => D.launch('files', { arg: 'cloud:/' });
+    }
+    function openFile(f) {
+      const k = D.drive.kind(f);
+      if (k === 'photo' && D.app('photos')) return D.launch('photos', { arg: 'cloud:' + f.id });
+      D.launch('files', { arg: 'cloud-open:' + f.id });
+    }
+    root.addEventListener('dragover', (e) => { if (C.on()) { e.preventDefault(); root.classList.add('drop'); } });
+    root.addEventListener('dragleave', () => root.classList.remove('drop'));
+    root.addEventListener('drop', (e) => { root.classList.remove('drop'); if (C.on() && e.dataTransfer.files.length) { e.preventDefault(); D.drive.add('/', e.dataTransfer.files); } });
 
     // ---- the bits that ask things -------------------------------------------------------------------
     function busy(text) { busyNote = text; const p = inner.querySelector('.dca-hero p'); if (p) p.textContent = text; }
@@ -179,7 +224,8 @@
       if (el) D.nav.focus(el, { scroll: false }); else if (ctx.mode === 'run') D.nav.first(root);
     }
     paint();
-    const offs = [D.on('cloud', () => { if (root.isConnected) paint(); })];
+    let dt = 0;
+    const offs = [D.on('cloud', () => { if (root.isConnected) paint(); }), D.on('drive', () => { clearTimeout(dt); dt = setTimeout(() => { if (root.isConnected && C.on()) { room = D.drive.lastRoom || room; paint(); } }, 200); })];
     const tick = setInterval(() => { if (root.isConnected && !C.busy) { const p = inner.querySelector('.dca-hero p'); if (p && C.on() && !busyNote && !C.error && D.state.cloud.last) p.textContent = 'Up to date. Synced ' + D.ago(D.state.cloud.last) + '.'; } }, 20000);
     // asked for something on the way in: a drop to show, a link to send, or a short code to show
     const arg = String(ctx.arg || '');

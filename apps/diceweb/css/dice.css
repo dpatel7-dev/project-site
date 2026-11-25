@@ -419,6 +419,10 @@ a { color: inherit; }
 #ambient { position: fixed; inset: 0; z-index: 58; overflow: hidden; background: #05070d; color: #fff; opacity: 0; transition: opacity 1.2s var(--ease); cursor: none; }
 #ambient.on { opacity: 1; }
 #ambient .am-bg { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
+#ambient .am-ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 2.4s ease; display: none; }
+#ambient.am-photos .am-ph { display: block; }
+#ambient.am-photos .am-ph.on { opacity: 1; }
+#ambient.am-photos .am-bg { display: none; }
 #ambient .am-veil { position: absolute; inset: 0; background: linear-gradient(to top, rgba(4, 6, 14, .74) 0, rgba(4, 6, 14, .32) 40%, transparent 64%); }
 #ambient .am-in { position: absolute; left: 6vw; bottom: 8vh; display: grid; justify-items: start; gap: 1.3vh; transition: transform 2s ease; text-shadow: 0 2px 24px rgba(0, 0, 0, .45); }
 #ambient .am-clock { font: 700 clamp(4rem, 22vh, 14rem)/.86 var(--pixel); letter-spacing: .01em; }
@@ -475,6 +479,9 @@ html.osk-on #legend { opacity: 0; }
 .ltile.is-focus { transform: scale(1.04); z-index: 2; box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ink), 0 18px 30px -18px var(--lc); }
 .ltile.lall { background: var(--soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
 .ltile.lall .lname { background: none; color: var(--ink); top: 0; display: grid; place-items: center; padding: 10px; text-align: center; }
+.ctile { background: var(--kc, #7cc4ff) center / cover no-repeat; --lc: #3a9be8; }
+.ctile .cext { position: absolute; inset: 0 0 20px; display: grid; place-items: center; font: 700 clamp(1.6rem, 2.6vw, 2.4rem)/1 var(--pixel); color: #141416; opacity: .7; }
+.ctile.k-photo { --kc: #f6a6b8; } .ctile.k-video { --kc: #ff9a7a; } .ctile.k-song { --kc: #d39cf5; } .ctile.k-doc { --kc: #8fd16a; } .ctile.k-file { --kc: #b9bcc6; }
 
 /* air mice: the pointer hides when it's still; and fitting the picture to a TV that cuts off the edges */
 html.ptr-hide, html.ptr-hide * { cursor: none !important; }

@@ -32,7 +32,10 @@
     }
     return out.sort((a, b) => b.t - a.t);
   }
-  const urlOf = async (p) => (p.url ? p.url : (p.url = URL.createObjectURL(await D.sys.blob(p.path))));
+  // your photos in Dice Cloud: a small picture for the grid, the whole photo when it's opened
+  const cloudPictures = () => (D.drive && D.drive.on() ? D.drive.photos().map((f) => ({ name: f.name, cloud: f.id, t: f.mod })) : []);
+  const urlOf = async (p) => (p.url ? p.url : p.cloud ? D.drive.url(p.cloud) : (p.url = URL.createObjectURL(await D.sys.blob(p.path))));
+  const thumbOf = async (p) => (p.cloud ? (await D.drive.thumbUrl(p.cloud)) || urlOf(p) : urlOf(p));
 
   D.register({ id: 'photos', mount(root, ctx) {
     root.classList.add('pho');
@@ -46,25 +49,31 @@
     root.querySelector('[data-key="ph:open"]').onclick = () => (D.sys && !D.sys.info.emulated ? D.launch('files', { arg: '~/Pictures' }) : pick.click());
     root.querySelector('[data-key="ph:show"]').onclick = () => { if (list.length) { open(0); slideshow(true); } };
     async function fill() {
-      list = opened.concat(await realPictures(), postcards());
+      list = opened.concat(cloudPictures(), await realPictures(), postcards());
       root.querySelector('.pho-count').textContent = list.length + (list.length === 1 ? ' picture' : ' pictures');
       grid.innerHTML = '';
       list.forEach((p, i) => {
         const b = h('<button class="pho-t" data-nav data-key="ph:' + i + '" aria-label="' + esc(p.name) + '"><span class="pho-name">' + esc(p.name.replace(/^Postcard: /, '')) + '</span></button>');
-        urlOf(p).then((u) => { b.style.backgroundImage = 'url("' + u + '")'; }).catch(() => {});
+        thumbOf(p).then((u) => { b.style.backgroundImage = 'url("' + u + '")'; }).catch(() => {});
+        if (p.cloud) b.classList.add('pho-cloud');
         b.onclick = () => open(i);
         grid.appendChild(b);
       });
+      if (want) { const i = list.findIndex((p) => p.cloud === want); want = null; if (i >= 0) return open(i); }
       if (ctx.mode === 'run') setTimeout(() => D.nav.first(root), 30);
     }
+    let want = String(ctx.arg || '').startsWith('cloud:') ? String(ctx.arg).slice(6) : null;
     async function open(i) {
       at = (i + list.length) % list.length;
       const p = list[at];
       view.hidden = false; root.classList.add('viewing');
       img.classList.remove('kb'); void img.offsetWidth;
-      img.src = await urlOf(p);
+      if (p.cloud) { cap.innerHTML = '<b>' + esc(p.name) + '</b><span>From Dice Cloud…</span>'; cap.classList.add('on'); img.src = (await D.drive.thumbUrl(p.cloud)) || ''; }
+      const u = await urlOf(p).catch(() => null);
+      if (list[at] !== p) return; // moved on while it came
+      if (u) img.src = u;
       if (show) img.classList.add('kb');
-      cap.innerHTML = '<b>' + esc(p.name) + '</b><span>' + (at + 1) + ' of ' + list.length + (show ? ' · slideshow' : '') + '</span>';
+      cap.innerHTML = '<b>' + esc(p.name) + '</b><span>' + (at + 1) + ' of ' + list.length + (p.cloud ? ' · in Dice Cloud' : '') + (show ? ' · slideshow' : '') + '</span>';
       cap.classList.add('on'); clearTimeout(capT); capT = setTimeout(() => cap.classList.remove('on'), 2600);
       ctx.setTitle(p.name + ' · Photos');
     }
@@ -72,6 +81,8 @@
     function slideshow(on) { clearInterval(show); show = 0; if (on) show = setInterval(() => open(at + 1), 7000); }
     view.addEventListener('click', (e) => { const x = e.clientX / innerWidth; if (x < 0.25) open(at - 1); else if (x > 0.75) open(at + 1); else close(); });
     fill();
+    let ft = 0;
+    const offDrive = D.on('drive', () => { clearTimeout(ft); ft = setTimeout(() => { if (root.isConnected && view.hidden) fill(); }, 400); });
     ctx.legend([['a', 'Open'], ['x', 'Slideshow'], ['b', 'Back']]);
     return {
       onAction(a) {
@@ -82,7 +93,7 @@
         if (a === 'b') { close(); return true; }
         return true;
       },
-      unmount() { slideshow(false); clearTimeout(capT); },
+      unmount() { slideshow(false); clearTimeout(capT); clearTimeout(ft); offDrive(); },
     };
   } });
 })();

@@ -6,7 +6,7 @@
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, M = D.M, $ = D.$, esc = D.esc, h = D.h;
   const Desk = D.desk = { on: false, wins: [], z: 10, world: null, last: 0, ws: 0 };
-  const SIZES = { files: [900, 600], browser: [1060, 690], music: [880, 580], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [900, 620], pigeon: [1000, 680],
+  const SIZES = { files: [1040, 640], gaming: [1000, 680], browser: [1060, 690], music: [880, 580], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [1080, 700], pigeon: [1000, 680],
     calculator: [330, 500], calendar: [1000, 660], clock: [560, 520], monitor: [760, 540],
     channels: [960, 560], weather: [900, 660], photos: [980, 660], sketch: [920, 640], cloud: [900, 680], code: [1000, 660] };
 
@@ -104,6 +104,13 @@
     if (!q || /big|screen|tv|game|controller/i.test(q)) g1.appendChild(big);
     if (!q || /home|wall|assistant|lights|weather|clock/i.test(q)) g1.appendChild(wall);
     box.appendChild(g1);
+    const mine = D.myApps ? D.myApps.list().filter((a) => !q || a.name.toLowerCase().includes(q.toLowerCase())) : [];
+    if (mine.length) {
+      box.appendChild(h('<h3 class="shead">Your apps</h3>'));
+      const g3 = h('<div class="sgroup"></div>');
+      mine.forEach((a) => { const b = h('<button><span>' + esc(a.name) + '</span></button>'); b.prepend(D.myApps.el(a, 56)); b.title = a.kind === 'web' ? a.url : a.name; b.onclick = () => { Desk.toggleStart(false); D.myApps.open(a); }; g3.appendChild(b); });
+      box.appendChild(g3);
+    }
     if (suite.length) {
       box.appendChild(h('<h3 class="shead">On this website</h3>'));
       const g2 = h('<div class="sgroup"></div>');
@@ -324,19 +331,4 @@
   D.on('state', (k) => { if (k === 'deskIcons' && root) icons(); });
   setInterval(() => Desk.wins.forEach((w) => w.account()), 15000);
 
-  // ---- Store, as a window -------------------------------------------------------------
-  D.register({ id: 'store', mount(rootEl) {
-    rootEl.classList.add('dstore');
-    rootEl.innerHTML = '<div class="dstore-in"><h2 class="pix">Store</h2><p class="muted">Every app for your computer. Paste the line into Terminal on your computer.</p><div class="dlist"></div></div>';
-    const list = rootEl.querySelector('.dlist');
-    CATALOG.suite.forEach((a) => {
-      const app = D.app(a.id);
-      const cmd = 'curl -fsSL ' + D.origin + '/' + a.id + '/install.sh | sh';
-      const row = h('<div class="drow"><div><b>' + esc(a.name) + '</b><span>' + esc(a.blurb) + '</span></div><button class="b small">Copy line</button></div>');
-      row.prepend(mini(app, 44));
-      row.querySelector('button').onclick = (e) => D.copy(cmd, e.currentTarget);
-      list.appendChild(row);
-    });
-    return {};
-  } });
 })();

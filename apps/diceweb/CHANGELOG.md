@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.0.0
+
+- Dice Cloud keeps your files now: photos, songs, videos and documents, on every computer and TV that shares your Dice Cloud.
+  - Each file is cut into 4 MB parts, and each part is locked on your computer, with a key made just for that file, before it leaves. The website only has numbered, scrambled parts.
+  - In Files, Dice Cloud is a place like any other: folders, renaming, dragging things in, saving them back to the computer.
+  - The Dice Cloud app shows your newest files and how much room is left (100 MB each, to start).
+  - Share one file with a link. The key is in the link, after the #, so the website still can't open it. The link works for a week, or until you stop sharing it.
+  - On DiceTV: a Dice Cloud row on Home, your cloud photos in Photos, and "Photos in Dice Cloud" as a choice behind the clock.
+  - A new Dice Cloud code takes your files with it.
+- A real filesystem in the browser (the Dice disk). Photos, songs, videos and PDFs are kept as they are, in the browser's own database, and stay after you close the page. Small text files stay readable by Terminal, Notes and Code, as before.
+- Files, rebuilt:
+  - Icons or a list, with real thumbnails, a details panel and quick look (left and right go through the pictures).
+  - Pick several, drag them onto a folder (or a place on the left) to move them; Alt copies.
+  - Copy, cut and paste, rename in place (F2), Delete, Ctrl + A, search the folder or press Enter to look everywhere.
+  - A right-click menu, and a Trash that puts things back where they were (on DiceOS too, the standard Linux Trash).
+  - With a remote: A opens, X for more, B goes up.
+- The Store has real apps:
+  - On DiceOS, real Linux apps from Flathub: VLC, Kodi, GIMP, Krita, Blender, LibreOffice, Firefox, RetroArch, Minecraft's Prism Launcher, Steam and Discord on a PC, and thousands more. Search, categories, picks, install with a progress bar, open, remove.
+  - They open on top of Dice; Home on the remote (or Super + Esc) closes them and Dice is back.
+  - Web apps, everywhere: any website as an app, with its own icon and window. A few good ones to start.
+  - Your apps show on DiceTV's Home and in the start menu.
+- DiceGaming (new):
+  - Play the games on your gaming PC on the TV, streamed over your home network. The PC runs Sunshine and DiceOS runs Moonlight (both free; DiceGaming installs Moonlight for you).
+  - Add the PC, pair it with a 4-number PIN, pick a game, pick the picture (720p to 4K) and frames a second. Home on the remote ends it.
+  - Xbox Cloud Gaming, GeForce NOW and Amazon Luna open in their own windows (each needs its own account).
+  - A Play row on DiceTV's Home.
+- The emulator on the website pretends all of this too: a few Flathub apps, a gaming PC with games.
+
 ## 1.9.0
 
 - DiceTV's ground is back, as ground: a strip of your world's grass and soil (sand at the beach, snow in the snow, stone in the city) runs under the apps, and the rows start below it on their own frosted glass, so the rows never sit on dirt.

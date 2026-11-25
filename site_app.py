@@ -472,13 +472,27 @@ def save_setup(data):
 #   GET    /dice/cloud/<id>/history      the last few versions, newest first
 #   GET    /dice/cloud/<id>/history/<n>  one of them
 #   PUT/GET/DELETE /dice/cloud/pair/<id> a tiny box for adding a computer with a short code (10 minutes)
+#
+# Dice Cloud files (your photos, songs, documents) are kept the same way: each file is cut into
+# parts of a few MB, and each part is locked on the computer with a key of the file's own, so the
+# website only has numbered, scrambled parts. Which part belongs to which file, and the files'
+# names, are in the locked box. A link to share one file carries that file's key after the #,
+# which browsers never send to the website.
+#   GET    /dice/cloud/<id>/files            how much room is used, and the parts kept
+#   PUT    /dice/cloud/<id>/files/<part>     a part (raw bytes, up to CLOUD_PART_MAX)
+#   GET    /dice/cloud/<id>/files/<part>     a part
+#   DELETE /dice/cloud/<id>/files/<part>     a part
+#   PUT    /dice/cloud/<id>/share/<part>     let a link open this part, for a few days
+#   DELETE /dice/cloud/<id>/share/<part>     stop that
+#   GET    /dice/shared/<part>               a shared part (for the page at /dice/get)
+#   POST   /dice/cloud/<new>/files-from/<old> after a new code: the files move to the new box
 CLOUD_MAX = 600 * 1024
 CLOUD_KEEP = 5           # old versions kept of each box
 CLOUD_GAP = 10 * 60      # at most one old version every ten minutes, so small changes don't push out real ones
 PAIR_MAX = 4096
 PAIR_TTL = 10 * 60
-CLOUD_CORS = [('Access-Control-Allow-Origin', '*'), ('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS'),
-              ('Access-Control-Allow-Headers', 'Content-Type, If-Match, If-None-Match'), ('Access-Control-Expose-Headers', 'ETag'),
+CLOUD_CORS = [('Access-Control-Allow-Origin', '*'), ('Access-Control-Allow-Methods', 'GET, PUT, POST, DELETE, OPTIONS'),
+              ('Access-Control-Allow-Headers', 'Content-Type, If-Match, If-None-Match, X-Dice-Keep-Files'), ('Access-Control-Expose-Headers', 'ETag'),
               ('Access-Control-Max-Age', '86400')]
 
 
@@ -597,6 +611,8 @@ def cloud_route(environ, start_response, box_id, method):
                 os.remove(f)
             except OSError:
                 pass
+        if environ.get('HTTP_X_DICE_KEEP_FILES') != '1':  # (a new code keeps them, moved to the new box)
+            _forget_parts(box_id)
         return _cloud_send(start_response, '200 OK', {'ok': True})
     if method == 'PUT':
         box = _read_box(environ, CLOUD_MAX)
@@ -615,6 +631,7 @@ def cloud_route(environ, start_response, box_id, method):
             try:
                 if name.endswith('.json') and now - os.path.getmtime(f) > 365 * 86400:
                     os.remove(f)
+                    _forget_parts(name[:-5])
             except OSError:
                 pass
         if raw is None and len(names) > 20000:
@@ -672,6 +689,207 @@ def cloud_pair(environ, start_response, slot, method):
     return _cloud_send(start_response, '405 Method Not Allowed', {'error': 'Not that.'})
 
 
+def _mb(name, default):
+    try:
+        return max(1, int(os.environ.get(name) or default)) * 1024 * 1024
+    except ValueError:
+        return default * 1024 * 1024
+
+
+CLOUD_PART_MAX = 4 * 1024 * 1024 + 4096   # a part: 4 MB of a file, plus what locking it adds
+CLOUD_SHARE_DAYS = 7
+
+
+def cloud_quota():
+    """(room for each Dice Cloud, room for all of them together), in bytes. The website's own
+    disk is small, so both have a limit (DICE_CLOUD_QUOTA_MB and DICE_CLOUD_TOTAL_MB change them)."""
+    return _mb('DICE_CLOUD_QUOTA_MB', 100), _mb('DICE_CLOUD_TOTAL_MB', 300)
+
+
+def _parts_dir(box_id, make=False):
+    path = os.path.join(_cloud_dir('files'), box_id)
+    if make:
+        os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _used(folder):
+    total = 0
+    try:
+        with os.scandir(folder) as it:
+            for e in it:
+                if e.is_file():
+                    total += e.stat().st_size
+    except OSError:
+        pass
+    return total
+
+
+def _all_used():
+    base, total = _cloud_dir('files'), 0
+    with os.scandir(base) as it:
+        for e in it:
+            if e.is_dir():
+                total += _used(e.path)
+    return total
+
+
+def _read_raw(environ, limit):
+    try:
+        n = int(environ.get('CONTENT_LENGTH') or 0)
+    except ValueError:
+        n = 0
+    if n <= 0 or n > limit:
+        return None, n
+    return environ['wsgi.input'].read(n), n
+
+
+def _forget_parts(box_id):
+    """A box is gone: its files go too, and any links to them stop working."""
+    shutil.rmtree(_parts_dir(box_id), ignore_errors=True)
+    shared = _cloud_dir('shared')
+    for name in os.listdir(shared):
+        try:
+            with open(os.path.join(shared, name)) as f:
+                if json.load(f).get('box') == box_id:
+                    os.remove(os.path.join(shared, name))
+        except (OSError, ValueError):
+            pass
+
+
+def cloud_files(environ, start_response, box_id, part, method):
+    if method == 'OPTIONS':
+        start_response('204 No Content', [('Content-Length', '0')] + CLOUD_CORS)
+        return [b'']
+    quota, total = cloud_quota()
+    folder = _parts_dir(box_id)
+    if part is None:
+        if method != 'GET':
+            return _cloud_send(start_response, '405 Method Not Allowed', {'error': 'Not that.'})
+        parts = []
+        try:
+            with os.scandir(folder) as it:
+                for e in it:
+                    if e.is_file() and re.fullmatch(r'[0-9a-f]{32}', e.name):
+                        st = e.stat()
+                        parts.append({'p': e.name, 'size': st.st_size, 'at': int(st.st_mtime)})
+        except OSError:
+            pass
+        return _cloud_send(start_response, '200 OK', {'used': sum(p['size'] for p in parts), 'quota': quota, 'part': CLOUD_PART_MAX - 4096, 'parts': parts})
+    path = os.path.join(folder, part)
+    if method == 'GET':
+        try:
+            with open(path, 'rb') as f:
+                data = f.read()
+        except OSError:
+            return _cloud_send(start_response, '404 Not Found', {'error': 'That part isn\'t here.'})
+        start_response('200 OK', [('Content-Type', 'application/octet-stream'), ('Content-Length', str(len(data))), ('Cache-Control', 'private, max-age=31536000, immutable'),
+                                  ('X-Content-Type-Options', 'nosniff')] + CLOUD_CORS)
+        return [data]
+    if method == 'DELETE':
+        for f in (path, os.path.join(_cloud_dir('shared'), part)):
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+        return _cloud_send(start_response, '200 OK', {'ok': True, 'used': _used(folder), 'quota': quota})
+    if method == 'PUT':
+        data, n = _read_raw(environ, CLOUD_PART_MAX)
+        if data is None:
+            return _cloud_send(start_response, '413 Payload Too Large' if n > 0 else '400 Bad Request', {'error': 'A part is 4 MB at most.' if n > 0 else 'Nothing was sent.'})
+        if len(data) < 28:  # a locked part always has its 12-byte start and 16-byte seal
+            return _cloud_send(start_response, '400 Bad Request', {'error': 'That isn\'t a locked part.'})
+        if not os.path.exists(os.path.join(_cloud_dir(), box_id + '.json')):
+            return _cloud_send(start_response, '404 Not Found', {'error': 'Turn on Dice Cloud first.'})
+        had = os.path.getsize(path) if os.path.exists(path) else 0
+        used = _used(folder)
+        if used - had + len(data) > quota:
+            return _cloud_send(start_response, '507 Insufficient Storage', {'error': 'Your Dice Cloud is full.', 'used': used, 'quota': quota})
+        if _all_used() - had + len(data) > total:
+            return _cloud_send(start_response, '507 Insufficient Storage', {'error': 'Dice Cloud has no room left on the website right now.', 'used': used, 'quota': quota})
+        _parts_dir(box_id, True)
+        tmp = path + '.tmp'
+        with open(tmp, 'wb') as f:
+            f.write(data)
+        os.replace(tmp, path)
+        return _cloud_send(start_response, '200 OK', {'ok': True, 'used': used - had + len(data), 'quota': quota})
+    return _cloud_send(start_response, '405 Method Not Allowed', {'error': 'Not that.'})
+
+
+def cloud_share(environ, start_response, box_id, part, method):
+    if method == 'OPTIONS':
+        start_response('204 No Content', [('Content-Length', '0')] + CLOUD_CORS)
+        return [b'']
+    marker = os.path.join(_cloud_dir('shared'), part)
+    if method == 'DELETE':
+        try:
+            with open(marker) as f:
+                if json.load(f).get('box') == box_id:
+                    os.remove(marker)
+        except (OSError, ValueError):
+            pass
+        return _cloud_send(start_response, '200 OK', {'ok': True})
+    if method == 'PUT':
+        if not os.path.exists(os.path.join(_parts_dir(box_id), part)):
+            return _cloud_send(start_response, '404 Not Found', {'error': 'That part isn\'t here.'})
+        days = CLOUD_SHARE_DAYS
+        try:
+            n = int(environ.get('CONTENT_LENGTH') or 0)
+            if 0 < n < 200:
+                days = int(json.loads(environ['wsgi.input'].read(n)).get('days', days))
+        except (ValueError, AttributeError):
+            pass
+        until = int(time.time()) + max(1, min(30, days)) * 86400
+        with open(marker, 'w') as f:
+            json.dump({'box': box_id, 'until': until}, f)
+        return _cloud_send(start_response, '200 OK', {'ok': True, 'until': until})
+    return _cloud_send(start_response, '405 Method Not Allowed', {'error': 'Not that.'})
+
+
+def cloud_shared(start_response, part):
+    """A part someone shared a link to. (Still locked: the key is in the link, after the #.)"""
+    marker = os.path.join(_cloud_dir('shared'), part)
+    try:
+        with open(marker) as f:
+            m = json.load(f)
+        if m.get('until', 0) < time.time():
+            os.remove(marker)
+            raise OSError('ran out')
+        with open(os.path.join(_parts_dir(m['box']), part), 'rb') as f:
+            data = f.read()
+    except (OSError, ValueError, KeyError, TypeError):
+        return _cloud_send(start_response, '404 Not Found', {'error': 'This link has run out, or the file was taken out of Dice Cloud.'})
+    start_response('200 OK', [('Content-Type', 'application/octet-stream'), ('Content-Length', str(len(data))), ('Cache-Control', 'no-store'),
+                              ('X-Content-Type-Options', 'nosniff')] + CLOUD_CORS)
+    return [data]
+
+
+def cloud_move_files(start_response, new_id, old_id):
+    """After a new Dice Cloud code: the parts go with the box. Knowing the old box's name is
+    what proves they're yours."""
+    old, new = _parts_dir(old_id), _parts_dir(new_id)
+    if not os.path.exists(os.path.join(_cloud_dir(), new_id + '.json')):
+        return _cloud_send(start_response, '404 Not Found', {'error': 'Make the new box first.'})
+    if os.path.isdir(old):
+        if os.path.isdir(new) and os.listdir(new):
+            return _cloud_send(start_response, '409 Conflict', {'error': 'The new box already has files.'})
+        shutil.rmtree(new, ignore_errors=True)
+        os.replace(old, new)
+        shared = _cloud_dir('shared')
+        for name in os.listdir(shared):
+            p = os.path.join(shared, name)
+            try:
+                with open(p) as f:
+                    m = json.load(f)
+                if m.get('box') == old_id:
+                    m['box'] = new_id
+                    with open(p, 'w') as f:
+                        json.dump(m, f)
+            except (OSError, ValueError):
+                pass
+    return _cloud_send(start_response, '200 OK', {'ok': True, 'used': _used(new)})
+
+
 def dice_routes(environ, start_response, path, method):
     """Everything under /dice and /diceweb; None if it's not one of ours."""
     if path == '/diceweb':
@@ -697,6 +915,30 @@ def dice_routes(environ, start_response, path, method):
     m = re.fullmatch(r'/dice/cloud/([0-9a-f]{32})', path)
     if m:
         return cloud_route(environ, start_response, m.group(1), method)
+    m = re.fullmatch(r'/dice/cloud/([0-9a-f]{32})/files(?:/([0-9a-f]{32}))?', path)
+    if m:
+        return cloud_files(environ, start_response, m.group(1), m.group(2), method)
+    m = re.fullmatch(r'/dice/cloud/([0-9a-f]{32})/share/([0-9a-f]{32})', path)
+    if m:
+        return cloud_share(environ, start_response, m.group(1), m.group(2), method)
+    m = re.fullmatch(r'/dice/cloud/([0-9a-f]{32})/files-from/([0-9a-f]{32})', path)
+    if m:
+        if method == 'OPTIONS':
+            start_response('204 No Content', [('Content-Length', '0')] + CLOUD_CORS)
+            return [b'']
+        if method != 'POST':
+            return _cloud_send(start_response, '405 Method Not Allowed', {'error': 'Not that.'})
+        return cloud_move_files(start_response, m.group(1), m.group(2))
+    m = re.fullmatch(r'/dice/shared/([0-9a-f]{32})', path)
+    if m:
+        if method == 'OPTIONS':
+            start_response('204 No Content', [('Content-Length', '0')] + CLOUD_CORS)
+            return [b'']
+        return cloud_shared(start_response, m.group(1))
+    if path in ('/dice/get', '/dice/get/'):
+        page = _read('pages', 'dice-get.html')
+        if page is not None:
+            return _send(start_response, '200 OK', _noticed(site_shell.inject(fill(page, environ, here='dice'), 'dice', 'page', True, dock=False)))
     m = re.fullmatch(r'/dice/cloud/([0-9a-f]{32})/history(?:/([0-9]))?', path)
     if m:
         if method == 'OPTIONS':
