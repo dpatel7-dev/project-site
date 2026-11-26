@@ -47,6 +47,9 @@
 
   // hiding it: after a few seconds still, or as soon as a key or button is used
   let hideT = 0, moved = 0, movedAt = 0;
+  // when the pointer last really moved (an air mouse resting, or the page changing under a still
+  // pointer, isn't a move): edge scrolling only follows a real one, so DiceTV never starts scrolled
+  A.realMove = 0;
   const P = A.p = { x: -1, y: -1, in: false };
   function show() {
     root.classList.remove('ptr-hide');
@@ -61,6 +64,7 @@
     const now = performance.now();
     if (now - movedAt > 300) moved = 0;
     moved += Math.abs(e.movementX || 0) + Math.abs(e.movementY || 0); movedAt = now;
+    if (moved > 6) A.realMove = now;
     if (moved > 6 || !(e.movementX || e.movementY)) { show(); if (D.input.source !== 'mouse' && moved > 6) D.input.setSource('mouse'); }
   }, { passive: true });
   document.addEventListener('pointerleave', () => { P.in = false; });
@@ -90,7 +94,7 @@
   }
   A.edgeStep = function (now) {
     const a = A.get();
-    if (!a.edge || !P.in || D.input.source !== 'mouse' || !onTV() || root.classList.contains('ptr-hide') && !edge.on || document.hidden || D.asleep || D.booting) { edge.on = false; edge.since = 0; return; }
+    if (!a.edge || !P.in || D.input.source !== 'mouse' || !onTV() || root.classList.contains('ptr-hide') && !edge.on || document.hidden || D.asleep || D.booting || (!edge.on && now - A.realMove > 4000)) { edge.on = false; edge.since = 0; return; }
     const { sx, sy } = scrollers(P.x, P.y);
     let dx = 0, dy = 0;
     if (sx) {
@@ -167,6 +171,7 @@
     powerAt = Date.now();
     const p = A.get().power;
     if (p === 'off') return true;
+    if (D.asleep) { D.wake(); return true; }
     if (p === 'ask') {
       const cec = D.remote && D.remote.cec && D.remote.cec.available;
       const buttons = [{ label: 'Sleep', value: 'sleep', go: true }];
@@ -180,7 +185,7 @@
       });
       return true;
     }
-    D.sleep();
+    if (D.sys) D.standby(); else D.sleep(); // on DiceOS: off like a TV (the picture and the TV), and this button brings it back
     return true;
   };
 

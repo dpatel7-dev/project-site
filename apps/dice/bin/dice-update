@@ -1,5 +1,6 @@
 #!/bin/sh
-# dice-update: gets the newest DiceOS from the website and swaps it in.
+# dice-update: gets the newest DiceOS and swaps it in. It asks the website and GitHub, and takes
+# whichever has the newer one (so a website that hasn't been updated yet doesn't hold it back).
 #   dice-update          update now
 #   dice-update --auto   only if automatic updates are on (the weekly timer uses this)
 set -e
@@ -10,17 +11,41 @@ fi
 HAVE=$(cat /opt/dice/VERSION 2>/dev/null || echo 0)
 # apps from the Dice Store get their updates too (quietly; it's fine if there are none)
 if command -v flatpak >/dev/null 2>&1; then flatpak update --system -y --noninteractive >/dev/null 2>&1 || true; fi
-NEW=$(curl -fsSL "$SITE/versions.json" | python3 -c "import json,sys;print(json.load(sys.stdin).get('dice',''))")
-if [ -z "$NEW" ]; then echo "Couldn't reach $SITE to check for updates."; exit 1; fi
-if [ "$NEW" = "$HAVE" ] && [ "$1" != "--force" ]; then echo "DiceOS $HAVE is the newest."; exit 0; fi
-echo "Updating DiceOS $HAVE to $NEW..."
+GITHUB=${DICE_GITHUB:-https://github.com/dpatel7-dev/DiceOS}
+RAW=$(echo "$GITHUB" | sed 's#https://github.com/#https://raw.githubusercontent.com/#')/main
+newer() { python3 -c "import sys
+v = lambda s: tuple(int(x) for x in (s or '0').strip().split('.') if x.isdigit())
+sys.exit(0 if v(sys.argv[1]) > v(sys.argv[2]) else 1)" "$1" "$2"; }
+FROM_SITE=$(curl -fsSL --max-time 20 "$SITE/versions.json" 2>/dev/null | python3 -c "import json,sys;print(json.load(sys.stdin).get('dice',''))" 2>/dev/null || true)
+FROM_GH=$(curl -fsSL --max-time 20 "$RAW/VERSION" 2>/dev/null | tr -d '[:space:]' || true)
+NEW=$FROM_SITE; WHERE=site
+if [ -n "$FROM_GH" ] && newer "$FROM_GH" "${FROM_SITE:-0}"; then NEW=$FROM_GH; WHERE=github; fi
+if [ -z "$NEW" ]; then echo "Couldn't reach $SITE or GitHub to check for updates."; exit 1; fi
+if ! newer "$NEW" "$HAVE" && [ "$1" != "--force" ]; then echo "DiceOS $HAVE is the newest."; exit 0; fi
+echo "Updating DiceOS $HAVE to $NEW (from $WHERE)..."
 TMP=$(mktemp -d)
-curl -fsSL "$SITE/dice/dice.tar.gz" | tar -xz -C "$TMP"
+if [ "$WHERE" = github ]; then
+  curl -fsSL --max-time 300 "$GITHUB/archive/refs/heads/main.tar.gz" | tar -xz -C "$TMP"
+  mv "$TMP"/DiceOS-main "$TMP/dice" 2>/dev/null || mv "$TMP"/*-main "$TMP/dice"
+else
+  curl -fsSL --max-time 300 "$SITE/dice/dice.tar.gz" | tar -xz -C "$TMP"
+fi
 [ -f "$TMP/dice/daemon/diced.py" ] || { echo "The download wasn't right; nothing changed."; rm -rf "$TMP"; exit 1; }
 rm -rf /opt/dice.old
 mv /opt/dice /opt/dice.old
 mv "$TMP/dice" /opt/dice
 chmod +x /opt/dice/bin/*
 rm -rf "$TMP"
+# helpers newer DiceOS uses, for computers installed before them (quietly, best effort)
+MISSING=""
+for p in flatpak xwayland wlopm mpv speech-dispatcher espeak-ng python3-venv cec-utils alsa-utils libwidevinecdm0; do
+  dpkg -s "$p" >/dev/null 2>&1 || { apt-cache show "$p" >/dev/null 2>&1 && MISSING="$MISSING $p"; }
+done
+if [ -n "$MISSING" ]; then
+  echo "Adding:$MISSING"
+  # shellcheck disable=SC2086
+  DEBIAN_FRONTEND=noninteractive timeout 900 apt-get install -y --no-install-recommends $MISSING >/dev/null 2>&1 || echo "(Some couldn't be added now; the next update tries again.)"
+fi
 systemctl restart dice.service
-echo "Done. DiceOS $NEW is in. Restart the desktop to see it (Settings, Power, Restart desktop)."
+# the screen picks the new DiceOS up by itself (it notices the new version and reloads)
+echo "Done. DiceOS $NEW is in."

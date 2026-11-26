@@ -371,16 +371,16 @@
   };
   // the mouse moves focus too, without scrolling things about
   document.addEventListener('pointermove', (e) => {
-    if (e.pointerType !== 'mouse') return;
+    if (e.pointerType !== 'mouse' || !(e.movementX || e.movementY)) return; // (a page changing under a still pointer isn't the mouse moving)
     const el = e.target.closest && e.target.closest('[data-nav]');
     if (el && el !== Nav.el && Nav.root().contains(el)) Nav.focus(el, { scroll: false, keepTyping: true });
   }, { passive: true });
 
   // ---- The legend along the bottom: what each button does here ----------------
   const GLYPH = {
-    keys: { a: 'Enter', b: 'Esc', x: 'X', y: 'Y', menu: 'M', quick: 'Q', lb: '[', rb: ']', search: '/' },
-    pad: { menu: '☰', quick: '⋯', lb: 'L', rb: 'R' },
-    remote: { a: 'OK', b: 'Back', x: 'Info', y: 'Yellow', menu: 'Menu', quick: 'Blue', lb: 'CH −', rb: 'CH +', search: 'Search' },
+    keys: { a: 'Enter', b: 'Esc', x: 'X', y: 'Y', menu: 'M', quick: 'Q', lb: '[', rb: ']', search: '/', home: 'Home' },
+    pad: { menu: '☰', quick: '⋯', lb: 'L', rb: 'R', home: 'Home' },
+    remote: { a: 'OK', b: 'Back', x: 'Info', y: 'Yellow', menu: 'Menu', quick: 'Blue', lb: 'CH −', rb: 'CH +', search: 'Search', home: 'Home', voice: 'Mic' },
   };
   // On a controller the four face buttons are shown by where they are (a little
   // diamond of dots with one filled in), not by a letter or a colour, so any

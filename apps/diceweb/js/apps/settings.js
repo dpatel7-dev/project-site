@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, esc = D.esc, h = D.h;
-  const SECTIONS = [['you', 'You', 'person', '#ff707a'], ['look', 'Look', 'sun', '#f5c431'], ['desk', 'Desktop', 'desktop', '#2f9e6e'], ['sound', 'Sound', 'volume', '#d39cf5'], ['pads', 'Controllers and keys', 'pad', '#7c9cff'], ['remote', 'Remotes', 'tv', '#3a7bd5'],
+  const SECTIONS = [['you', 'You', 'person', '#ff707a'], ['look', 'Look', 'sun', '#f5c431'], ['desk', 'Desktop', 'desktop', '#2f9e6e'], ['sound', 'Sound', 'volume', '#d39cf5'], ['pads', 'Controllers and keys', 'pad', '#7c9cff'], ['remote', 'Remotes', 'tv', '#3a7bd5'], ['deuce', 'Deuce', 'die', '#4b7bec'],
     ['perf', 'Performance', 'chart', '#8fd16a'], ['start', 'Starting up', 'power', '#ef6a1f'], ['cloud', 'Dice Cloud', 'link', '#3a9be8'], ['storage', 'Storage', 'lock', '#2bc4b2'], ['about', 'About', 'help', '#96969f']];
 
   // on a computer running Dice, there's more to set: Wi-Fi, the screen, power and updates
@@ -199,6 +199,53 @@
           cec.appendChild(row('On the wrong input?', 'Ask the TV to show DiceOS.', b));
         };
         D.sys.get('/api/remote').then(paint);
+      },
+      deuce() {
+        const DU = D.deuce, c = DU ? DU.cfg() : {};
+        pane.appendChild(h('<h2>Deuce</h2>'));
+        pane.appendChild(h('<p class="muted" style="margin:0 0 8px">Dice\'s voice assistant. Hold the microphone button on the remote and say what you want, like "put on the Knicks game", "open Netflix" or "switch to the PlayStation". (Or press the two dots at the top, or type it in Search.) What you say is worked out right here, not sent to an AI.</p>'));
+        if (!DU) return;
+        pane.appendChild(row('Deuce', 'Turned off, the microphone button does nothing.', sw(c.on !== false, (v) => { c.on = v; D.save(); D.emit('deuce'); }, 'du:on', 'Deuce')));
+        pane.appendChild(row('Talks back', 'Says its answers out loud, as well as showing them.', sw(c.talk !== false, (v) => { c.talk = v; D.save(); }, 'du:talk', 'Talks back')));
+        const tryIt = h('<button class="b small go" data-nav data-key="du:try">Try it</button>');
+        tryIt.onclick = () => DU.listen();
+        pane.appendChild(row('Ask something', 'Or type it, if there\'s no microphone.', tryIt));
+        if (!D.sys) { pane.appendChild(h('<p class="note">In this browser, Deuce listens with the browser\'s own speech recognition (Chrome, Edge and Safari have it) the first time you allow the microphone.</p>')); return; }
+        // DiceOS: its ears (Vosk, on the computer) and the remote's button
+        pane.appendChild(h('<h3 style="margin:22px 0 4px">Hearing</h3>'));
+        const ears = h('<div class="spane" style="gap:6px;padding:0"><p class="muted">Checking…</p></div>');
+        pane.appendChild(ears);
+        let pollT = 0;
+        const paintEars = (v) => {
+          if (cur !== 'deuce') return;
+          ears.innerHTML = '';
+          if (!v || v.ok === false) { ears.appendChild(h('<p class="note">' + esc((v && v.error) || 'DiceOS\'s helper didn\'t answer.') + '</p>')); return; }
+          const j = v.job;
+          if (j && j.state === 'working') {
+            ears.appendChild(h('<div class="srow"><div><b>Getting Deuce ready</b><span>Downloading its ears (about 50 MB). A few minutes.</span><div class="sto-prog" style="margin-top:8px"><i style="width:' + Math.max(4, j.pct || 0) + '%"></i></div></div></div>'));
+            pollT = setTimeout(() => D.sys.get('/api/voice').then(paintEars), 1500);
+            return;
+          }
+          if (!v.ready) {
+            const go = h('<button class="b small go" data-nav data-key="du:setup">Set it up</button>');
+            go.onclick = () => D.sys.post('/api/voice', { action: 'setup' }).then(() => D.sys.get('/api/voice').then(paintEars));
+            ears.appendChild(row('Deuce\'s ears', (j && j.state === 'failed' ? 'That didn\'t work: ' + (j.error || '') + ' ' : '') + 'Speech recognition that runs on this computer (Vosk). It\'s a one-time download, about 50 MB.', go));
+          } else ears.appendChild(row('Deuce\'s ears', 'Ready. Everything you say stays on this computer.', null));
+          ears.appendChild(row('Microphone', v.mics && v.mics.length ? v.mics.join(', ') : 'None found. The air mouse\'s USB stick carries its microphone: plug it straight into the computer (not a hub) and try again.', null));
+        };
+        D.sys.get('/api/voice').then(paintEars);
+        // the remote's microphone button: remotes send different things, so it can be taught
+        const teach = h('<button class="b small" data-nav data-key="du:learn">Teach it</button>');
+        const hint = h('<span class="muted"></span>');
+        teach.onclick = async () => {
+          hint.textContent = 'Press the microphone button on the remote now…';
+          await D.sys.post('/api/cec', { action: 'learn' });
+          const off = D.on('learned', (code) => { off(); clearTimeout(t); D.sys.saveSettings({ voice_key: code }); hint.textContent = 'Got it (button ' + code + '). That button talks to Deuce now.'; });
+          const t = setTimeout(() => { off(); hint.textContent = 'Nothing came. Is the remote\'s USB stick plugged into this computer?'; }, 12000);
+        };
+        const tr = row('The microphone button', 'If holding it doesn\'t bring Deuce up, teach DiceOS which button it is.', teach);
+        tr.firstChild.appendChild(hint);
+        pane.appendChild(tr);
       },
       pads() {
         pane.appendChild(h('<h2>Controllers</h2>'));

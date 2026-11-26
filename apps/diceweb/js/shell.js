@@ -119,7 +119,8 @@
   // ---- Pages ---------------------------------------------------------------------------
   const TITLES = { home: 'Home', library: 'Library', store: 'Store', page: '', settings: 'Settings' };
   // DiceTV is for the apps on this screen: the apps you install on another computer live on the desktop and the website
-  const tvApps = () => D.all().filter((a) => !a.suite && a.id !== 'store');
+  // (apps for the computer only, like DiceGaming, stay on the desktop)
+  const tvApps = () => D.all().filter((a) => !a.suite && !a.pc && a.id !== 'store');
   Shell.go = function (v, arg, opts) {
     opts = opts || {};
     if (Shell.view) {
@@ -206,7 +207,7 @@
     const run = D.running();
     const ids = [];
     if (run) ids.push(run.id);
-    D.state.recent.forEach((id) => { if (!ids.includes(id) && D.app(id) && !D.app(id).suite) ids.push(id); });
+    D.state.recent.forEach((id) => { if (!ids.includes(id) && D.app(id) && !D.app(id).suite && !D.app(id).pc) ids.push(id); });
     ['music', 'channels', 'browser', 'calendar', 'weather', 'files', 'notes', 'photos'].forEach((id) => { if (ids.length < 7 && D.app(id) && !ids.includes(id)) ids.push(id); });
     ids.slice(0, 7).forEach((id, i) => {
       const app = D.app(id), live = run && run.id === id;
@@ -234,7 +235,7 @@
     const k = $('#sp-k'); if (!k) return;
     const key = el.dataset.key || '';
     let app = D.app(el.dataset.hero), kick = '', name = '', line = '', facts = [];
-    if (key.startsWith('td:') || key.startsWith('w:') || key.startsWith('lv:') || key.startsWith('nw:')) {
+    if (/^(td|w|lv|nw|ch|an):/.test(key)) {
       const s = D.tv.spot(key) || {};
       kick = s.kick || ''; name = s.name || ''; line = s.line || '';
       if (s.c) document.documentElement.style.setProperty('--c', s.c);
@@ -540,6 +541,9 @@
         const shot = h('<button class="b small" data-nav data-key="q:shot">' + D.glyph('camera', 2) + 'Screenshot</button>');
         shot.onclick = () => { Qam.close(true); D.tools.screenshot(); };
         row.appendChild(shot);
+        const off = h('<button class="b small" data-nav data-key="q:standby">' + D.glyph('moon', 2) + 'Turn off</button>');
+        off.onclick = () => { Qam.close(true); D.standby(); };
+        row.appendChild(off);
         const lk = h('<button class="b small" data-nav data-key="q:lock">' + D.glyph('lock', 2) + 'Lock</button>');
         lk.onclick = () => { Qam.close(true); D.lock(); };
         row.appendChild(lk);
@@ -713,6 +717,7 @@
     const app = isWeb ? D.app(id.slice(4)) : D.app(id);
     if (!app) return;
     if (!isWeb && D.desk.on) return D.desk.open(id, opts);
+    if (app.pc && !isWeb) return D.toast({ icon: 'desktop', c: app.c, title: app.name + ' is on the desktop', text: 'Switch to the desktop (in the menu) to use it.' });
     if (isWeb) { // its own web page, in its own tab (pigeon won't be shown inside another page, to keep your drive safe)
       const url = (/^https?:/.test(app.web) ? '' : D.origin) + app.web;
       if (D.sys) D.sys.open(url); else window.open(url, '_blank', 'noopener');
@@ -942,7 +947,15 @@
     el.classList.add('on');
     setTimeout(() => { el.onclick = () => D.wake(); }, 400);
   };
+  // Turn off (on DiceOS): sleep, and the picture and the TV go off too. The remote's power button,
+  // any button, or turning the TV on brings it back.
+  D.standby = function () {
+    if (!D.asleep) D.sleep();
+    D.standbyOn = true;
+    if (D.sys) D.sys.post('/api/power', { action: 'standby' });
+  };
   D.wake = function () {
+    if (D.standbyOn) { D.standbyOn = false; if (D.sys) D.sys.post('/api/power', { action: 'wake' }); }
     if (!D.asleep) return;
     D.asleep = false;
     $('#sleep').classList.remove('on');
@@ -955,7 +968,7 @@
     if (D.desk.on) D.desk.exit(true);
     M.stop();
     Shell.stack = [];
-    D.boot('full', () => Shell.go('home', null, { root: true, quiet: true }));
+    D.boot('full', () => { Shell.go('home', null, { root: true, quiet: true }); const pg = $('#view .page'); if (pg) pg.scrollTop = 0; });
   };
 
   // ---- Boot ---------------------------------------------------------------------------------
@@ -964,7 +977,7 @@
     if (kind === 'off') { el.classList.add('gone'); el.hidden = true; then && then(); return; }
     D.booting = true;
     el.hidden = false; el.classList.remove('gone');
-    el.innerHTML = '<div class="stage"><canvas width="72" height="84"></canvas><div class="word pix" aria-label="' + D.brand + '"></div><div class="bar">' + '<i></i>'.repeat(12) + '</div></div><div class="skip">Press any key to skip</div>';
+    el.innerHTML = '<div class="stage"><canvas width="72" height="84"></canvas><div class="word pix" aria-label="' + D.brand + '"></div><div class="bar">' + '<i></i>'.repeat(12) + '</div></div><div class="skip">Press any button to skip</div>';
     const c = el.querySelector('canvas'), g = c.getContext('2d'), word = el.querySelector('.word'), bars = el.querySelector('.bar').children;
     g.imageSmoothingEnabled = false;
     const t0 = performance.now(), quick = kind === 'quick' || D.reduced();
@@ -1006,6 +1019,10 @@
       then && then();
     }
     D.skipBoot = finish;
+    // an air mouse's OK is a click, not a key: that skips it too
+    const skip = (e) => { if (D.booting) { e.preventDefault(); finish(); } };
+    el.onpointerdown = skip;
+    el.onwheel = skip;
     raf = requestAnimationFrame(frame);
   };
   D.skipBoot = () => {};
@@ -1073,6 +1090,8 @@
     const q = new URLSearchParams(location.search), want = q.get('start'), open = q.get('open');
     const start = want === 'tv' ? 'game' : want === 'home' || want === 'desk' ? want : D.state.start;
     const after = () => {
+      // DiceTV always starts at the top of Home, on its first app
+      if (Shell.view && Shell.view.v === 'home') { const pg = $('#view .page'); if (pg) { pg.scrollTop = 0; Nav.first(pg); pg.scrollTop = 0; } }
       if (start === 'desk' || start === 'home') D.desk.enter(true);
       if (start === 'home') D.wall.enter();
       const wel = D.sys && D.sys.settings.welcome;

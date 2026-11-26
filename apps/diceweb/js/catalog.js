@@ -1,7 +1,7 @@
 // Everything DiceWeb knows about: its own apps, the apps for your computer,
 // and the friends (the mascots). The suite list matches the website's.
 window.CATALOG = {
-  version: '2.0.0',
+  version: '2.1.0',
   site: 'https://djp7.pythonanywhere.com',
 
   // Cubby: DiceWeb's own mascot, a die with feet.
@@ -60,8 +60,10 @@ window.CATALOG = {
       line: 'A code editor for your own files: tabs, line numbers, colours for JavaScript, Python, HTML, CSS and more, and a preview that runs web pages beside the code.', words: 'editor programming code text ide javascript python html css developer' },
     { id: 'cloud', name: 'Dice Cloud', kind: 'app', c: '#4b7bec', who: null, land: 'hills', blurb: 'Your stuff on every computer, and Dice Drop',
       line: 'Your notes, Axiom and more, the same on every computer. Send a link to the TV with Dice Drop, see your computers, and go back to an older version.', words: 'sync cloud share devices send drop backup account pair' },
-    { id: 'gaming', name: 'DiceGaming', kind: 'app', c: '#7c4dff', who: null, land: 'city', blurb: 'Your gaming PC\'s games, and cloud gaming',
-      line: 'Play the games on your gaming PC here, streamed over your home network with Moonlight and Sunshine, or open Xbox Cloud Gaming, GeForce NOW and Amazon Luna.', words: 'games play stream cloud gaming moonlight sunshine xbox geforce now luna controller pc steam' },
+    { id: 'cloudpc', name: 'Dice Cloud PC', kind: 'app', c: '#3550b8', who: null, land: 'city', blurb: 'A computer of your own, in the cloud',
+      line: 'Rent a computer in the cloud (any provider), put the Dice Cloud PC kit on it with one line, and use it from here: its desktop on your TV, lots of room for Dice Cloud, and its games on the desktop.', words: 'vm virtual machine server vps cloud pc remote desktop storage dropbox' },
+    { id: 'gaming', name: 'DiceGaming', kind: 'app', pc: true, c: '#7c4dff', who: null, land: 'city', blurb: 'Cloud gaming, no gaming PC needed',
+      line: 'Play big games in the cloud on any computer: Xbox Cloud Gaming, GeForce NOW and Amazon Luna, or your own Dice Cloud PC. Got a gaming PC at home? Stream it too.', words: 'games play stream cloud gaming moonlight sunshine xbox geforce now luna controller pc steam' },
     { id: 'monitor', name: 'System Monitor', kind: 'system', c: '#4fc16b', who: null, land: 'screen', blurb: 'How busy the computer is',
       line: 'How busy it is, memory and storage, and what\'s open.', words: 'task manager activity cpu memory processes performance' },
     { id: 'store', name: 'Store', kind: 'system', c: '#2bc4b2', who: 'cubby', land: 'market', blurb: 'Real apps, web apps and more',

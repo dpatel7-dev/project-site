@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.0
+
+- Deuce's ears and voice: diced runs `dice-listen` (Vosk, offline, with a small English model, set up from Settings) while the remote's microphone button is held, and sends what it hears to DiceWeb. It says answers out loud with speech-dispatcher or espeak-ng, even with an app on top.
+- The air mouse's Back, Home and microphone buttons, read straight from the remote; the microphone button can be taught in Settings for remotes that send something else.
+- HDMI-CEC: the devices on the TV's other inputs (/api/cec/devices), switching the TV to one, passing the remote's buttons on to it, and coming back. The TV's own power changes are followed too.
+- Standby: Turn off puts the screen (wlopm) and the TV to sleep, and the remote brings them back, so a Pi never needs its own button.
+- Antenna channels: a tuner on your network (HDHomeRun) lists its channels (/api/tuner, local addresses only) and DiceOS plays them full screen with mpv (or VLC).
+- Streaming services open as full-screen apps, each in its own profile, and Home closes them. libwidevinecdm0 is installed so the ones that protect their videos can play.
+- `/api/lookup` fetches ESPN's public scoreboard for Deuce. Nothing else.
+- Dice Cloud's folder: `/api/files/tree`, and writes that make their folders and keep a file's time.
+- `dice-update` checks GitHub as well as the website and takes the newer, and installs the new helpers. The screen reloads itself after an update.
+- cloudpc/: the Dice Cloud PC kit for a computer in the cloud: `dice-cloud-server` (keeps Dice Cloud's locked parts, with a key) and `install.sh` (HTTPS with Caddy at an sslip.io name, an optional Xfce desktop through noVNC behind a password, and Sunshine for games).
+- DiceWeb 2.1.0.
+
 ## 2.0.0
 
 - Real apps: diced installs Linux apps from Flathub with Flatpak (for everyone on the computer), shows their progress, opens them, and removes them. It reads Flatpak's own copy of Flathub's list, so searching works without asking a website each time. New installs get Flatpak, Flathub and Xwayland; older ones can get them from the Store with one button. `dice-update` updates the apps too.

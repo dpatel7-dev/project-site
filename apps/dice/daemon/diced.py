@@ -28,6 +28,7 @@ import secrets
 import shutil
 import signal
 import socket
+import stat
 import struct
 import subprocess
 import sys
@@ -246,6 +247,51 @@ def parse_appstream(path):
                                 'icon': any(i.get('type') == 'cached' for i in el.findall('icon'))})
             el.clear()
     return out
+
+
+# An antenna tuner on your network (HDHomeRun): free local channels (ABC, CBS, NBC, FOX, PBS…)
+# from an antenna, played full screen with mpv (or VLC from the Store). Only local addresses.
+def local_host(host):
+    host = (host or '').strip().lower()
+    if not re.fullmatch(r'[a-z0-9.\-]{1,80}', host):
+        return False
+    if host.endswith('.local') or host.endswith('.lan') or '.' not in host:
+        return True
+    return bool(re.fullmatch(r'(10\.\d+|192\.168|172\.(1[6-9]|2\d|3[01]))\.\d+\.\d+', host))
+
+
+def tuner_lineup(host):
+    if not local_host(host):
+        return {'ok': False, 'error': 'That isn\'t a tuner on your home network.'}
+    try:
+        with urllib.request.urlopen('http://%s/lineup.json' % host, timeout=8) as r:
+            lineup = json.loads(r.read(2 * 1024 * 1024))
+        chans = [{'num': str(c.get('GuideNumber', '')), 'name': str(c.get('GuideName', '')), 'url': str(c.get('URL', '')), 'hd': bool(c.get('HD'))}
+                 for c in lineup if isinstance(c, dict) and c.get('URL')]
+        return {'ok': True, 'channels': chans}
+    except (OSError, ValueError, urllib.error.URLError) as e:
+        return {'ok': False, 'error': 'The tuner didn\'t answer (%s).' % (getattr(e, 'reason', None) or e)}
+
+
+# Deuce looks up a few things (which channel a game is on) from sites browsers can't always
+# reach directly; only these, and only to read.
+LOOKUP_HOSTS = ('site.api.espn.com',)
+
+
+def lookup(url):
+    try:
+        u = urllib.parse.urlsplit(url or '')
+    except ValueError:
+        return {'ok': False, 'error': 'That isn\'t an address.'}
+    if u.scheme != 'https' or u.hostname not in LOOKUP_HOSTS:
+        return {'ok': False, 'error': 'Deuce only looks things up from a few places.'}
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'DiceOS/' + VERSION, 'Accept': 'application/json'})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            body = r.read(3 * 1024 * 1024)
+        return {'ok': True, 'data': json.loads(body)}
+    except (OSError, ValueError, urllib.error.URLError) as e:
+        return {'ok': False, 'error': 'Couldn\'t look it up (%s).' % (getattr(e, 'reason', None) or e)}
 
 
 class Apps:
@@ -518,6 +564,17 @@ class Apps:
         fps = fps if fps in (30, 60, 90, 120) else 60
         return self.launch(ml + ['stream', host, game, '--resolution', res, '--fps', str(fps), '--bitrate', str(kbps * (2 if fps > 60 else 1))], game, 'game', 'game:' + host)
 
+    def watch(self, url, name):
+        """A channel from an antenna tuner, full screen on top of Dice (Home comes back)."""
+        u = urllib.parse.urlsplit(url or '')
+        if u.scheme != 'http' or not local_host(u.hostname or ''):
+            return {'ok': False, 'error': 'Only a tuner on your home network.'}
+        if shutil.which('mpv'):
+            return self.launch(['mpv', '--fs', '--really-quiet', '--force-window=immediate', '--title=' + (name or 'TV'), url], name or 'TV', 'tv', url)
+        if any(a['id'] == 'org.videolan.VLC' for a in self.installed()):
+            return self.launch(['flatpak', 'run', 'org.videolan.VLC', '--fullscreen', url], name or 'TV', 'tv', url)
+        return {'ok': False, 'error': 'Nothing to play it with yet: get VLC from the Store.', 'need': 'org.videolan.VLC'}
+
     def quit_game(self, host):
         ml = self.moonlight()
         if not ml or not HOST.match(host or ''):
@@ -526,20 +583,109 @@ class Apps:
         return {'ok': code == 0, 'error': (err or out).strip()[-240:] if code else ''}
 
 
+# ---------------------------------------------------------------------------
+# Deuce's ears: on DiceOS, speech is understood right on the computer (Vosk, offline, with a
+# small English model), from the remote's microphone. It's set up the first time Deuce is used.
+class Voice:
+    ROOT = '/opt/dice/voice'
+    MODEL = 'https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip'
+
+    def __init__(self, push, apps):
+        self.push = push
+        self.apps = apps
+        self.proc = None
+
+    def python(self):
+        return os.path.join(self.ROOT, 'bin', 'python')
+
+    def ready(self):
+        return os.path.exists(self.python()) and os.path.isdir(os.path.join(self.ROOT, 'model')) and bool(shutil.which('arecord'))
+
+    def mics(self):
+        if not shutil.which('arecord'):
+            return []
+        code, out = run(['arecord', '-l'], timeout=8)
+        return re.findall(r'^card (\d+): [^\[]*\[([^\]]*)\], device (\d+)', out, re.M) if code == 0 else []
+
+    def status(self):
+        with self.apps.lock:
+            job = dict(self.apps.jobs['voice']) if 'voice' in self.apps.jobs else None
+        return {'ok': True, 'ready': self.ready(), 'mics': [m[1] for m in self.mics()], 'listening': bool(self.proc and self.proc.poll() is None), 'job': job}
+
+    def setup(self):
+        fetch = ('import io, os, shutil, urllib.request, zipfile; d = %r; z = zipfile.ZipFile(io.BytesIO(urllib.request.urlopen(%r, timeout=300).read())); '
+                 'top = z.namelist()[0].split("/")[0]; z.extractall(d); shutil.rmtree(os.path.join(d, "model"), True); os.rename(os.path.join(d, top), os.path.join(d, "model"))') % (self.ROOT, self.MODEL)
+        cmds = [['apt-get', 'install', '-y', 'python3-venv', 'alsa-utils'], [sys.executable, '-m', 'venv', self.ROOT],
+                [os.path.join(self.ROOT, 'bin', 'pip'), 'install', '--disable-pip-version-check', 'vosk'], [sys.executable, '-c', fetch]]
+        return self.apps.job('voice', 'Getting Deuce ready', cmds)
+
+    def start(self):
+        if self.proc and self.proc.poll() is None:
+            return {'ok': True}
+        if not self.ready():
+            return {'ok': False, 'error': 'Deuce isn\'t set up on this computer yet.', 'need': 'setup'}
+        mics = self.mics()
+        usb = [m for m in mics if re.search(r'usb|remote|mic|audio', m[1], re.I) and not re.search(r'hdmi', m[1], re.I)]
+        pick = (usb or mics or [None])[0]
+        env = dict(os.environ, DICE_MIC='plughw:%s,%s' % (pick[0], pick[2]) if pick else 'default', DICE_VOICE_MODEL=os.path.join(self.ROOT, 'model'))
+        try:
+            self.proc = subprocess.Popen([self.python(), os.path.join(ROOT, 'bin', 'dice-listen')], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, env=env)
+        except OSError as e:
+            return {'ok': False, 'error': str(e)}
+        p = self.proc
+
+        def read():
+            for line in p.stdout:
+                try:
+                    self.push({'voice': json.loads(line)})
+                except ValueError:
+                    pass
+            p.wait()
+            self.push({'voice': {'done': True}})
+        threading.Thread(target=read, daemon=True).start()
+        return {'ok': True}
+
+    def stop(self):
+        p = self.proc
+        if p and p.poll() is None:
+            p.send_signal(signal.SIGTERM)  # it finishes what it heard and says so
+        return {'ok': True}
+
+    def say(self, text):
+        """Deuce's answer out loud, even with an app on top of Dice (speech-dispatcher or espeak-ng)."""
+        text = re.sub(r'[\x00-\x1f]', ' ', str(text or ''))[:300].strip()
+        speak = shutil.which('spd-say') or shutil.which('espeak-ng')
+        if not text or not speak:
+            return {'ok': False, 'error': 'Nothing to talk with (sudo apt install speech-dispatcher espeak-ng).'}
+        args = [speak, '-w', '--', text] if speak.endswith('spd-say') else [speak, '-s', '165', '--', text]
+        user = desktop_user()
+        env = user_env(user) if user != 'root' else dict(os.environ)
+        try:
+            subprocess.Popen(args, env=env, preexec_fn=demote(user) if user != 'root' else None, stdin=subprocess.DEVNULL,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+        except OSError as e:
+            return {'ok': False, 'error': str(e)}
+        return {'ok': True}
+
+
 class System:
     def __init__(self, settings_path):
         self.settings_path = settings_path
         self.remote = Remote(settings_path)
         self.apps = Apps(self.remote.push)
         self.remote.intercept = lambda ev: ev.get('a') in ('home', 'menu') and self.apps.close_front()  # a TV remote's Home is CEC's "root menu"
-        self.power_keys = PowerKeys(self.remote.push, home=self.apps.close_front)
+        self.power_keys = PowerKeys(self.remote.push, home=self.apps.close_front, front=self.apps.front,
+                                    voice_key=lambda: load_settings(self.settings_path).get('voice_key'))
+        self.voice = Voice(self.remote.push, self.apps)
+        self.standby_on = False
 
     # -- status --
     def status(self):
         user = desktop_user()
         out = {'version': VERSION, 'host': socket.gethostname(), 'user': user, 'model': model(),
                'uptime': self.uptime(), 'ip': self.ip(), 'temp': self.temp(), 'mem': self.mem(), 'disk': self.disk(user), 'load': self.load(),
-               'wifi': self.wifi_now(), 'volume': self.volume(), 'brightness': self.brightness(), 'battery': self.battery()}
+               'wifi': self.wifi_now(), 'volume': self.volume(), 'brightness': self.brightness(), 'battery': self.battery(),
+               'remote_keys': self.power_keys.remote_keys, 'standby': self.standby_on, 'front': self.apps.front(), 'voice': self.voice.ready()}
         return out
 
     def uptime(self):
@@ -695,7 +841,33 @@ class System:
             return {'ok': False, 'error': str(e)}
 
     # -- power --
+    def screen(self, on):
+        """The picture on or off (DiceOS keeps running): wlopm, if it's installed."""
+        if not shutil.which('wlopm'):
+            return False
+        user = desktop_user()
+        try:
+            r = subprocess.run(['wlopm', '--on' if on else '--off', '*'], env=user_env(user) if user != 'root' else None,
+                               preexec_fn=demote(user) if user != 'root' else None, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=8)
+            return r.returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            return False
+
     def power(self, action):
+        # standby: what a TV calls off. The screen goes dark and the TV turns off (over HDMI), but
+        # DiceOS keeps running, so the remote's power button (or the TV turning on) brings it back.
+        # After a real shut down, only the Pi's own button (or unplugging it) can.
+        if action == 'standby':
+            self.standby_on = True
+            tv = self.remote.send('tv-off') if self.remote.available else {'ok': False}
+            return {'ok': True, 'screen': self.screen(False), 'tv': tv.get('ok', False)}
+        if action == 'wake':
+            was, self.standby_on = self.standby_on, False
+            self.screen(True)
+            if self.remote.available:
+                self.remote.send('tv-on')
+                self.remote.send('active')
+            return {'ok': True, 'was': was}
         cmds = {'shutdown': ['systemctl', 'poweroff'], 'reboot': ['systemctl', 'reboot'], 'restart-desktop': ['systemctl', 'restart', 'dice-session@%s.service' % desktop_user()]}
         if action not in cmds:
             return {'ok': False, 'error': 'Unknown action'}
@@ -703,7 +875,7 @@ class System:
         return {'ok': True}
 
     # -- opening the real web browser over the desktop --
-    def open_url(self, url, app=False):
+    def open_url(self, url, app=False, name=None, full=False):
         if not re.match(r'^https?://', url or ''):
             return {'ok': False, 'error': 'Only web addresses (http or https) can be opened.'}
         user = desktop_user()
@@ -712,10 +884,16 @@ class System:
             return {'ok': False, 'error': 'No web browser is installed.'}
         env = user_env(user) if user != 'root' else dict(os.environ)
         home = env.get('HOME', '/tmp')
-        args = [browser, '--ozone-platform=wayland', '--user-data-dir=%s/.config/dice/browser' % home, '--no-first-run', '--password-store=basic']
+        host = urllib.parse.urlsplit(url).hostname or url
+        profile = '%s/.config/dice/browser' % home
+        if full:
+            # a TV app (Netflix, YouTube TV, DAZN…): full screen, no browser around it, and its own
+            # profile, so it runs as its own app (you sign in once, inside it) and Home really closes it
+            profile = '%s/.config/dice/apps/%s' % (home, re.sub(r'[^a-z0-9.-]', '', host.lower())[:60] or 'app')
+        args = [browser, '--ozone-platform=wayland', '--user-data-dir=' + profile, '--no-first-run', '--password-store=basic', '--autoplay-policy=no-user-gesture-required']
         # as an app (no address bar: a web app you installed, a cloud gaming service) or a browser window
-        args += ['--app=' + url] if app else ['--new-window', url]
-        return self.apps.launch(args, urllib.parse.urlsplit(url).hostname or url, 'web', url)
+        args += (['--app=' + url, '--start-fullscreen', '--kiosk'] if full else ['--app=' + url]) if app or full else ['--new-window', url]
+        return self.apps.launch(args, (name or host)[:60], 'tvapp' if full else 'web', url)
 
     # -- Bluetooth (bluetoothctl, from BlueZ): controllers, headphones and speakers --
     def bt(self, args, timeout=10):
@@ -826,6 +1004,10 @@ class Remote:
     def __init__(self, settings_path):
         self.settings_path = settings_path
         self.intercept = None
+        self.la = 4  # this computer's address on the HDMI bus (cec-client says which when it starts)
+        self.scan_buf = None
+        self.scan_done = threading.Event()
+        self.found = (0.0, [])
         self.proc = None
         self.available = False
         self.tv = None
@@ -852,6 +1034,92 @@ class Remote:
 
     def state(self):
         return {'ok': True, 'available': self.available, 'tv': self.tv, 'why': self.why}
+
+    # -- other HDMI things on the TV: a games console, a cable box. Dice can switch the TV to them,
+    #    pass the remote's buttons on to them, and come back (a KVM switch, over the HDMI cable)
+    def heard(self, line):
+        m = re.search(r'logical address\(es\) = .*?\((\d+)\)', line)
+        if m:
+            self.la = int(m.group(1))
+        m = re.search(r"TV \(0\): power status changed from '([^']+)' to '([^']+)'", line)
+        if m:
+            self.push({'tv': 'on' if m.group(2) == 'on' else 'standby'})
+        if self.scan_buf is not None:
+            self.scan_buf.append(line)
+            if 'currently active source' in line:
+                self.scan_done.set()
+
+    @staticmethod
+    def parse_scan(lines):
+        devs, cur = [], None
+        for line in lines:
+            m = re.match(r'\s*device #(\d+):\s*(.+)', line)
+            if m:
+                cur = {'la': int(m.group(1)), 'kind': m.group(2).strip(), 'name': m.group(2).strip(), 'pa': '', 'vendor': '', 'power': '', 'active': False}
+                devs.append(cur)
+                continue
+            m = re.match(r'\s*(address|active source|vendor|osd string|power status):\s*(.*)', line)
+            if m and cur:
+                k, v = m.group(1), m.group(2).strip()
+                if k == 'address':
+                    cur['pa'] = v
+                elif k == 'active source':
+                    cur['active'] = v == 'yes'
+                elif k == 'vendor':
+                    cur['vendor'] = v
+                elif k == 'osd string' and v:
+                    cur['name'] = v
+                elif k == 'power status':
+                    cur['power'] = v
+        return devs
+
+    def scan(self):
+        if not self.available:
+            return {'ok': False, 'error': self.why or 'The TV isn\'t answering over HDMI.', 'devices': []}
+        if time.time() - self.found[0] < 30:
+            return {'ok': True, 'devices': self.found[1]}
+        self.scan_buf = []
+        self.scan_done.clear()
+        self.raw('scan')
+        self.scan_done.wait(12)
+        lines, self.scan_buf = self.scan_buf or [], None
+        devs = [d for d in self.parse_scan(lines) if d['la'] not in (self.la, 15)]
+        self.found = (time.time(), devs)
+        return {'ok': True, 'devices': devs, 'me': self.la}
+
+    def raw(self, line):
+        p = self.proc
+        if not p or p.poll() is not None:
+            return {'ok': False, 'error': 'The TV isn\'t answering.'}
+        try:
+            p.stdin.write(line + '\n')
+            p.stdin.flush()
+            return {'ok': True}
+        except (OSError, ValueError) as e:
+            return {'ok': False, 'error': str(e)}
+
+    def switch(self, pa):
+        """Ask the TV to show the thing at this HDMI address (Set Stream Path)."""
+        m = re.fullmatch(r'(\d)\.(\d)\.(\d)\.(\d)', pa or '')
+        if not m:
+            return {'ok': False, 'error': 'That isn\'t an HDMI address.'}
+        a, b, c, d = (int(x) for x in m.groups())
+        return self.raw('tx %XF:86:%X%X:%X%X' % (self.la, a, b, c, d))
+
+    UI = {'a': 0x00, 'up': 0x01, 'down': 0x02, 'left': 0x03, 'right': 0x04, 'menu': 0x09, 'b': 0x0D, 'rb': 0x30, 'lb': 0x31, 'x': 0x35,
+          'power': 0x40, 'volup': 0x41, 'voldown': 0x42, 'mute': 0x43, 'play': 0x44, 'stop': 0x45, 'pause': 0x46, 'rew': 0x48, 'ff': 0x49,
+          'next': 0x4B, 'prev': 0x4C, 'guide': 0x53, 'blue': 0x71, 'red': 0x72, 'green': 0x73, 'yellow': 0x74}
+
+    def key(self, la, a):
+        """A remote button, passed on to another HDMI thing (User Control Pressed, then Released)."""
+        code = self.UI.get(a)
+        if code is None and re.fullmatch(r'd\d', a or ''):
+            code = 0x20 + int(a[1])
+        if code is None or not isinstance(la, int) or not 0 <= la <= 14:
+            return {'ok': False, 'error': 'That button can\'t be passed on.'}
+        r = self.raw('tx %X%X:44:%02X' % (self.la, la, code))
+        self.raw('tx %X%X:45' % (self.la, la))
+        return r
 
     def send(self, cmd):
         line = CEC_CMDS.get(cmd)
@@ -908,6 +1176,7 @@ class Remote:
                     m = re.search(r'TV \(0\).*?(?:vendor|OSD name)[^\']*\'([^\']+)\'', line)
                     if m:
                         self.tv = m.group(1)
+                    self.heard(line)
                     self.press(line)
                 self.proc.wait()
             except OSError as e:
@@ -926,6 +1195,10 @@ class Remote:
 # (Holding it for 5 seconds still turns the computer off, through logind.)
 POWER_KEYS = {116: 'Power', 142: 'Sleep', 143: 'WakeUp'}  # KEY_POWER, KEY_SLEEP, KEY_WAKEUP
 HOME_KEY, KEY_ESC, KEY_LEFTMETA, KEY_RIGHTMETA = 172, 1, 125, 126  # KEY_HOMEPAGE (a remote's Home), and Super + Esc
+# a remote's own buttons, read straight from it (the browser doesn't see them all, or sees them as
+# "go back a page"): Back, Home, and the microphone button (which remotes send as one of these)
+KEY_BACK, KEY_SEARCH, KEY_VOICECOMMAND, KEY_ASSISTANT = 158, 217, 582, 583
+REMOTE_KEYS = {KEY_BACK: 'b', HOME_KEY: 'home', KEY_SEARCH: 'voice', KEY_VOICECOMMAND: 'voice', KEY_ASSISTANT: 'voice'}
 EV_KEY = 1
 INPUT_EVENT = struct.Struct('llHHi')  # struct input_event: a time, then type, code and value
 
@@ -974,14 +1247,19 @@ def parse_input_events(data):
 class PowerKeys:
     """Watches every keyboard-like device that has a power or sleep key (air mice, media
     keyboards, some remotes) and sends a 'power' button to the desktop when one is pressed."""
-    def __init__(self, push, root='/dev/input', home=None):
+    def __init__(self, push, root='/dev/input', home=None, front=None, voice_key=None):
         self.push = push
         self.root = root
         self.home = home  # called for Home on a remote, or Super + Esc: closes an app that's on top of Dice
+        self.front = front or (lambda: None)  # what's open on top of Dice, if anything
+        self.voice_key = voice_key or (lambda: None)  # a button taught in Settings, for remotes that send something else
         self.fds = {}
         self.started = False
         self.last = 0.0
         self.meta = set()
+        self.swallow = set()
+        self.learn = 0.0
+        self.remote_keys = False
 
     def devices(self):
         out = []
@@ -990,8 +1268,10 @@ class PowerKeys:
             try:
                 with open(cap) as f:
                     bits = key_bits(f.read())
-                if bits & set(POWER_KEYS) or (self.home and (HOME_KEY in bits or {KEY_ESC, KEY_LEFTMETA} <= bits)):
+                if bits & set(POWER_KEYS) or bits & set(REMOTE_KEYS) or (self.home and {KEY_ESC, KEY_LEFTMETA} <= bits):
                     out.append(path)
+                    if bits & set(REMOTE_KEYS):
+                        self.remote_keys = True
             except OSError:
                 continue
         return out
@@ -1007,7 +1287,26 @@ class PowerKeys:
             if code in (KEY_LEFTMETA, KEY_RIGHTMETA):
                 (self.meta.add if value else self.meta.discard)(code)
                 continue
-            if self.home and value == 1 and (code == HOME_KEY or (code == KEY_ESC and self.meta)):
+            if self.learn and value == 1 and time.monotonic() < self.learn and code not in (KEY_LEFTMETA, KEY_RIGHTMETA):
+                self.learn = 0.0
+                self.push({'learned': code})
+                continue
+            taught = self.voice_key()
+            if code in REMOTE_KEYS or (taught and code == taught):
+                a = 'voice' if code == taught else REMOTE_KEYS[code]
+                if value == 2:  # held: repeats aren't new presses
+                    continue
+                if value == 1 and a == 'home' and self.home and self.home():
+                    self.swallow.add(code)  # Home closed the app on top: that's all it does
+                    continue
+                if value == 0 and code in self.swallow:
+                    self.swallow.discard(code)
+                    continue
+                if a == 'b' and self.front():
+                    continue  # the app on top has its own Back
+                self.push({'a': a, 'down': value == 1, 'key': 'remote'})
+                continue
+            if self.home and value == 1 and code == KEY_ESC and self.meta:
                 self.home()
                 continue
             if code in POWER_KEYS and value == 1:
@@ -1196,6 +1495,31 @@ class Files:
         return {'path': self.show(real), 'real': real, 'home': self.home, 'items': items, 'drives': drives}
 
     SKIP = {'node_modules', '__pycache__', 'snap', 'venv', '.venv'}
+
+    def tree(self, path, limit=5000):
+        """Every file under a folder (for Dice Cloud's folder on this computer): its path inside the
+        folder, size and time. Hidden things and half-written files are left out."""
+        real = self.resolve(path)
+        if not os.path.isdir(real):
+            os.makedirs(real, exist_ok=True)
+            self.chown(real)
+        out = []
+        for root, dirs, files in os.walk(real):
+            dirs[:] = sorted(d for d in dirs if not d.startswith('.') and d not in self.SKIP and not os.path.islink(os.path.join(root, d)))
+            for n in sorted(files):
+                if n.startswith('.') or n.endswith('.dice-part'):
+                    continue
+                p = os.path.join(root, n)
+                try:
+                    st = os.lstat(p)
+                except OSError:
+                    continue
+                if not stat.S_ISREG(st.st_mode):
+                    continue
+                out.append({'path': os.path.relpath(p, real), 'size': st.st_size, 'mtime': int(st.st_mtime)})
+                if len(out) >= limit:
+                    return {'ok': True, 'path': self.show(real), 'files': out, 'more': True}
+        return {'ok': True, 'path': self.show(real), 'files': out, 'more': False}
 
     def find(self, query, limit=20, budget=6000):
         """Files and folders in your home folder whose names contain the words, best first
@@ -1396,15 +1720,26 @@ class Files:
         self.chown(dst)
         return self.show(dst)
 
-    def write(self, path, data):
+    def write(self, path, data, mtime=None, make_dirs=False):
         real = self.resolve(path)
         if os.path.isdir(real):
             raise IsADirectoryError('That\'s a folder.')
+        if make_dirs:  # (Dice Cloud's folder on this computer: its folders come as their files do)
+            parent = os.path.dirname(real)
+            if not os.path.isdir(parent):
+                os.makedirs(parent, exist_ok=True)
+                d = parent
+                while d.startswith(self.home + os.sep) and d != self.home:
+                    self.chown(d)
+                    d = os.path.dirname(d)
         tmp = real + '.dice-part'
         with open(tmp, 'wb') as f:
             f.write(data)
         os.replace(tmp, real)
+        if mtime:
+            os.utime(real, (mtime, mtime))
         self.chown(real)
+        return {'ok': True, 'mtime': int(os.stat(real).st_mtime), 'size': len(data)}
 
 
 # ---------------------------------------------------------------------------
@@ -1676,6 +2011,19 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, f.read(), 'image/png', {'Cache-Control': 'max-age=86400'})
         if path == '/api/games':
             return self.send(200, sysm.apps.games(q.get('host', '')))
+        if path == '/api/cec/devices':
+            return self.send(200, sysm.remote.scan())
+        if path == '/api/voice':
+            return self.send(200, sysm.voice.status())
+        if path == '/api/lookup':
+            return self.send(200, lookup(q.get('url', '')))
+        if path == '/api/tuner':
+            return self.send(200, tuner_lineup(q.get('host', '')))
+        if path == '/api/files/tree':
+            try:
+                return self.send(200, Files(desktop_user()).tree(q.get('path', '~/Dice Cloud')))
+            except OSError as e:
+                return self.send(200, {'ok': False, 'error': str(e).split('] ')[-1]})
         if path == '/api/files/usage':
             return self.send(200, dict(files.usage(), ok=True))
         if path == '/api/files':
@@ -1708,8 +2056,11 @@ class Handler(BaseHTTPRequestHandler):
     def api_post(self, path, q):
         sysm = self.server.system
         if path == '/api/file':  # the body is the file itself
-            Files(desktop_user()).write(q.get('path', ''), self.body(MAX_UPLOAD))
-            return self.send(200, {'ok': True})
+            try:
+                mtime = float(q['mtime']) if q.get('mtime') else None
+            except ValueError:
+                mtime = None
+            return self.send(200, Files(desktop_user()).write(q.get('path', ''), self.body(MAX_UPLOAD), mtime, q.get('dirs') == '1'))
         b = self.json_body()
         if path == '/api/wifi':
             if 'on' in b:
@@ -1722,7 +2073,7 @@ class Handler(BaseHTTPRequestHandler):
         if path == '/api/power':
             return self.send(200, sysm.power(b.get('action')))
         if path == '/api/open':
-            return self.send(200, sysm.open_url(b.get('url'), bool(b.get('app'))))
+            return self.send(200, sysm.open_url(b.get('url'), bool(b.get('app')), str(b.get('name') or '') or None, bool(b.get('full'))))
         if path == '/api/apps':
             act, app_id, apps = b.get('action'), str(b.get('id') or ''), sysm.apps
             if act == 'setup':
@@ -1737,6 +2088,31 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, apps.open(app_id))
             if act == 'close':
                 return self.send(200, {'ok': True, 'closed': apps.close_front()})
+            return self.fail(400, 'Unknown action.')
+        if path == '/api/cec':
+            act, rm = b.get('action'), sysm.remote
+            if act == 'switch':
+                return self.send(200, rm.switch(str(b.get('pa') or '')))
+            if act == 'back':
+                return self.send(200, rm.send('active'))
+            if act == 'key':
+                return self.send(200, rm.key(int(b.get('la', -1)), str(b.get('key') or '')))
+            if act == 'learn':
+                sysm.power_keys.learn = time.monotonic() + 12
+                return self.send(200, {'ok': True})
+            return self.fail(400, 'Unknown action.')
+        if path == '/api/tuner':
+            return self.send(200, sysm.apps.watch(str(b.get('url') or ''), str(b.get('name') or '')[:60]))
+        if path == '/api/voice':
+            act = b.get('action')
+            if act == 'setup':
+                return self.send(200, {'ok': True, 'job': sysm.voice.setup()})
+            if act == 'start':
+                return self.send(200, sysm.voice.start())
+            if act == 'stop':
+                return self.send(200, sysm.voice.stop())
+            if act == 'say':
+                return self.send(200, sysm.voice.say(b.get('text')))
             return self.fail(400, 'Unknown action.')
         if path == '/api/games':
             act, host, apps = b.get('action'), str(b.get('host') or ''), sysm.apps

@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""dice-listen: hears one thing said into the remote's microphone, and prints what it heard.
+
+DiceOS's helper (diced) runs it with the voice venv's Python when the remote's microphone
+button is pressed, and stops it (SIGTERM) when the button is let go. It prints JSON lines:
+{"partial": "put on the"} while listening, then {"text": "put on the knicks game"}.
+Everything stays on this computer (Vosk, with a small English model)."""
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
+
+from vosk import KaldiRecognizer, Model, SetLogLevel
+
+SetLogLevel(-1)
+
+
+class Stop(Exception):
+    pass
+
+
+def stop(*_):
+    raise Stop()
+
+
+signal.signal(signal.SIGTERM, stop)
+model = Model(os.environ.get('DICE_VOICE_MODEL', '/opt/dice/voice/model'))
+rec = KaldiRecognizer(model, 16000)
+mic = subprocess.Popen(['arecord', '-q', '-D', os.environ.get('DICE_MIC', 'default'), '-f', 'S16_LE', '-r', '16000', '-c', '1', '-t', 'raw'],
+                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+heard, last, t0 = '', '', time.time()
+try:
+    while time.time() - t0 < float(os.environ.get('DICE_LISTEN_MAX', '9')):
+        data = mic.stdout.read(3200)
+        if not data:
+            break
+        if rec.AcceptWaveform(data):
+            heard = json.loads(rec.Result()).get('text', '')
+            if heard:
+                break  # a pause after speaking: that's the end of it
+        else:
+            part = json.loads(rec.PartialResult()).get('partial', '')
+            if part and part != last:
+                last = part
+                print(json.dumps({'partial': part}), flush=True)
+except Stop:
+    pass
+finally:
+    mic.terminate()
+if not heard:
+    heard = json.loads(rec.FinalResult()).get('text', '')
+print(json.dumps({'text': heard}), flush=True)
+sys.exit(0)

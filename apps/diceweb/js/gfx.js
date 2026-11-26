@@ -174,7 +174,7 @@
   // Clean and flat, so they read at a glance in the dock and the app grid.
   const TILES = { files: '#e39a32', home: '#e39a32', browser: '#3d86d6', terminal: '#2b2f3a', notes: '#e8913a', music: '#a862dc', store: '#ef5f74',
     settings: '#66789c', calculator: '#4a5568', calendar: '#d4a857', clock: '#2f9e8f', monitor: '#3a9d68', gaming: '#2a2a32',
-    channels: '#e0753a', weather: '#3a9be8', photos: '#d9576b', sketch: '#9b4fc9', cloud: '#4b7bec', code: '#1f2430' };
+    channels: '#e0753a', weather: '#3a9be8', photos: '#d9576b', sketch: '#9b4fc9', cloud: '#4b7bec', code: '#1f2430', cloudpc: '#3550b8' };
   function glyph(id, day) {
     const g = [];
     for (let i = 0; i < 16; i++) g.push(new Array(16).fill(''));
@@ -198,6 +198,10 @@
       case 'terminal':
         rect(1, 2, 14, 12, 'W'); rect(2, 4, 12, 9, 'D'); rect(3, 2, 1, 1, 'w'); rect(5, 2, 1, 1, 'w');
         line(4, 6, 6, 8, 'G'); line(6, 8, 4, 10, 'G'); rect(8, 10, 4, 1, 'W');
+        break;
+      case 'cloudpc': // a screen with a cloud on it
+        rect(1, 2, 14, 10, 'W'); rect(2, 3, 12, 8, 'A'); rect(6, 12, 4, 1, 'W'); rect(4, 13, 8, 1, 'W');
+        disc(6, 7.6, 1.5, 'W'); disc(8.6, 6.6, 2, 'W'); disc(10.7, 7.9, 1.3, 'W'); rect(5, 8, 7, 2, 'W');
         break;
       case 'notes':
         rect(3, 1, 10, 14, 'W'); for (const y of [5, 8, 11]) rect(5, y, 6, 1, 'A'); rect(5, 13, 3, 1, 'A'); for (const x of [5, 8, 11]) rect(x, 0, 1, 2, 'w');

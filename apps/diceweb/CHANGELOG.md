@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.1.0
+
+- Deuce, Dice's voice assistant (two pips, like the deuce on a die):
+  - Hold the microphone button on the air mouse and talk; let go and it does it. Or press the two dots at the top of DiceTV, or type to it in Search ("Ask Deuce").
+  - "Put on the Knicks game": it finds the game on ESPN's scoreboard, which channel has it (MSG for the Knicks at home), the way you can watch that channel (DAZN for MSG, your antenna for ABC, your live TV service…), and opens it after 3 seconds. Back stops it. If it's later, it says when and can remind you 5 minutes before. "What's the score of the Rangers game?" just tells you.
+  - Also: "put on MSG", "channel 7", "open Netflix", "play lofi on YouTube", "play Stranger Things on Netflix", "switch to the PlayStation", "turn it up", "mute", "pause", "set a timer for 10 minutes", "wake me up at 7 on weekdays", "turn off in 30 minutes", "what's the weather tomorrow", "find my history essay", "turn off the TV".
+  - Understanding what you said happens on the TV (no cloud AI). It talks back (you can turn that off in Settings, Deuce).
+- TV channels on DiceTV's Home: ABC, CBS, NBC, FOX, PBS, MSG, MSG Sportsnet, YES, SNY, ESPN, FS1, TNT, NBA TV, NFL Network, MLB Network and more, each opened the real way:
+  - free from an antenna, with a tuner on your network like an HDHomeRun (its channels show up as their own tiles, and DiceOS plays them full screen);
+  - with your live TV service (YouTube TV, Hulu + Live TV, Fubo, DirecTV Stream, Sling, Optimum, Fios, Xfinity or Spectrum);
+  - or in the channel's own app (MSG and YES on DAZN, ESPN in the ESPN app, FOX and FS1 on FOX One, NBC on Peacock, CBS on Paramount+, TNT on HBO Max).
+  - TV setup picks your live TV service, the apps you pay for (tried first) and the antenna tuner. X on a channel shows the other ways.
+- Inputs: DiceOS as a switch for everything on the TV's HDMI (through HDMI-CEC). Your PlayStation, Xbox and cable box show up; pick one and the TV switches to it, the remote's buttons go on to it, and Home comes back to DiceOS.
+- Streaming services are apps now: on DiceOS, Netflix, YouTube, DAZN and the rest open full screen on their own (each signed in once, inside it), not in a browser window. Web apps from the Store do too, on the TV.
+- Dice Cloud, like Dropbox but locked:
+  - Older versions: putting in a file with the same name keeps the one before (for 30 days, up to 10). Go back to one, or save a copy of it.
+  - Deleted files: taking a file out of Dice Cloud puts it in Deleted files for 30 days. Put it back, or delete it for good. They're in the Trash in Files too.
+  - Stars, and Recent, Starred and Deleted in the Dice Cloud app.
+  - On DiceOS, a Dice Cloud folder in your home folder kept the same both ways, and Pictures backed up into Dice Cloud. It stops and asks if lots of files vanish at once.
+  - Your own server: keep your files on a Dice Cloud PC (or any computer running the Dice Cloud server) for as much room as its disk has. Your files move across, still locked, and every computer follows.
+- Dice Cloud PC (new): a computer of your own in the cloud. Rent one anywhere, run one line on it, and add it here: its desktop on the TV (in the browser, behind a password), all the room you want for Dice Cloud, and its games in DiceGaming.
+- DiceGaming is for the desktop, and cloud first: Xbox Cloud Gaming, GeForce NOW, Amazon Luna and your Dice Cloud PC, with no gaming PC needed. Your own gaming PC is still there, folded away. It's off DiceTV's Home.
+- The remote's Back, Home and microphone buttons work on DiceOS (Back held goes Home; Home held opens Quick access).
+- Turn off is like a TV now: the screen and the TV go off, and the remote's power button brings DiceOS back. Shutting down completely says how to turn it back on.
+- "Press any button to skip" works with the air mouse's OK, and Home starts at the top.
+- When DiceOS updates underneath it, the screen picks up the new one by itself.
+
 ## 2.0.0
 
 - Dice Cloud keeps your files now: photos, songs, videos and documents, on every computer and TV that shares your Dice Cloud.

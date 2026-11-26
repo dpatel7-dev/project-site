@@ -247,11 +247,44 @@
     return fire0.call(D.input, a, src);
   };
 
+  // ---- the remote's own Back, Home and microphone buttons (diced reads them straight from it) -------
+  //   Back: back (held: Home)   Home: Home, or closes an app on top (held: Quick access)
+  //   Microphone: Deuce listens while it's held (a quick press: until you stop talking)
+  const downs = {};
+  function held(ev) {
+    D.input.setSource('remote');
+    if (D.booting) { if (ev.down) D.skipBoot(); return; }
+    if (ev.a === 'voice') { if (D.asleep && ev.down) D.wake(); D.emit('voicekey', ev.down); return; }
+    if (ev.down) {
+      if (D.asleep) { D.wake(); downs[ev.a] = -1; return; }
+      downs[ev.a] = Date.now();
+      clearTimeout(downs[ev.a + 'T']);
+      downs[ev.a + 'T'] = setTimeout(() => { if (downs[ev.a] > 0) { downs[ev.a] = -1; D.input.fire(ev.a === 'home' ? 'quick' : 'home', 'remote'); } }, 700);
+      return;
+    }
+    clearTimeout(downs[ev.a + 'T']);
+    if (downs[ev.a] > 0) D.input.fire(ev.a, 'remote');
+    downs[ev.a] = 0;
+  }
+  // when diced reads these buttons itself, the browser's copies of them (which can also mean
+  // "go back a page") are ignored
+  D.keyFirst.push((e) => {
+    if (!D.sys || !D.sys.status || !D.sys.status.remote_keys || !/^(BrowserBack|BrowserHome|BrowserSearch|GoBack)$/.test(e.key)) return false;
+    e.preventDefault();
+    return true;
+  });
+
   // ---- the TV's own remote, through the HDMI cable (DiceOS) --------------------------------------
   R.cec = null;
   R.last = null;
   R.event = function (ev) {
     if (ev.cec) { R.cec = ev.cec; D.emit('cec', ev.cec); }
+    // the TV turned itself off (its own remote), or on again
+    if (ev.tv === 'standby') { if (!D.asleep) D.sleep(); return; }
+    if (ev.tv === 'on') { if (D.asleep) D.wake(); return; }
+    if (ev.learned != null) { D.emit('learned', ev.learned); return; }
+    if (ev.voice) { D.emit('voice', ev.voice); return; }
+    if (ev.a && 'down' in ev) return held(ev);
     if (!ev.a) return;
     R.last = { a: ev.a, key: ev.key || ev.a, at: Date.now() };
     D.input.setSource('remote');

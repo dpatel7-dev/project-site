@@ -56,7 +56,8 @@
   M.open = function (a) {
     D.touch && D.touch(a.id);
     if (a.kind === 'web') {
-      if (D.sys) return D.sys.open(a.url, { app: true, name: a.name });
+      // on the TV, full screen like a TV app; on the desktop, in its own window
+      if (D.sys) return D.sys.open(a.url, { app: true, full: !(D.desk && D.desk.on), name: a.name });
       const w = window.open(a.url, '_blank', 'noopener,popup,width=1280,height=820');
       if (!w) location.href = a.url; // pop-ups blocked: just go there
       return;

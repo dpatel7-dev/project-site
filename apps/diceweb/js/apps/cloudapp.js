@@ -68,7 +68,7 @@
         '<section><h2>What\'s shared</h2><div class="dca-parts">' + Object.entries(C.SECTIONS).filter(([, S]) => !S.always).map(([n, S]) => '<div class="srow"><div><b>' + esc(S.name) + '</b><span>' + (counts[n] ? (S.whole ? 'Set up here' : counts[n] + (counts[n] === 1 ? ' thing' : ' things') + ' here') : 'Nothing here yet') + '</span></div><button class="switch ' + (C.shares(n) ? 'on' : '') + '" data-nav data-key="dc:part:' + n + '" role="switch" aria-checked="' + C.shares(n) + '" aria-label="Share ' + esc(S.name) + '"></button></div>').join('') + '</div></section>' +
         '<section><h2>Room</h2>' + roomRow('Your files', room ? MB(room.used) + ' of ' + MB(room.quota) : 'Measuring…', 'Photos, songs, videos and documents, locked.', room ? room.used / room.quota : 0) +
         roomRow('Everything else', used ? KB(used) + ' of ' + KB(C.LIMIT) : 'Not measured yet', 'Notes, Axiom, settings and the list of your files. Notes take the most room.', frac) + '</section>' +
-        '<section><div class="dca-h2"><h2>Older versions</h2>' + (versions ? '' : '<button class="b small" data-nav data-key="dc:vers">See them</button>') + '</div>' +
+        '<section><div class="dca-h2"><h2>Older versions of your notes and settings</h2>' + (versions ? '' : '<button class="b small" data-nav data-key="dc:vers">See them</button>') + '</div>' +
         (versions ? (versions.length ? '<div class="dca-vers">' + versions.map((v) => '<div class="srow"><div><b>' + esc(new Date(v.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })) + '</b><span>' + D.ago(v.at) + ', ' + KB(v.size) + '</span></div><button class="b small" data-nav data-key="dc:back:' + v.n + '">Go back to this</button></div>').join('') + '</div>' : '<p class="muted dca-empty">None yet. The website keeps the last 5, one every 10 minutes or more apart.</p>') : '<p class="muted dca-empty">Changed or deleted something by mistake? The website keeps the last 5 versions.</p>') + '</section>' +
         '<section><h2>Lately</h2>' + ((c.log || []).length ? '<ul class="dca-log">' + c.log.slice(0, 8).map((l) => '<li><span>' + esc(l.text) + '</span><small>' + D.ago(l.at) + '</small></li>').join('') + '</ul>' : '<p class="muted dca-empty">Nothing yet.</p>') + '</section>' +
         '<section><h2>Your code</h2><div class="cl-code"><span>Type it on your other computers to share with them</span><b>' + (showCode ? esc(c.code) : '•••••-•••••-•••••-•••••') + '</b><small>Anyone who has it can open your Dice Cloud, so keep it like a password.</small></div>' +
@@ -102,15 +102,63 @@
       f = Math.max(0, Math.min(1, f || 0));
       return '<div class="srow"><div><b>' + esc(name) + ': ' + esc(amount) + '</b><span>' + esc(about) + '</span></div><span class="dca-meter" aria-hidden="true"><i style="width:' + (f * 100).toFixed(1) + '%;--m:' + (f > 0.85 ? '#e5534b' : f > 0.6 ? '#e5b62e' : '#3fa26b') + '"></i></span></div>';
     }
+    let ftab = 'recent';
     function filesPart() {
       const F = D.drive;
       if (!F) return '';
-      const recent = F.recent(10), all = F.files().length, ups = F.uploads;
-      const tile = (f) => { const k = F.kind(f); return '<button class="dca-file k-' + k + '" data-nav data-key="dc:file:' + esc(f.id) + '" data-a="Open" data-x="More" aria-label="' + esc(f.name) + '"><span class="dca-fpic">' + (f.thumb ? '' : '<em>' + esc((f.name.split('.').pop() || '').slice(0, 4).toUpperCase()) + '</em>') + '</span><b>' + esc(f.name) + '</b><small>' + esc(F.size(f.size)) + '</small></button>'; };
+      const all = F.files().length, ups = F.uploads, starred = F.starred(), deleted = F.deleted();
+      if (ftab === 'starred' && !starred.length && !deleted.length) ftab = 'recent';
+      const list = ftab === 'starred' ? starred : ftab === 'deleted' ? deleted : F.recent(10);
+      const tile = (f) => { const k = F.kind(f), gone = !!f.deleted; return '<button class="dca-file k-' + k + (gone ? ' gone' : '') + '" data-nav data-key="dc:file:' + esc(f.id) + '" data-a="' + (gone ? 'Put back' : 'Open') + '" data-x="More" aria-label="' + esc(f.name) + '"><span class="dca-fpic">' + (f.thumb ? '' : '<em>' + esc((f.name.split('.').pop() || '').slice(0, 4).toUpperCase()) + '</em>') + (f.star ? '<i class="dca-star" aria-label="Starred">★</i>' : '') + '</span><b>' + esc(f.name) + '</b><small>' + (gone ? 'Deleted ' + D.ago(f.deleted) + '. ' + Math.max(1, F.KEEP_DAYS - Math.floor((Date.now() - f.deleted) / 864e5)) + ' days left' : F.size(f.size) + (f.versions && f.versions.length ? ', ' + f.versions.length + (f.versions.length === 1 ? ' older version' : ' older versions') : '')) + '</small></button>'; };
+      const tab = (id, name, n) => '<button data-nav data-key="dc:ftab:' + id + '" aria-pressed="' + (ftab === id) + '">' + name + (n ? ' <span class="dca-n">' + n + '</span>' : '') + '</button>';
+      const empty = { recent: 'Photos, songs, videos and documents you put in Dice Cloud are on all your computers, and on DiceTV. They\'re locked here first, each with a key of its own. Add some, or drop them here.',
+        starred: 'Star the files you want close by: they\'re kept here.', deleted: 'Nothing deleted. Files you take out of Dice Cloud wait here for ' + F.KEEP_DAYS + ' days, in case you want them back.' }[ftab];
       return '<section><div class="dca-h2"><h2>Your files</h2><div class="dca-btns"><button class="b small go" data-nav data-key="dc:addfiles">' + D.glyph('plus', 2) + 'Add files</button>' +
         (D.app('files') ? '<button class="b small" data-nav data-key="dc:allfiles">' + D.glyph('library', 2) + (all ? 'All ' + all + ' in Files' : 'Open in Files') + '</button>' : '') + '</div></div>' +
+        '<div class="seg dca-tabs" role="group" data-row>' + tab('recent', 'Recent') + tab('starred', 'Starred', starred.length) + tab('deleted', 'Deleted', deleted.length) + '</div>' +
+        (ftab === 'deleted' && deleted.length ? '<p class="muted dca-sub">Kept for ' + F.KEEP_DAYS + ' days, then gone for good. <button class="b small" data-nav data-key="dc:empty">Delete them all now</button></p>' : '') +
         (ups.length ? '<div class="dca-ups">' + ups.map((u) => '<div class="fi-upi">' + D.glyph('cloud', 2) + '<span>' + esc(u.name) + '</span><i><b style="width:' + Math.round(u.done * 100) + '%"></b></i></div>').join('') + '</div>' : '') +
-        (recent.length ? '<div class="dca-files" data-row>' + recent.map(tile).join('') + '</div>' : '<p class="muted dca-empty">Photos, songs, videos and documents you put in Dice Cloud are on all your computers, and on DiceTV. They\'re locked here first, each with a key of its own. Add some, or drop them on this window.</p>') + '</section>';
+        (list.length ? '<div class="dca-files" data-row>' + list.map(tile).join('') + '</div>' : '<p class="muted dca-empty">' + empty + '</p>') + '</section>' + herePart() + wherePart();
+    }
+    // ---- Dice Cloud's folder on this computer (DiceOS) -------------------------------------------------
+    function herePart() {
+      const S = D.dsync;
+      if (!S || !S.can()) return '';
+      const c = S.cfg(), sw = (k, on, name, about) => '<div class="srow"><div><b>' + name + '</b><span>' + about + '</span></div><button class="switch' + (on ? ' on' : '') + '" data-nav data-key="dc:ds:' + k + '" role="switch" aria-checked="' + on + '" aria-label="' + name + '"></button></div>';
+      const status = S.paused || S.error || (S.busy ? S.note || 'Syncing…' : S.last ? 'Up to date, ' + D.ago(S.last) + '.' + (S.skipped ? ' (Files over 200 MB stay in Dice Cloud only.)' : '') : '');
+      return '<section><h2>On this computer</h2>' +
+        sw('folder', !!c.folder, 'A Dice Cloud folder', 'In your home folder, kept the same as Dice Cloud both ways. Put a file in it from anywhere (Files, the Terminal, any app) and it\'s on all your computers.') +
+        sw('pics', !!c.pics, 'Back up Pictures', 'Photos and videos in Pictures go into Dice Cloud, in "Pictures from ' + esc(((D.sys.status && D.sys.status.host) || D.sys.info.host || 'this computer')) + '". Deleting them here doesn\'t delete them there.') +
+        (status && (c.folder || c.pics) ? '<p class="' + (S.paused || S.error ? 'dca-err' : 'muted') + ' dca-sub">' + esc(status) + (S.paused ? ' <button class="b small" data-nav data-key="dc:dsgo">It\'s fine, carry on</button>' : '') + '</p>' : '') + '</section>';
+    }
+    // ---- where the (locked) files live -------------------------------------------------------------------
+    function wherePart() {
+      const F = D.drive, own = F.ownServer(), mv = F.moving;
+      return '<section><h2>Where your files are kept</h2><div class="srow"><div><b>' + (own ? 'Your own server, ' + esc(host(F.server())) : 'The Dice website') + '</b><span>' +
+        (own ? 'Locked before they leave, so your server can\'t open them either. Every computer in your Dice Cloud uses it.' : (room ? MB(room.quota) + ' of room. ' : '') + 'For far more, keep them on a server of your own: a Dice Cloud PC, or any computer running the Dice Cloud server.') +
+        '</span></div><button class="b small" data-nav data-key="dc:server">' + (own ? 'Change' : 'Use my own server') + '</button></div>' +
+        (mv ? '<div class="dca-ups"><div class="fi-upi">' + D.glyph('cloud', 2) + '<span>Moving your files: ' + mv.done + ' of ' + mv.of + ' parts</span><i><b style="width:' + Math.round(mv.done / Math.max(1, mv.of) * 100) + '%"></b></i></div></div>' : '') + '</section>';
+    }
+    async function server() {
+      const F = D.drive, own = F.ownServer();
+      if (own) {
+        const v = await D.ask({ title: 'Your own server', text: F.server(), buttons: [{ label: 'Use a different one', value: 'new', go: true }, { label: 'Back to the Dice website', value: 'site' }, { label: 'Cancel', value: null }] });
+        if (v === 'site') return doServer('', '');
+        if (v !== 'new') return;
+      }
+      const a = await D.ask({ title: 'Use your own server', text: 'Its address, from the Dice Cloud PC app or from the end of the Dice Cloud server\'s setup (it starts with https://).', input: { label: 'Address', placeholder: 'https://203-0-113-7.sslip.io' }, buttons: [{ label: 'Next', value: true, go: true }, { label: 'Cancel', value: false }] });
+      if (!a || !a.value || !a.value.trim()) return;
+      const k = await D.ask({ title: 'Its key', text: 'The key the setup showed (a line of letters and numbers). It keeps strangers from using your server.', input: { label: 'Key', placeholder: 'Key' }, buttons: [{ label: 'Move my files there', value: true, go: true }, { label: 'Cancel', value: false }] });
+      if (!k || !k.value) return;
+      doServer(a.value, k.value);
+    }
+    async function doServer(url, key) {
+      busy(url ? 'Moving your files to your server…' : 'Moving your files back to the Dice website…');
+      try {
+        const r = await D.drive.setServer(url, key);
+        D.toast({ icon: 'cloud', c: '#3a9be8', title: url ? 'Your files are on your server' : 'Back on the Dice website', text: url && r.quota ? MB(r.quota - (r.used || 0)) + ' free there. Your other computers use it too.' : 'Your other computers follow.' });
+      } catch (e) { D.toast({ icon: 'cloud', c: '#e5534b', title: 'Couldn\'t change it', text: e.message }); }
+      busyNote = ''; room = null; paint();
     }
     function wireFiles() {
       const F = D.drive;
@@ -119,13 +167,45 @@
         const id = b.dataset.key.slice(8), f = F.item(id);
         if (!f) return;
         if (f.thumb) F.thumbUrl(id).then((u) => { if (u) b.querySelector('.dca-fpic').style.backgroundImage = 'url("' + u + '")'; });
-        b.onclick = () => openFile(f);
-        b._x = () => D.launch('files', { arg: 'cloud-open:' + id });
+        b.onclick = () => (f.deleted ? deletedMenu(f) : openFile(f));
+        b._x = () => (f.deleted ? deletedMenu(f) : fileMenu(f));
       });
-      const add = inner.querySelector('[data-key="dc:addfiles"]');
-      if (add) add.onclick = async () => { const files = await F.pick(); if (files.length) F.add('/', files); };
-      const all = inner.querySelector('[data-key="dc:allfiles"]');
-      if (all) all.onclick = () => D.launch('files', { arg: 'cloud:/' });
+      const on = (sel, fn) => inner.querySelectorAll(sel).forEach((b) => { b.onclick = () => fn(b.dataset.key.split(':').slice(2).join(':'), b); });
+      on('[data-key="dc:addfiles"]', async () => { const files = await F.pick(); if (files.length) F.add('/', files); });
+      on('[data-key="dc:allfiles"]', () => D.launch('files', { arg: 'cloud:/' }));
+      on('[data-key^="dc:ftab:"]', (t) => { ftab = t; paint('dc:ftab:' + t); });
+      on('[data-key="dc:empty"]', async () => { const y = await D.ask({ title: 'Delete them all for good?', text: 'They can\'t come back after this.', buttons: [{ label: 'Delete for good', value: true, danger: true }, { label: 'Cancel', value: false, go: true }] }); if (y) { await F.emptyDeleted().catch((e) => D.toast({ icon: 'cloud', c: '#e5534b', title: 'Couldn\'t', text: e.message })); paint(); } });
+      on('[data-key^="dc:ds:"]', (k) => { D.dsync.set(k, !D.dsync.cfg()[k]); paint('dc:ds:' + k); });
+      on('[data-key="dc:dsgo"]', () => D.dsync.goAnyway());
+      on('[data-key="dc:server"]', server);
+    }
+    async function fileMenu(f) {
+      const F = D.drive, n = (f.versions || []).length;
+      const v = await D.ask({ title: f.name, text: F.size(f.size) + ', put in ' + D.ago(f.at) + (f.by ? ' by ' + f.by : '') + '.', buttons: [{ label: 'Open', value: 'open', go: true }, { label: f.star ? 'Unstar' : 'Star', value: 'star' },
+        n ? { label: 'Older versions (' + n + ')', value: 'vers' } : null, D.app('files') ? { label: 'Show in Files', value: 'files' } : null, { label: 'Take out of Dice Cloud', value: 'del', danger: true }, { label: 'Cancel', value: null }].filter(Boolean) });
+      if (v === 'open') openFile(f);
+      if (v === 'star') { F.star(f.id, !f.star); paint(); }
+      if (v === 'vers') versionsMenu(f);
+      if (v === 'files') D.launch('files', { arg: 'cloud-open:' + f.id });
+      if (v === 'del') { await F.remove(F.norm(f.dir) + (F.norm(f.dir) === '/' ? '' : '/') + f.name); D.toast({ icon: 'trash', c: '#96969f', title: 'In Deleted files', text: f.name + ' can come back for ' + F.KEEP_DAYS + ' days.' }); paint(); }
+    }
+    async function versionsMenu(f) {
+      const F = D.drive, vs = F.versions(f.id);
+      const when = (v) => new Date(v.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      const i = await D.ask({ title: 'Older versions of ' + f.name, text: 'Each time it changes, the one before is kept for ' + F.KEEP_DAYS + ' days.', buttons: vs.slice(0, 6).map((v, j) => ({ label: when(v) + ', ' + F.size(v.size) + (v.by ? ', ' + v.by : ''), value: 'v' + j, go: j === 0 })).concat([{ label: 'Cancel', value: null }]) });
+      if (!i) return;
+      const j = +i.slice(1), v = vs[j];
+      const w = await D.ask({ title: 'The version from ' + when(v), text: 'Going back keeps the one now as an older version, so you can change your mind.', buttons: [{ label: 'Go back to it', value: 'back', go: true }, { label: 'Save a copy of it', value: 'copy' }, { label: 'Cancel', value: null }] });
+      try {
+        if (w === 'back') { await F.restoreVersion(f.id, j); D.toast({ icon: 'cloud', c: '#3a9be8', title: 'Gone back', text: f.name + ' is the version from ' + when(v) + ' again, on all your computers.' }); paint(); }
+        if (w === 'copy') { const blob = await F.versionBlob(f.id, j); const nm = f.name.replace(/(\.[^.]+)?$/, ' (' + new Date(v.at).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ')$1'); await F.upload(f.dir, new File([blob], nm, { type: blob.type, lastModified: v.mod || v.at })); D.toast({ icon: 'cloud', c: '#3a9be8', title: 'Saved a copy', text: nm + ', beside it.' }); }
+      } catch (e) { D.toast({ icon: 'cloud', c: '#e5534b', title: 'Couldn\'t', text: e.message }); }
+    }
+    async function deletedMenu(f) {
+      const F = D.drive;
+      const v = await D.ask({ title: f.name, text: 'Deleted ' + D.ago(f.deleted) + '. It goes for good in ' + Math.max(1, F.KEEP_DAYS - Math.floor((Date.now() - f.deleted) / 864e5)) + ' days.', buttons: [{ label: 'Put it back', value: 'back', go: true }, { label: 'Delete for good', value: 'gone', danger: true }, { label: 'Cancel', value: null }] });
+      if (v === 'back') { const where = F.restore(f.id); D.toast({ icon: 'cloud', c: '#3a9be8', title: 'Put back', text: (where || f.name) + ', on all your computers.' }); paint(); }
+      if (v === 'gone') { await F.purge(f.id).catch((e) => D.toast({ icon: 'cloud', c: '#e5534b', title: 'Couldn\'t', text: e.message })); paint(); }
     }
     function openFile(f) {
       const k = D.drive.kind(f);
@@ -225,7 +305,8 @@
     }
     paint();
     let dt = 0;
-    const offs = [D.on('cloud', () => { if (root.isConnected) paint(); }), D.on('drive', () => { clearTimeout(dt); dt = setTimeout(() => { if (root.isConnected && C.on()) { room = D.drive.lastRoom || room; paint(); } }, 200); })];
+    const offs = [D.on('cloud', () => { if (root.isConnected) paint(); }), D.on('drive', () => { clearTimeout(dt); dt = setTimeout(() => { if (root.isConnected && C.on()) { room = D.drive.lastRoom || room; paint(); } }, 200); }),
+      D.on('dsync', () => { clearTimeout(dt); dt = setTimeout(() => { if (root.isConnected && C.on()) paint(); }, 300); })];
     const tick = setInterval(() => { if (root.isConnected && !C.busy) { const p = inner.querySelector('.dca-hero p'); if (p && C.on() && !busyNote && !C.error && D.state.cloud.last) p.textContent = 'Up to date. Synced ' + D.ago(D.state.cloud.last) + '.'; } }, 20000);
     // asked for something on the way in: a drop to show, a link to send, or a short code to show
     const arg = String(ctx.arg || '');

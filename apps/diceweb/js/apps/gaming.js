@@ -1,9 +1,11 @@
-// DiceGaming: games that run on a bigger computer, played here.
+// DiceGaming: big games on any computer, with no gaming PC. On the desktop (games are a
+// computer thing; the TV has TV).
 //
-//   Your gaming PC:  the PC runs Sunshine (free), DiceOS runs Moonlight (free, from the Store),
-//                    and the game streams to the TV, with your controller. Home on the remote ends it.
-//   Cloud gaming:    Xbox Cloud Gaming, GeForce NOW and Amazon Luna, in their own windows
-//                    (each needs its own account, and some a subscription).
+//   Cloud gaming:    Xbox Cloud Gaming, GeForce NOW and Amazon Luna run the games on their
+//                    computers and stream them here (each needs its own account, some a subscription).
+//   Dice Cloud PC:   your own computer in the cloud (js/apps/cloudpc.js), streamed the same way.
+//   A gaming PC:     if you happen to have one: it runs Sunshine (free), DiceOS runs Moonlight
+//                    (free, from the Store), and the game streams over your home network.
 (function () {
   'use strict';
   const D = window.Dice, esc = D.esc, h = D.h;
@@ -46,7 +48,7 @@
     root.classList.toggle('dg-tv', tv);
     root.innerHTML = '<div class="dg-glow" aria-hidden="true"></div><div class="dg-in" data-scroll="30"></div>';
     const inner = root.querySelector('.dg-in');
-    let status = null, hostInfo = {}, pairing = null, timer = 0, alive = true;
+    let status = null, hostInfo = {}, pairing = null, timer = 0, alive = true, showPc = false;
 
     async function refresh() {
       if (os) status = await D.sys.get('/api/apps').catch(() => null);
@@ -66,7 +68,8 @@
       if (!alive) return;
       const g = G(), jobs = Object.fromEntries(((status && status.jobs) || []).map((j) => [j.key, j]));
       keep(() => {
-        let out = '<header class="dg-head"><div class="dg-logo" aria-hidden="true">' + D.glyph('pad', 4) + '</div><div><h1>DiceGaming</h1><p>Play games that run on a bigger computer, here, with your controller.</p></div></header>';
+        let out = '<header class="dg-head"><div class="dg-logo" aria-hidden="true">' + D.glyph('pad', 4) + '</div><div><h1>DiceGaming</h1><p>Big games on this computer, with your controller. They run in the cloud, so you don\'t need a gaming PC.</p></div></header>';
+        const headEnd = out.length;;
         // ---- your gaming PC ----
         out += '<section class="dg-sec"><div class="dg-h2"><h2>Your gaming PC</h2>' + (os && status && status.moonlight ? '<button class="b small go" data-nav data-key="dg:addhost">' + D.glyph('plus', 2) + 'Add a gaming PC</button>' : '') + '</div>';
         if (!os) {
@@ -101,11 +104,17 @@
         });
         if (os && status && status.moonlight && g.hosts.length) out += '<div class="dg-set"><span>Picture</span>' + seg('q', QUALITY, g.quality) + '<span>Frames a second</span>' + seg('fps', FPS, g.fps) + '</div>';
         out += '</section>';
+        // (your own gaming PC goes after the cloud, and stays folded away till you want it)
+        let pcPart = out.slice(headEnd);
+        out = out.slice(0, headEnd);
+        if (!g.hosts.length && !showPc) pcPart = '<section class="dg-sec"><div class="dg-card glass dg-optional"><b>Got a gaming PC at home?</b><p>You don\'t need one. But if you have one, its games can stream here too, over your home network.</p><button class="b small" data-nav data-key="dg:showpc">' + D.glyph('desktop', 2) + 'Use my gaming PC</button></div></section>';
         // ---- cloud gaming ----
-        out += '<section class="dg-sec"><div class="dg-h2"><h2>Cloud gaming</h2></div><p class="muted dg-sub">Each opens in its own window and needs your own account there (some need a subscription).' + (os ? ' Home on the remote comes back.' : '') + '</p><div class="dg-clouds" data-row>' +
-          CLOUD.map((s) => '<button class="dg-cloud" data-nav data-key="dg:cloud:' + s.id + '" data-a="Open" style="--gc:' + s.c + '"><span class="dg-cico"><b>' + s.mono + '</b></span><span class="dg-cn">' + esc(s.name) + '</span><small>' + esc(s.about) + '</small></button>').join('') + '</div></section>';
+        out += '<section class="dg-sec"><div class="dg-h2"><h2>Play in the cloud</h2></div><p class="muted dg-sub">Each opens in its own window and needs your own account there (some need a subscription).' + (os ? ' Home on the remote comes back.' : '') + '</p><div class="dg-clouds" data-row>' +
+          CLOUD.map((s) => '<button class="dg-cloud" data-nav data-key="dg:cloud:' + s.id + '" data-a="Open" style="--gc:' + s.c + '"><span class="dg-cico"><b>' + s.mono + '</b></span><span class="dg-cn">' + esc(s.name) + '</span><small>' + esc(s.about) + '</small></button>').join('') + '</div>' +
+          (D.app('cloudpc') ? '<div class="dg-card glass dg-cpc"><b>Or your own Dice Cloud PC</b><p>A whole computer in the cloud that\'s yours: rent one with a graphics card by the hour, put DiceOS\'s Cloud PC kit on it, and its games and desktop stream here. It\'s your Dice Cloud storage too.</p><button class="b small go" data-nav data-key="dg:cpc">' + D.glyph('cloud', 2) + 'Open Dice Cloud PC</button></div>' : '') + '</section>';
+        out += pcPart;
         // ---- how to set up the PC ----
-        out += '<section class="dg-sec"><div class="dg-h2"><h2>Setting up a gaming PC</h2></div><ol class="dg-steps">' +
+        if (g.hosts.length || showPc) out += '<section class="dg-sec"><div class="dg-h2"><h2>Setting up a gaming PC</h2></div><ol class="dg-steps">' +
           '<li><b>Install Sunshine on the gaming PC.</b> It\'s free, from LizardByte (on Windows: their installer, from github.com/LizardByte/Sunshine; on Linux: Sunshine on Flathub).</li>' +
           '<li><b>Open Sunshine on the PC</b> (in its browser, <code>https://localhost:47990</code>) and make a name and password for it.</li>' +
           '<li><b>Put both on the same home network.</b> A cable on the PC (and on the TV, if you can) makes it smoothest.</li>' +
@@ -133,6 +142,8 @@
       on('[data-key^="dg:cloud:"]', (id) => openCloud(CLOUD.find((s) => s.id === id)));
       on('[data-key="dg:getml"]', () => D.sys.post('/api/apps', status.flathub ? { action: 'install', id: MOONLIGHT } : { action: 'setup' }).then(refresh));
       on('[data-key="dg:addhost"]', addHost);
+      on('[data-key="dg:showpc"]', () => { showPc = true; paint(); });
+      on('[data-key="dg:cpc"]', () => D.launch('cloudpc'));
       on('[data-key^="dg:retry:"]', (host) => { hostInfo[host] = { busy: true }; paint(); look(host).then(paint); });
       on('[data-key^="dg:pair:"]', pair);
       on('[data-key^="dg:play:"]', (v) => { const i = v.indexOf('|'); D.gaming.play(v.slice(0, i), v.slice(i + 1)); });
@@ -164,6 +175,13 @@
       if (v === 'quit') D.sys.post('/api/games', { action: 'quit', host }).then((r) => D.toast({ icon: 'pad', c: r && r.ok ? '#4fc16b' : '#96969f', title: r && r.ok ? 'Stopped' : 'Couldn\'t stop it', text: (r && r.error) || 'The game on ' + host + ' has closed.' }));
       if (v === 'pair') pair(host);
       if (v === 'rm') { G().hosts = G().hosts.filter((x) => x.host !== host); D.save(); paint(); }
+    }
+    // from Dice Cloud PC: "Play its games" adds it as a gaming PC
+    const arg = String(ctx.arg || '');
+    if (arg.startsWith('addhost:')) {
+      const host = arg.slice(8);
+      if (/^[A-Za-z0-9.-]{1,100}$/.test(host) && !G().hosts.some((x) => x.host === host)) { G().hosts.push({ host, name: host.split('.')[0] }); D.save(); }
+      showPc = true;
     }
     paint();
     refresh();

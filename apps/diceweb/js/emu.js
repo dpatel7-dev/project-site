@@ -18,7 +18,7 @@
     brightness: dev.backlight ? 0.9 : null, battery: dev.battery ? { percent: 76, charging: false } : null,
     settings: cfg.settings || {},
   };
-  window.DICE_SYS = { token: 'emulator', version: cfg.version || '2.0.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
+  window.DICE_SYS = { token: 'emulator', version: cfg.version || '2.1.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
   const NETS = [[cfg.wifi && cfg.wifi.ssid ? cfg.wifi.ssid : 'Home', 84, true], ['Upstairs 5G', 61, true], ['Library Guest', 42, false], ['Printer-4F2A', 23, true]];
   const tell = (msg) => { try { parent.postMessage(Object.assign({ dice: 'emu' }, msg), location.origin); } catch (e) { /* not in the emulator after all */ } };
   const reply = (data, status) => new Response(JSON.stringify(data), { status: status || 200, headers: { 'Content-Type': 'application/json' } });
@@ -61,7 +61,22 @@
         return reply({ version: window.DICE_SYS.version, host: sys.host, user: sys.user, model: sys.model, uptime: Math.round((Date.now() - started) / 1000) + 9,
           ip: sys.wifi.ssid ? '192.168.1.42' : null, temp: dev.pi ? 44 + Math.round(Math.random() * 30) / 10 : null,
           mem: { total: dev.mem || 8e9, used: (dev.mem || 8e9) * (0.21 + Math.random() * 0.02) }, disk: { total: dev.disk || 64e9, used: (dev.disk || 64e9) * 0.18 },
-          load: 0.3 + Math.random() * 0.4, wifi: sys.wifi, volume: { level: sys.volume, muted: false }, brightness: sys.brightness, battery: sys.battery });
+          load: 0.3 + Math.random() * 0.4, wifi: sys.wifi, volume: { level: sys.volume, muted: false }, brightness: sys.brightness, battery: sys.battery,
+          remote_keys: false, standby: false, front: running, voice: false });
+      // pretend things on the TV's other HDMI inputs, and a pretend antenna tuner
+      case '/api/cec/devices':
+        return reply({ ok: true, me: 4, devices: [{ la: 1, kind: 'Playback 1', name: 'PlayStation 5', pa: '1.0.0.0', vendor: 'Sony', power: 'on', active: false },
+          { la: 8, kind: 'Playback 2', name: 'Xbox', pa: '3.0.0.0', vendor: 'Microsoft', power: 'standby', active: false }, { la: 3, kind: 'Tuner 1', name: 'Cable box', pa: '4.0.0.0', vendor: 'Arris', power: 'on', active: false }] });
+      case '/api/cec':
+        tell({ event: 'log', text: 'HDMI-CEC: ' + b.action + (b.pa ? ' to ' + b.pa : '') + (b.key ? ' ' + b.key + ' to device ' + b.la : '') + ' (pretend)' });
+        return reply({ ok: true });
+      case '/api/tuner':
+        if (method === 'POST') { tell({ event: 'log', text: 'Playing ' + b.name + ' from the antenna (pretend)' }); running = { name: b.name, kind: 'tv', key: b.url }; setTimeout(() => { running = null; }, 4000); return reply({ ok: true }); }
+        return reply({ ok: true, channels: [['2.1', 'WCBS-HD'], ['4.1', 'WNBC-HD'], ['5.1', 'WNYW-FOX'], ['7.1', 'WABC-HD'], ['11.1', 'WPIX'], ['13.1', 'WNET-PBS']].map(([num, name]) => ({ num, name, url: 'http://192.168.1.60:5004/auto/v' + num, hd: true })) });
+      case '/api/voice':
+        if (method === 'POST') { if (b.action === 'say') tell({ event: 'log', text: 'Deuce says: ' + b.text }); return reply(b.action === 'start' ? { ok: false, error: 'Deuce isn\'t set up on this computer yet.', need: 'setup' } : { ok: true }); }
+        return reply({ ok: true, ready: false, mics: ['iPazzPort Mic'], listening: false, job: null });
+      case '/api/lookup': return reply({ ok: false, error: 'The emulator doesn\'t go online.' });
       case '/api/settings':
         if (method === 'POST') {
           if (b.ha_token) { sys.settings.ha_token_set = true; delete b.ha_token; } // like DiceOS, the token never comes back to the page
@@ -112,7 +127,7 @@
         tell({ event: 'log', text: 'Took a screenshot: ' + p + ' (pretend)' });
         return reply({ ok: true, path: p });
       }
-      case '/api/open': tell({ event: 'log', text: 'Opened ' + b.url + ' in the browser' }); window.open(b.url, '_blank', 'noopener'); return reply({ ok: true });
+      case '/api/open': tell({ event: 'log', text: 'Opened ' + (b.name || b.url) + (b.full ? ' as a full-screen app' : ' in the browser') + ' (pretend)' }); if (!b.full) window.open(b.url, '_blank', 'noopener'); return reply({ ok: true });
       case '/api/update':
         if (method === 'POST') { updateAsked = Date.now(); return reply({ ok: true }); }
         return reply({ log: Date.now() - updateAsked < 2500 ? 'Checking the website for a newer DiceOS…' : 'Checking the website for a newer DiceOS…\nThis is the newest DiceOS.' });

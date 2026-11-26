@@ -128,7 +128,11 @@
       const want = cur;
       try {
         let d;
-        if (isTrash(cur)) d = { path: 'trash:', items: (await local.trash()).map((x) => Object.assign(x, { path: 'trash:' + x.name })) };
+        if (isTrash(cur)) {
+          // this computer's Trash, and what was taken out of Dice Cloud (for 30 days)
+          const gone = D.drive && D.drive.on() ? D.drive.deleted().map((f) => ({ name: f.name, dir: false, size: f.size, mtime: Math.round(f.deleted / 1000), cloudId: f.id, from: 'Dice Cloud' + (D.drive.norm(f.dir) === '/' ? '' : D.drive.norm(f.dir)) + '/' + f.name, path: 'trash:cloud:' + f.id })) : [];
+          d = { path: 'trash:', items: (await local.trash()).map((x) => Object.assign(x, { path: 'trash:' + x.name })).concat(gone) };
+        }
         else if (isFind(cur)) {
           const q = cur.slice(5);
           const found = (await Promise.all([local.find ? local.find(q).catch(() => []) : [], D.drive && D.drive.on() ? cloud.find(q) : []])).flat();
@@ -420,7 +424,14 @@
       if (!isFind(cur)) { add('copy', 'Copy', () => toClip(xs, false)); add('cut', 'Cut', () => toClip(xs, true)); }
       if (one && !one.dir && !isCloud(cur) && !isFind(cur)) add('dup', 'Make a copy', () => transfer([one.path], cur, true));
       if (files.length && !isCloud(files[0].path) && D.drive && D.drive.on()) add('cloud', 'Put in Dice Cloud', () => toCloud(files), { main: true });
-      if (one && !one.dir && isCloud(one.path)) { add('share', 'Share a link', () => share(one), { main: true }); add('here', local.real ? 'Save to this computer' : 'Save to Downloads', () => toHere([one])); }
+      if (one && !one.dir && isCloud(one.path)) {
+        add('share', 'Share a link', () => share(one), { main: true }); add('here', local.real ? 'Save to this computer' : 'Save to Downloads', () => toHere([one]));
+        const it = D.drive.at(one.path.slice(6));
+        if (it) {
+          add('star', it.star ? 'Unstar' : 'Star', () => { D.drive.star(it.id, !it.star); load(); });
+          if ((it.versions || []).length) add('vers', 'Older versions (' + it.versions.length + ')', () => versions(it));
+        }
+      }
       if (files.length === 1 && !isCloud(files[0].path)) add('download', 'Download', () => getIt(files[0]).then((b) => b && save(files[0].name, b)));
       if (!isFind(cur)) add('trash', isCloud(cur) ? 'Take out of Dice Cloud' : 'Move to Trash', () => trash(xs), { danger: true, main: true });
       return A;
@@ -477,7 +488,7 @@
     function doRename(x, to) { srcOf(x.path).op({ op: 'rename', path: x.path, to }).then(() => { pending = { path: joinTo(x.path.replace(/\/[^/]*$/, '') || '/', to) }; load(); }, oops); }
     async function trash(xs) {
       if (isCloud(cur)) {
-        const ok = await D.ask({ title: 'Take ' + (xs.length === 1 ? xs[0].name : xs.length + ' things') + ' out of Dice Cloud?', text: 'Deleted from Dice Cloud on all your computers. Copies saved on a computer stay there.', buttons: [{ label: 'Take out', value: true, danger: true }, { label: 'Cancel', value: false, go: true }] });
+        const ok = await D.ask({ title: 'Take ' + (xs.length === 1 ? xs[0].name : xs.length + ' things') + ' out of Dice Cloud?', text: 'Gone from Dice Cloud on all your computers, into the Trash for ' + D.drive.KEEP_DAYS + ' days in case you want it back.', buttons: [{ label: 'Take out', value: true, danger: true }, { label: 'Cancel', value: false, go: true }] });
         if (!ok) return;
       }
       let n = 0;
@@ -486,9 +497,15 @@
       trashN += isCloud(cur) ? 0 : n;
       load();
     }
+    async function versions(it) {
+      const vs = D.drive.versions(it.id), when = (v) => new Date(v.at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      const i = await D.ask({ title: 'Older versions of ' + it.name, text: 'Each time it changes, the one before is kept for ' + D.drive.KEEP_DAYS + ' days. Going back keeps the one now as an older version.', buttons: vs.slice(0, 6).map((v, j) => ({ label: 'Go back to ' + when(v) + ', ' + size(v.size), value: 'v' + j, go: j === 0 })).concat([{ label: 'Cancel', value: null }]) });
+      if (!i) return;
+      try { await D.drive.restoreVersion(it.id, +i.slice(1)); D.toast({ icon: 'cloud', c: '#3a9be8', title: 'Gone back', text: it.name + ' is the version from ' + when(vs[+i.slice(1)]) + ' again.' }); load(); } catch (e) { oops(e); }
+    }
     async function restore(xs) {
       let last = null;
-      for (const x of xs) { try { const r = await local.restore(x.name); last = r && r.path; } catch (e) { oops(e); } }
+      for (const x of xs) { try { if (x.cloudId) { const w = D.drive.restore(x.cloudId); last = w && 'Dice Cloud' + w; continue; } const r = await local.restore(x.name); last = r && r.path; } catch (e) { oops(e); } }
       trashN = Math.max(0, trashN - xs.length);
       if (last) D.toast({ icon: 'library', c: '#4fc16b', title: 'Put back', text: (xs.length === 1 ? xs[0].name + ' is back in ' : xs.length + ' things are back, the last in ') + (last.replace(/\/[^/]*$/, '').replace(/^~$/, 'Home') || 'Home') + '.' });
       load();
@@ -496,7 +513,10 @@
     async function forget(xs) {
       const ok = await D.ask({ title: xs ? 'Delete ' + (xs.length === 1 ? xs[0].name : xs.length + ' things') + ' forever?' : 'Empty the Trash?', text: 'This can\'t be undone.', buttons: [{ label: 'Delete forever', value: true, danger: true }, { label: 'Cancel', value: false, go: true }] });
       if (!ok) return;
-      try { if (xs) { for (const x of xs) await local.forget(x.name); } else await local.forget(null); } catch (e) { oops(e); }
+      try {
+        if (xs) { for (const x of xs) { if (x.cloudId) await D.drive.purge(x.cloudId); else await local.forget(x.name); } }
+        else { await local.forget(null); if (D.drive && D.drive.on()) await D.drive.emptyDeleted(); }
+      } catch (e) { oops(e); }
       trashN = 0;
       load();
     }

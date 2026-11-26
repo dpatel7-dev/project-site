@@ -114,7 +114,7 @@
   // ---- Watch: your streaming sites ---------------------------------------------------------
   // Each shows the site's own icon, fetched as the tile appears (the way a browser shows
   // a site's icon on its shortcuts), on that site's colour; with no internet, its first
-  // letters instead. They open in the real browser.
+  // letters instead. On DiceOS they open as full-screen apps (js/watch.js); in a browser, in a tab.
   TV.WATCH = [
     { name: 'YouTube', url: 'https://www.youtube.com', c: '#d9443c' },
     { name: 'Netflix', url: 'https://www.netflix.com', c: '#a3202a' },
@@ -161,17 +161,18 @@
     const w = watchList()[i];
     if (!w) return false;
     if (D.remote) D.remote.osd('tv', ((i + 1) % 10) + '  ' + w.name);
-    TV.open(w.url);
+    TV.open(w.url, w.name);
     return true;
   };
-  TV.open = function (url) {
+  TV.open = function (url, name) {
+    if (D.watch) return D.watch.open(url, name);
     if (D.sys) D.sys.open(url);
     else window.open(url, '_blank', 'noopener');
   };
   function watchTile(w, i) {
     const b = h('<button class="wtile" data-nav data-key="w:' + i + '" data-a="Watch" data-x="Remove" style="--wc:' + esc(w.c) + '" aria-label="' + esc(w.name) + '"><span class="wico-box"><span class="wmono">' + esc(TV.mono(w.name)) + '</span></span><span class="wname">' + esc(w.name) + '</span></button>');
     TV.iconOn(b, TV.icon(w));
-    b.onclick = () => { S.play('select'); TV.open(w.url); };
+    b.onclick = () => { S.play('select'); TV.open(w.url, w.name); };
     b._x = () => removeWatch(i);
     return b;
   }
@@ -212,12 +213,13 @@
     if (focusAt !== undefined) D.nav.focus(watch.querySelector('[data-key="w:' + focusAt + '"]') || add);
   }
   function watchRow() {
-    const s = h('<section class="shelf" data-block><h2>Watch <small>Opens in the browser. ' + D.btn('x') + ' takes one off.</small></h2><div class="row" data-row id="watch"></div></section>');
+    const s = h('<section class="shelf" data-block><h2>Watch <small>' + watchWords() + '</small></h2><div class="row" data-row id="watch"></div></section>');
     watch = s.querySelector('#watch');
     paintWatch(undefined, true);
     return s;
   }
-  D.on('source', () => { if (watch && watch.isConnected) { const sm = watch.parentElement.querySelector('h2 small'); if (sm) sm.innerHTML = 'Opens in the browser. ' + D.btn('x') + ' takes one off.'; } });
+  function watchWords() { return (D.sys ? 'Full-screen apps. Home on the remote comes back. ' : 'Each opens in a new tab. ') + D.btn('x') + ' takes one off.'; }
+  D.on('source', () => { if (watch && watch.isConnected) { const sm = watch.parentElement.querySelector('h2 small'); if (sm) sm.innerHTML = watchWords(); } });
 
   // ---- Live: Channels' pictures, playing in little tiles ----------------------------------------
   const thumbs = new Map();
@@ -349,33 +351,15 @@
       ground.insertBefore(cloudRow(), watch ? watch.closest('.shelf') : null);
     }, 500);
   });
+  // TV channels and Watch first (what a TV is for), then Dice's own Live pictures, the news, Dice
+  // Cloud and your apps. (DiceGaming lives on the desktop: games are a computer thing.)
   TV.rows = function (ground) {
+    if (D.watch) ground.append(D.watch.row());
+    ground.append(watchRow());
     if (D.channels && D.app('channels')) { ground.append(liveRow()); ground.append(newsRow()); }
     if (hasCloud()) ground.append(cloudRow());
     if (D.myApps && D.myApps.list().length) ground.append(myRow());
-    if (D.gaming && D.app('gaming')) ground.append(playRow());
-    ground.append(watchRow());
   };
-  // ---- Play: DiceGaming's games from your PC, and the cloud gaming services -----------------------------
-  function playRow() {
-    const s = h('<section class="shelf" data-block><h2>Play <small>Games from your gaming PC, or the cloud.</small></h2><div class="row" data-row id="play"></div></section>');
-    const row = s.querySelector('#play'), g = D.gaming.G();
-    const dg = h('<button class="wtile" data-nav data-key="pl:dg" data-a="Open" style="--wc:#7c4dff" aria-label="DiceGaming"><span class="wmono">' + D.glyph('pad', 5) + '</span><span class="wname">DiceGaming</span></button>');
-    dg.onclick = () => D.launch('gaming');
-    row.appendChild(dg);
-    if (D.sys) g.recent.slice(0, 5).forEach((x) => {
-      const b = h('<button class="wtile" data-nav data-key="pl:g:' + esc(x.host + '|' + x.game) + '" data-a="Play" style="--wc:' + esc(['#ff707a', '#f5a623', '#3fb6a8', '#4b9bec', '#d27adf'][x.game.length % 5]) + '" aria-label="' + esc(x.game) + '"><span class="wmono">' + esc(TV.mono(x.game)) + '</span><span class="wname">' + esc(x.game) + '</span></button>');
-      b.onclick = () => D.gaming.play(x.host, x.game);
-      row.appendChild(b);
-    });
-    D.gaming.CLOUD.forEach((c) => {
-      const b = h('<button class="wtile" data-nav data-key="pl:c:' + c.id + '" data-a="Open" style="--wc:' + c.c + '" aria-label="' + esc(c.name) + '"><span class="wico-box"><span class="wmono">' + esc(c.mono) + '</span></span><span class="wname">' + esc(c.name) + '</span></button>');
-      TV.iconOn(b, TV.icon({ url: c.url }));
-      b.onclick = () => D.gaming.openCloud(c);
-      row.appendChild(b);
-    });
-    return s;
-  }
   // ---- the apps you got from the Store: real ones and web ones ----------------------------------------
   function myRow() {
     const s = h('<section class="shelf" data-block id="myshelf"><h2>Your apps <small>From the Store. Home on the remote comes back here.</small></h2><div class="row" data-row id="myapps"></div></section>');
@@ -456,8 +440,9 @@
     if (key.startsWith('w:')) {
       if (key === 'w:add') return { kick: 'Watch', name: 'Add a site', line: 'Any streaming site, or anything else you open a lot.' };
       const w = watchList()[+key.slice(2)];
-      return w ? { kick: 'Watch', name: w.name, line: TV.host(w.url) + (D.sys ? ' opens in the browser, over DiceOS. Close it to come back.' : ' opens in a new tab.'), c: w.c } : null;
+      return w ? { kick: 'Watch', name: w.name, line: D.sys ? 'Opens full screen, as its own app: sign in once, inside it. Home on the remote comes back.' : TV.host(w.url) + ' opens in a new tab.', c: w.c } : null;
     }
+    if ((key.startsWith('ch:') || key.startsWith('an:')) && D.watch) return D.watch.spot(key);
     const k = key.slice(3);
     if (k === 'time') return { kick: 'Today', name: timeNow(), line: dateNow() + '.' };
     if (k === 'wx') { const p = place(); return p && wx ? { kick: 'Weather in ' + p.name, name: wx.t + '° and ' + wx.words.text.toLowerCase(), line: 'High ' + wx.hi + '°, low ' + wx.lo + '°.' } : { kick: 'Weather', name: 'Your town', line: 'Add it once; Dice Home and SereneTab use it too.' }; }

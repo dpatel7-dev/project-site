@@ -44,7 +44,10 @@ if [ "$PI" = 0 ]; then
   for p in libgl1-mesa-dri mesa-vulkan-drivers firmware-linux-free firmware-sof-signed; do apt-cache show "$p" >/dev/null 2>&1 && PKGS="$PKGS $p"; done
 fi
 # real apps (from Flathub, with Flatpak), and Xwayland for the ones that still need X11
-for p in flatpak xwayland; do apt-cache show "$p" >/dev/null 2>&1 && PKGS="$PKGS $p"; done
+# (and wlopm turns the picture off for standby, mpv plays an antenna tuner's channels,
+#  speech-dispatcher and espeak-ng let Deuce talk, python3-venv is for Deuce's ears, and
+#  libwidevinecdm0 is the video protection Netflix, Disney+ and the rest need to play)
+for p in flatpak xwayland wlopm mpv speech-dispatcher espeak-ng python3-venv libwidevinecdm0; do apt-cache show "$p" >/dev/null 2>&1 && PKGS="$PKGS $p"; done
 # shellcheck disable=SC2086
 apt-get install -y --no-install-recommends $PKGS
 if command -v flatpak >/dev/null 2>&1; then
