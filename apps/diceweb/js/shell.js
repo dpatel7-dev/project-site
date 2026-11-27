@@ -11,8 +11,8 @@
   const Hero = D.hero = { app: null, world: null, last: 0, paused: false };
   const cv = $('#hero'), hg = cv.getContext('2d');
   // how many screen pixels make one pixel of the landscapes (smaller numbers, more detail)
-  // (Heavenly looks: half again as many, for finer worlds)
-  D.scapeCell = () => Math.max(2, Math.round(Math.max(innerWidth, innerHeight * 1.6) / (D.state.looks === 'heaven' ? 960 : 640)));
+  // (Traced mode: half again as many, for all its little details)
+  D.scapeCell = () => Math.max(2, Math.round(Math.max(innerWidth, innerHeight * 1.6) / (D.state.looks === 'traced' ? 960 : 640)));
   // Behind Big screen: the world you picked, as a calm landscape across the top of the screen.
   // It stays the same as you move between apps; only the accent colour follows what's focused.
   Hero.size = function () {
@@ -34,7 +34,7 @@
   Hero.draw = function (now, force) {
     if (!Hero.world || (Hero.paused && !force)) return;
     const still = D.reduced();
-    if (!force && (still || now - Hero.last < 1000 / Math.min(D.state.looks === 'heaven' ? 30 : 20, D.state.fps || 60) - 2)) return;
+    if (!force && (still || now - Hero.last < 1000 / Math.min(D.state.looks === 'traced' ? 30 : 20, D.state.fps || 60) - 2)) return;
     Hero.last = now;
     Hero.world.draw(hg, now / 1000, still);
   };
@@ -508,6 +508,8 @@
     },
     quick(body) {
       const s = D.state;
+      // Modes first: a tap changes the whole computer (js/personal.js)
+      if (D.modes) body.appendChild(D.modes.quickRow(() => Qam.close(true)));
       const g = h('<div class="qgroup"></div>');
       g.appendChild(segRow('Look', [['auto', 'Clock'], ['day', 'Day'], ['night', 'Night']], s.look, (v) => { D.set('look', v); D.applyLook(true); }, 'q:look'));
       const st = D.sys && D.sys.status;
@@ -738,7 +740,7 @@
       else { if (Shell.view && Shell.view.v === 'settings') { Shell.view.section = Shell.view.arg = opts.arg; Shell.render(); } else Shell.go('settings', opts.arg); }
       return;
     }
-    if (Run.cur && Run.cur.id === id) { resume(); return; }
+    if (Run.cur && Run.cur.id === id) { resume(); if (opts.arg) D.emit(id + ':go', opts.arg); return; }
     if (Run.cur && opts.swap) { D.closeApp(true); return D.launch(id, Object.assign({}, opts, { swap: false })); } // a remote's colour buttons switch straight away
     if (Run.cur) {
       return D.ask({ title: 'Close ' + Run.cur.app.name + '?', text: 'Only one thing runs at a time. ' + Run.cur.app.name + ' will close so ' + app.name + ' can open.', buttons: [{ label: 'Close it and open ' + app.name, value: true, go: true, c: app.c }, { label: 'Cancel', value: false }] })
@@ -969,7 +971,8 @@
     if (D.wasPlaying) M.resume();
     if (Run.cur && ($('#app').classList.contains('running') || D.pip())) { Run.cur.since = performance.now(); if (Run.cur.inst.resume) Run.cur.inst.resume(); }
   };
-  D.restart = function () {
+  D.restart = function (shown) {
+    if (!shown && D.screens) return D.screens.power('restart', () => D.restart(true));
     if (Run.cur) D.closeApp(true);
     if (D.desk.on) D.desk.exit(true);
     M.stop();
@@ -981,17 +984,21 @@
   D.boot = function (kind, then) {
     const el = $('#boot');
     if (kind === 'off') { el.classList.add('gone'); el.hidden = true; then && then(); return; }
+    // Traced mode: a start-up of its own (js/screens.js)
+    if (D.state.looks === 'traced' && D.screens && D.screens.tracedBoot) { el.classList.add('gone'); el.hidden = true; return D.screens.tracedBoot(kind, then); }
     D.booting = true;
     el.hidden = false; el.classList.remove('gone');
     el.innerHTML = '<div class="stage"><canvas width="72" height="84"></canvas><div class="word pix" aria-label="' + D.brand + '"></div><div class="bar">' + '<i></i>'.repeat(12) + '</div></div><div class="skip">Press any button to skip</div>';
     const c = el.querySelector('canvas'), g = c.getContext('2d'), word = el.querySelector('.word'), bars = el.querySelector('.bar').children;
     g.imageSmoothingEnabled = false;
-    const t0 = performance.now(), quick = kind === 'quick' || D.reduced();
+    let t0 = 0; // (from the first picture drawn: a slow start can take a moment to show anything)
+    const quick = kind === 'quick' || D.reduced();
     const T = quick ? { drop: 0, word: 100, end: 650 } : { drop: 1100, word: 1300, end: 2400 };
     const night = D.night(), outline = night ? [58, 58, 68] : null;
     let raf = 0, landed = false;
     const shadow = (w, a) => { for (let k = 0; k < 3; k++) { g.fillStyle = 'rgba(0,0,0,' + (a * (k ? 0.5 : 1)).toFixed(3) + ')'; g.fillRect(36 - w / 2 - k * 2, 76 + k, w + k * 4, 1); } };
     function frame(now) {
+      if (!t0) t0 = now;
       const t = Math.max(0, now - t0);
       g.clearRect(0, 0, 72, 84);
       if (t < T.drop) { // tumbling down, bouncing once, settling into its pose
@@ -1062,7 +1069,6 @@
     else if (D.ambient && D.ambient.on) D.ambient.frame(now); // and so does the ambient screen
     else if (!D.desk.on && !document.hidden) Hero.draw(now);
     if (D.desk.on && !(D.wall && D.wall.on)) D.desk.frame(now);
-    if (D.heaven) D.heaven.frame(now);
     Perf.tick(now);
     if (Run.cur && Run.cur.inst.frame && $('#app').classList.contains('running')) Run.cur.inst.frame(now);
     requestAnimationFrame(loop);
@@ -1086,6 +1092,8 @@
     Hero.set(D.app(D.state.recent[0] || 'music'));
     Shell.go('home', null, { root: true, quiet: true });
     requestAnimationFrame(loop);
+    // a SereneTab window's new tab page on DiceOS: only SereneTab, straight away
+    if (D.serenePage) { document.documentElement.classList.add('serene-page'); document.title = 'New tab'; D.boot('off'); D.launch('browser'); return; }
     // a link can ask for a place to start, just this once: ?start=tv, ?start=home, ?open=settings:cloud
     const q = new URLSearchParams(location.search), want = q.get('start'), open = q.get('open');
     const start = want === 'tv' ? 'game' : want === 'home' || want === 'desk' ? want : D.state.start;
@@ -1098,6 +1106,7 @@
       if (wel) setTimeout(() => piWelcome(wel), 700);
       else if (first && start !== 'home') setTimeout(() => welcome(), 600);
       if (open) { const [id, arg] = open.split(':'); if (D.app(id)) setTimeout(() => D.launch(id, { arg }), 400); }
+      D.emit('booted');
     };
     D.boot(first ? 'full' : D.state.boot, after);
     D.save(true);

@@ -97,7 +97,7 @@
     box.innerHTML = '';
     if (!D.sys) {
       box.innerHTML = '<p class="wl-muted">Buttons for your lights and switches work when Dice Home runs on DiceOS.' + (haUrl ? '' : ' Add your Home Assistant address in Set up to open its dashboard from here.') + '</p>';
-      if (haUrl) { const b = h('<button class="wl-btn" data-nav data-key="wl:dash">Open Home Assistant</button>'); b.onclick = () => window.open(haUrl, '_blank', 'noopener'); box.appendChild(b); }
+      if (haUrl) { const b = h('<button class="wl-btn" data-nav data-key="wl:dash">Open Home Assistant</button>'); b.onclick = () => (D.browse ? D.browse(haUrl) : window.open(haUrl, '_blank', 'noopener')); box.appendChild(b); }
       return;
     }
     if (!D.sys.settings.homeassistant || !D.sys.settings.ha_token_set) { box.innerHTML = '<p class="wl-muted">Connect Home Assistant in Set up, and your lights and switches show up here.</p>'; return; }

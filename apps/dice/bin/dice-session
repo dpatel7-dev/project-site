@@ -24,8 +24,15 @@ done
 CHROME=$(command -v chromium || command -v chromium-browser)
 [ -z "$CHROME" ] && { echo "dice-session: Chromium isn't installed" >&2; exit 1; }
 mkdir -p "$HOME/.config/dice"
-exec "$CHROME" --kiosk --app=http://127.0.0.1:7070/ --ozone-platform=wayland \
+# links from any app open in SereneTab
+DICE=$(cd "$(dirname "$0")/.." && pwd)
+export BROWSER="$DICE/bin/dice-open"
+# Shield, DiceOS's ad blocker, works inside the desktop too (SereneTab's pages, Settings)
+SHIELD=""
+[ -f "$DICE/shield/manifest.json" ] && SHIELD="--load-extension=$DICE/shield"
+# shellcheck disable=SC2086
+exec "$CHROME" --kiosk --app=http://127.0.0.1:7070/ --ozone-platform=wayland $SHIELD \
   --user-data-dir="$HOME/.config/dice/shell" --no-first-run --noerrdialogs --disable-infobars \
-  --disable-session-crashed-bubble --disable-features=Translate,MediaRouter,HardwareMediaKeyHandling --password-store=basic --enable-speech-dispatcher \
+  --disable-session-crashed-bubble --disable-features=Translate,MediaRouter,HardwareMediaKeyHandling,DisableLoadExtensionCommandLineSwitch --password-store=basic --enable-speech-dispatcher \
   --autoplay-policy=no-user-gesture-required --check-for-update-interval=31536000 --enable-features=OverlayScrollbar \
   --touch-events=enabled --overscroll-history-navigation=0

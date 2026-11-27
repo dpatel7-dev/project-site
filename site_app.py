@@ -363,7 +363,27 @@ STATIC_TYPES = {'.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=
                 '.png': 'image/png', '.svg': 'image/svg+xml', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8'}
 CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'  # no 0/O or 1/I to mix up
 SETUP_KEYS = {'dice': int, 'name': str, 'computer': str, 'timezone': str, 'keyboard': str, 'look': str, 'world': str, 'buddy': str, 'start': str, 'boot': str,
-              'homeassistant': str, 'ssh': bool, 'updates': bool, 'suite': list, 'screen': dict, 'wifi': dict}
+              'homeassistant': str, 'ssh': bool, 'updates': bool, 'suite': list, 'screen': dict, 'wifi': dict,
+              # how DiceOS looks and behaves
+              'looks': str, 'accent': str, 'text': str, 'clock': str, 'units': str, 'sounds': bool, 'nightlight': str, 'motion': str,
+              'ambient': dict, 'deuce': dict, 'tv': dict, 'desk': dict, 'shield': dict}
+
+
+def _plain(d):
+    """A small settings object: short names, and only words, numbers, yes/no and short lists of words."""
+    out = {}
+    for k, v in list(d.items())[:20]:
+        if not isinstance(k, str) or len(k) > 30 or k in ('password', 'key', 'token'):
+            continue
+        if isinstance(v, (bool, int, float)):
+            out[k] = v
+        elif isinstance(v, str):
+            out[k] = v[:200]
+        elif isinstance(v, list):
+            out[k] = [x[:60] for x in v if isinstance(x, str)][:20]
+        elif v is None:
+            out[k] = None
+    return out
 _tarball = {}
 
 
@@ -436,6 +456,12 @@ def clean_setup(data):
     if 'wifi' in out:
         w = out['wifi']
         out['wifi'] = {k: w[k] for k in ('ssid', 'country', 'hidden') if k in w and isinstance(w[k], (str, bool))}
+    for k in ('looks', 'accent', 'text', 'clock', 'units', 'nightlight', 'motion'):
+        if k in out:
+            out[k] = out[k][:40]
+    for k in ('ambient', 'deuce', 'tv', 'desk', 'shield'):
+        if k in out:
+            out[k] = _plain(out[k])
     return out
 
 
@@ -937,6 +963,11 @@ def dice_routes(environ, start_response, path, method):
         return cloud_shared(start_response, m.group(1))
     if path in ('/dice/get', '/dice/get/'):
         page = _read('pages', 'dice-get.html')
+        if page is not None:
+            return _send(start_response, '200 OK', _noticed(site_shell.inject(fill(page, environ, here='dice'), 'dice', 'page', True, dock=False)))
+    # Inputs, step by step: setting up DiceOS as a KVM switch
+    if path in ('/dice/inputs', '/dice/inputs/', '/dice/kvm'):
+        page = _read('pages', 'dice-inputs.html')
         if page is not None:
             return _send(start_response, '200 OK', _noticed(site_shell.inject(fill(page, environ, here='dice'), 'dice', 'page', True, dock=False)))
     m = re.fullmatch(r'/dice/cloud/([0-9a-f]{32})/history(?:/([0-9]))?', path)

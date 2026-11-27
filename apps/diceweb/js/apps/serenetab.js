@@ -5,7 +5,13 @@
 //
 // Pages open inside SereneTab when the site allows it. Big sites that refuse
 // to be shown inside another page (Google, GitHub and so on) open in their
-// own window instead: Chromium on top of Dice, or a new tab in your browser.
+// own window instead: on DiceOS a SereneTab window (Chromium with SereneTab's
+// new tab page, its colours and Shield), or a new tab in your browser.
+//
+// Also: Shield's button (the ad blocker: what it kept out here, pause it for a site),
+// answers from Deuce in a tab ("?" or a question in the address bar), pinned and
+// private tabs, zoom and split view.
+// D.browse(url) opens any address here: on DiceOS, links from every app come this way.
 (function () {
   'use strict';
   const D = window.Dice, G = window.DiceGfx, L = window.DiceLogic, h = D.h, esc = D.esc;
@@ -22,8 +28,18 @@
       { name: 'YouTube', url: 'https://www.youtube.com' }, { name: 'GitHub', url: 'https://github.com' }, { name: 'MDN', url: 'https://developer.mozilla.org' },
       { name: 'OpenStreetMap', url: 'https://www.openstreetmap.org' }].filter(Boolean);
   }
+  // a SereneTab window's new tab page (DiceOS gives it SereneTab's settings, nothing else)
+  D.serenePage = !!window.DICE_SERENE || /[?&]serene=1(&|$)/.test(location.search);
   function settings() {
     const s = D.state.st || (D.state.st = {});
+    const from = window.DICE_SERENE && window.DICE_SERENE.serene;
+    if (from && !settings.took) {
+      settings.took = true;
+      if (Array.isArray(from.shortcuts) && from.shortcuts.length) s.shortcuts = from.shortcuts.filter((x) => x && /^https?:/.test(x.url)).slice(0, 12);
+      ['engine', 'city', 'units'].forEach((k) => { if (typeof from[k] === 'string') s[k] = from[k]; });
+      if (window.DICE_SERENE.name) D.state.name = String(window.DICE_SERENE.name).slice(0, 20);
+      if (window.DICE_SERENE.looks) D.state.looks = /^(traced|heaven)$/.test(window.DICE_SERENE.looks) ? 'traced' : 'normal';
+    }
     if (!L.ENGINES[s.engine]) s.engine = 'ddg';
     if (!G.Skyline.CITIES[s.city]) s.city = 'newyork';
     if (!Array.isArray(s.shortcuts)) s.shortcuts = defaults();
@@ -62,6 +78,10 @@
     edit: '<path d="M5 19l1-4L15.5 5.5a2 2 0 0 1 3 3L9 18z"/>', search: '<circle cx="10.5" cy="10.5" r="5.5"/><path d="M15 15l4.5 4.5"/>',
     more: '<circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/>', history: '<path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3"/><path d="M4 4.5v3.5h3.5"/><path d="M12 8v4.2l2.8 1.8"/>',
     undo: '<path d="M9 7L4.5 11.5 9 16"/><path d="M5 11.5h9a5 5 0 0 1 0 10h-2"/>', trash: '<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/>', check: '<path d="M5.5 12.5l4 4 9-9"/>',
+    shield: '<path d="M12 3.5l7 2.6v5.6c0 4.4-3 7.6-7 8.8-4-1.2-7-4.4-7-8.8V6.1z"/>', pin: '<path d="M9.5 4.5h5l-.8 5 3.3 3v1.5h-10V12.5l3.3-3z"/><path d="M12 14v5.5"/>',
+    mask: '<path d="M4 9c2.5-1.5 13.5-1.5 16 0 0 4-2 7-4.5 7-1.8 0-2.3-2-3.5-2s-1.7 2-3.5 2C6 16 4 13 4 9z"/><circle cx="8.6" cy="11" r="1.2"/><circle cx="15.4" cy="11" r="1.2"/>',
+    split: '<rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M12 5v14"/>', ask: '<circle cx="12" cy="12" r="8"/><circle cx="9.5" cy="9.5" r="1.6" fill="currentColor"/><circle cx="14.5" cy="14.5" r="1.6" fill="currentColor"/>',
+    minus: '<path d="M6 12h12"/>',
   };
   const icon = (n) => '<svg class="st-svg" viewBox="0 0 24 24" aria-hidden="true">' + ICON[n] + '</svg>';
   const CLOUD = 'M7.5 19h9.5a4 4 0 0 0 .5-7.97A5.5 5.5 0 0 0 7.2 9.6 4.7 4.7 0 0 0 7.5 19z';
@@ -86,9 +106,30 @@
     '<circle class="track" cx="50" cy="50" r="46.5"/><circle class="ring" cx="50" cy="50" r="46.5" pathLength="100" transform="rotate(-90 50 50)"/>' +
     '<path class="hh" d="M50 50V27"/><path class="mh" d="M50 50V15"/><path class="sh" d="M50 58V12"/><circle cx="50" cy="50" r="3" class="hub"/></svg>';
 
+  // ---- SereneTab, the browser for everything: D.browse(url) -------------------------------------
+  const SR = D.serene = { live: 0, site: () => '', reload: () => {}, open: null };
+  D.browse = function (url) {
+    if (!url) return;
+    if (SR.open && SR.live > 0) {
+      SR.open(url);
+      if (D.desk && D.desk.on) { const w = D.desk.wins.filter((x) => x.id === 'browser').pop(); if (w) D.desk.focus(w); } else if (!D.$('#app.running')) D.launch('browser');
+      return;
+    }
+    if (D.app('browser')) D.launch('browser', { arg: url });
+    else window.open(url, '_blank', 'noopener');
+  };
+  // a question for Deuce, as a page in a tab
+  const askUrl = (q) => 'serene:ask?q=' + encodeURIComponent(q);
+  const askOf = (u) => { const m = /^serene:ask\?q=(.*)$/.exec(u || ''); return m ? decodeURIComponent(m[1]) : null; };
+  const looksLikeQuestion = (v) => /\?\s*$/.test(v) || /^(who|what|whats|when|where|why|how|which|is|are|can|does|do|should|explain|define)\b/i.test(v.trim()) && v.trim().split(/\s+/).length >= 3;
+
   D.register({ id: 'browser', mount(root, ctx) {
     const S = settings();
     root.classList.add('st');
+    // a browser window's new tab page on DiceOS: just the page, and links go in the window itself
+    const solo = !!D.serenePage;
+    root.classList.toggle('st-solo', solo);
+    SR.live++;
     root.tabIndex = -1;
     root.classList.toggle('st-run', ctx.mode === 'run'); // full screen, with DiceTV's hints along the bottom
     root.innerHTML =
@@ -98,16 +139,21 @@
         '<button class="st-ic" data-nav data-key="st:fwd" data-a="fwd" aria-label="Forward (Alt+Right)">' + icon('fwd') + '</button>' +
         '<button class="st-ic" data-nav data-key="st:reload" data-a="reload" aria-label="Reload">' + icon('reload') + '</button>' +
         '<form class="st-omni" role="search"><button type="button" class="st-eng" data-nav data-key="st:eng" aria-haspopup="menu"></button>' +
-          '<input data-nav data-key="st:omni" aria-label="Search or type a web address" autocomplete="off" spellcheck="false"></form>' +
+          '<input data-nav data-key="st:omni" aria-label="Search or type a web address" autocomplete="off" spellcheck="false"><button type="button" class="st-zoom" data-nav data-key="st:zoom" hidden title="Back to 100%"></button></form>' +
+        '<button class="st-ic st-shield" data-nav data-key="st:shield" data-a="shield" aria-label="Shield, the ad blocker" aria-haspopup="dialog" hidden>' + icon('shield') + '<span class="st-badge" hidden></span></button>' +
         '<button class="st-ic" data-nav data-key="st:menu" data-a="menu" aria-label="More" aria-haspopup="menu">' + icon('more') + '</button>' +
         '<button class="st-ic st-logo" data-nav data-key="st:home" data-a="home" aria-label="New tab (Ctrl+T)">' + G.sereneSvg(22, 'light') + '</button>' +
       '</div></div><div class="st-pages"></div><div class="st-pop" hidden role="menu"></div><div class="st-sugg" hidden role="listbox" aria-label="Suggestions"></div>';
     const tabsEl = root.querySelector('.st-tabs'), pages = root.querySelector('.st-pages'), omni = root.querySelector('.st-omni input'), pop = root.querySelector('.st-pop');
-    let tabs = [], cur = null, seq = 0, sky = null, skyAt = 0, wxCity = null, wxHere = null, dead = false;
+    let tabs = [], cur = null, seq = 0, sky = null, skyAt = 0, wxCity = null, wxHere = null, dead = false, split = null;
     const closed = []; // tabs you closed, newest last, so Ctrl+Shift+T can bring them back
     if (!Array.isArray(S.history)) S.history = [];
     const openOutside = (url) => (D.sys ? D.sys.open(url) : window.open(url, '_blank', 'noopener'));
-    const save = () => { S.tabs = tabs.map((t) => (t.hist[t.at] && t.hist[t.at].how !== 'ntp' ? t.hist[t.at].url : '')); S.active = tabs.indexOf(cur); D.save(); };
+    // (private tabs aren't kept; pinned ones remember that they're pinned)
+    const save = () => { if (solo) return; const keep = tabs.filter((t) => !t.priv); S.tabs = keep.map((t) => { const u = t.hist[t.at] && !/^(ntp|history)$/.test(t.hist[t.at].how) ? t.hist[t.at].url : ''; return t.pin ? { u, p: 1 } : u; }); S.active = Math.max(0, keep.indexOf(cur)); D.save(); share(); };
+    // what a SereneTab window's new tab page shows (DiceOS): your shortcuts, search engine and city
+    let shareT = 0;
+    const share = () => { if (!D.sys || D.sys.info.emulated) return; clearTimeout(shareT); shareT = setTimeout(() => D.sys.saveSettings({ serene: { shortcuts: S.shortcuts.slice(0, 12), engine: S.engine, city: S.city, units: S.units } }), 1500); };
 
     // ---- the engine button and its menu ----
     function paintEngine() {
@@ -128,7 +174,7 @@
 
     // ---- tabs ----
     function newTab(url, opts) {
-      const t = { id: ++seq, hist: [], at: -1, el: h('<div class="st-page" hidden></div>') };
+      const t = { id: ++seq, hist: [], at: -1, el: h('<div class="st-page" hidden></div>'), zoom: 1, priv: !!(opts && opts.priv) };
       pages.appendChild(t.el); tabs.push(t);
       if (cur && opts && opts.after) { tabs.splice(tabs.indexOf(t), 1); tabs.splice(tabs.indexOf(cur) + 1, 0, t); }
       if (url) go(t, url, opts); else { t.hist = [{ url: '', how: 'ntp', title: 'New tab' }]; t.at = 0; }
@@ -140,31 +186,63 @@
       const i = tabs.indexOf(t);
       if (i < 0) return;
       tabs.splice(i, 1); t.el.remove();
-      if (t.hist[t.at] && t.hist[t.at].how !== 'ntp') { closed.push({ hist: t.hist, at: t.at }); if (closed.length > 10) closed.shift(); }
+      if (split && (split.a === t || split.b === t)) endSplit(t);
+      if (!t.priv && t.hist[t.at] && t.hist[t.at].how !== 'ntp') { closed.push({ hist: t.hist, at: t.at }); if (closed.length > 10) closed.shift(); }
       if (!tabs.length) newTab(null, { quiet: true });
       else if (t === cur) select(tabs[Math.min(i, tabs.length - 1)]);
       else paintTabs();
       save();
     }
     function select(t) {
+      // split view: two tabs side by side; picking another tab puts it where the focused one was
+      if (split && t !== split.a && t !== split.b) { if (cur === split.b) split.b = t; else split.a = t; }
       cur = t;
-      tabs.forEach((x) => { x.el.hidden = x !== t; });
+      const shown = split ? [split.a, split.b] : [t];
+      tabs.forEach((x) => { x.el.hidden = !shown.includes(x); x.el.classList.toggle('st-paneon', !!split && x === t); x.el.classList.toggle('st-left', !!split && x === split.a); x.el.classList.toggle('st-right', !!split && x === split.b); });
+      pages.classList.toggle('split', !!split);
       const e = t.hist[t.at];
       if (e && e.how === 'ntp') { t.el.appendChild(ntp); fitSky(); }
-      omni.value = e && e.how !== 'ntp' ? e.url : '';
+      omni.value = e && e.how !== 'ntp' ? (e.how === 'ask' ? '?' + (askOf(e.url) || '') : e.url) : '';
       if (e && e.how === 'history') historyPage(t.el);
-      paintTabs(); paintNav(); save();
+      paintTabs(); paintNav(); save(); paintShield();
+      root.classList.toggle('st-private', !!t.priv);
       ctx.setTitle(e && e.how !== 'ntp' ? (e.title || host(e.url)) + ' — SereneTab' : 'SereneTab');
     }
+    function startSplit() {
+      if (split) return;
+      const other = tabs.filter((x) => x !== cur && !(x.hist[x.at] && x.hist[x.at].how === 'ntp')).pop();
+      const a = cur;
+      const b = other || newTab(null, { quiet: true, after: true });
+      split = { a, b };
+      select(b === cur ? a : cur);
+    }
+    function endSplit(gone) {
+      if (!split) return;
+      const keep = gone ? (split.a === gone ? split.b : split.a) : cur;
+      split = null;
+      pages.classList.remove('split');
+      tabs.forEach((x) => { x.el.classList.remove('st-paneon', 'st-left', 'st-right'); });
+      if (tabs.includes(keep)) select(keep);
+    }
+    // in split view, clicking into a page focuses its tab (the page itself keeps the click)
+    const onBlur = () => setTimeout(() => {
+      if (!split) return;
+      const f = document.activeElement;
+      if (!f || f.tagName !== 'IFRAME' || !pages.contains(f)) return;
+      const t = tabs.find((x) => x.el.contains(f));
+      if (t && t !== cur) select(t);
+    }, 0);
+    addEventListener('blur', onBlur);
     function paintTabs() {
       tabsEl.innerHTML = '';
       tabs.forEach((t, i) => {
-        const e = t.hist[t.at] || { how: 'ntp' }, name = e.how === 'ntp' ? 'New tab' : e.title || host(e.url) || e.url;
-        const mark = e.how === 'ntp' ? G.sereneSvg(14, 'light') : e.how === 'history' ? '<span class="st-mono" style="--c:#7a86a3">' + icon('history') + '</span>' : '<span class="st-mono" style="--c:' + colourOf(e.url) + '">' + esc(letter(e.url)) + '</span>';
-        const b = h('<div class="st-tab' + (t === cur ? ' on' : '') + '" role="tab" aria-selected="' + (t === cur) + '"><button class="st-tabgo" data-nav data-key="st:t' + i + '">' + mark + '<span>' + esc(name) + '</span></button><button class="st-x" data-nav data-key="st:x' + i + '" aria-label="Close ' + esc(name) + '">' + icon('close') + '</button></div>');
+        const e = t.hist[t.at] || { how: 'ntp' }, name = (t.priv ? 'Private: ' : '') + (e.how === 'ntp' ? 'New tab' : e.title || host(e.url) || e.url);
+        const mark = t.priv ? '<span class="st-mono" style="--c:#6a4fb0">' + icon('mask') + '</span>' : e.how === 'ntp' ? G.sereneSvg(14, 'light') : e.how === 'history' ? '<span class="st-mono" style="--c:#7a86a3">' + icon('history') + '</span>' : e.how === 'ask' ? '<span class="st-mono" style="--c:#4b7bec">' + icon('ask') + '</span>' : '<span class="st-mono" style="--c:' + colourOf(e.url) + '">' + esc(letter(e.url)) + '</span>';
+        const inSplit = split && (t === split.a || t === split.b);
+        const b = h('<div class="st-tab' + (t === cur ? ' on' : '') + (t.pin ? ' pin' : '') + (t.priv ? ' priv' : '') + (inSplit ? ' paired' : '') + '" role="tab" aria-selected="' + (t === cur) + '" title="' + esc(name) + '"><button class="st-tabgo" data-nav data-key="st:t' + i + '">' + mark + '<span>' + esc(name) + '</span></button>' + (t.pin ? '' : '<button class="st-x" data-nav data-key="st:x' + i + '" aria-label="Close ' + esc(name) + '">' + icon('close') + '</button>') + '</div>');
         b.querySelector('.st-tabgo').onclick = () => select(t);
         b.querySelector('.st-tabgo').onauxclick = (ev) => { if (ev.button === 1) closeTab(t); };
-        b.querySelector('.st-x').onclick = () => closeTab(t);
+        if (!t.pin) b.querySelector('.st-x').onclick = () => closeTab(t);
         tabsEl.appendChild(b);
       });
       const add = h('<button class="st-ic st-add" data-nav data-key="st:new" aria-label="New tab (Ctrl+T)">' + icon('plus') + '</button>');
@@ -189,10 +267,14 @@
     // ---- going places ----
     function go(t, url, opts) {
       if (url === 'serene:history') { t.hist = t.hist.slice(0, t.at + 1); t.hist.push({ url, how: 'history', title: 'History' }); t.at = t.hist.length - 1; show(t); return; }
+      const q = askOf(url);
+      if (q !== null) { t.hist = t.hist.slice(0, t.at + 1); t.hist.push({ url, how: 'ask', title: q, thread: [] }); t.at = t.hist.length - 1; show(t); return; }
       const how = L.howToShow(url, location.href);
       const e = { url, how: how.how, show: how.url, video: !!how.video, title: (opts && opts.title) || host(url) };
+      // a SereneTab window's new tab page: the window itself goes there
+      if (solo) { location.href = url; return; }
       t.hist = t.hist.slice(0, t.at + 1); t.hist.push(e); t.at = t.hist.length - 1;
-      if (!S.noHistory) S.history = L.remember(S.history, { url, title: e.title, at: Date.now(), search: !!(opts && opts.search) }, 300);
+      if (!S.noHistory && !t.priv) S.history = L.remember(S.history, { url, title: e.title, at: Date.now(), search: !!(opts && opts.search) }, 300);
       show(t, opts);
     }
     function show(t, opts) {
@@ -200,6 +282,7 @@
       if (!e) return;
       if (e.how === 'ntp') { t.el.innerHTML = ''; t.el.appendChild(ntp); fitSky(); }
       else if (e.how === 'history') { if (ntp.parentNode === t.el) ntp.remove(); historyPage(t.el); }
+      else if (e.how === 'ask') { if (ntp.parentNode === t.el) ntp.remove(); askPage(t, e); }
       else if (e.how === 'frame') {
         if (ntp.parentNode === t.el) ntp.remove();
         t.el.innerHTML = '';
@@ -207,15 +290,17 @@
         const f = h('<iframe class="st-frame" title="' + esc(e.title) + '" allow="fullscreen; autoplay; encrypted-media; picture-in-picture; clipboard-write" referrerpolicy="strict-origin-when-cross-origin"></iframe>');
         if (!sameOrigin) f.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-downloads allow-presentation');
         f.src = e.show;
+        zoomFrame(t, f);
         f.onload = () => {
           try {
             const w = f.contentWindow, doc = f.contentDocument;
             if (doc) {
               e.title = doc.title || e.title; e.url = w.location.href;
-              if (!S.noHistory) { S.history = L.remember(S.history, { url: e.url, title: e.title, at: Date.now() }, 300); D.save(); }
+              if (!S.noHistory && !t.priv) { S.history = L.remember(S.history, { url: e.url, title: e.title, at: Date.now() }, 300); D.save(); }
               if (t === cur) omni.value = e.url; paintTabs(); ctx.setTitle(e.title + ' — SereneTab');
             }
           } catch (err) { /* another site: we can't read its title */ }
+          if (t === cur) paintShield();
         };
         t.el.appendChild(f);
         if (!sameOrigin && !e.video) {
@@ -233,13 +318,15 @@
         t.el.querySelector('[data-key="st:again"]').onclick = () => openOutside(e.url);
         if (opts && opts.user) openOutside(e.url);
       }
-      if (t === cur) { omni.value = e.how === 'ntp' ? '' : e.how === 'history' ? 'serene:history' : e.url; paintNav(); ctx.setTitle(e.how === 'ntp' ? 'SereneTab' : (e.title || host(e.url)) + ' — SereneTab'); }
+      if (t === cur) { omni.value = e.how === 'ntp' ? '' : e.how === 'history' ? 'serene:history' : e.how === 'ask' ? '?' + askOf(e.url) : e.url; paintNav(); paintZoom(); paintShield(); ctx.setTitle(e.how === 'ntp' ? 'SereneTab' : (e.title || host(e.url)) + ' — SereneTab'); }
       paintTabs(); save();
     }
     function visit(text, opts) {
       const v = String(text || '').trim();
       // "/dice" means a page on this website
       if (/^serene:\/*history$/i.test(v)) { go(cur, 'serene:history'); return; }
+      // "?why is the sky blue" asks Deuce, as a page
+      if (/^\?\s*\S/.test(v) && D.deuce && D.deuce.answer) { if (opts && opts.newTab) newTab(askUrl(v.replace(/^\?\s*/, '')), { after: true }); else go(cur, askUrl(v.replace(/^\?\s*/, ''))); root.focus({ preventScroll: true }); return; }
       const r = /^\/[^/]/.test(v) ? { url: new URL(v, D.origin + '/').href, search: false } : L.omni(v, S.engine);
       if (!r) return;
       const o = { user: true, search: r.search, title: r.search ? '\u201c' + v + '\u201d on ' + L.ENGINES[S.engine].name : null };
@@ -256,8 +343,13 @@
     root.querySelector('[data-a="home"]').onclick = () => newTab();
     root.querySelector('[data-a="menu"]').onclick = (ev) => {
       const from = ev.currentTarget, r = from.getBoundingClientRect(), rr = root.getBoundingClientRect();
+      const e0 = cur.hist[cur.at] || {}, page = e0.how === 'frame' || e0.how === 'window';
       pop.innerHTML = '<button role="menuitem" data-nav data-key="st:m-new" data-m="new">' + icon('plus') + 'New tab<kbd>Ctrl T</kbd></button>' +
+        '<button role="menuitem" data-nav data-key="st:m-priv" data-m="priv">' + icon('mask') + 'New private tab<kbd>Ctrl Shift N</kbd></button>' +
         '<button role="menuitem" data-nav data-key="st:m-reopen" data-m="reopen"' + (closed.length ? '' : ' disabled') + '>' + icon('undo') + 'Reopen closed tab<kbd>Ctrl Shift T</kbd></button>' +
+        '<button role="menuitem" data-nav data-key="st:m-pin" data-m="pin">' + icon('pin') + (cur.pin ? 'Unpin this tab' : 'Pin this tab') + '</button>' +
+        '<button role="menuitem" data-nav data-key="st:m-split" data-m="split"' + (split || tabs.length > 1 || page ? '' : ' disabled') + '>' + icon('split') + (split ? 'Close split view' : 'Split view') + '</button>' +
+        '<div class="st-zoomrow" role="group" aria-label="Zoom"><span>Zoom</span><button class="st-ic small" data-nav data-key="st:m-zout" data-z="-1" aria-label="Zoom out (Ctrl −)">' + icon('minus') + '</button><b>' + Math.round(cur.zoom * 100) + '%</b><button class="st-ic small" data-nav data-key="st:m-zin" data-z="1" aria-label="Zoom in (Ctrl +)">' + icon('plus') + '</button></div>' +
         '<button role="menuitem" data-nav data-key="st:m-hist" data-m="history">' + icon('history') + 'History<kbd>Ctrl H</kbd></button>' +
         '<button role="menuitem" data-nav data-key="st:m-keep" data-m="keep" aria-pressed="' + !S.noHistory + '">' + icon('check') + 'Remember sites I visit</button>' +
         // Dice Drop: this page, on another computer (the TV, say)
@@ -267,6 +359,9 @@
       pop.querySelectorAll('[data-m]').forEach((b) => { b.onclick = () => {
         pop.hidden = true;
         if (b.dataset.m === 'new') newTab();
+        else if (b.dataset.m === 'priv') newTab(null, { priv: true });
+        else if (b.dataset.m === 'pin') pinTab(cur);
+        else if (b.dataset.m === 'split') { if (split) endSplit(); else startSplit(); }
         else if (b.dataset.m === 'reopen') reopen();
         else if (b.dataset.m === 'history') newTab('serene:history', { after: true });
         else if (b.dataset.m === 'send') {
@@ -276,10 +371,15 @@
         }
         else { S.noHistory = !S.noHistory; D.save(); D.toast({ icon: 'link', c: '#3d86d6', title: 'SereneTab', text: S.noHistory ? 'Sites you visit won\'t be remembered.' : 'SereneTab will remember the sites you visit, on this computer only.' }); }
       }; });
+      pop.querySelectorAll('[data-z]').forEach((b) => { b.onclick = () => { zoomBy(+b.dataset.z); pop.querySelector('.st-zoomrow b').textContent = Math.round(cur.zoom * 100) + '%'; }; });
       setTimeout(() => pop.querySelector('button:not([disabled])').focus(), 0);
     };
     root.addEventListener('keydown', (ev) => {
       const k = ev.key.toLowerCase(), mod = ev.ctrlKey || ev.metaKey;
+      if (mod && (k === '=' || k === '+')) { ev.preventDefault(); zoomBy(1); return; }
+      if (mod && (k === '-' || k === '_')) { ev.preventDefault(); zoomBy(-1); return; }
+      if (mod && k === '0') { ev.preventDefault(); zoomBy(0); return; }
+      if (mod && ev.shiftKey && k === 'n') { ev.preventDefault(); newTab(null, { priv: true }); return; }
       if (mod && ev.shiftKey && k === 't') { ev.preventDefault(); reopen(); }
       else if (mod && k === 't') { ev.preventDefault(); newTab(); }
       else if (mod && k === 'h') { ev.preventDefault(); newTab('serene:history', { after: true }); }
@@ -289,6 +389,111 @@
       else if (ev.altKey && k === 'arrowright') { ev.preventDefault(); root.querySelector('[data-a="fwd"]').click(); }
       else if (k === 'escape' && !pop.hidden) { pop.hidden = true; }
     });
+
+    // ---- pinned tabs: small, at the start, kept ----
+    function pinTab(t) {
+      t.pin = !t.pin;
+      tabs.splice(tabs.indexOf(t), 1);
+      const lastPin = tabs.reduce((n, x, i) => (x.pin ? i + 1 : n), 0);
+      tabs.splice(t.pin ? lastPin : lastPin, 0, t);
+      paintTabs(); save();
+    }
+
+    // ---- zoom, for each tab ----
+    const ZOOMS = [0.5, 0.67, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];
+    function zoomFrame(t, f) {
+      f = f || t.el.querySelector('.st-frame');
+      if (!f) return;
+      const z = t.zoom;
+      f.style.zoom = z === 1 ? '' : String(z);
+      f.style.width = z === 1 ? '' : (100 / z) + '%';
+      f.style.top = z === 1 ? '' : 'calc((var(--st-top) + 14px) / ' + z + ')';
+      f.style.height = z === 1 ? '' : 'calc((100% - var(--st-top) - 14px) / ' + z + ')';
+    }
+    function zoomBy(d) {
+      const i = ZOOMS.indexOf(cur.zoom);
+      cur.zoom = d === 0 ? 1 : ZOOMS[Math.max(0, Math.min(ZOOMS.length - 1, (i < 0 ? 4 : i) + d))];
+      zoomFrame(cur); paintZoom();
+      const nt = ntp.parentNode === cur.el ? ntp.querySelector('.st-ntp-in') : null; if (nt) nt.style.zoom = cur.zoom === 1 ? '' : cur.zoom;
+    }
+    function paintZoom() { const z = root.querySelector('.st-zoom'); z.hidden = cur.zoom === 1; z.textContent = Math.round(cur.zoom * 100) + '%'; }
+    root.querySelector('.st-zoom').onclick = () => zoomBy(0);
+
+    // ---- Shield: what it kept out on this site, and pausing it here ----
+    const shieldBtn = root.querySelector('.st-shield');
+    const siteOf = (t) => { const e = t && t.hist[t.at]; return e && (e.how === 'frame' || e.how === 'window') ? host(e.url) : ''; };
+    let shieldT = 0;
+    function paintShield() {
+      const SH = D.shield;
+      shieldBtn.hidden = !(SH && SH.available()) || solo;
+      if (shieldBtn.hidden) return;
+      const site = siteOf(cur), badge = shieldBtn.querySelector('.st-badge');
+      clearTimeout(shieldT);
+      SH.get(site).then((s) => {
+        if (!s || dead) return;
+        const n = s.site ? s.site.n : 0, paused = s.site && s.site.paused;
+        shieldBtn.classList.toggle('off', !s.on || !!paused);
+        badge.hidden = !n || paused || !s.on; badge.textContent = n > 99 ? '99+' : String(n);
+        shieldBtn.setAttribute('aria-label', 'Shield: ' + (!s.on ? 'off' : paused ? 'paused here' : n + ' ads kept out here today'));
+      });
+      if (site) shieldT = setTimeout(paintShield, 5000);
+    }
+    D.on('shield', paintShield);
+    shieldBtn.onclick = async () => {
+      const SH = D.shield, site = siteOf(cur), s = await SH.get(site);
+      if (!s) { D.launch('settings', { arg: 'shield' }); return; }
+      const r = shieldBtn.getBoundingClientRect(), rr = root.getBoundingClientRect();
+      const paused = s.site && s.site.paused;
+      pop.innerHTML = '<div class="st-shieldpop">' + (SH.art ? SH.art(s.on && !paused, 44) : '') + '<div><b>' + (!s.on ? 'Shield is off' : !site ? 'Shield is on' : paused ? 'Paused on ' + esc(site) : esc(site)) + '</b><span>' +
+        (!s.on ? 'Ads aren\'t being blocked.' : site && !paused ? Number(s.site.n).toLocaleString() + ' ads and trackers kept out here today' : Number(s.today).toLocaleString() + ' kept out today, on every site') + '</span></div></div>' +
+        (site && s.on ? '<button role="menuitem" data-nav data-key="st:sh-pause" data-sh="' + (paused ? 'resume' : 'pause') + '">' + icon('shield') + (paused ? 'Block ads here again' : 'Pause Shield on this site') + '</button>' : '') +
+        (!s.on ? '<button role="menuitem" data-nav data-key="st:sh-on" data-sh="on">' + icon('shield') + 'Turn Shield on</button>' : '') +
+        '<button role="menuitem" data-nav data-key="st:sh-set" data-sh="settings">' + icon('more') + 'Shield settings</button>';
+      pop.style.left = 'auto'; pop.style.right = Math.max(8, rr.right - r.right) + 'px'; pop.style.top = (r.bottom - rr.top + 6) + 'px';
+      pop.hidden = false;
+      pop.querySelectorAll('[data-sh]').forEach((b) => { b.onclick = async () => {
+        pop.hidden = true;
+        const a = b.dataset.sh;
+        if (a === 'settings') return D.launch('settings', { arg: 'shield' });
+        if (a === 'on') await SH.set({ on: true });
+        else if (a === 'pause') await SH.pause(site);
+        else await SH.resume(site);
+        D.toast({ icon: 'shield', c: '#4b7bec', title: 'Shield', text: a === 'pause' ? 'Paused on ' + site + '. Ads show here now.' : a === 'resume' ? 'Blocking ads on ' + site + ' again.' : 'Shield is on.' });
+        show(cur); paintShield();
+      }; });
+      setTimeout(() => (pop.querySelector('button') || shieldBtn).focus(), 0);
+    };
+
+    // ---- a question for Deuce, answered in the tab (like scout) ----
+    function askPage(t, e) {
+      const q = askOf(e.url) || '';
+      t.el.innerHTML = '<div class="st-ask st-wash"><div class="st-askin"><div class="st-askthread"></div>' +
+        '<form class="st-askmore"><span class="st-askorb">' + (D.deuce && D.deuce.orbSvg ? D.deuce.orbSvg(28) : '') + '</span><input data-nav data-key="st:askmore" placeholder="Ask a follow-up" aria-label="Ask a follow-up" autocomplete="off"><button class="st-pill go" data-nav data-key="st:askgo">Ask</button></form></div></div>';
+      const th = t.el.querySelector('.st-askthread');
+      if (!e.thread) e.thread = [];
+      const block = (qq) => {
+        const b = h('<section class="st-askblock"><h1></h1><div class="st-askans"><p class="dp-steps"><i></i><i></i><i></i><span>Searching the web</span></p></div></section>');
+        b.querySelector('h1').textContent = qq;
+        th.appendChild(b);
+        return b;
+      };
+      const ask = async (qq) => {
+        const b = block(qq);
+        const slow = setTimeout(() => { const s = b.querySelector('.dp-steps span'); if (s) s.textContent = 'Reading the best pages'; }, 1400);
+        const r = await D.deuce.answer(qq, e.thread);
+        clearTimeout(slow);
+        if (dead || !b.isConnected) return;
+        const box = b.querySelector('.st-askans');
+        if (!r || !r.ok) { box.innerHTML = '<p class="st-empty">' + esc((r && r.error) || 'Couldn\'t look that up.') + '</p>'; return; }
+        D.deuce.renderAnswer(box, r, { open: (u) => newTab(u, { user: true, after: true }) });
+        e.thread.push({ q: qq, a: r.answer, r });
+      };
+      // the answers already here (going back to this tab), else the first one
+      if (e.thread.length) e.thread.forEach((x) => { const b = block(x.q); D.deuce.renderAnswer(b.querySelector('.st-askans'), x.r, { open: (u) => newTab(u, { user: true, after: true }) }); });
+      else if (q) ask(q);
+      t.el.querySelector('.st-askmore').onsubmit = (ev) => { ev.preventDefault(); const inp = t.el.querySelector('.st-askmore input'), v = inp.value.trim(); if (!v) return; inp.value = ''; ask(v); };
+      e.title = q;
+    }
 
     // ---- History: the sites you've been to, newest first, grouped by day ----
     function historyPage(el) {
@@ -321,19 +526,21 @@
     let suggFor = null, suggItems = [], suggAt = -1;
     function suggestFor(input) {
       suggItems = L.suggest(input.value, S.shortcuts, S.history, S.engine);
+      const typed = input.value.trim();
+      if (D.deuce && D.deuce.answer && typed && (looksLikeQuestion(typed) || /^\?/.test(typed))) suggItems.unshift({ kind: 'ask', title: 'Ask Deuce: ' + typed.replace(/^\?\s*/, ''), url: askUrl(typed.replace(/^\?\s*/, '')) });
       suggFor = input; suggAt = -1;
       if (!suggItems.length || document.activeElement !== input) { closeSugg(); return; }
       const r = input.closest('form').getBoundingClientRect(), rr = root.getBoundingClientRect();
       sugg.style.left = (r.left - rr.left) + 'px'; sugg.style.top = (r.bottom - rr.top + 6) + 'px'; sugg.style.width = r.width + 'px';
-      sugg.innerHTML = suggItems.map((x, i) => '<button role="option" tabindex="-1" data-i="' + i + '"><span class="st-mono" style="--c:' + (x.kind === 'search' ? L.ENGINES[S.engine].c : colourOf(x.url)) + '">' +
-        (x.kind === 'search' ? icon('search') : x.kind === 'history' ? icon('history') : esc(x.kind === 'shortcut' ? (x.title || '?')[0].toUpperCase() : letter(x.url))) + '</span><b>' + esc(x.title) + '</b>' + (x.kind === 'search' || x.kind === 'go' ? '' : '<span>' + esc(host(x.url)) + '</span>') + '</button>').join('');
+      sugg.innerHTML = suggItems.map((x, i) => '<button role="option" tabindex="-1" data-i="' + i + '"' + (x.kind === 'ask' ? ' class="st-sask"' : '') + '><span class="st-mono" style="--c:' + (x.kind === 'search' ? L.ENGINES[S.engine].c : x.kind === 'ask' ? '#4b7bec' : colourOf(x.url)) + '">' +
+        (x.kind === 'search' ? icon('search') : x.kind === 'ask' ? icon('ask') : x.kind === 'history' ? icon('history') : esc(x.kind === 'shortcut' ? (x.title || '?')[0].toUpperCase() : letter(x.url))) + '</span><b>' + esc(x.title) + '</b>' + (x.kind === 'search' || x.kind === 'go' || x.kind === 'ask' ? '' : '<span>' + esc(host(x.url)) + '</span>') + '</button>').join('');
       sugg.hidden = false;
       sugg.querySelectorAll('button').forEach((b) => { b.onpointerdown = (ev) => { ev.preventDefault(); pickSugg(+b.dataset.i); }; });
     }
     function moveSugg(d) {
       suggAt = Math.max(-1, Math.min(suggItems.length - 1, suggAt + d));
       sugg.querySelectorAll('button').forEach((b, i) => b.setAttribute('aria-selected', String(i === suggAt)));
-      if (suggFor) suggFor.value = suggAt >= 0 ? (suggItems[suggAt].kind === 'search' ? suggFor.dataset.typed : suggItems[suggAt].url) : suggFor.dataset.typed;
+      if (suggFor) suggFor.value = suggAt >= 0 ? (/^(search|ask)$/.test(suggItems[suggAt].kind) ? suggFor.dataset.typed : suggItems[suggAt].url) : suggFor.dataset.typed;
     }
     function pickSugg(i) {
       const x = suggItems[i], input = suggFor;
@@ -341,6 +548,7 @@
       if (!x || !input) return;
       input.value = input === omni ? x.url : '';
       if (x.kind === 'search') visit(input.dataset.typed);
+      else if (x.kind === 'ask') go(cur, x.url);
       else go(cur, x.url, { user: true, title: x.kind === 'go' ? null : x.title });
       root.focus({ preventScroll: true });
     }
@@ -492,6 +700,7 @@
       ntp.classList.toggle('dark', sky.night);
       paintChrome();
     }
+
     let lastSec = -1;
     function tickClock() {
       const now = new Date(), sec = now.getSeconds();
@@ -515,16 +724,21 @@
     }
 
     paintEngine(); greet(); paintLattice(); paintWeather(); paintDue(); loadWeather();
-    // put back the tabs from last time
-    const saved = Array.isArray(S.tabs) ? S.tabs.slice(0, 12) : [];
-    if (ctx.arg && typeof ctx.arg === 'string') saved.push(ctx.arg);
+    // put back the tabs from last time (a SereneTab window's new tab page is only that)
+    const saved = solo ? [''] : (Array.isArray(S.tabs) ? S.tabs.slice(0, 12) : []);
+    if (ctx.arg && typeof ctx.arg === 'string' && !solo) saved.push(ctx.arg);
     if (!saved.length) saved.push('');
-    saved.forEach((u) => {
-      const t = { id: ++seq, hist: [], at: -1, el: h('<div class="st-page" hidden></div>') };
+    saved.forEach((x) => {
+      const u = typeof x === 'string' ? x : (x && x.u) || '';
+      const t = { id: ++seq, hist: [], at: -1, el: h('<div class="st-page" hidden></div>'), zoom: 1, pin: !!(x && x.p) };
       pages.appendChild(t.el); tabs.push(t);
       if (u) go(t, u); else { t.hist = [{ url: '', how: 'ntp', title: 'New tab' }]; t.at = 0; }
     });
-    select(tabs[ctx.arg ? tabs.length - 1 : Math.max(0, Math.min(tabs.length - 1, S.active | 0))]);
+    select(tabs[ctx.arg && !solo ? tabs.length - 1 : Math.max(0, Math.min(tabs.length - 1, S.active | 0))]);
+    // links from anywhere (other apps on DiceOS, Deuce, the Dice Bar) open as a new tab here
+    SR.open = (url) => { newTab(url, { user: true, after: true }); };
+    SR.site = () => siteOf(cur);
+    SR.reload = () => { if (cur) show(cur); };
     paintEngine();
     setTimeout(() => { if (ctx.mode === 'run') D.nav.first(root); }, 40);
     ctx.legend([['a', 'Open'], ['b', 'Back']]);
@@ -558,7 +772,7 @@
         }
         return false;
       },
-      unmount() { dead = true; clearTimeout(noteT); S.note = note.value; save(); },
+      unmount() { dead = true; clearTimeout(noteT); clearTimeout(shieldT); removeEventListener('blur', onBlur); SR.live = Math.max(0, SR.live - 1); if (SR.live === 0) SR.open = null; S.note = note.value; save(); },
     };
   } });
 })();

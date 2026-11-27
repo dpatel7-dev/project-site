@@ -42,8 +42,9 @@
       x |= 0; y |= 0;
       if (x < 0 || y < 0 || x >= this.W || y >= this.H) return;
       const i = (y * this.W + x) * 4, d = this.d;
-      if (a !== undefined && a < 1) { const k = 1 - a; d[i] = d[i] * k + c[0] * a; d[i + 1] = d[i + 1] * k + c[1] * a; d[i + 2] = d[i + 2] * k + c[2] * a; d[i + 3] = Math.max(d[i + 3], 255 * a); return; }
+      if (a !== undefined && a < 1) { const k = 1 - a; d[i] = d[i] * k + c[0] * a; d[i + 1] = d[i + 1] * k + c[1] * a; d[i + 2] = d[i + 2] * k + c[2] * a; d[i + 3] = Math.max(d[i + 3], 255 * a); if (this.ids && a >= 0.5 && !this.ids[i >> 2]) this.ids[i >> 2] = this.cur; return; }
       d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+      if (this.ids) this.ids[i >> 2] = this.cur; // Traced mode: which layer (or thing on it) this pixel belongs to
     }
     get(x, y) { const i = (Math.max(0, Math.min(this.H - 1, y | 0)) * this.W + Math.max(0, Math.min(this.W - 1, x | 0))) * 4; return [this.d[i], this.d[i + 1], this.d[i + 2]]; }
     canvas() { const c = G.canvas(this.W, this.H); c.getContext('2d').putImageData(new ImageData(this.d, this.W, this.H), 0, 0); return c; }
@@ -126,6 +127,10 @@
       this.rand = G.seeded(G.hash(this.world + (o.seed || '') + (this.night ? 'n' : 'd')));
       this.k = Math.max(0.6, this.W / 420); // how big things are, so a scene looks the same at any size
       this.moving = [];
+      // Traced mode (js/traced.js): painted by hand, with an ink line round everything and little things going on
+      const D = window.Dice;
+      this.traced = o.traced !== undefined ? !!o.traced : !!(D && D.state && D.state.looks === 'traced');
+      this.T = this.traced && Scape.Traced ? Scape.Traced : null;
       this.build();
     }
     sky() { return (this.night ? this.R.night || NIGHT_SKY : this.R.sky).map(rgb); }
@@ -142,14 +147,25 @@
     build() {
       const { W, H } = this;
       this.hy = Math.round(H * this.R.horizon);
-      this.skyC = this.buildSky();
+      const sky = this.buildSky();
       const back = new Buf(W, H), front = new Buf(W, H);
+      if (this.T) { back.ids = new Uint8Array(W * H); front.ids = new Uint8Array(W * H); }
       this.tops = [];
-      for (const L of this.R.back) this.layer(back, L);
-      const wa = this.R.water;
+      this.lays = []; // each layer: its ground line, its id in the picture and how far away it is
+      this.R.back.forEach((L, i) => {
+        const n = this.tops.length, id = 8 + i * 8;
+        back.cur = id;
+        this.layer(back, L);
+        this.lays.push({ L, i, b: back, id, haze: L.haze || 0, top: this.tops.length > n ? this.tops[this.tops.length - 1] : null });
+      });
+      const wa = this.R.water, fid = 8 + this.R.back.length * 8;
       this.wy = wa ? Math.round(H * wa.y) : null;
+      front.cur = fid;
       if (wa) this.prepWater(front, wa);
       this.layer(front, this.R.front, true);
+      this.lays.push({ L: this.R.front, i: this.R.back.length, b: front, id: fid, haze: 0, top: this.frontTop, front: true });
+      if (this.T) this.T.paint(this, sky, back, front);
+      this.skyC = sky.canvas();
       this.backC = back.canvas();
       this.frontC = front.canvas();
       this.prepMoving();
@@ -165,7 +181,7 @@
         for (let x = 0; x < W; x++) b.set(x, y, c);
       }
       if (!this.R.under) this.sun(b);
-      return b.canvas();
+      return b;
     }
     sun(b) {
       const { W, H } = this, r = Math.max(3, Math.round(Math.min(W, H) * (this.world === 'desert' ? 0.06 : 0.045)));
@@ -214,7 +230,7 @@
       if (L.k === 'mesa') return this.mesa(b, L, c);
       if (L.k === 'bergs') return this.bergs(b, L);
       if (L.k === 'hedge') return this.hedge(b, L, c);
-      if (L.k === 'flat') { const y0 = Math.round(L.y * H), top = new Int16Array(W).fill(y0); for (let x = 0; x < W; x++) for (let y = y0; y < H; y++) b.set(x, y, y === y0 ? hi : c); this.tops.push(top); if (isFront) this.frontTop = top; if (L.lamps) this.lamps(b, y0); return; }
+      if (L.k === 'flat') { const y0 = Math.round(L.y * H), top = new Int16Array(W).fill(y0); for (let x = 0; x < W; x++) for (let y = y0; y < H; y++) b.set(x, y, y === y0 ? hi : c); this.tops.push(top); if (isFront) this.frontTop = top; if (b.ids) b.cur++; if (L.lamps) this.lamps(b, y0); return; }
       const top = this.ridge(L);
       if (isFront) this.frontTop = top;
       this.tops.push(top);
@@ -260,6 +276,7 @@
           b.set(x, y, col);
         }
       }
+      if (b.ids) b.cur++; // what stands on the land gets an ink line round it in Traced mode
       if (L.trees) this.trees(b, L, top, haze);
       if (L.pines) this.pines(b, L, top, haze);
       if (L.mill) this.mill(b, top, L);
@@ -515,15 +532,18 @@
       }
       // floating bits
       this.motes = [];
-      const kind = this.night && ['pollen', 'petals', 'leaves', 'none'].includes(R.motes) && !['beach', 'city', 'mountains'].includes(this.world) ? 'fireflies' : this.night && R.motes === 'sand' ? 'none' : this.night && R.under ? 'glow' : R.motes;
+      const m0 = this.T && R.motes === 'petals' ? 'pollen' : R.motes; // no petals in Traced mode: butterflies and bees instead
+      const kind = this.night && ['pollen', 'petals', 'leaves', 'none'].includes(m0) && !['beach', 'city', 'mountains'].includes(this.world) ? 'fireflies' : this.night && m0 === 'sand' ? 'none' : this.night && R.under ? 'glow' : m0;
       this.moteKind = kind;
       const counts = { pollen: 26, petals: 30, leaves: 26, snow: 70, sand: 30, bubbles: 22, fireflies: 16, glow: 30, none: 0 };
       for (let i = 0; i < (counts[kind] || 0) * Math.min(1.6, this.k); i++) this.motes.push(this.mote(kind, true));
       this.mist = (R.mist || []).map((y, i) => ({ y: Math.round(y * H), spr: this.mistStrip(i), v: (0.8 + i * 0.5) * this.k }));
       this.sparkles = [];
       this.ripples = [];
+      if (this.T) this.T.prep(this);
     }
     cloud(w, far) {
+      if (this.T) return this.T.cloud(this, w, far);
       const r = this.rand, h = Math.round(w * 0.42), c = G.canvas(Math.round(w) + 4, h + 4), g = c.getContext('2d');
       const base = this.night ? rgb('#2a3866') : far ? mixc(rgb('#ffffff'), this.horizonCol(), 0.25) : rgb('#ffffff');
       const shade = this.night ? rgb('#222c55') : mixc(base, this.sky()[1], 0.35), hi = this.night ? rgb('#36457a') : rgb('#ffffff');
@@ -578,11 +598,14 @@
         if (!still) { c.x += c.v * dt; if (c.x > W + 2) c.x = -c.spr.width; }
         g.drawImage(c.spr, Math.round(c.x), c.y);
       }
+      if (this.T) this.T.act(this, 'sky', g, t, still, dt);
       g.drawImage(this.backC, 0, 0);
       if (this.millAt) this.sails(g, t);
+      if (this.T) this.T.act(this, 'mid', g, t, still, dt); // before the water, so it shows in the reflection
       for (const m of this.mist) { const off = Math.round((t * m.v) % W); g.globalAlpha = this.night ? 0.08 : 0.18; g.drawImage(m.spr, -off, m.y - Math.round(m.spr.height / 2)); g.globalAlpha = 1; }
       if (this.R.water) this.water(g, t, still, dt);
       if (this.R.boat) this.boat(g, t);
+      if (this.T) this.T.act(this, 'water', g, t, still, dt);
       g.drawImage(this.frontC, 0, 0);
       if (this.R.front.waves) this.waves(g, t);
       if (this.R.wind) this.wind(g, t);
@@ -591,6 +614,7 @@
       if (this.beacons && this.night) for (const bcn of this.beacons) if (Math.sin(t * 2 + bcn.p) > 0.6) { g.fillStyle = '#ff5a5a'; g.fillRect(bcn.x, bcn.y, 1, 1); }
       if (this.lampsAt && this.night) for (const l of this.lampsAt) { g.fillStyle = 'rgba(255,220,150,.12)'; g.fillRect(l.x - 2, l.y + 1, 5, 4); }
       this.sway(g, t);
+      if (this.T) this.T.act(this, 'near', g, t, still, dt);
       this.floaters(g, t, still, dt);
     }
     shooting(g, t) {
@@ -756,10 +780,12 @@
 
   // one still picture of a world, for the choosers in Settings and on the website
   const previews = new Map();
-  Scape.preview = function (world, night, W, H) {
-    const key = world + (night ? 'n' : 'd') + W + 'x' + H;
+  Scape.preview = function (world, night, W, H, traced) {
+    const D = window.Dice;
+    if (traced === undefined) traced = !!(D && D.state && D.state.looks === 'traced');
+    const key = world + (night ? 'n' : 'd') + W + 'x' + H + (traced ? 't' : '');
     if (previews.has(key)) return previews.get(key);
-    const c = G.canvas(W, H), s = new Scape({ world, night, W, H, seed: 'preview' });
+    const c = G.canvas(W, H), s = new Scape({ world, night, W, H, seed: 'preview', traced });
     s.draw(c.getContext('2d'), 0, true);
     previews.set(key, c);
     return c;

@@ -17,6 +17,11 @@
   const cfg = () => (D.state.deuce && typeof D.state.deuce === 'object' ? D.state.deuce : (D.state.deuce = { on: true, talk: true }));
   DU.cfg = cfg;
   const front = () => (D.sys && D.sys.status && D.sys.status.front) || null;
+  // On the desktop, Deuce for PC (js/deucepc.js) shows things instead of the TV's panel
+  let pc = null;
+  DU.attachPC = (p) => { pc = p; };
+  const usePC = () => !!(pc && D.desk && D.desk.on);
+  DU.usePC = usePC;
 
   // ---- the panel ----------------------------------------------------------------------------------
   let el = null, heardEl, sayEl, cardEl, inEl, cdT = 0;
@@ -34,8 +39,11 @@
     el.querySelector('.du-talk').onclick = () => (phase() === 'listen' ? DU.stop() : DU.listen());
     el.addEventListener('pointerdown', (e) => { if (e.target === el) DU.hide(); });
   }
-  const phase = (p) => { if (p === undefined) return el ? el.dataset.phase : ''; el.dataset.phase = p; };
+  const phase = (p) => { if (usePC()) return pc.phase(p); if (p === undefined) return el ? el.dataset.phase : ''; el.dataset.phase = p; };
+  const heard = (t) => { if (usePC()) pc.heard(t); else heardEl.textContent = t; };
+  const status = (t) => { if (usePC()) pc.status(t); else sayEl.textContent = t; };
   DU.show = function () {
+    if (usePC()) { pc.show(); return; }
     if (!el) build();
     if (D.ambient && D.ambient.on) D.ambient.exit();
     if (!DU.on) { DU.prev = D.nav.el; S.play('open'); }
@@ -44,6 +52,7 @@
     if (D.legend) D.legend.update && D.legend.update();
   };
   DU.hide = function () {
+    if (pc && pc.isOpen()) pc.hide();
     if (!DU.on) return;
     clearTimeout(cdT); cdT = 0;
     DU.stop(true);
@@ -54,12 +63,13 @@
     S.play('close');
     if (DU.prev && DU.prev.isConnected) D.nav.focus(DU.prev, { scroll: false });
   };
-  function clear() { heardEl.textContent = ''; sayEl.textContent = ''; cardEl.hidden = true; cardEl.replaceChildren(); clearTimeout(cdT); cdT = 0; clearTimeout(laterT); }
+  function clear() { if (usePC()) return; heardEl.textContent = ''; sayEl.textContent = ''; cardEl.hidden = true; cardEl.replaceChildren(); clearTimeout(cdT); cdT = 0; clearTimeout(laterT); }
   // something Deuce does in a moment (after you've seen what it heard); a new question cancels it
   let laterT = 0;
   const later = (fn, ms) => { clearTimeout(laterT); laterT = setTimeout(fn, ms); };
   // say something (and out loud, if Deuce talks)
   function say(text, card) {
+    if (usePC()) { pc.say(text, card); talk(text); return; }
     phase('answer');
     sayEl.textContent = text;
     cardEl.replaceChildren();
@@ -90,12 +100,12 @@
   }
   // "Opening DAZN in 3…": the answer does itself unless you stop it
   function countdown(btnIndex, secs, run) {
-    const b = cardEl.querySelector('[data-key="du:b' + btnIndex + '"] span');
+    const b = (usePC() ? pc.root() : cardEl).querySelector('[data-key="du:b' + btnIndex + '"] span');
     if (!b) return run();
     const label = b.textContent;
     let n = secs;
     const step = () => {
-      if (!DU.on && !front()) return;
+      if (!(usePC() ? pc.isOpen() : DU.on) && !front()) return;
       if (n <= 0) { cdT = 0; b.textContent = label; run(); return; }
       b.textContent = label + ' in ' + n;
       n--; cdT = setTimeout(step, 1000);
@@ -107,9 +117,12 @@
   let how = '', rec = null, gotText = false, downAt = 0;
   DU.listen = async function () {
     if (!cfg().on) return D.toast({ icon: 'help', c: '#96969f', title: 'Deuce is off', text: 'Turn it on in Settings, Deuce.' });
-    DU.show(); clear(); phase('listen'); gotText = false;
-    sayEl.textContent = 'Listening…';
-    D.nav.focus(el.querySelector('.du-talk'));
+    gotText = false;
+    if (usePC()) { pc.show(); pc.listening(); } else {
+      DU.show(); clear(); phase('listen');
+      sayEl.textContent = 'Listening…';
+      D.nav.focus(el.querySelector('.du-talk'));
+    }
     if (D.sys && D.sys.status && D.sys.status.voice) {
       const r = await D.sys.post('/api/voice', { action: 'start' });
       if (r && r.ok) { how = 'os'; return; }
@@ -123,7 +136,7 @@
         rec.onresult = (e) => {
           let t = '', fin = false;
           for (let i = e.resultIndex; i < e.results.length; i++) { t += e.results[i][0].transcript; if (e.results[i].isFinal) fin = true; }
-          heardEl.textContent = t;
+          heard(t);
           if (fin) { gotText = true; how = ''; DU.ask(t); }
         };
         rec.onerror = (e) => { if (e.error === 'not-allowed' || e.error === 'service-not-allowed') typeIt('Deuce needs your microphone: allow it in the browser, or type it.'); else if (e.error === 'no-speech') typeIt('I didn\'t hear anything. Try again, or type it.'); else if (e.error !== 'aborted') typeIt('Listening didn\'t work here (' + e.error + '). Type it instead.'); };
@@ -141,6 +154,7 @@
     if (quiet) how = '';
   };
   function typeIt(text, setup) {
+    if (usePC()) { pc.say(text, setup ? card('', '', [{ label: 'Set up Deuce\'s hearing', icon: 'gear', go: true, run: () => { DU.hide(); D.launch('settings', { arg: 'deuce' }); } }]) : null); pc.typing(); return; }
     phase('answer');
     sayEl.textContent = text;
     cardEl.hidden = true;
@@ -151,7 +165,7 @@
   // what DiceOS heard (diced's dice-listen, with Vosk)
   D.on('voice', (v) => {
     if (how !== 'os') return;
-    if (v.partial) { heardEl.textContent = v.partial; return; }
+    if (v.partial) { heard(v.partial); return; }
     if ('text' in v) { how = ''; if (v.text) { gotText = true; DU.ask(v.text); } else typeIt('I didn\'t hear anything. Try again, or type it.'); return; }
     if (v.error) { how = ''; typeIt(v.error); }
   });
@@ -184,13 +198,14 @@
   DU.ask = async function (text) {
     DU.show();
     clear();
-    heardEl.textContent = text;
+    if (usePC()) pc.asked(text);
+    else { heardEl.textContent = text; sayEl.textContent = ''; }
     phase('think');
-    sayEl.textContent = '';
     let it;
     try { it = B.understand(text, new Date(), { inputs: Object.values(D.state.inputNames || {}) }); } catch (e) { it = { kind: 'unknown', q: text }; }
     DU.last = it;
-    try { await (DO[it.kind] || DO.unknown)(it); } catch (e) { say('Something went wrong doing that. Try again?'); }
+    const fn = (usePC() && pc.DO[it.kind]) || DO[it.kind] || DO.unknown;
+    try { await fn(it); } catch (e) { say('Something went wrong doing that. Try again?'); }
   };
   const pct = (v) => Math.round(v * 100);
   const timeWords = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -256,7 +271,7 @@
     weather: async (it) => {
       const p = (D.state.home && D.state.home.place) || (D.state.st && D.state.st.place);
       if (!p || !D.weather) return say('Which town are you in? Set it once and I\'ll know.', card('', '', [{ label: 'Set my town', icon: 'sun', go: true, run: () => { DU.hide(); D.tv.askTown(); } }]));
-      sayEl.textContent = 'Looking…';
+      status('Looking…');
       try {
         const u = (D.state.st && D.state.st.units) || (/^en-US$/i.test(navigator.language || '') ? 'f' : 'c');
         const d = await D.weather.get(p.lat, p.lon, u);
@@ -269,10 +284,11 @@
       } catch (e) { return say('I couldn\'t get the weather. Is the internet on?'); }
     },
     inputs: () => { DU.hide(); if (D.inputs) D.inputs.open(); },
+    guide: () => { DU.hide(); if (D.inputs && D.inputs.guide) D.inputs.guide(); else say('Inputs is on DiceOS.'); },
     input: async (it) => {
       if (!D.inputs || !D.sys) return say('Switching the TV\'s inputs works on DiceOS, plugged into the TV.');
       if (it.dice) { if (D.inputs.away) D.inputs.back(); else if (D.sys) D.sys.post('/api/cec', { action: 'back' }); return done('Here I am.'); }
-      sayEl.textContent = 'Looking for the ' + it.name + '…';
+      status('Looking for the ' + it.name + '…');
       const r = await D.inputs.find(it);
       if (!r.ok) return say(r.error, card('', '', [{ label: 'See all the inputs', icon: 'tv', go: true, run: () => { DU.hide(); D.inputs.open(); } }]));
       say('Switching to ' + (r.device.name || it.name) + '. Home comes back.');
@@ -319,6 +335,98 @@
     },
     music: () => { M.play('radio', 0); done('Here\'s Dice Radio.'); },
     files: (it) => { DU.hide(); D.launch('files', { arg: 'find:' + it.q }); },
+    // ---- reminders, the Notebook, notes ----
+    remind: (it) => {
+      if (!it.what) return say('What should I remind you about? Say it like "remind me to call Mom at 6".');
+      if (!it.at) {
+        const at = (ms) => () => { DU.reminders.add(it.what, ms); done('OK. I\'ll remind you to ' + it.what + ' ' + whenWords(ms) + '.'); };
+        const d = new Date(), tonight = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 20).getTime(), morning = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 9).getTime();
+        return say('When should I remind you to ' + it.what + '?', card('', '', [{ label: 'In 10 minutes', go: true, run: at(Date.now() + 600000) }, { label: 'In an hour', run: at(Date.now() + 3600000) },
+          tonight > Date.now() + 600000 ? { label: 'Tonight at 8', run: at(tonight) } : null, { label: 'Tomorrow at 9', run: at(morning) }].filter(Boolean)));
+      }
+      const r = DU.reminders.add(it.what, it.at);
+      return say('OK. I\'ll remind you to ' + it.what + ' ' + whenWords(it.at) + '.', card('', '', [{ label: 'Done', go: true, run: () => DU.hide() }, { label: 'Undo', run: () => { DU.reminders.remove(r.id); done('Reminder taken off.'); } }]));
+    },
+    remember: (it) => {
+      if (it.secret) return say('I don\'t keep passwords, codes or card numbers. A password manager is the safe place for those.');
+      if (it.name) { D.set('name', it.name); D.emit('name'); }
+      DU.notebook.add(it.fact);
+      return done(it.name ? 'Nice to meet you, ' + it.name + '. I\'ll call you that.' : 'Got it. I\'ll remember ' + it.fact.replace(/^my /, 'your ').replace(/\bi am\b|\bim\b/, 'you\'re').replace(/\bi\b/g, 'you') + '.');
+    },
+    forget: (it) => {
+      if (!it.fact) return say('Forget everything in your Notebook?', card('', '', [{ label: 'Forget it all', go: true, run: () => { DU.notebook.clear(); done('Done. Your Notebook is empty.'); } }, { label: 'Keep it', run: () => DU.hide() }]));
+      const n = DU.notebook.forget(it.fact);
+      return done(n ? 'Forgotten.' : 'I didn\'t have that written down.');
+    },
+    notebook: () => {
+      const nb = DU.notebook.get(), bits = [];
+      if (D.state.name && D.state.name !== 'player') bits.push('your name is ' + D.state.name);
+      if (nb.teams.length) bits.push('you follow the ' + nb.teams.join(', the '));
+      const place = (D.state.st && D.state.st.place) || (D.state.home && D.state.home.place);
+      if (place) bits.push('you\'re near ' + place.name);
+      nb.facts.slice(-4).forEach((f) => bits.push(f.t.replace(/^my /, 'your ')));
+      return say(bits.length ? 'Here\'s what I know: ' + bits.join('; ') + '. It stays on this computer.' : 'Nothing yet. Tell me things like "remember that my locker is 42" or "my favorite team is the Knicks".',
+        card('', '', [{ label: 'Open the Notebook', go: true, run: () => { if (usePC()) pc.tab('notebook'); else DU.hide(); } }]));
+    },
+    note: (it) => {
+      const L = D.L, dir = D.home() + '/notes';
+      if (!L.walk(D.state.disk, dir)) L.makeDir(D.state.disk, dir);
+      const name = (it.note.slice(0, 32).replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'Note').replace(/^./, (c) => c.toUpperCase());
+      let file = name + '.txt', i = 2;
+      while (L.walk(D.state.disk, dir + '/' + file)) file = name + ' ' + (i++) + '.txt';
+      L.writeFile(D.state.disk, dir + '/' + file, it.note);
+      D.save();
+      return say('Saved a note: ' + it.note + '.', card('', '', [{ label: 'Open Notes', go: true, run: () => { DU.hide(); D.launch('notes'); } }, { label: 'OK', run: () => DU.hide() }]));
+    },
+    // ---- the computer ----
+    setting: (it) => {
+      if (it.what === 'look') { D.set('look', it.value); D.applyLook(true); return done(it.value === 'night' ? 'Dark mode.' : 'Light mode.'); }
+      if (it.what === 'warm') { D.tools.setWarm(it.value ? 'on' : 'off'); return done('Night light ' + (it.value ? 'on.' : 'off.')); }
+      if (it.what === 'looks') { D.state.looks = it.value ? 'traced' : 'normal'; D.save(); if (D.prefs) D.prefs.live(); D.emit('prefs'); return done(it.value ? 'Traced mode is on.' : 'Back to the usual look.'); }
+      if (it.what === 'quiet') { D.tools.setQuiet(it.value); return done(it.value ? 'Do not disturb is on. Notifications wait quietly.' : 'Do not disturb is off.'); }
+      if (it.what === 'bluetooth') { if (!D.sys) return say('Bluetooth is set on DiceOS.'); D.tools.bt.power ? D.tools.bt.power(it.value) : D.sys.post('/api/bluetooth', { action: it.value ? 'on' : 'off' }); return done('Bluetooth ' + (it.value ? 'on.' : 'off.')); }
+      if (it.what === 'bright') {
+        const st = D.sys && D.sys.status;
+        if (st && st.brightness !== null && st.brightness !== undefined) {
+          const v = Math.max(0.05, Math.min(1, it.value !== undefined ? it.value : st.brightness + it.delta));
+          st.brightness = v; D.sys.post('/api/brightness', { level: v }); return done('Brightness ' + pct(v) + '.');
+        }
+        const v = Math.max(0.3, Math.min(1, it.value !== undefined ? it.value : (D.state.bright || 1) + it.delta));
+        D.set('bright', v); D.applyBright(); return done('Brightness ' + pct(v) + '.');
+      }
+      return DO.unknown(it);
+    },
+    mode: (it) => {
+      if (!D.modes) return say('Modes aren\'t here yet.');
+      if (it.off) { const was = D.modes.current(); if (!was) return done('No mode is on.'); D.modes.end(); return done(was.name + ' mode is off.'); }
+      const m = D.modes.find(it.name);
+      if (!m) return say('There\'s no ' + it.name + ' mode yet. You can make one in Settings, Modes.', card('', '', [{ label: 'Make modes', icon: 'spark', go: true, run: () => { DU.hide(); D.launch('settings', { arg: 'modes' }); } }]));
+      D.modes.start(m.id);
+      return done(m.name + ' mode is on.' + (m.blurb ? ' ' + m.blurb : ''));
+    },
+    shield: async (it) => {
+      const SH = D.shield;
+      if (!SH || !SH.available()) return say('Shield, the ad blocker, comes with DiceOS.');
+      if (it.act === 'count') { const s = await SH.get(); return say(s ? 'Shield kept out ' + Number(s.today).toLocaleString() + ' ads and trackers today, ' + Number(Object.values(s.week || {}).reduce((a, b) => a + b, 0)).toLocaleString() + ' this week.' : 'Shield is blocking ads for every app on this computer.', card('', '', [{ label: 'Shield settings', icon: 'shield', go: true, run: () => { DU.hide(); D.launch('settings', { arg: 'shield' }); } }])); }
+      if (it.act === 'pause') { const site = D.serene && D.serene.site(); if (!site) return say('Open the site in SereneTab first, then ask me.'); await SH.pause(site); if (D.serene.reload) D.serene.reload(); return done('Shield is paused on ' + site + '.'); }
+      await SH.set({ on: it.act === 'on' });
+      if (D.sys && !D.sys.info.emulated) await SH.systemSet({ system: it.act === 'on' });
+      return done(it.act === 'on' ? 'Shield is on. Ads are blocked.' : 'Shield is off.');
+    },
+    shot: async () => { if (!D.sys) return say('Screenshots are for DiceOS.'); DU.hide(); setTimeout(() => D.tools.screenshot(), 400); },
+    week: () => { if (D.recap) { DU.hide(); D.recap.open(); } else say('Your week isn\'t here yet.'); },
+    lock: () => { DU.hide(); if (D.lock) D.lock(); else D.sleep(); },
+    // ---- the web ----
+    site: (it) => { DU.hide(); D.browse(it.url); },
+    web: (it) => { const L = D.L, st = D.state.st || {}; const e = L.ENGINES[st.engine] || L.ENGINES.ddg; DU.hide(); D.browse(e.url + encodeURIComponent(it.q)); },
+    ask: async (it) => {
+      status('Looking it up…');
+      const r = await DU.answer(it.q);
+      if (!r || !r.ok) return say((r && r.error) || 'I couldn\'t look that up just now.', card('', '', [{ label: 'Search the web', icon: 'search', go: true, run: () => DO.web({ q: it.q }) }]));
+      const plain = r.answer.replace(/\s*\[\d+\]/g, '').replace(/\n+/g, ' ');
+      const short = plain.length > 300 ? plain.slice(0, 300).replace(/\s+\S*$/, '') + '…' : plain;
+      return say(short, card('', 'From ' + r.sources.slice(0, 3).map((s) => s.site).join(', '), [{ label: 'Read more', icon: 'link', go: true, run: () => { DU.hide(); D.browse('serene:ask?q=' + encodeURIComponent(it.q)); } }, { label: 'OK', run: () => DU.hide() }]));
+    },
     unknown: (it) => {
       const q = it.q || it.text || '';
       say('I\'m not sure what "' + q + '" means.', card('', '', [
@@ -328,7 +436,92 @@
     },
   };
   // a short answer that goes away by itself
-  function done(text, ms) { say(text); clearTimeout(DU.doneT); DU.doneT = setTimeout(() => { if (DU.on && sayEl.textContent === text && phase() === 'answer') DU.hide(); }, ms || 2200); }
+  function done(text, ms) { say(text); if (usePC()) return; clearTimeout(DU.doneT); DU.doneT = setTimeout(() => { if (DU.on && sayEl.textContent === text && phase() === 'answer') DU.hide(); }, ms || 2200); }
+
+  // "in 20 minutes", "at 6:00 PM", "tomorrow at 9:00 AM"
+  function whenWords(at) {
+    const d = new Date(at), mins = Math.round((at - Date.now()) / 60000);
+    if (mins < 60) return 'in ' + Math.max(1, mins) + (mins === 1 ? ' minute' : ' minutes');
+    return (dayWords(d) === 'today' || dayWords(d) === 'tonight' ? 'at ' : dayWords(d) + ' at ') + timeWords(d);
+  }
+  DU.whenWords = whenWords;
+  DU.card = card;
+  DU.say = say;
+  DU.DO = DO;
+
+  // ---- reminders: "remind me to call Mom at 6" ----------------------------------------------------
+  const R = DU.reminders = {
+    list: () => (Array.isArray(D.state.reminders) ? D.state.reminders : (D.state.reminders = [])),
+    add(what, at) { const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), what: String(what).slice(0, 200), at: +at, done: false }; R.list().push(r); R.list().sort((a, b) => a.at - b.at); D.save(); D.emit('reminders'); return r; },
+    remove(id) { D.state.reminders = R.list().filter((r) => r.id !== id); D.save(); D.emit('reminders'); },
+    upcoming: () => R.list().filter((r) => !r.done),
+  };
+  setInterval(() => {
+    const now = Date.now(), due = R.list().filter((r) => !r.done && r.at <= now);
+    if (!due.length) return;
+    due.forEach((r) => {
+      r.done = true;
+      if (D.asleep) D.wake();
+      D.notify({ icon: 'bell', c: '#4b7bec', title: 'Reminder', text: r.what.replace(/^./, (c) => c.toUpperCase()), urgent: true });
+      D.S.play('wake');
+      talk('Reminder: ' + r.what);
+    });
+    // done ones go after a day
+    D.state.reminders = R.list().filter((r) => !r.done || now - r.at < 864e5);
+    D.save(); D.emit('reminders');
+  }, 10000);
+
+  // ---- the Notebook: what Deuce knows about you (it stays on this computer) ------------------------
+  const NB = DU.notebook = {
+    get() { const n = D.state.notebook && typeof D.state.notebook === 'object' ? D.state.notebook : (D.state.notebook = {}); if (!Array.isArray(n.facts)) n.facts = []; if (!Array.isArray(n.teams)) n.teams = []; return n; },
+    add(fact) {
+      const n = NB.get(), t = String(fact || '').trim().slice(0, 200);
+      if (!t) return;
+      // teams you follow ("my favorite team is the knicks", "i like the jets") and where you live
+      if (/\b(team|follow|fan|root for|like|love|cheer)\b/.test(t)) B.teamsIn(t).slice(0, 2).forEach((tm) => { if (!n.teams.includes(tm.nick)) n.teams.push(tm.nick); });
+      const live = /\bi (?:live|am|m) (?:in|near) (.+)$/.exec(t);
+      if (live && D.weather) D.weather.find(live[1]).then((p) => { if (p) { D.state.st = D.state.st || {}; D.state.st.place = p; D.save(); D.emit('notebook'); } }).catch(() => {});
+      n.facts = n.facts.filter((f) => f.t !== t).concat({ t, at: Date.now() }).slice(-60);
+      D.save(); D.emit('notebook');
+    },
+    forget(fact) {
+      const n = NB.get(), low = String(fact || '').toLowerCase(), before = n.facts.length + n.teams.length;
+      n.facts = n.facts.filter((f) => !f.t.toLowerCase().includes(low) && !low.includes(f.t.toLowerCase()));
+      n.teams = n.teams.filter((tm) => !low.includes(tm.toLowerCase()));
+      D.save(); D.emit('notebook');
+      return before - n.facts.length - n.teams.length;
+    },
+    clear() { D.state.notebook = { facts: [], teams: [] }; D.save(); D.emit('notebook'); },
+  };
+
+  // ---- answers from the web (scout-style): on DiceOS, diced looks it up; in a browser, Wikipedia ----
+  const AI_HERE = 'dice-ai';
+  DU.aiHere = () => { try { const c = JSON.parse(localStorage.getItem(AI_HERE) || 'null'); return c && c.provider ? c : null; } catch (e) { return null; } };
+  DU.setAiHere = (c) => { try { if (c) localStorage.setItem(AI_HERE, JSON.stringify(c)); else localStorage.removeItem(AI_HERE); } catch (e) { /* storage is off */ } };
+  DU.AI_WEB = { groq: ['Groq', 'https://api.groq.com/openai/v1', 'llama-3.3-70b-versatile', 'https://console.groq.com/keys'], openrouter: ['OpenRouter', 'https://openrouter.ai/api/v1', 'meta-llama/llama-3.3-70b-instruct:free', 'https://openrouter.ai/keys'],
+    google: ['Google AI Studio', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-2.5-flash', 'https://aistudio.google.com/apikey'], mistral: ['Mistral', 'https://api.mistral.ai/v1', 'mistral-small-latest', 'https://console.mistral.ai/api-keys'] };
+  DU.answer = async function (q, history) {
+    if (D.sys) { const r = await D.sys.post('/api/ask', { q, history: history || [] }); if (r && (r.ok || !D.sys.info.emulated)) return r; }
+    try {
+      const s = await (await fetch('https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=3&srsearch=' + encodeURIComponent(q))).json();
+      const hits = (s.query && s.query.search) || [];
+      const sums = await Promise.all(hits.map((x) => fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(x.title.replace(/ /g, '_'))).then((r) => (r.ok ? r.json() : null)).catch(() => null)));
+      const src = sums.filter((x) => x && x.extract && x.type !== 'disambiguation').map((x, i) => ({ n: i + 1, title: x.title + ' - Wikipedia', url: (x.content_urls && x.content_urls.desktop && x.content_urls.desktop.page) || 'https://en.wikipedia.org/wiki/' + encodeURIComponent(x.title), site: 'en.wikipedia.org', text: x.extract }));
+      if (!src.length) return { ok: false, error: 'I couldn\'t find that. Try saying it another way, or search the web.' };
+      const out = (answer, ai) => ({ ok: true, answer, ai, sources: src.map((x) => ({ n: x.n, title: x.title, url: x.url, site: x.site })) });
+      const c = DU.aiHere(), P = c && DU.AI_WEB[c.provider];
+      if (P && c.key) {
+        try {
+          const msgs = [{ role: 'system', content: 'You are Deuce, the helper in Dice. Answer in plain, friendly words a beginner understands, in a short paragraph. Take facts only from the numbered sources and put the number in square brackets after each fact, like [1].' }]
+            .concat((history || []).slice(-3).flatMap((x) => [{ role: 'user', content: x.q }, { role: 'assistant', content: x.a }]))
+            .concat({ role: 'user', content: 'Sources:\n\n' + src.map((x) => '[' + x.n + '] ' + x.title + '\n' + x.text).join('\n\n') + '\n\nQuestion: ' + q });
+          const r = await fetch(P[1] + '/chat/completions', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + c.key }, body: JSON.stringify({ model: c.model || P[2], messages: msgs, temperature: 0.3, max_tokens: 600 }) });
+          if (r.ok) { const j = await r.json(); const a = j.choices && j.choices[0] && j.choices[0].message.content; if (a) return out(a.trim(), P[0]); }
+        } catch (e) { /* the AI didn't answer: Wikipedia's words instead */ }
+      }
+      return out(src[0].text.split(/(?<=[.!?])\s+/).slice(0, 3).join(' ') + ' [1]' + (src[1] ? '\n\n' + src[1].text.split(/(?<=[.!?])\s+/)[0] + ' [2]' : ''), null);
+    } catch (e) { return { ok: false, error: 'I couldn\'t look that up. Is the internet on?' }; }
+  };
 
   function helpCard() {
     const ex = ['Put on the Knicks game', 'Put on MSG', 'Open Netflix', 'Play lofi on YouTube', 'Switch to the PlayStation', 'Turn it up', 'Set a timer for 10 minutes', 'Wake me up at 7', 'What\'s the weather?', 'Turn off the TV'];
@@ -368,7 +561,7 @@
   }
   async function game(it) {
     const name = it.teams.length === 1 ? 'the ' + it.teams[0].nick : it.teams.map((t) => t.nick).slice(0, 3).join(' and the ');
-    sayEl.textContent = 'Looking up ' + name + '…';
+    status('Looking up ' + name + '…');
     let reached = false;
     const found = (await Promise.all(it.teams.slice(0, 4).map(async (tm) => {
       const data = await lookup(B.scoreboardUrl(tm));
@@ -405,6 +598,16 @@
       { label: 'Watch ' + ways[0].name + ' now', icon: 'play', run: () => { DU.hide(); D.watch.go(ways[0]); } },
       { label: 'Not now', run: () => DU.hide() }]));
   }
+
+  // a team's game this week, for Deuce's Today on the PC
+  DU.lookup = lookup;
+  DU.nextGame = async function (nick) {
+    const month = new Date().getMonth() + 1;
+    const all = B.TEAMS.filter((t) => t.nick === nick), tm = all.find((t) => B.LEAGUES[t.league].months.includes(month)) || all[0];
+    if (!tm) return null;
+    const data = await lookup(B.scoreboardUrl(tm));
+    return data ? B.pickGame(data.events, tm) : null;
+  };
 
   // ---- reminders for a game ------------------------------------------------------------------------------
   const reminders = () => (Array.isArray(D.state.deuceRemind) ? D.state.deuceRemind : (D.state.deuceRemind = []));

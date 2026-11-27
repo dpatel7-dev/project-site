@@ -134,6 +134,9 @@
     keys: ['............', 'KKKKKKKKKKKK', 'K..........K', 'K.K.K.K.K..K', 'K..........K', 'K.K.K.K.K.KK', 'K..........K', 'K..KKKKKK..K', 'K..........K', 'KKKKKKKKKKKK'],
     box: ['.....KK.....', '.....KK.....', '...K.KK.K...', '....KKKK....', '.....KK.....', 'K..........K', 'K..........K', 'KKKKKKKKKKKK', 'KKKKKKKKKKKK'],
     tv: ['..K......K..', '...K....K...', '....K..K....', 'KKKKKKKKKKKK', 'K..........K', 'K..........K', 'K..........K', 'K..........K', 'K..........K', 'KKKKKKKKKKKK'],
+    shield: ['.....KK.....', '..KKKKKKKK..', 'KKKKAAAAKKKK', 'KKKAAAAAAKKK', 'KKKAAAAAAKKK', 'KKKAAAAAAKKK', '.KKKAAAAKKK.', '.KKKKAAKKKK.', '..KKKKKKKK..', '...KKKKKK...', '.....KK.....'],
+    spark: ['.....A......', '.....A......', '....AAA.....', 'AAAAAKAAAAA.', '....AAA.....', '.....A...K..', '.....A..KKK.', '.........K..', '..K.........', '.KKK........', '..K.........'],
+    loop: ['....KKKKK...', '..KK.....KK.', '.K.......AAA', '.K........A.', 'K...........', 'K...........', '...........K', '.A........K.', 'AAA.......K.', '.KK.....KK..', '...KKKKK....'],
   };
   const PIPS = { R: '#ff707a', B: '#7cc4ff', Y: '#f5c431', G: '#8fd16a', P: '#d39cf5' };
   const iconCache = new Map();

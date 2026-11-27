@@ -527,16 +527,15 @@
     const photos = pick === 'photos' && D.drive && D.drive.on() ? D.drive.photos() : null;
     amb.classList.toggle('am-photos', !!(photos && photos.length));
     if (photos && photos.length) { A.scene = null; return photoStep(photos, now); }
-    const Wd = Math.ceil(innerWidth / cell), Hd = Math.ceil(innerHeight / cell), night = D.night(), key = Wd + 'x' + Hd + night + D.state.world + pick;
+    const Wd = Math.ceil(innerWidth / cell), Hd = Math.ceil(innerHeight / cell), night = D.night(), key = Wd + 'x' + Hd + night + D.state.world + pick + D.state.looks;
     if (key !== sceneKey) {
       sceneKey = key; cv.width = Wd; cv.height = Hd; cv.style.width = Wd * cell + 'px'; cv.style.height = Hd * cell + 'px';
       if (ch) { const sc = D.channels.make(pick, Wd, Hd); scene = { draw: (g, t) => sc.draw(g, t) }; }
       else scene = new G.Scape({ world: D.state.world || 'hills', night, W: Wd, H: Hd, seed: 'ambient' });
       scene.last = 0;
     }
-    // (Heavenly looks puts its light over your world here too: js/heaven.js)
     A.el = amb; A.scene = ch ? null : scene; A.cell = cell;
-    if (now - (scene.last || 0) < 1000 / Math.min(ch || D.state.looks === 'heaven' ? 30 : 20, D.state.fps || 30)) return;
+    if (now - (scene.last || 0) < 1000 / Math.min(ch || D.state.looks === 'traced' ? 30 : 20, D.state.fps || 30)) return;
     scene.last = now;
     scene.draw(cv.getContext('2d'), now / 1000, D.reduced());
   };

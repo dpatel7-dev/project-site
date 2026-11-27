@@ -1,12 +1,21 @@
 # Changelog
 
+## 2.3.0
+
+- Shield: blocks ads and trackers for the whole computer through a block in /etc/hosts (a list of about 360 built in, and StevenBlack's list once a week), and inside SereneTab with its own extension (`shield/`, Manifest V3, declarativeNetRequest), which also cleans up YouTube's ads. `/api/shield` shows what it kept out and turns it on, off, or off for a site.
+- SereneTab is the browser for everything: `dice-open` (and `x-www-browser`, `BROWSER`, mimeapps.list) opens every link in it, inside DiceOS when the desktop is running. Chromium windows get Shield and the SereneTab look, and the new tab page is SereneTab's.
+- Deuce answers questions (`/api/ask`): it searches the web, reads the best pages and explains them, with its sources. An AI of your own can be added in Settings, Deuce (the key stays in a file only root can read).
+- Traced mode's start-up splash: `plymouth/dice-traced/`, DiceWeb's hills painted by hand in pixels, made by `tools/make-splash.js` without a browser. It replaces the Heavenly one; a dice.json or settings saying `"looks": "heaven"` gets Traced mode, and the old theme is taken away.
+- Restarting, shutting down and updating say so on the start-up splash.
+- DiceWeb 2.3.0: Traced mode, a desktop more like a Mac, nine more widgets, Deuce on a PC, Modes and Routines, the Inputs guide, and a restart screen.
+
 ## 2.2.0
 
 - Inputs on a PC: a screen's other inputs over DDC/CI (`ddcutil`, VCP 60), with what DiceOS was on remembered so it comes back. `/api/kvm` lists the TV's HDMI-CEC devices and the screens' inputs together; POST switches a screen or comes back. ddcutil and the i2c-dev driver are installed with DiceOS and by dice-update.
 - This computer: `/api/device` shows and changes the computer's name, time zone, keyboard, Wi-Fi country, SSH and automatic updates, using dice-boot's own apply(), and takes a whole dice.json from Settings.
 - `dice-boot --apply file.json` uses a dice.json any time, from Terminal.
 - SSH can be turned on after install once a password of your own is set (DiceOS remembers that it was).
-- dice.json keeps the new choices for DiceWeb: looks (Heavenly), accent, text, clock, units, sounds, nightlight, motion, ambient, deuce, tv and desk.
+- dice.json keeps the new choices for DiceWeb: looks (Heavenly, now Traced mode), accent, text, clock, units, sounds, nightlight, motion, ambient, deuce, tv and desk.
 - DiceWeb 2.2.0.
 
 ## 2.1.0

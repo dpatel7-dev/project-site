@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.3.0
+
+- Traced mode (Settings, Look; it used to be Heavenly looks, and that setting carries over): every world is painted by hand, pixel by pixel. The sky comes in dithered bands with brush strokes and high wisps, the sun in stepped rings, the moon with the Milky Way behind it. The land is laid in with two sizes of brush, warm where the light hits and cool in the shade, and an ink line is traced round everything that stands in front of something else.
+- Every world has its own painted details now: cottages, a barn and patchwork fields on the hills; a cabin, a waterfall and a dock with a rowboat in the mountains; a lighthouse, shells, a sandcastle and footprints on the beach; water towers, a billboard, shop awnings, a crossing and a traffic light in the city; mushrooms, ferns, logs and a dead tree in the forest; a railway with telegraph poles across the desert; an igloo and a fishing flag on the ice; a shipwreck, an anchor and a chest under the sea; beehives, a stone wall and wind turbines in the meadow; a willow and stepping stones by the pond.
+- And little things happen if you watch: sheep grazing, smoke from chimneys, a hot-air balloon, flocks of birds, a plane with its trail, a train crossing the desert, a tumbleweed, vultures circling, a dolphin, gulls, a crab, a lighthouse beam at night, cars with their headlights, pigeons on the roofs, deer, a squirrel, rabbits hopping, an owl blinking at night, bats, butterflies, bees, a cat flicking its tail on the hedge, penguins, a seal looking up, a whale's tail, fish, jellyfish, a turtle, ducks with ducklings, a frog hopping between lily pads, a heron and dragonflies. No petals.
+- Traced mode's own start-up: a pen traces your world across a sheet of paper, brushes paint it in, the die drops onto it and DiceOS's name appears on a paper label. Restarting and shutting down paint it back out to paper.
+- Traced mode gives the rest of the system the same care: a fine paper grain in the glass, an ink line round panels, tiles and icons, lit top edges, and focus shown with a drawn line. Nothing glows.
+- The desktop is more like a Mac: a menu bar along the top (the die menu, the app you're in, File, Edit, View, Window and Help, then Shield, Wi-Fi, sound, search, Deuce, Control Centre and the clock), round close, minimise and zoom buttons on the left of each window with its name in the middle, a roomier dock with a dot under what's open, and Home at the top right. Settings, Desktop can put the tray back at the bottom, or make the dock grow under the pointer.
+- Nine more widgets: Calendar (with what's due marked), Reminders (type "at 6" or "tomorrow"), World clock, Timer, Countdown, Shield, Screen time, Modes and Ask Deuce.
+- Shield, built in: blocks ads and trackers everywhere in SereneTab (and on DiceOS across the whole computer), cleans up YouTube's ads, counts what it kept out, and can be paused for a site.
+- SereneTab is DiceOS's browser for every link: private tabs, pinned tabs, zoom, split view, Shield's count on the toolbar, and "Ask Deuce about this page".
+- Deuce on a PC: a panel like Cortana (Super + C) with Today, Reminders and a Notebook; ask it anything and it reads the web and answers with its sources. It remembers what you tell it to, and nothing else.
+- Modes (Focus, School, Play, Chill, Night and your own), Routines, Your week, and windows that come back where they were after a restart.
+- Inputs, step by step: a guide for setting up the KVM switch on a TV, a PC screen, or a keyboard shared with Deskflow, with checks along the way.
+- A restart and shut down screen of its own.
+
 ## 2.2.0
 
 - Heavenly looks (Settings, Look, or in dice.json): everything far more detailed and alive. Sunbeams fan down through the clouds (moonbeams at night, shafts of light under the sea), lit clouds drift in layers, motes of light rise and glint, petals, leaves or snow ride the breeze, cloud shadows cross the land, and at night there's starlight, aurora and the odd shooting star. The worlds are drawn half again as finely, the glass is deeper and catches the light, and what's picked breathes a soft halo (it doesn't jump). On DiceTV, the desktop and the ambient screen. It eases off by itself if the computer can't keep up, and Less motion keeps one still, lit moment.

@@ -32,12 +32,12 @@
       if (action === 'shutdown') {
         return D.ask({ title: 'Turn off, or shut down completely?', text: 'Turn off is like a TV\'s off: the screen and the TV go off, and the remote\'s power button (or turning the TV on) brings DiceOS back in a second. After shutting down completely, it only comes back with the power button on the Raspberry Pi, or by unplugging it and plugging it back in.',
           buttons: [{ label: 'Turn off', value: 'standby', go: true }, { label: 'Shut down completely', value: 'shutdown', danger: true }, { label: 'Cancel', value: null }] })
-          .then((v) => { if (v === 'standby') D.standby(); if (v === 'shutdown') { D.save(true); call('POST', '/api/power', { action }); } return !!v; });
+          .then((v) => { if (v === 'standby') D.standby(); if (v === 'shutdown') { if (D.saveSession) D.saveSession(); D.save(true); const go = () => call('POST', '/api/power', { action }); if (D.screens) D.screens.power('shutdown', go); else go(); } return !!v; });
       }
       const words = { reboot: ['Restart the computer?', 'Everything closes and DiceOS starts again.', 'Restart'],
         'restart-desktop': ['Restart the desktop?', 'DiceOS reloads. The computer stays on.', 'Restart desktop'] }[action];
       return D.ask({ title: words[0], text: words[1], buttons: [{ label: words[2], value: true, go: true }, { label: 'Cancel', value: false }] })
-        .then((ok) => { if (ok) { D.save(true); call('POST', '/api/power', { action }); } return ok; });
+        .then((ok) => { if (ok) { if (D.saveSession) D.saveSession(); D.save(true); const go = () => call('POST', '/api/power', { action }); if (D.screens) D.screens.power(action === 'reboot' ? 'restart' : 'restart-desktop', go); else go(); } return ok; });
     },
   };
   // keep an eye on Wi-Fi, sound, temperature and so on

@@ -230,6 +230,17 @@ class Site(unittest.TestCase):
         self.assertIn('href="/dice/try"', call('/dice')[2].decode())
         self.assertEqual(call('/diceweb/js/emu.js')[0], 200)
 
+    def test_inputs_guide(self):
+        for path in ('/dice/inputs', '/dice/kvm'):
+            code, h, body = call(path)
+            page = body.decode()
+            self.assertEqual(code, 200, path)
+            self.assertIn('Inputs, step by step', page)
+            self.assertIn('/diceweb/js/inputsguide.js', page)
+            self.assertNotRegex(page, r'\{\{\w+\}\}')
+        self.assertEqual(call('/diceweb/js/inputsguide.js')[0], 200)
+        self.assertIn('href="/dice/inputs"', call('/dice')[2].decode())
+
     def test_personal_page(self):
         code, h, body = call('/')
         self.assertIn('<a class="me" href="/me">Made by Dhruv</a>', body.decode())
@@ -275,7 +286,8 @@ class Site(unittest.TestCase):
 
     def test_dice_setup_codes_keep_no_secrets(self):
         settings = {'dice': 1, 'name': 'Dhruv', 'password': 'hunter2', 'wifi': {'ssid': 'Home', 'password': 'wifi-secret', 'country': 'US'},
-                    'suite': ['scout', 'rm -rf'], 'screen': {'rotate': 45}, 'evil': '<script>'}
+                    'suite': ['scout', 'rm -rf'], 'screen': {'rotate': 45}, 'evil': '<script>',
+                    'looks': 'traced', 'shield': {'system': True, 'note': '<b>' * 3}, 'desk': {'snap': True}}
         code, h, body = call('/dice/setup', method='POST', body=json.dumps(settings).encode(), headers={'CONTENT_TYPE': 'application/json'})
         self.assertEqual(code, 200)
         c = json.loads(body)['code']
@@ -286,6 +298,9 @@ class Site(unittest.TestCase):
         self.assertEqual(got['wifi'], {'ssid': 'Home', 'country': 'US'})
         self.assertEqual(got['suite'], ['scout'])
         self.assertEqual(got['screen'], {})
+        self.assertEqual(got['looks'], 'traced')
+        self.assertEqual(got['shield']['system'], True)
+        self.assertEqual(got['desk'], {'snap': True})
         for gone in (b'hunter2', b'wifi-secret', b'evil'):
             self.assertNotIn(gone, body)
         self.assertEqual(call('/dice/setup/%s.json' % c.lower())[0], 200)  # codes aren't fussy about capitals

@@ -30,7 +30,7 @@ APPLIED = '/var/lib/dice/applied'  # fingerprints of files that couldn't be tidi
 SITE = os.environ.get('DICE_SITE', 'https://djp7.pythonanywhere.com')
 KEEP = ('name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh',
         # how DiceOS looks and behaves (DiceWeb takes these; see DiceOS's README for each)
-        'looks', 'accent', 'text', 'clock', 'units', 'sounds', 'nightlight', 'motion', 'ambient', 'deuce', 'tv', 'desk')
+        'looks', 'accent', 'text', 'clock', 'units', 'sounds', 'nightlight', 'motion', 'ambient', 'deuce', 'tv', 'desk', 'shield')
 
 
 def log(msg):

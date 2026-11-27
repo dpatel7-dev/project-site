@@ -257,7 +257,7 @@
     // music, settings and the store: one window each
     const one = ['music', 'settings', 'store'].includes(id) || id.startsWith('web:');
     const have = one && Desk.wins.find((w) => w.id === id);
-    if (have) { Desk.focus(have); return; }
+    if (have) { Desk.focus(have); if (opts.arg) D.emit(id + ':go', opts.arg); return; }
     const w = new Win(id, app, opts);
     Desk.wins.push(w);
     Desk.focus(w);
@@ -322,7 +322,7 @@
       Desk.last = 0;
     }
     const fps = D.state.fps || 60;
-    if (now - Desk.last < 1000 / Math.min(fps, D.state.looks === 'heaven' ? 30 : 20)) { for (const w of Desk.wins) if (!w.min && w.inst.frame) w.inst.frame(now); return; }
+    if (now - Desk.last < 1000 / Math.min(fps, D.state.looks === 'traced' ? 30 : 20)) { for (const w of Desk.wins) if (!w.min && w.inst.frame) w.inst.frame(now); return; }
     Desk.last = now;
     Desk.world.draw(wg, now / 1000, D.reduced());
     for (const w of Desk.wins) if (!w.min && w.inst.frame) w.inst.frame(now);

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inputs, step by step: DiceOS as a KVM switch - djp7</title>
+<style>
+  .ig-page { max-width: 1040px; margin: 0 auto; padding: 36px 0 70px; }
+  .ig-page h1 { font: 700 clamp(2rem, 5vw, 3rem)/1.05 var(--pixel); margin: 0 0 12px; }
+  .ig-page .lead { font-size: 1.15rem; color: var(--muted); max-width: 46em; margin: 0 0 26px; }
+  .ig-jump { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin: 0 0 46px; }
+  .ig-jump a { display: grid; gap: 6px; padding: 14px 16px 18px; border-radius: 22px; text-decoration: none; color: inherit;
+    background: radial-gradient(100% 120% at 0% 0%, color-mix(in oklab, var(--c) 18%, transparent), transparent 60%), rgba(127, 127, 127, .07); box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .2); }
+  .ig-jump a:hover { box-shadow: inset 0 0 0 2px var(--c); }
+  .ig-jump b { font-size: 1.12rem; }
+  .ig-jump span { color: var(--muted); font-size: .95rem; }
+  .ig-jump svg, .ig-row svg { width: 100%; height: auto; display: block; }
+  .ig-guide { margin: 0 0 56px; }
+  .ig-guide > h2 { font: 700 clamp(1.5rem, 3.4vw, 2.1rem)/1.15 var(--pixel); margin: 0 0 6px; color: var(--c); }
+  .ig-guide > p { color: var(--muted); margin: 0 0 20px; font-size: 1.05rem; }
+  .ig-row { display: grid; grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1fr); gap: 18px 22px; align-items: start; padding: 22px 0; border-top: 1px solid rgba(127, 127, 127, .2); }
+  .ig-num { width: 46px; height: 46px; border-radius: 15px; display: grid; place-items: center; font: 700 1.3rem/1 var(--pixel); color: #fff; background: linear-gradient(135deg, var(--c), color-mix(in oklab, var(--c) 55%, #fff)); }
+  .ig-row h3 { margin: 6px 0 10px; font-size: 1.25rem; }
+  .ig-row ul { margin: 0; padding-left: 20px; display: grid; gap: 8px; font-size: 1.05rem; line-height: 1.55; }
+  .ig-pic { padding: 10px; border-radius: 20px; background: #fff; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .2); }
+  .ig-tip { margin-top: 12px; padding: 10px 14px; border-radius: 14px; background: rgba(127, 127, 127, .08); font-size: .95rem; }
+  .ig-faq h2 { font: 700 1.6rem/1.2 var(--pixel); margin: 0 0 12px; }
+  .ig-faq details { padding: 14px 0; border-top: 1px solid rgba(127, 127, 127, .2); }
+  .ig-faq summary { cursor: pointer; font-weight: 700; font-size: 1.08rem; }
+  .ig-faq details p { margin: 10px 0 0; color: var(--muted); line-height: 1.6; }
+  @media (max-width: 760px) { .ig-row { grid-template-columns: 46px minmax(0, 1fr); } .ig-row .ig-pic { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<main class="wrap ig-page">
+  <h1>Inputs, step by step</h1>
+  <p class="lead">DiceOS can switch your TV or your computer screen to the other things plugged into it, and back again, and share its keyboard and mouse with another computer. That's a KVM switch, without buying one. Pick what you want to do.</p>
+  <nav class="ig-jump" id="jump" aria-label="The guides"></nav>
+  <div id="guides"></div>
+  <section class="ig-faq">
+    <h2>If something doesn't work</h2>
+    <details><summary>The TV doesn't switch, or Inputs says the TV isn't answering</summary><p>HDMI-CEC has to be on in the TV's settings (Samsung: Anynet+), and on in the thing you're switching to. Try a different HDMI cable or port: some old cables don't carry it. On a Raspberry Pi, use the HDMI port nearest the power socket.</p></details>
+    <details><summary>My PlayStation (or Xbox) isn't in the list</summary><p>Turn it on first, then press Look again in Inputs. Check its HDMI-CEC setting (PlayStation 5: Enable HDMI Device Link). Even if it never shows up by name, its HDMI port is still there to pick.</p></details>
+    <details><summary>No screen shows up on my PC</summary><p>Turn on DDC/CI in the screen's own menu, and plug straight into the screen (not through a dock or an adapter). A laptop's own screen can't switch. If DiceOS is older than 2.2, open Terminal and type <code>sudo dice-update</code>.</p></details>
+    <details><summary>The screen switched away and I can't get back</summary><p>The keyboard is still plugged into the DiceOS computer: press Esc or Home on it and the screen switches back. If your screen doesn't listen while it's showing the other computer, press the screen's own input button once.</p></details>
+    <details><summary>Deskflow: the pointer doesn't move to the other computer</summary><p>Both computers need to be on the same network. The name you gave the other screen in Deskflow on DiceOS must match the other computer's name exactly. On a Mac, allow Deskflow in System Settings, Privacy &amp; Security, Accessibility.</p></details>
+    <details><summary>Can Deuce do it?</summary><p>Yes: "switch to the PlayStation", "switch to HDMI 2", "switch the screen to displayport", or a name you gave one, like "switch to the work laptop". "Back to Dice" comes back.</p></details>
+  </section>
+  <p><a class="btn" href="/dice">Back to Dice</a></p>
+</main>
+<script src="/diceweb/js/inputsguide.js"></script>
+<script>
+(function () {
+  'use strict';
+  const G = window.DiceInputsGuide;
+  if (!G) return;
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const jump = document.getElementById('jump'), box = document.getElementById('guides');
+  const TIP = { cec: 'In DiceOS, the Look button on this step checks it for you.', ddc: 'In DiceOS, the Look button on this step checks it for you.', deskflow: 'In DiceOS, a button on this step gets Deskflow for you.', address: 'In DiceOS, this step shows its address.' };
+  G.PATHS.forEach((p) => {
+    jump.insertAdjacentHTML('beforeend', '<a href="#' + p.id + '" style="--c:' + p.c + '">' + G.art(p.art) + '<b>' + esc(p.title) + '</b><span>' + esc(p.blurb) + '</span></a>');
+    const sec = document.createElement('section');
+    sec.className = 'ig-guide'; sec.id = p.id; sec.style.setProperty('--c', p.c);
+    sec.innerHTML = '<h2>' + esc(p.title) + '</h2><p>' + esc(p.blurb) + '</p>' + p.steps.map((s, i) =>
+      '<div class="ig-row"><span class="ig-num">' + (i + 1) + '</span><div><h3>' + esc(s.title) + '</h3><ul>' + s.text.map((t) => '<li>' + esc(t) + '</li>').join('') + '</ul>' +
+      (TIP[s.check] ? '<p class="ig-tip">' + esc(TIP[s.check]) + '</p>' : '') + '</div><div class="ig-pic">' + G.art(s.art || p.art) + '</div></div>').join('');
+    box.appendChild(sec);
+  });
+})();
+</script>
+</body>
+</html>

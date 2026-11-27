@@ -1,0 +1,115 @@
+/* The desktop, more like a Mac (js/menubar.js): a menu bar along the top, round window buttons on the left,
+   a roomier dock with dots under what's open, and the new widgets. Settings, Desktop can turn the menu bar off. */
+
+/* ---------- the menu bar ---------- */
+#desk .mbar { position: absolute; left: 0; right: 0; top: 0; height: 28px; z-index: 950; display: flex; align-items: center; gap: 1px; padding: 0 8px;
+  background: color-mix(in srgb, var(--glass-hi) 58%, transparent); -webkit-backdrop-filter: blur(34px) saturate(180%); backdrop-filter: blur(34px) saturate(180%);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ink) 10%, transparent); font: 500 .84rem/1 var(--read); color: var(--ink); user-select: none; }
+#desk .mbar[hidden] { display: none; }
+#desk .mbar button { height: 22px; padding: 0 9px; border-radius: 5px; display: inline-flex; align-items: center; gap: 6px; color: inherit; font: inherit; white-space: nowrap; flex: none; }
+#desk .mbar button:hover, #desk .mbar button.open { background: color-mix(in srgb, var(--ink) 12%, transparent); }
+#desk .mbar button:focus-visible { outline: 2px solid var(--c); outline-offset: -2px; }
+#desk .mbar .mb-die { padding: 0 10px 0 8px; }
+#desk .mbar .mb-app b { font-weight: 800; }
+#desk .mb-r { margin-left: auto; display: flex; align-items: center; min-width: 0; }
+#desk .mb-r button { padding: 0 7px; }
+#desk .mb-clock { font-variant-numeric: tabular-nums; padding: 0 8px !important; }
+#desk .mb-music { max-width: 220px; }
+#desk .mb-np { overflow: hidden; text-overflow: ellipsis; }
+#desk .mb-deuce svg { display: block; }
+@media (max-width: 760px) { #desk .mbar .mb-m { display: none; } #desk .mb-music, #desk .mb-shield { display: none !important; } }
+
+/* the rest of the desktop makes room for it */
+#desk.mac .wins, #desk.mac .dwid { top: 28px; }
+#desk.mac .dicons { top: 42px; left: auto; right: 14px; }
+#desk.mac .dtray { display: none; }
+#desk.mac .dhot { top: auto; bottom: 0; }
+.desk-mac.desk-on #qam { top: 34px; bottom: auto; right: 8px; height: min(640px, calc(100vh - 110px)); }
+
+/* the menus drop down like a Mac's: words only, tighter */
+.dmenu.dmenu-mb { min-width: 220px; padding: 5px; border-radius: 10px; gap: 0; }
+.dmenu.dmenu-mb > button { padding: 5px 10px 5px 6px; border-radius: 5px; gap: 6px; font: 500 .86rem/1.2 var(--read); }
+.dmenu.dmenu-mb > button:hover, .dmenu.dmenu-mb > button:focus-visible { background: var(--c, #4b7bec); color: #fff; }
+.dmenu.dmenu-mb > button:hover kbd { color: rgba(255, 255, 255, .85); }
+.dmenu.dmenu-mb > button[aria-checked="true"]::after { content: none; }
+.dmenu.dmenu-mb > button[aria-checked="true"] .dmi::before { content: "✓"; font-weight: 700; font-size: .8rem; }
+.dmenu.dmenu-mb .dmi { width: 14px; text-align: center; }
+.dmenu.dmenu-mb kbd { font: 500 .78rem/1 var(--read); }
+.dmenu.dmenu-mb hr { margin: 4px 8px; }
+
+/* ---------- windows: close, minimise and zoom on the left, the name in the middle ---------- */
+#desk.mac .win { border-radius: 12px; }
+#desk.mac .win.max { border-radius: 0; }
+#desk.mac .win > header { height: 38px; gap: 8px; padding: 0 12px 0 14px; }
+#desk.mac .win > header .wico { display: none; }
+#desk.mac .win > header .wt { text-align: center; padding-right: 56px; font: 700 .86rem/1 var(--read); }
+#desk.mac .wbtns { order: -1; gap: 8px; }
+#desk.mac .wbtns button { width: 13px; height: 13px; border-radius: 50%; padding: 0; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .22); }
+#desk.mac .wbtns .wclose { order: -1; background: #ff5f57; color: rgba(90, 0, 0, .78); }
+#desk.mac .wbtns .wmin { background: #febc2e; color: rgba(110, 64, 0, .82); }
+#desk.mac .wbtns .wmax { background: #28c840; color: rgba(0, 84, 10, .82); }
+#desk.mac .wbtns button:hover { filter: brightness(.96); }
+#desk.mac .wbtns .wclose:hover { background: #ff5f57; color: rgba(90, 0, 0, .78); }
+#desk.mac .wbtns .wclose .gl { width: 7px !important; height: 7px !important; opacity: 0; }
+#desk.mac .wbtns .wmin::before { width: 7px; height: 1.5px; opacity: 0; }
+#desk.mac .wbtns .wmax::before { width: 7px; height: 7px; box-shadow: none; border-radius: 0; background: currentColor; clip-path: polygon(0 0, 62% 0, 0 62%, 0 0, 38% 100%, 100% 100%, 100% 38%, 38% 100%); opacity: 0; }
+#desk.mac .wbtns:hover .wclose .gl, #desk.mac .wbtns:hover .wmin::before, #desk.mac .wbtns:hover .wmax::before, #desk.mac .wbtns:focus-within button::before, #desk.mac .wbtns:focus-within .gl { opacity: 1; }
+#desk.mac .win:not(.active) .wbtns button { background: color-mix(in srgb, var(--ink) 16%, var(--glass-hi)); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--ink) 14%, transparent); }
+#desk.mac .win:not(.active) .wbtns:hover .wclose { background: #ff5f57; } #desk.mac .win:not(.active) .wbtns:hover .wmin { background: #febc2e; } #desk.mac .win:not(.active) .wbtns:hover .wmax { background: #28c840; }
+
+/* ---------- the dock ---------- */
+#desk.mac .dshelf { height: 60px; bottom: 6px; border-radius: 19px; padding: 0 7px; gap: 3px; max-width: calc(100vw - 32px); }
+#desk.mac .pin, #desk.mac .task { width: 48px; height: 48px; border-radius: 12px; }
+#desk.mac .dshelf .launch { width: 42px; height: 42px; }
+#desk.mac .pin.open::after, #desk.mac .task::after { bottom: -5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; opacity: .7; }
+#desk.mac .pin.active::after, #desk.mac .task.active::after { width: 4px; margin-left: -2px; opacity: 1; }
+#desk.mac .dsep { height: 38px; margin: 0 6px; }
+/* magnify (Settings, Desktop): grows sideways and up together, quickly, like a Mac's */
+#desk.mag .pin, #desk.mag .task, #desk.mag .dshelf .launch { transform: scale(var(--mag, 1)); transform-origin: 50% 100%; transition: transform .09s linear; }
+#desk.mag .dshelf { overflow: visible; }
+
+/* ---------- the new widgets ---------- */
+.dw-mon { font: 700 .95rem/1.1 var(--read); }
+.dw-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; font: 600 .76rem/1 var(--read); font-variant-numeric: tabular-nums; }
+.dw-cal em { font-style: normal; color: var(--muted); font-size: .66rem; padding-bottom: 3px; }
+.dw-cal i { font-style: normal; height: 24px; display: grid; place-items: center; border-radius: 50%; position: relative; }
+.dw-cal i.today { background: #ff5f57; color: #fff; font-weight: 800; }
+.dw-cal i.due::after { content: ""; position: absolute; bottom: 1px; left: 50%; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--c, #4b7bec); }
+.dw-calendar .dw-b, .dw-shield .dw-b, .dw-week .dw-b { cursor: pointer; }
+.dw-rem { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dw-rem li { display: flex; align-items: flex-start; gap: 9px; font: 700 .88rem/1.25 var(--read); }
+.dw-rem li span { display: grid; gap: 1px; min-width: 0; }
+.dw-rem li small { font-weight: 600; font-size: .74rem; color: var(--muted); }
+.dw-rem .dw-none { color: var(--muted); font-weight: 600; }
+.dw-tick { flex: none; width: 17px; height: 17px; margin-top: 1px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 40%, transparent); }
+.dw-tick:hover { background: color-mix(in srgb, #2fa59a 30%, transparent); box-shadow: inset 0 0 0 1.5px #2fa59a; }
+.dw-add input, .dw-cd input, .dw-ask input { width: 100%; min-width: 0; border: 0; border-radius: 9px; padding: 8px 10px; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); font: 600 .86rem/1.2 var(--read); }
+.dw-add input:focus, .dw-cd input:focus, .dw-ask input:focus { outline: 2px solid var(--c, #4b7bec); outline-offset: 0; }
+.dw-add { margin-top: 6px; }
+.dw-world { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.dw-world li { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 3px 0; }
+.dw-world li > i { color: #e9a23b; } .dw-world li.night > i { color: #7c9cff; }
+.dw-world li span { display: grid; gap: 1px; font: 700 .9rem/1.15 var(--read); }
+.dw-world li small { font: 600 .72rem/1 var(--read); color: var(--muted); }
+.dw-world li span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dw-world li b { font: 500 1.2rem/1 var(--pixel); font-variant-numeric: tabular-nums; }
+.dw-del { position: absolute; left: -2px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; opacity: 0; background: var(--glass-hi); }
+.dw-world li:hover .dw-del, .dw-del:focus-visible { opacity: .7; }
+.dw-sel { margin-top: 4px; max-width: 100%; border: 0; border-radius: 9px; padding: 6px 8px; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); font: 600 .8rem var(--read); }
+.dw-timer { --left: 0; }
+.dw-timer .dw-tleft { font-variant-numeric: tabular-nums; }
+.dw-timer::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 8px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, #ef6a55 calc(var(--left) * 100%), color-mix(in srgb, var(--ink) 10%, transparent) 0); }
+.dw-tset { flex-wrap: wrap; }
+.dw-cd { display: grid; gap: 6px; }
+.dw-link { justify-self: start; padding: 0; font: 700 .78rem var(--read); color: var(--c, #4b7bec); }
+.dw-shield .dw-b > div:first-child { display: flex; align-items: center; gap: 12px; }
+.dw-shield .dw-b > div:first-child > div { display: grid; gap: 2px; }
+.dw-shield .dw-b span { font-size: .82rem; color: var(--muted); }
+.dw-top { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 5px; }
+.dw-top li { display: grid; gap: 3px; font: 700 .8rem/1 var(--read); }
+.dw-top li i { display: block; height: 5px; border-radius: 3px; width: var(--w); background: linear-gradient(90deg, #2bc4b2, #4b7bec); }
+.dw-modes .md-quick { background: none; padding: 0; box-shadow: none; }
+.dw-modes .md-qhead { display: none; }
+.dw-ask { display: flex; align-items: center; gap: 8px; }
+.dw-orb { flex: none; display: grid; }
+.dw-deuce .dw-b small { color: var(--muted); font-size: .74rem; }

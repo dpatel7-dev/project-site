@@ -18,7 +18,7 @@
     brightness: dev.backlight ? 0.9 : null, battery: dev.battery ? { percent: 76, charging: false } : null,
     settings: cfg.settings || {},
   };
-  window.DICE_SYS = { token: 'emulator', version: cfg.version || '2.2.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
+  window.DICE_SYS = { token: 'emulator', version: cfg.version || '2.3.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
   const NETS = [[cfg.wifi && cfg.wifi.ssid ? cfg.wifi.ssid : 'Home', 84, true], ['Upstairs 5G', 61, true], ['Library Guest', 42, false], ['Printer-4F2A', 23, true]];
   const tell = (msg) => { try { parent.postMessage(Object.assign({ dice: 'emu' }, msg), location.origin); } catch (e) { /* not in the emulator after all */ } };
   const reply = (data, status) => new Response(JSON.stringify(data), { status: status || 200, headers: { 'Content-Type': 'application/json' } });
@@ -46,6 +46,8 @@
     streams.forEach((c) => { try { c.enqueue(line); } catch (err) { streams.delete(c); } });
   });
   let updateAsked = 0;
+  const emuShield = { system: true, allow: [] };
+  let emuAi = null;
   // a pretend Bluetooth: a controller and a speaker already paired, two more nearby when you look
   const BT = { powered: true, devices: [
     { mac: '5C:BA:37:1F:20:8A', name: 'Wireless Controller', icon: 'input-gaming', paired: true, connected: true, battery: 80 },
@@ -81,6 +83,25 @@
         }
         return reply(dv);
       }
+      case '/api/shield': {
+        if (method === 'POST') {
+          if (typeof b.system === 'boolean') emuShield.system = b.system;
+          if (b.action === 'allow' && b.site) emuShield.allow.push(b.site);
+          if (b.action === 'unallow') emuShield.allow = emuShield.allow.filter((x) => x !== b.site);
+        }
+        return reply(Object.assign({ ok: true, error: null, busy: false, builtin: 362, big: 118204, updated: Math.round(Date.now() / 1000) - 2 * 86400 }, emuShield, { blocking: emuShield.system ? 118566 - emuShield.allow.length : 0 }));
+      }
+      case '/api/ask/ai':
+        if (method === 'POST') emuAi = b.provider ? { provider: b.provider, model: b.model || '' } : null;
+        return reply({ ok: true, set: !!emuAi, provider: emuAi && emuAi.provider, model: emuAi && emuAi.model, providers: [{ id: 'groq', name: 'Groq', model: 'llama-3.3-70b-versatile', keyUrl: 'https://console.groq.com/keys' }, { id: 'openrouter', name: 'OpenRouter', model: 'meta-llama/llama-3.3-70b-instruct:free', keyUrl: 'https://openrouter.ai/keys' }, { id: 'google', name: 'Google AI Studio', model: 'gemini-2.5-flash', keyUrl: 'https://aistudio.google.com/apikey' }, { id: 'ollama', name: 'Ollama, on this computer', model: 'llama3.2', keyUrl: 'https://ollama.com/download', noKey: true }] });
+      case '/api/ask': {
+        const qq = String(b.q || '').toLowerCase();
+        tell({ event: 'log', text: 'Deuce looked up: ' + b.q + ' (pretend)' });
+        if (/sky/.test(qq)) return reply({ ok: true, ai: emuAi ? 'Groq' : null, answer: 'Sunlight is made of every colour. As it comes through the air, the tiny gas molecules scatter short blue waves much more than red ones [1][2], so blue light reaches your eyes from all over the sky [2]. At sunset the light crosses more air, the blue is scattered away, and reds and oranges are left [3].',
+          sources: [{ n: 1, title: 'Why Is the Sky Blue? | NASA Space Place', url: 'https://spaceplace.nasa.gov/blue-sky/', site: 'spaceplace.nasa.gov' }, { n: 2, title: 'Rayleigh scattering - Wikipedia', url: 'https://en.wikipedia.org/wiki/Rayleigh_scattering', site: 'en.wikipedia.org' }, { n: 3, title: 'Why are sunsets red? - Met Office', url: 'https://www.metoffice.gov.uk/weather/learn-about/weather/optical-effects/why-is-the-sky-blue', site: 'metoffice.gov.uk' }] });
+        return reply({ ok: true, ai: null, answer: 'This is the emulator, so Deuce pretends here. On DiceOS it searches the web, reads the best pages and explains them, with a number after each fact for where it came from [1].', sources: [{ n: 1, title: 'DiceOS on GitHub', url: 'https://github.com/dpatel7-dev/DiceOS', site: 'github.com' }] });
+      }
+      case '/api/browse': tell({ event: 'log', text: 'Opened ' + b.url + ' in SereneTab (pretend)' }); return reply({ ok: true, where: 'serenetab' });
       case '/api/kvm':
         if (method === 'POST') { tell({ event: 'log', text: 'Screen: ' + (b.action === 'back' ? 'back to DiceOS' : 'input 0x' + Number(b.code).toString(16) + ' on screen ' + b.n) + ' (pretend)' }); return reply({ ok: true }); }
         return reply({ ok: true, cec: { ok: true, me: 4, devices: [{ la: 1, kind: 'Playback 1', name: 'PlayStation 5', pa: '1.0.0.0', vendor: 'Sony', power: 'on', active: false }, { la: 3, kind: 'Tuner 1', name: 'Cable box', pa: '4.0.0.0', vendor: 'Arris', power: 'on', active: false }] },

@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Dice, traced
+Description=DiceOS's hills painted by hand in pixels, with the die and its name on a paper label, while the computer starts (DiceOS's Traced mode).
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/dice-traced
+ScriptFile=/usr/share/plymouth/themes/dice-traced/dice-traced.script

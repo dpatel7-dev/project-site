@@ -4,7 +4,7 @@
 // here: they stay on the computer they belong to.
 //
 //   name, look (auto/day/night), buddy, boot (full/quick/off), start (desktop/gaming/home), world,
-//   homeassistant, looks (normal/heaven), accent (auto or #rrggbb), text (normal/large/larger),
+//   homeassistant, looks (normal/traced), accent (auto or #rrggbb), text (normal/large/larger),
 //   clock (auto/12/24), units (f/c), sounds, nightlight (off/night/on), motion (full/less),
 //   ambient {after: minutes, show}, deuce {on, talk}, tv {live, have, tuner}, desk {snap, hotCorner, homeIcon}
 (function () {
@@ -12,6 +12,9 @@
   const D = window.Dice;
   const P = D.prefs = {};
   const isHex = (c) => /^#[0-9a-f]{6}$/i.test(String(c || ''));
+  // Traced mode used to be called Heavenly looks
+  if (D.state.looks === 'heaven') { D.state.looks = 'traced'; D.save(); }
+  P.looks = (v) => (v === 'traced' || v === 'heaven' ? 'traced' : 'normal');
   P.ACCENTS = ['#ff707a', '#f5a623', '#f5c431', '#8fd16a', '#2bc4b2', '#3a9be8', '#7c9cff', '#d39cf5', '#ff7ac8'];
 
   // a dice.json's fields into DiceOS
@@ -27,7 +30,7 @@
     if (s.start) put('start', s.start === 'gaming' || s.start === 'tv' ? 'game' : s.start === 'home' ? 'home' : 'desk');
     if (D.WORLDS && D.WORLDS[s.world]) put('world', s.world);
     if (s.homeassistant && /^https?:\/\//.test(s.homeassistant)) put('ha', String(s.homeassistant));
-    if (['normal', 'heaven'].includes(s.looks)) put('looks', s.looks);
+    if (['normal', 'traced', 'heaven'].includes(s.looks)) put('looks', P.looks(s.looks));
     if (s.accent === 'auto' || isHex(s.accent)) put('accent', s.accent);
     if (['normal', 'large', 'larger'].includes(s.text)) put('text', s.text);
     if (['auto', '12', '24'].includes(String(s.clock))) put('clock', String(s.clock));
@@ -63,7 +66,7 @@
     const out = {
       dice: 1, name: st.name || '', look: st.look || 'auto', buddy: st.avatar || 'cubby', boot: st.boot || 'full',
       start: st.start === 'game' ? 'gaming' : st.start === 'home' ? 'home' : 'desktop', world: st.world || 'hills',
-      looks: st.looks === 'heaven' ? 'heaven' : 'normal', accent: st.accent || 'auto', text: st.text || 'normal', clock: st.clock || 'auto',
+      looks: P.looks(st.looks), accent: st.accent || 'auto', text: st.text || 'normal', clock: st.clock || 'auto',
       units: (st.st && st.st.units) || (/^en-US$/i.test(navigator.language || '') ? 'f' : 'c'), sounds: st.ui !== false, nightlight: st.warm || 'off', motion: st.motion || 'full',
       ambient: { after: st.idle === undefined ? 10 : st.idle, show: st.amb || 'world' },
       deuce: { on: !(st.deuce && st.deuce.on === false), talk: !(st.deuce && st.deuce.talk === false) },
@@ -105,12 +108,15 @@
   P.live = function () {
     const html = document.documentElement;
     html.dataset.motion = D.state.motion === 'less' ? 'less' : 'full';
-    html.dataset.looks = D.state.looks === 'heaven' ? 'heaven' : 'normal';
+    html.dataset.looks = P.looks(D.state.looks);
     html.style.fontSize = { large: '112.5%', larger: '125%' }[D.state.text] || '';
     if (D.S && D.S.setUi) D.S.setUi(D.state.ui);
     if (D.tools && D.tools.applyWarm) D.tools.applyWarm();
     if (D.state.accent && D.state.accent !== 'auto') html.style.setProperty('--c', D.state.accent);
     if (D.applyLook) D.applyLook(true);
+    // DiceOS's start-up splash (before the desktop) follows Traced mode too
+    const looks = P.looks(D.state.looks);
+    if (D.sys && !D.sys.info.emulated && (D.sys.settings.looks || 'normal') !== looks && !D.serenePage) D.sys.saveSettings({ looks });
     D.emit('prefs');
   };
   // the accent: your colour if you picked one, otherwise the colour of what's picked

@@ -1,0 +1,75 @@
+// DiceOS start-up splash for Traced mode: the hills painted by hand in pixels, the die turning in
+// the middle, its name on a paper label, and a bar of ink blocks that fills. While restarting or
+// shutting down it says so. (Pictures from tools/make-splash.js.)
+Window.SetBackgroundTopColor(0.33, 0.58, 0.9);
+Window.SetBackgroundBottomColor(0.3, 0.55, 0.26);
+W = Window.GetWidth();
+H = Window.GetHeight();
+X = Window.GetX();
+Y = Window.GetY();
+
+scene = Sprite(Image("scene.png").Scale(W, H));
+scene.SetPosition(X, Y, -100);
+
+fit = 1;
+if (H < 700) fit = 0.66;
+FRAMES = 32;
+for (i = 0; i < FRAMES; i++) {
+  frame[i] = Image("die" + i + ".png");
+  if (fit < 1) frame[i] = frame[i].Scale(frame[i].GetWidth() * fit, frame[i].GetHeight() * fit);
+}
+cx = X + W / 2;
+cy = Y + H * 0.4;
+
+die = Sprite(frame[0]);
+die.SetPosition(cx - frame[0].GetWidth() / 2, cy - frame[0].GetHeight() / 2, 10);
+
+label_image = Image("label.png");
+if (fit < 1) label_image = label_image.Scale(label_image.GetWidth() * fit, label_image.GetHeight() * fit);
+label = Sprite(label_image);
+label.SetPosition(cx - label_image.GetWidth() / 2, cy + frame[0].GetHeight() / 2 + 16 * fit, 10);
+
+on_image = Image("seg-on.png");
+off_image = Image("seg-off.png");
+gap = 4;
+bar_width = 12 * on_image.GetWidth() + 11 * gap;
+bar_y = label.GetY() + label_image.GetHeight() + 24;
+for (i = 0; i < 12; i++) {
+  seg[i] = Sprite(off_image);
+  seg[i].SetPosition(cx - bar_width / 2 + i * (on_image.GetWidth() + gap), bar_y, 10);
+}
+
+// restarting, shutting down or updating: say so under the bar
+mode = Plymouth.GetMode();
+what = "";
+if (mode == "reboot") what = "restarting.png";
+if (mode == "shutdown") what = "shutting.png";
+if (mode == "updates" || mode == "system-upgrade" || mode == "firmware-upgrade") what = "updating.png";
+if (what != "") {
+  say_image = Image(what);
+  say = Sprite(say_image);
+  say.SetPosition(cx - say_image.GetWidth() / 2, bar_y + 26, 10);
+}
+
+tick = 0;
+fun refresh_callback() {
+  tick++;
+  die.SetImage(frame[Math.Int(tick / 4) % FRAMES]);
+}
+Plymouth.SetRefreshFunction(refresh_callback);
+
+fun progress_callback(duration, progress) {
+  n = Math.Int(progress * 12 + 0.5);
+  for (i = 0; i < 12; i++) {
+    if (i < n) seg[i].SetImage(on_image);
+    else seg[i].SetImage(off_image);
+  }
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+message = Sprite();
+fun message_callback(text) {
+  message.SetImage(Image.Text(text, 0.17, 0.18, 0.28));
+  message.SetPosition(cx - message.GetImage().GetWidth() / 2, Y + H - 60, 20);
+}
+Plymouth.SetMessageFunction(message_callback);

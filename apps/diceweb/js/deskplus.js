@@ -67,9 +67,9 @@
   // ---- little menus --------------------------------------------------------------------------------
   let menuEl = null;
   function closeMenu() { if (menuEl) { menuEl.remove(); menuEl = null; } }
-  function menu(x, y, items) {
+  function menu(x, y, items, kind) {
     closeMenu();
-    menuEl = h('<div class="dmenu glass" role="menu"></div>');
+    menuEl = h('<div class="dmenu glass' + (kind ? ' dmenu-' + kind : '') + '" role="menu"></div>');
     items.forEach((it) => {
       if (it === '-') return menuEl.appendChild(h('<hr>'));
       if (it.html) return menuEl.appendChild(h(it.html));
@@ -227,6 +227,7 @@
       ['Dice Home', 'wall clock home assistant', 'home', () => D.wall && D.wall.enter()],
     ];
     if (D.sys && D.inputs) A.push(['Inputs', 'kvm switch hdmi displayport usb-c input source screen monitor tv playstation xbox laptop', 'tv', () => D.inputs.open()]);
+    if (D.inputs && D.inputs.guide) A.push(['Set up Inputs, step by step', 'kvm hdmi switch screen tv inputs guide help monitor keyboard', 'tv', () => D.inputs.guide()]);
     if (D.sys) A.push(['Take a screenshot', 'screen capture picture print', 'camera', () => D.tools.screenshot()], ['Restart the desktop', 'reload', 'restart', () => D.sys.power('restart-desktop')], ['Shut down', 'power off', 'power', () => D.sys.power('shutdown')]);
     (D.settingsSections ? D.settingsSections() : Object.entries(NAMES)).forEach(([k, n]) => A.push(['Settings: ' + n, 'settings ' + k + ' ' + n.toLowerCase(), 'gear', () => D.launch('settings', { arg: k })]));
     return A.map(([name, words, icon, run]) => ({ kind: 'Do it', name, words, icon, run }));
@@ -271,7 +272,12 @@
       findItems.slice(0, 4).forEach((f) => out.push({ kind: f.dir ? 'Folder' : 'File', name: f.name, sub: f.path, icon: f.dir ? 'box' : 'copy', run: () => D.extras.openFile(f) }));
     }
     const o = L.omni(v, (D.state.st && D.state.st.engine) || 'ddg');
-    if (o) out.push({ kind: 'Web', name: o.search ? 'Search the web for "' + v + '"' : 'Open ' + v, icon: 'link', run: () => Desk.open('browser', { arg: o.url }) });
+    if (o) out.push({ kind: 'Web', name: o.search ? 'Search the web for "' + v + '"' : 'Open ' + v, icon: 'link', run: () => (D.browse ? D.browse(o.url) : Desk.open('browser', { arg: o.url })) });
+    // a question, or something to do: Deuce
+    if (D.deuceAsk && D.deuce && D.deuce.cfg().on && v.split(/\s+/).length >= 2 && !/^[:=]/.test(v)) {
+      const ask = { kind: 'Deuce', name: 'Ask Deuce: ' + v, sub: 'Answers from the web, or does it for you', icon: 'die', run: () => D.deuceAsk(v) };
+      if (/\?\s*$/.test(v) || /^(who|what|whats|when|where|why|how|which|remind|remember|turn|start|is|are|can|does|do)\b/i.test(v)) out.unshift(ask); else out.push(ask);
+    }
     return out;
   }
   function paintBar() {
@@ -356,7 +362,22 @@
   const KINDS = {
     clock: ['Clock', 'The time and the date'], weather: ['Weather', 'Your town, now and later'], due: ['Axiom', 'What\'s due, and the next class'],
     music: ['Music', 'What\'s playing, with play and skip'], sticky: ['Sticky note', 'A note on the desktop'], system: ['This computer', 'How busy it is (DiceOS)'],
+    calendar: ['Calendar', 'This month, with today and what\'s due'], reminders: ['Reminders', 'What Deuce will remind you about'], world: ['World clock', 'The time in other places'],
+    timer: ['Timer', 'A quick countdown with a chime'], countdown: ['Countdown', 'Days until something'], shield: ['Shield', 'Ads and trackers kept out today'],
+    week: ['Screen time', 'Today, this week and your top apps'], modes: ['Modes', 'Start Focus, School, Play or your own'], deuce: ['Ask Deuce', 'A question box on the desktop'],
   };
+  const ZONES = [['New York', 'America/New_York'], ['Los Angeles', 'America/Los_Angeles'], ['Chicago', 'America/Chicago'], ['London', 'Europe/London'], ['Paris', 'Europe/Paris'], ['Berlin', 'Europe/Berlin'],
+    ['Mumbai', 'Asia/Kolkata'], ['Dubai', 'Asia/Dubai'], ['Singapore', 'Asia/Singapore'], ['Tokyo', 'Asia/Tokyo'], ['Seoul', 'Asia/Seoul'], ['Sydney', 'Australia/Sydney'], ['São Paulo', 'America/Sao_Paulo'],
+    ['Mexico City', 'America/Mexico_City'], ['Toronto', 'America/Toronto'], ['Johannesburg', 'Africa/Johannesburg'], ['Cairo', 'Africa/Cairo'], ['Honolulu', 'Pacific/Honolulu']];
+  // the hour and minute somewhere else, and how far ahead or behind it is
+  function zoneNow(tz) {
+    const now = new Date(), p = {};
+    try { new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hourCycle: 'h23', year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(now).forEach((x) => { p[x.type] = x.value; }); } catch (e) { return null; }
+    const there = new Date(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute), diff = Math.round((there - new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes())) / 36e5 * 2) / 2;
+    const day = there.getDate() === now.getDate() ? '' : there > now ? 'Tomorrow' : 'Yesterday';
+    return { time: there.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }), hour: +p.hour, diff, day };
+  }
+  const timers = new Map();
   const wlist = () => (Array.isArray(D.state.widgets) ? D.state.widgets : (D.state.widgets = [{ type: 'clock', x: 0.76, y: 0.05 }, { type: 'weather', x: 0.76, y: 0.25 }, { type: 'due', x: 0.76, y: 0.45 }]));
   let wxCache = null, wxAt = 0;
   async function wxNow() {
@@ -393,6 +414,92 @@
         ta.value = w.text || '';
         let t0 = 0;
         ta.oninput = () => { w.text = ta.value; clearTimeout(t0); t0 = setTimeout(() => D.save(), 400); };
+      }
+    }
+    if (w.type === 'calendar') {
+      const n = new Date(), y = n.getFullYear(), mo = n.getMonth(), first = new Date(y, mo, 1).getDay(), days = new Date(y, mo + 1, 0).getDate();
+      const due = new Set(((D.state.axiom || {}).tasks || []).filter((t) => !t.done && t.due).map((t) => t.due));
+      const key = (d) => y + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+      let cells = '';
+      for (let i = 0; i < first; i++) cells += '<i></i>';
+      for (let d = 1; d <= days; d++) cells += '<i class="' + (d === n.getDate() ? 'today' : '') + (due.has(key(d)) ? ' due' : '') + '">' + d + '</i>';
+      body.innerHTML = '<b class="dw-mon">' + n.toLocaleDateString([], { month: 'long', year: 'numeric' }) + '</b><div class="dw-cal">' + ['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((x) => '<em>' + x + '</em>').join('') + cells + '</div>';
+      body.onclick = () => Desk.open('calendar');
+    }
+    if (w.type === 'reminders') {
+      const R = D.deuce && D.deuce.reminders, list = R ? R.upcoming().slice(0, 4) : [];
+      if (!body.querySelector('input')) {
+        body.innerHTML = '<ul class="dw-rem"></ul><form class="dw-add"><input placeholder="Remind me to… (at 6, tomorrow)" aria-label="Add a reminder" maxlength="200"></form>';
+        body.querySelector('form').onsubmit = (e) => {
+          e.preventDefault();
+          const inp = body.querySelector('input'), v = inp.value.trim();
+          if (!v || !R || !window.DeuceBrain) return;
+          const it = window.DeuceBrain.reminder('remind me to ' + v.toLowerCase(), new Date());
+          if (!it || !it.at) { inp.value = ''; inp.placeholder = 'Say when: "at 6", "in 20 minutes", "tomorrow"'; return; }
+          R.add(it.what || v, it.at); inp.value = ''; fill(el, w);
+        };
+      }
+      const ul = body.querySelector('.dw-rem');
+      ul.innerHTML = list.length ? list.map((r) => '<li><button class="dw-tick" data-id="' + esc(r.id) + '" aria-label="Done: ' + esc(r.what) + '"></button><span>' + esc(r.what.replace(/^./, (c) => c.toUpperCase())) + '<small>' + esc(D.deuce.whenWords ? D.deuce.whenWords(r.at) : new Date(r.at).toLocaleString()) + '</small></span></li>').join('') : '<li class="dw-none">Nothing to remember. Type one below.</li>';
+      ul.querySelectorAll('.dw-tick').forEach((b) => { b.onclick = () => { R.remove(b.dataset.id); fill(el, w); }; });
+    }
+    if (w.type === 'world') {
+      w.zones = Array.isArray(w.zones) && w.zones.length ? w.zones : ['Europe/London', 'Asia/Tokyo', 'America/Los_Angeles'];
+      const rows = w.zones.map((tz) => { const z = zoneNow(tz), nm = (ZONES.find((q) => q[1] === tz) || [tz.split('/').pop().replace(/_/g, ' ')])[0]; if (!z) return ''; const night = z.hour < 6 || z.hour >= 19; return '<li class="' + (night ? 'night' : '') + '"><i aria-hidden="true">' + D.glyph(night ? 'moon' : 'sun', 1) + '</i><span>' + esc(nm) + '<small>' + esc((z.day ? z.day + ', ' : 'Today, ') + (z.diff === 0 ? 'same time' : (z.diff > 0 ? '+' : '') + z.diff + ' h')) + '</small></span><b>' + esc(z.time) + '</b><button class="dw-del" data-tz="' + esc(tz) + '" aria-label="Remove ' + esc(nm) + '">' + D.glyph('close', 1) + '</button></li>'; }).join('');
+      body.innerHTML = '<ul class="dw-world">' + rows + '</ul>' + (w.zones.length < 5 ? '<select class="dw-sel" aria-label="Add a city"><option value="">Add a city…</option>' + ZONES.filter((q) => !w.zones.includes(q[1])).map((q) => '<option value="' + q[1] + '">' + esc(q[0]) + '</option>').join('') + '</select>' : '');
+      body.querySelectorAll('.dw-del').forEach((b) => { b.onclick = () => { w.zones = w.zones.filter((z) => z !== b.dataset.tz); D.save(); fill(el, w); }; });
+      const sel = body.querySelector('.dw-sel');
+      if (sel) sel.onchange = () => { if (sel.value) { w.zones.push(sel.value); D.save(); fill(el, w); } };
+    }
+    if (w.type === 'timer') {
+      if (!body.querySelector('.dw-tleft')) {
+        body.innerHTML = '<b class="dw-big dw-tleft">0:00</b><div class="dw-btns dw-tset">' + [1, 5, 10, 25].map((m) => '<button class="b small" data-min="' + m + '">' + m + ' min</button>').join('') + '</div><div class="dw-btns"><button class="b small dw-tstop" hidden>Stop</button></div>';
+        body.querySelectorAll('[data-min]').forEach((b) => { b.onclick = () => { w.end = Date.now() + +b.dataset.min * 60000; w.mins = +b.dataset.min; D.save(); fill(el, w); }; });
+        body.querySelector('.dw-tstop').onclick = () => { w.end = 0; D.save(); fill(el, w); };
+      }
+      const tick = () => {
+        const left = Math.max(0, (w.end || 0) - Date.now()), s = Math.ceil(left / 1000);
+        const lab = body.querySelector('.dw-tleft');
+        if (!lab) return;
+        lab.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+        body.querySelector('.dw-tstop').hidden = !w.end;
+        el.style.setProperty('--left', w.end && w.mins ? (left / (w.mins * 60000)) : 0);
+        if (w.end && left <= 0) { w.end = 0; D.save(); D.notify({ icon: 'clock', c: '#ef6a55', title: 'Time\'s up', text: (w.mins || '') + ' minute timer', urgent: true }); S.play('wake'); body.querySelector('.dw-tstop').hidden = true; }
+      };
+      clearInterval(timers.get(el));
+      if (w.end) timers.set(el, setInterval(() => { if (!el.isConnected) return clearInterval(timers.get(el)); tick(); }, 500));
+      tick();
+    }
+    if (w.type === 'countdown') {
+      const when = w.date ? new Date(w.date + 'T00:00') : null, days = when ? Math.ceil((when - new Date(new Date().toDateString())) / 864e5) : null;
+      if (!when || w.editing) {
+        body.innerHTML = '<form class="dw-cd"><input name="l" placeholder="What is it? (Summer break)" maxlength="40" aria-label="What it is"><input name="d" type="date" aria-label="The day"><button class="b small">Start counting</button></form>';
+        const f = body.querySelector('form');
+        f.l.value = w.label || ''; f.d.value = w.date || '';
+        f.onsubmit = (e) => { e.preventDefault(); if (!f.d.value) return; w.label = f.l.value.trim(); w.date = f.d.value; w.editing = false; D.save(); fill(el, w); };
+      } else {
+        body.innerHTML = '<b class="dw-big">' + Math.abs(days) + '</b><span>' + (days === 0 ? 'Today is ' : days > 0 ? (days === 1 ? 'day' : 'days') + ' until ' : (days === -1 ? 'day' : 'days') + ' since ') + esc(w.label || when.toLocaleDateString([], { month: 'long', day: 'numeric' })) + '</span><small>' + esc(when.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })) + '</small><button class="dw-link">Change</button>';
+        body.querySelector('.dw-link').onclick = () => { w.editing = true; fill(el, w); };
+      }
+    }
+    if (w.type === 'shield') {
+      const SH = D.shield, s = SH && SH.available() ? await SH.get().catch(() => null) : null;
+      body.innerHTML = s ? '<div class="dw-shield">' + SH.art(s.on !== false, 40) + '<div><b class="dw-big">' + (s.today || 0).toLocaleString() + '</b><span>ads and trackers kept out today</span></div></div>' + (s.week ? SH.weekBars(s.week) : '') : '<span>Shield blocks ads on DiceOS and in SereneTab. Turn it on in Settings, Shield.</span>';
+      body.onclick = () => D.launch('settings', { arg: 'shield' });
+    }
+    if (w.type === 'week') {
+      const s = D.recap ? D.recap.summary() : null;
+      body.innerHTML = s ? '<b class="dw-big">' + esc(s.todayText || '0 min') + '</b><span>today · ' + esc(s.weekText || '0 min') + ' this week</span>' + (s.top.length ? '<ul class="dw-top">' + s.top.slice(0, 3).map(([id, n]) => '<li><span>' + esc((D.app(id) || { name: id }).name) + '</span><i style="--w:' + Math.round(n / s.top[0][1] * 100) + '%"></i></li>').join('') + '</ul>' : '') : '<span>Screen time starts counting now.</span>';
+      body.onclick = () => D.recap && D.recap.open();
+    }
+    if (w.type === 'modes') {
+      body.innerHTML = '';
+      if (D.modes && D.modes.quickRow) body.appendChild(D.modes.quickRow(() => {}));
+    }
+    if (w.type === 'deuce') {
+      if (!body.querySelector('form')) {
+        body.innerHTML = '<form class="dw-ask"><span class="dw-orb" aria-hidden="true">' + (D.deuce && D.deuce.orbSvg ? D.deuce.orbSvg(26) : '') + '</span><input placeholder="Ask Deuce anything" aria-label="Ask Deuce"></form><small>Try: "what\'s the weather", "remind me at 5", "why is the sky blue"</small>';
+        body.querySelector('form').onsubmit = (e) => { e.preventDefault(); const inp = body.querySelector('input'), v = inp.value.trim(); if (!v) return; inp.value = ''; if (D.deuceAsk) D.deuceAsk(v); else D.launch('deuce'); };
       }
     }
     if (w.type === 'system') {
@@ -433,7 +540,11 @@
     menuEl.classList.add('wide');
   }
   P.gallery = gallery;
-  setInterval(() => { if (!Desk.on) return; D.$$('#desk .dw').forEach((el, i) => { const w = wlist()[i]; if (w && w.type !== 'sticky' && w.type !== 'weather') fill(el, w); }); }, 15000);
+  P.menu = menu;
+  // the ones you type into, or that tick by themselves, aren't redrawn every 15 seconds
+  const SELF = ['sticky', 'weather', 'timer', 'countdown', 'deuce', 'modes'];
+  setInterval(() => { if (!Desk.on) return; D.$$('#desk .dw').forEach((el, i) => { const w = wlist()[i]; if (w && !SELF.includes(w.type) && !el.contains(document.activeElement)) fill(el, w); }); }, 15000);
+  D.on('reminders', () => { if (Desk.on) D.$$('#desk .dw-reminders').forEach((el) => fill(el, wlist().find((x) => x.type === 'reminders'))); });
   setInterval(() => { if (!Desk.on) return; D.$$('#desk .dw-weather').forEach((el) => { const w = wlist().find((x) => x.type === 'weather'); if (w) fill(el, w); }); }, 10 * 60000);
   M.on(() => { if (Desk.on) D.$$('#desk .dw-music').forEach((el) => fill(el, { type: 'music' })); });
   D.on('look', () => { if (Desk.on) widgets(); });

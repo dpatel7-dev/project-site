@@ -284,6 +284,8 @@
     if (ev.tv === 'on') { if (D.asleep) D.wake(); return; }
     if (ev.learned != null) { D.emit('learned', ev.learned); return; }
     if (ev.voice) { D.emit('voice', ev.voice); return; }
+    // a link from another app on DiceOS (dice-open): it opens in SereneTab
+    if (typeof ev.browse === 'string') { if (D.asleep) D.wake(); if (D.browse) D.browse(ev.browse); return; }
     if (ev.a && 'down' in ev) return held(ev);
     if (!ev.a) return;
     R.last = { a: ev.a, key: ev.key || ev.a, at: Date.now() };

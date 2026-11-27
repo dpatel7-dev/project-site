@@ -114,6 +114,7 @@ def user_env(user):
     env = {'HOME': pw.pw_dir, 'USER': user, 'LOGNAME': user, 'SHELL': pw.pw_shell or '/bin/bash',
            'PATH': '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': os.environ.get('LANG', 'C.UTF-8'),
            'TERM': 'xterm-256color', 'COLORTERM': 'truecolor'}
+    env['BROWSER'] = os.path.join(ROOT, 'bin', 'dice-open')  # links from any app open in SereneTab
     if os.path.isdir(run_dir):
         env['XDG_RUNTIME_DIR'] = run_dir
         env['DBUS_SESSION_BUS_ADDRESS'] = 'unix:path=%s/bus' % run_dir
@@ -292,6 +293,433 @@ def lookup(url):
         return {'ok': True, 'data': json.loads(body)}
     except (OSError, ValueError, urllib.error.URLError) as e:
         return {'ok': False, 'error': 'Couldn\'t look it up (%s).' % (getattr(e, 'reason', None) or e)}
+
+
+# ---------------------------------------------------------------------------
+# Shield, for the whole computer: ad and tracker addresses go nowhere, for every app
+# (the browser part is the extension in shield/). It keeps one part of /etc/hosts
+# between two marker lines and never touches the rest.
+
+SHIELD_LIST_URL = 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts'
+SHIELD_NAME = re.compile(r'^[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?(\.[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?)+$')
+# never blocked, whatever a list says: what DiceOS itself needs to update and install
+SHIELD_NEVER = re.compile(r'(^|\.)(pythonanywhere\.com|github\.com|githubusercontent\.com|flathub\.org|debian\.org|raspberrypi\.(com|org)|ubuntu\.com|localhost|local|localdomain)$')
+
+
+class Shield:
+    START = '# >>> DiceOS Shield: ad and tracker addresses (Settings, Shield). DiceOS rewrites this part. >>>'
+    END = '# <<< DiceOS Shield <<<'
+
+    def __init__(self, settings_path, hosts='/etc/hosts', store='/var/lib/dice/shield', builtin=None):
+        self.settings_path = settings_path
+        self.hosts = hosts
+        self.store = store
+        self.builtin_path = builtin or os.path.join(ROOT, 'shield', 'domains.txt')
+        self.lock = threading.Lock()
+        self.busy = False
+        self.error = ''
+
+    def cfg(self):
+        c = load_settings(self.settings_path).get('shield')
+        c = dict(c) if isinstance(c, dict) else {}
+        c['system'] = c.get('system', True) is not False
+        c['allow'] = [a for a in c.get('allow', []) if isinstance(a, str) and SHIELD_NAME.match(a)][:2000]
+        return c
+
+    @staticmethod
+    def names_in(text):
+        """The addresses in a hosts-style list ("0.0.0.0 ads.example.com") or a plain one."""
+        out = set()
+        for line in text.splitlines():
+            line = line.split('#', 1)[0].strip().lower()
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] in ('0.0.0.0', '127.0.0.1', '::', '::1'):
+                names = parts[1:]
+            elif len(parts) == 1:
+                names = parts
+            else:
+                continue
+            for n in names:
+                n = n.rstrip('.')
+                if SHIELD_NAME.match(n) and not SHIELD_NEVER.search(n) and not re.fullmatch(r'[\d.]+', n) and len(n) < 250:
+                    out.add(n)
+        return out
+
+    def builtin(self):
+        return self.names_in(read(self.builtin_path))
+
+    def big(self):
+        return self.names_in(read(os.path.join(self.store, 'hosts.txt')))
+
+    def wanted(self, c=None):
+        c = c or self.cfg()
+        if not c['system']:
+            return []
+        allow = set(c['allow'])
+        names = (self.builtin() | self.big())
+        return sorted(n for n in names if n not in allow and not any(n.endswith('.' + a) for a in allow))
+
+    def ours(self):
+        """How many addresses are in our part of the hosts file now."""
+        inside, n = False, 0
+        for line in read(self.hosts).splitlines():
+            if line.strip() == self.START:
+                inside = True
+            elif line.strip() == self.END:
+                inside = False
+            elif inside and line.startswith('0.0.0.0 '):
+                n += 1
+        return n
+
+    def write(self, names):
+        with self.lock:
+            text = read(self.hosts)
+            keep, inside = [], False
+            for line in text.splitlines():
+                if line.strip() == self.START:
+                    inside = True
+                    continue
+                if line.strip() == self.END:
+                    inside = False
+                    continue
+                if not inside:
+                    keep.append(line)
+            while keep and not keep[-1].strip():
+                keep.pop()
+            out = '\n'.join(keep) + '\n'
+            if names:
+                out += '\n' + self.START + '\n' + ''.join('0.0.0.0 %s\n' % n for n in names) + self.END + '\n'
+            if out == text:
+                return False
+            tmp = self.hosts + '.dice-new'
+            with open(tmp, 'w') as f:
+                f.write(out)
+            try:
+                os.chmod(tmp, 0o644)
+            except OSError:
+                pass
+            try:
+                os.replace(tmp, self.hosts)
+            except OSError:  # /etc/hosts can be a mount of its own: write it in place
+                with open(self.hosts, 'w') as f:
+                    f.write(out)
+                os.remove(tmp)
+            return True
+
+    def apply(self):
+        try:
+            self.write(self.wanted())
+            self.error = ''
+        except OSError as e:
+            self.error = 'Couldn\'t change the hosts file (%s).' % e
+        return self.state()
+
+    def state(self):
+        c = self.cfg()
+        p = os.path.join(self.store, 'hosts.txt')
+        try:
+            updated = int(os.path.getmtime(p))
+        except OSError:
+            updated = 0
+        return {'ok': not self.error, 'error': self.error or None, 'system': c['system'], 'blocking': self.ours(), 'builtin': len(self.builtin()),
+                'big': len(self.big()), 'updated': updated, 'allow': c['allow'], 'busy': self.busy}
+
+    def update(self, url=SHIELD_LIST_URL):
+        """Fetch the big list again (StevenBlack's, about 100,000 addresses), then use it."""
+        self.busy = True
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'DiceOS/' + VERSION})
+            with urllib.request.urlopen(req, timeout=60) as r:
+                body = r.read(30 * 1024 * 1024).decode('utf-8', 'replace')
+            names = self.names_in(body)
+            if len(names) < 1000:
+                raise ValueError('the list looked too short')
+            os.makedirs(self.store, exist_ok=True)
+            tmp = os.path.join(self.store, 'hosts.txt.new')
+            with open(tmp, 'w') as f:
+                f.write(''.join('0.0.0.0 %s\n' % n for n in sorted(names)))
+            os.replace(tmp, os.path.join(self.store, 'hosts.txt'))
+            self.error = ''
+            return self.apply()
+        except (OSError, ValueError, urllib.error.URLError) as e:
+            self.error = 'Couldn\'t get the list just now (%s). Shield keeps using the one it has.' % (getattr(e, 'reason', None) or e)
+            return self.state()
+        finally:
+            self.busy = False
+
+    def change(self, b):
+        s = load_settings(self.settings_path)
+        c = self.cfg()
+        if isinstance(b.get('system'), bool):
+            c['system'] = b['system']
+        site = str(b.get('site') or '').strip().lower()
+        if b.get('action') in ('allow', 'unallow'):
+            if not SHIELD_NAME.match(site):
+                return dict(self.state(), ok=False, error='That isn\'t an address, like ads.example.com.')
+            c['allow'] = [a for a in c['allow'] if a != site] + ([site] if b['action'] == 'allow' else [])
+        s['shield'] = {'system': c['system'], 'allow': c['allow']}
+        save_settings(self.settings_path, s)
+        if b.get('action') == 'update':
+            return self.update()
+        return self.apply()
+
+    def start(self):
+        def loop():
+            self.apply()
+            while True:
+                try:
+                    p = os.path.join(self.store, 'hosts.txt')
+                    old = (time.time() - os.path.getmtime(p)) if os.path.exists(p) else 1e9
+                    if self.cfg()['system'] and old > 7 * 86400:
+                        self.update()
+                except OSError:
+                    pass
+                time.sleep(6 * 3600 if os.path.exists(os.path.join(self.store, 'hosts.txt')) else 15 * 60)
+        threading.Thread(target=loop, daemon=True).start()
+
+
+# ---------------------------------------------------------------------------
+# Deuce's answers: questions it can't do itself ("why is the sky blue?") are looked up on
+# the web (DuckDuckGo and Wikipedia, no key), the best pages are read, and an AI you pick
+# (Settings, Deuce) explains them with numbered sources, like scout. Without an AI, Deuce
+# answers from Wikipedia and the search results. The key stays in its own file, here.
+
+AI_PROVIDERS = {
+    'groq': ('Groq', 'https://api.groq.com/openai/v1', 'llama-3.3-70b-versatile', 'https://console.groq.com/keys'),
+    'openrouter': ('OpenRouter', 'https://openrouter.ai/api/v1', 'meta-llama/llama-3.3-70b-instruct:free', 'https://openrouter.ai/keys'),
+    'google': ('Google AI Studio', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-2.5-flash', 'https://aistudio.google.com/apikey'),
+    'mistral': ('Mistral', 'https://api.mistral.ai/v1', 'mistral-small-latest', 'https://console.mistral.ai/api-keys'),
+    'cerebras': ('Cerebras', 'https://api.cerebras.ai/v1', 'llama-3.3-70b', 'https://cloud.cerebras.ai'),
+    'openai': ('OpenAI', 'https://api.openai.com/v1', 'gpt-4o-mini', 'https://platform.openai.com/api-keys'),
+    'ollama': ('Ollama, on this computer', 'http://127.0.0.1:11434/v1', 'llama3.2', 'https://ollama.com/download'),
+}
+
+
+def strip_html(html):
+    html = re.sub(r'(?is)<(script|style|noscript|svg|nav|footer|header|form|aside)\b.*?</\1>', ' ', html)
+    html = re.sub(r'(?is)<br\s*/?>|</p>|</li>|</h\d>|</div>', '\n', html)
+    text = re.sub(r'(?s)<[^>]+>', ' ', html)
+    text = __import__('html').unescape(text)
+    text = re.sub(r'[ \t\r\f\v]+', ' ', text)
+    lines = [l.strip() for l in text.split('\n')]
+    return '\n'.join(l for l in lines if len(l) > 40)
+
+
+def parse_duck(html):
+    """DuckDuckGo's plain results page: [{title, url, snippet}], with its own ads left out."""
+    out = []
+    for m in re.finditer(r'(?is)<a[^>]+class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>(.*?)(?=<a[^>]+class="result__a"|$)', html):
+        href, title, rest = m.group(1), m.group(2), m.group(3)
+        href = __import__('html').unescape(href)
+        if 'duckduckgo.com/y.js' in href:
+            continue
+        q = urllib.parse.parse_qs(urllib.parse.urlsplit(href).query)
+        url = q.get('uddg', [href])[0]
+        if url.startswith('//'):
+            url = 'https:' + url
+        if not re.match(r'^https?://', url):
+            continue
+        sn = re.search(r'(?is)class="result__snippet"[^>]*>(.*?)</a>', rest)
+        clean = lambda s: re.sub(r'\s+', ' ', __import__('html').unescape(re.sub(r'(?s)<[^>]+>', '', s or ''))).strip()
+        out.append({'title': clean(title)[:160], 'url': url, 'snippet': clean(sn.group(1) if sn else '')[:400]})
+    return out
+
+
+def site_of(url):
+    return (urllib.parse.urlsplit(url).hostname or '').lower().replace('www.', '', 1)
+
+
+class Answers:
+    def __init__(self, settings_path, fetch=None):
+        self.settings_path = settings_path
+        self.fetch = fetch or self._fetch
+
+    def _fetch(self, url, data=None, headers=None, limit=900 * 1024, timeout=12):
+        h = {'User-Agent': 'Mozilla/5.0 (X11; Linux) DiceOS/%s Deuce' % VERSION, 'Accept-Language': 'en-US,en;q=0.8'}
+        h.update(headers or {})
+        req = urllib.request.Request(url, data=data, headers=h)
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            ctype = r.headers.get('Content-Type', '')
+            return r.read(limit).decode('utf-8', 'replace'), ctype
+
+    # -- the AI you picked --
+    def key_path(self):
+        return os.path.join(os.path.dirname(self.settings_path), 'deuce-ai.json')
+
+    def ai(self):
+        try:
+            with open(self.key_path()) as f:
+                c = json.load(f)
+            return c if isinstance(c, dict) and c.get('provider') in AI_PROVIDERS else None
+        except (OSError, ValueError):
+            return None
+
+    def ai_public(self):
+        c = self.ai()
+        return {'ok': True, 'providers': [{'id': k, 'name': v[0], 'model': v[2], 'keyUrl': v[3], 'noKey': k == 'ollama'} for k, v in AI_PROVIDERS.items()],
+                'provider': c and c['provider'], 'model': c and c.get('model'), 'set': bool(c)}
+
+    def set_ai(self, b):
+        prov = b.get('provider')
+        if not prov:
+            try:
+                os.remove(self.key_path())
+            except OSError:
+                pass
+            return self.ai_public()
+        if prov not in AI_PROVIDERS:
+            return dict(self.ai_public(), ok=False, error='Pick one of the AIs listed.')
+        key = str(b.get('key') or '').strip()
+        old = self.ai()
+        if not key and old and old['provider'] == prov:
+            key = old.get('key', '')
+        if prov != 'ollama' and not re.fullmatch(r'[\x21-\x7e]{8,300}', key):
+            return dict(self.ai_public(), ok=False, error='Paste the key from ' + AI_PROVIDERS[prov][0] + '.')
+        model = str(b.get('model') or '').strip()[:120] or AI_PROVIDERS[prov][2]
+        os.makedirs(os.path.dirname(self.key_path()), exist_ok=True)
+        fd = os.open(self.key_path(), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, 'w') as f:
+            json.dump({'provider': prov, 'key': key, 'model': model}, f)
+        return self.ai_public()
+
+    # -- looking it up --
+    def search(self, q):
+        found = []
+        try:
+            body, _ = self.fetch('https://html.duckduckgo.com/html/?q=' + urllib.parse.quote(q) + '&kl=us-en')
+            found = parse_duck(body)[:8]
+        except (OSError, ValueError, urllib.error.URLError):
+            pass
+        wiki = None
+        try:
+            body, _ = self.fetch('https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&srlimit=1&srsearch=' + urllib.parse.quote(q))
+            hit = (json.loads(body).get('query', {}).get('search') or [None])[0]
+            if hit:
+                title = hit['title']
+                body, _ = self.fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + urllib.parse.quote(title.replace(' ', '_')))
+                s = json.loads(body)
+                if s.get('extract') and s.get('type') != 'disambiguation':
+                    wiki = {'title': s.get('title', title) + ' - Wikipedia', 'url': ((s.get('content_urls') or {}).get('desktop') or {}).get('page') or 'https://en.wikipedia.org/wiki/' + urllib.parse.quote(title.replace(' ', '_')),
+                            'snippet': s['extract'][:600], 'text': s['extract']}
+        except (OSError, ValueError, KeyError, urllib.error.URLError):
+            pass
+        picks = [r for r in found if site_of(r['url']) != 'en.wikipedia.org']
+        if wiki:
+            picks.insert(min(1, len(picks)), wiki)
+        seen, out = set(), []
+        for r in picks:
+            if r['url'] in seen:
+                continue
+            seen.add(r['url'])
+            out.append(r)
+        return out[:6]
+
+    def read_pages(self, results, n=4):
+        def one(r):
+            if r.get('text'):
+                return
+            try:
+                body, ctype = self.fetch(r['url'], limit=700 * 1024, timeout=8)
+                if 'html' in ctype or not ctype:
+                    r['text'] = strip_html(body)[:3500]
+            except (OSError, ValueError, urllib.error.URLError):
+                pass
+        threads = [threading.Thread(target=one, args=(r,), daemon=True) for r in results[:n]]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(10)
+
+    def ask(self, q, history=None):
+        q = re.sub(r'\s+', ' ', str(q or '')).strip()[:500]
+        if not q:
+            return {'ok': False, 'error': 'Ask something.'}
+        results = self.search(q)
+        if not results:
+            return {'ok': False, 'error': 'I couldn\'t search the web just now. Is the internet on?'}
+        self.read_pages(results)
+        sources = [{'n': i + 1, 'title': r['title'], 'url': r['url'], 'site': site_of(r['url'])} for i, r in enumerate(results)]
+        c = self.ai()
+        if c:
+            try:
+                return {'ok': True, 'answer': self.explain(c, q, results, history or []), 'sources': sources, 'ai': AI_PROVIDERS[c['provider']][0]}
+            except (OSError, ValueError, KeyError, IndexError, urllib.error.URLError) as e:
+                err = getattr(e, 'code', None)
+                note = 'Your AI said no (%s): check the key in Settings, Deuce.' % err if err in (401, 403) else 'Your AI didn\'t answer just now, so this is from the search.'
+                return {'ok': True, 'answer': self.plain(results), 'sources': sources, 'ai': None, 'note': note}
+        return {'ok': True, 'answer': self.plain(results), 'sources': sources, 'ai': None}
+
+    @staticmethod
+    def plain(results):
+        """Without an AI: Wikipedia's first sentences, then what the top results say."""
+        out = []
+        for i, r in enumerate(results):
+            text = r.get('snippet') or ''
+            if not text:
+                continue
+            if 'wikipedia.org' in r['url']:
+                text = ' '.join(re.split(r'(?<=[.!?])\s+', text)[:3])
+            out.append('%s [%d]' % (text.strip(), i + 1))
+            if len(out) >= (2 if 'wikipedia.org' in r['url'] else 3):
+                break
+        return '\n\n'.join(out)
+
+    def explain(self, c, q, results, history):
+        prov = AI_PROVIDERS[c['provider']]
+        src = '\n\n'.join('[%d] %s (%s)\n%s' % (i + 1, r['title'], r['url'], (r.get('text') or r.get('snippet') or '')[:3000]) for i, r in enumerate(results))
+        msgs = [{'role': 'system', 'content': 'You are Deuce, the helper built into DiceOS. Answer in plain, friendly words a beginner understands: a short paragraph, '
+                 'or a few short bullet points when that is clearer. Take facts only from the numbered sources and put the number in square brackets after '
+                 'each fact, like [1]. If the sources don\'t answer it, say so in one sentence. No headings. Today is %s.' % time.strftime('%A, %B %d, %Y')}]
+        for h in history[-3:]:
+            if isinstance(h, dict) and h.get('q') and h.get('a'):
+                msgs += [{'role': 'user', 'content': str(h['q'])[:500]}, {'role': 'assistant', 'content': str(h['a'])[:1500]}]
+        msgs.append({'role': 'user', 'content': 'Sources:\n\n' + src + '\n\nQuestion: ' + q})
+        data = json.dumps({'model': c.get('model') or prov[2], 'messages': msgs, 'temperature': 0.3, 'max_tokens': 700}).encode()
+        headers = {'Content-Type': 'application/json'}
+        if c.get('key'):
+            headers['Authorization'] = 'Bearer ' + c['key']
+        if c['provider'] == 'openrouter':
+            headers['HTTP-Referer'] = 'https://github.com/dpatel7-dev/DiceOS'
+            headers['X-Title'] = 'DiceOS Deuce'
+        body, _ = self.fetch(prov[1].rstrip('/') + '/chat/completions', data=data, headers=headers, timeout=45)
+        text = json.loads(body)['choices'][0]['message']['content'].strip()
+        if not text:
+            raise ValueError('empty')
+        return text[:4000]
+
+
+# ---------------------------------------------------------------------------
+# SereneTab is the computer's web browser: links from any app (dice-open, which is
+# x-www-browser and the default for web addresses) come here and open in SereneTab.
+# dice-open shows this small secret, which only the person at the desktop can read.
+OPEN_TOKEN = secrets.token_urlsafe(18)
+
+
+def extension_args(app=False):
+    """Chromium's switches for Shield (and, in browser windows, SereneTab's colours)."""
+    exts = [os.path.join(ROOT, 'shield')]
+    if not app:
+        exts.append(os.path.join(ROOT, 'serenetab-theme'))
+    exts = [e for e in exts if os.path.isfile(os.path.join(e, 'manifest.json'))]
+    if not exts:
+        return []
+    return ['--load-extension=' + ','.join(exts), '--disable-features=DisableLoadExtensionCommandLineSwitch']
+
+
+def write_open_token(user, path='/run/dice/open-token'):
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, 'w') as f:
+            f.write(OPEN_TOKEN)
+        if os.getuid() == 0 and user != 'root':
+            pw = pwd.getpwnam(user)
+            os.chown(path, pw.pw_uid, pw.pw_gid)
+        return True
+    except (OSError, KeyError):
+        return False
 
 
 class Apps:
@@ -678,6 +1106,8 @@ class System:
         self.power_keys = PowerKeys(self.remote.push, home=self.apps.close_front, front=self.apps.front,
                                     voice_key=lambda: load_settings(self.settings_path).get('voice_key'))
         self.voice = Voice(self.remote.push, self.apps)
+        self.shield = Shield(settings_path)
+        self.answers = Answers(settings_path)
         self.standby_on = False
 
     # -- status --
@@ -892,9 +1322,23 @@ class System:
             # profile, so it runs as its own app (you sign in once, inside it) and Home really closes it
             profile = '%s/.config/dice/apps/%s' % (home, re.sub(r'[^a-z0-9.-]', '', host.lower())[:60] or 'app')
         args = [browser, '--ozone-platform=wayland', '--user-data-dir=' + profile, '--no-first-run', '--password-store=basic', '--autoplay-policy=no-user-gesture-required']
+        # Shield (the ad blocker) in every window, and SereneTab's colours around web pages
+        args += extension_args(full or app)
         # as an app (no address bar: a web app you installed, a cloud gaming service) or a browser window
         args += (['--app=' + url, '--start-fullscreen', '--kiosk'] if full else ['--app=' + url]) if app or full else ['--new-window', url]
         return self.apps.launch(args, (name or host)[:60], 'tvapp' if full else 'web', url)
+
+    # -- a link from another app: it opens in SereneTab, on the desktop --
+    def browse(self, url):
+        url = str(url or '').strip()
+        if not re.match(r'^https?://[^\s]+$', url) or len(url) > 4000:
+            return {'ok': False, 'error': 'Only web addresses (http or https) open in SereneTab.'}
+        with self.remote.lock:
+            listening = bool(self.remote.subs)
+        if listening:
+            self.remote.push({'browse': url})
+            return {'ok': True, 'where': 'serenetab'}
+        return self.open_url(url)  # the desktop isn't up: a SereneTab window on its own
 
     # -- Bluetooth (bluetoothctl, from BlueZ): controllers, headphones and speakers --
     def bt(self, args, timeout=10):
@@ -1042,6 +1486,8 @@ def device_change(settings_path, b):
             cfg[k] = b[k]
     if isinstance(b.get('wifi'), dict):
         cfg['wifi'] = {k: v for k, v in b['wifi'].items() if k in ('ssid', 'password', 'country', 'hidden')}
+    if cfg.get('looks') == 'heaven':  # Traced mode's old name
+        cfg['looks'] = 'traced'
     if 'computer' in cfg:
         cfg['computer'] = str(cfg['computer'] or '').strip().lower()
         if not cfg['computer']:
@@ -2128,11 +2574,14 @@ class Handler(BaseHTTPRequestHandler):
             return self.api_get(path, q)
         if not self.local_host():
             return self.fail(403, 'Not allowed.')
-        return self.static(path)
+        return self.static(path, q.get('serene') == '1')
 
     def do_POST(self):
         url = urllib.parse.urlsplit(self.path)
         path, q = url.path, dict(urllib.parse.parse_qsl(url.query))
+        # dice-open (a link from another app) has its own small secret, good for this one thing
+        if path == '/api/browse' and self.local_host() and not self.headers.get('Origin') and secrets.compare_digest(self.headers.get('X-Dice-Open') or '', OPEN_TOKEN):
+            return self.send(200, self.server.system.browse(self.json_body().get('url')))
         if not path.startswith('/api/') or not self.trusted():
             return self.fail(403, 'Not allowed.')
         try:
@@ -2141,7 +2590,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(400, str(e).split('] ')[-1])
 
     # -- the desktop's files --
-    def static(self, path):
+    def static(self, path, serene=False):
         web = self.server.web
         if path in ('', '/'):
             path = '/index.html'
@@ -2151,7 +2600,14 @@ class Handler(BaseHTTPRequestHandler):
         with open(real, 'rb') as f:
             data = f.read()
         ctype = mimetypes.guess_type(real)[0] or 'application/octet-stream'
-        if real.endswith('index.html'):
+        if real.endswith('index.html') and serene:
+            # a browser window's new tab: SereneTab on its own, with no way into the rest of DiceOS
+            s = load_settings(self.server.settings_path)
+            st = s.get('serene') if isinstance(s.get('serene'), dict) else {}
+            tag = '<script>window.DICE_SERENE=%s;</script>' % json.dumps({'serene': st, 'name': s.get('name') or '', 'looks': s.get('looks') or '',
+                                                                           'version': VERSION}).replace('</', '<\\/')
+            data = data.replace(b'<head>', b'<head>' + tag.encode(), 1)
+        elif real.endswith('index.html'):
             settings = public_settings(self.server.settings_path)
             tag = '<script>window.DICE_SYS=%s;</script>' % json.dumps({'token': TOKEN, 'version': VERSION, 'settings': settings,
                                                                         'user': desktop_user(), 'host': socket.gethostname()}).replace('</', '<\\/')
@@ -2196,6 +2652,10 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, {'ok': True, 'cec': cec, 'monitors': sysm.monitors.list(q.get('fresh') == '1')})
         if path == '/api/voice':
             return self.send(200, sysm.voice.status())
+        if path == '/api/shield':
+            return self.send(200, sysm.shield.state())
+        if path == '/api/ask/ai':
+            return self.send(200, sysm.answers.ai_public())
         if path == '/api/lookup':
             return self.send(200, lookup(q.get('url', '')))
         if path == '/api/tuner':
@@ -2243,6 +2703,17 @@ class Handler(BaseHTTPRequestHandler):
                 mtime = None
             return self.send(200, Files(desktop_user()).write(q.get('path', ''), self.body(MAX_UPLOAD), mtime, q.get('dirs') == '1'))
         b = self.json_body()
+        if path == '/api/shield':
+            if b.get('action') == 'update':
+                threading.Thread(target=sysm.shield.update, daemon=True).start()
+                return self.send(200, dict(sysm.shield.state(), busy=True))
+            return self.send(200, sysm.shield.change(b))
+        if path == '/api/ask':
+            return self.send(200, sysm.answers.ask(b.get('q'), b.get('history') if isinstance(b.get('history'), list) else []))
+        if path == '/api/ask/ai':
+            return self.send(200, sysm.answers.set_ai(b))
+        if path == '/api/browse':
+            return self.send(200, sysm.browse(b.get('url')))
         if path == '/api/wifi':
             if 'on' in b:
                 return self.send(200, sysm.wifi_power(bool(b['on'])))
@@ -2346,6 +2817,8 @@ class Handler(BaseHTTPRequestHandler):
                 if k not in ('password', 'wifi', 'ha_token', 'ha_token_set'):  # secrets never go in here
                     cur[k] = v
             save_settings(self.server.settings_path, cur)
+            if 'looks' in b and hasattr(os, 'geteuid') and os.geteuid() == 0:  # the start-up splash follows Traced mode
+                threading.Thread(target=ensure_splash, args=(self.server.settings_path,), daemon=True).start()
             return self.send(200, {'ok': True, 'settings': public_settings(self.server.settings_path)})
         if path == '/api/ha':
             return self.send(200, ha_call(self.server.settings_path, b))
@@ -2435,15 +2908,106 @@ def make_server(port, web, settings_path, verbose=False, host='127.0.0.1'):
     return srv
 
 
-def ensure_system_files(root=ROOT, etc='/etc'):
+SERENETAB_DESKTOP = """[Desktop Entry]
+Type=Application
+Name=SereneTab
+GenericName=Web Browser
+Comment=DiceOS's web browser
+Exec=%s %%U
+Icon=web-browser
+Terminal=false
+Categories=Network;WebBrowser;
+MimeType=text/html;application/xhtml+xml;x-scheme-handler/http;x-scheme-handler/https;
+NoDisplay=true
+"""
+WEB_TYPES = ('x-scheme-handler/http', 'x-scheme-handler/https', 'text/html', 'application/xhtml+xml')
+# Chromium's windows on DiceOS are SereneTab's: its new tab page, no asking to be the default browser
+CHROMIUM_POLICY = {'NewTabPageLocation': 'http://127.0.0.1:7070/?serene=1', 'HomepageLocation': 'http://127.0.0.1:7070/?serene=1', 'ShowHomeButton': True,
+                   'DefaultBrowserSettingEnabled': False, 'PromotionalTabsEnabled': False, 'MetricsReportingEnabled': False}
+
+
+def with_defaults(text):
+    """mimeapps.list with SereneTab as the default for web addresses, keeping everything else."""
+    lines, out, section, done = text.splitlines(), [], None, set()
+
+    def flush():
+        if section == '[Default Applications]':
+            for t in WEB_TYPES:
+                if t not in done:
+                    out.append('%s=serenetab.desktop' % t)
+    for line in lines:
+        s = line.strip()
+        if s.startswith('['):
+            flush()
+            section = s
+        elif section == '[Default Applications]' and '=' in s and s.split('=', 1)[0].strip() in WEB_TYPES:
+            key = s.split('=', 1)[0].strip()
+            done.add(key)
+            out.append('%s=serenetab.desktop' % key)
+            continue
+        out.append(line)
+    flush()
+    if not any(l.strip() == '[Default Applications]' for l in lines):
+        if out and out[-1].strip():
+            out.append('')
+        out.append('[Default Applications]')
+        out += ['%s=serenetab.desktop' % t for t in WEB_TYPES]
+    return '\n'.join(out).strip('\n') + '\n'
+
+
+SPLASH_LOCK = threading.Lock()
+
+
+def ensure_splash(settings_path, root=ROOT, themes='/usr/share/plymouth/themes', real=True):
+    """Both start-up splashes in place (an update brings new pictures), and the one that goes
+    with your looks picked: dice-traced for Traced mode, else dice. Says which it picked,
+    or None if nothing needed doing. (Plymouth shows it from the next start.)"""
+    changed = False
+    old = os.path.join(themes, 'dice-heaven')  # Traced mode used to be Heavenly looks
+    if os.path.isdir(old):
+        shutil.rmtree(old, ignore_errors=True)
+        changed = True
+    for name in ('dice', 'dice-traced'):
+        src, dst = os.path.join(root, 'plymouth', name), os.path.join(themes, name)
+        if not os.path.isdir(src):
+            continue
+        want = {f: os.path.getsize(os.path.join(src, f)) for f in os.listdir(src)}
+        have = {f: os.path.getsize(os.path.join(dst, f)) for f in os.listdir(dst)} if os.path.isdir(dst) else {}
+        if want != have:
+            try:
+                shutil.rmtree(dst, ignore_errors=True)
+                shutil.copytree(src, dst)
+                changed = True
+            except OSError:
+                pass
+    theme = 'dice-traced' if load_settings(settings_path).get('looks') in ('traced', 'heaven') else 'dice'
+    if not real:
+        return theme
+    if not has('plymouth-set-default-theme'):
+        return None
+    _, cur = run(['plymouth-set-default-theme'], timeout=10)
+    if cur.strip() == theme and not changed:
+        return None
+
+    def go():
+        with SPLASH_LOCK:
+            run(['plymouth-set-default-theme', theme], timeout=30)
+            if has('update-initramfs'):  # the splash lives in the start-up image too
+                run(['nice', '-n', '19', 'update-initramfs', '-u'], timeout=900)
+    threading.Thread(target=go, daemon=True).start()
+    return theme
+
+
+def ensure_system_files(root=ROOT, etc='/etc', share=None):
     """Things outside /opt/dice that this version needs, for computers that got it as an
     update (which only swaps /opt/dice): the rule that makes a remote's power button
-    sleep DiceOS instead of switching everything off. Says whether anything changed."""
-    src = os.path.join(root, 'system', 'logind-dice.conf')
-    dst = os.path.join(etc, 'systemd', 'logind.conf.d', 'dice.conf')
-    try:
-        with open(src, 'rb') as f:
-            want = f.read()
+    sleep DiceOS instead of switching everything off, and SereneTab as the computer's
+    web browser. Says whether anything changed."""
+    share = share or ('/usr/share' if etc == '/etc' else os.path.join(etc, 'usr-share'))
+    real = etc == '/etc'
+    changed = False
+
+    def put(dst, want):
         try:
             with open(dst, 'rb') as f:
                 if f.read() == want:
@@ -2454,11 +3018,30 @@ def ensure_system_files(root=ROOT, etc='/etc'):
         with open(dst, 'wb') as f:
             f.write(want)
         os.chmod(dst, 0o644)
-        if etc == '/etc':
-            run(['systemctl', 'kill', '-s', 'HUP', 'systemd-logind'], timeout=10)
         return True
+    try:
+        with open(os.path.join(root, 'system', 'logind-dice.conf'), 'rb') as f:
+            if put(os.path.join(etc, 'systemd', 'logind.conf.d', 'dice.conf'), f.read()):
+                changed = True
+                if real:
+                    run(['systemctl', 'kill', '-s', 'HUP', 'systemd-logind'], timeout=10)
     except OSError:
-        return False
+        pass
+    opener = os.path.join(root, 'bin', 'dice-open')
+    try:
+        changed |= put(os.path.join(share, 'applications', 'serenetab.desktop'), (SERENETAB_DESKTOP % opener).encode())
+        changed |= put(os.path.join(etc, 'chromium', 'policies', 'managed', 'dice-serenetab.json'), (json.dumps(CHROMIUM_POLICY, indent=2) + '\n').encode())
+        mime = os.path.join(etc, 'xdg', 'mimeapps.list')
+        changed |= put(mime, with_defaults(read(mime)).encode())
+    except OSError:
+        pass
+    if real and has('update-alternatives') and os.path.exists(opener):
+        _, cur = run(['update-alternatives', '--query', 'x-www-browser'], timeout=10)
+        if ('Value: ' + opener) not in cur:
+            run(['update-alternatives', '--install', '/usr/bin/x-www-browser', 'x-www-browser', opener, '300'], timeout=20)
+            run(['update-alternatives', '--set', 'x-www-browser', opener], timeout=20)
+            changed = True
+    return changed
 
 
 def main(argv=None):
@@ -2471,6 +3054,10 @@ def main(argv=None):
     if hasattr(os, 'geteuid') and os.geteuid() == 0 and os.path.isdir('/etc/systemd'):
         ensure_system_files()
     srv = make_server(a.port, a.web, a.settings, a.verbose)
+    if hasattr(os, 'geteuid') and os.geteuid() == 0:
+        write_open_token(desktop_user())
+        srv.system.shield.start()
+        threading.Thread(target=ensure_splash, args=(a.settings,), daemon=True).start()
     print('diced %s: the DiceOS desktop is at http://127.0.0.1:%d/' % (VERSION, a.port), flush=True)
     try:
         srv.serve_forever()

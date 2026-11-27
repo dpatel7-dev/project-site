@@ -140,7 +140,8 @@
     if (!I.isOpen()) { I.prev = D.nav.el; S.play('open'); }
     panel.classList.add('on', 'navtrap');
     const body = panel.querySelector('.in-body'), foot = panel.querySelector('.in-foot'), lead = panel.querySelector('.in-lead');
-    lead.innerHTML = 'Everything DiceOS can switch to. Pick one to show it; ' + D.btn('home') + ' comes back. ' + D.btn('x') + ' gives one a name.';
+    lead.innerHTML = 'Everything DiceOS can switch to. Pick one to show it; ' + D.btn('home') + ' comes back. ' + D.btn('x') + ' gives one a name. ';
+    if (I.guide) { const how = h('<button class="b small in-how" data-nav data-key="in:how">' + D.glyph('help', 2) + 'Set it up, step by step</button>'); how.onclick = () => I.guide(); lead.appendChild(how); }
     if (!again) body.innerHTML = '<p class="muted">Asking what\'s plugged in…</p>';
     const L = await I.list(again === 'fresh');
     if (!I.isOpen()) return;

@@ -41,6 +41,19 @@ fun refresh_callback() {
 }
 Plymouth.SetRefreshFunction(refresh_callback);
 
+// restarting, shutting down or updating: say so under the bar
+mode = Plymouth.GetMode();
+what = "";
+if (mode == "reboot") what = "restarting.png";
+if (mode == "shutdown") what = "shutting.png";
+if (mode == "updates" || mode == "system-upgrade" || mode == "firmware-upgrade") what = "updating.png";
+if (what != "") {
+  say_image = Image(what);
+  say = Sprite(say_image);
+  say.SetX(Window.GetX() + Window.GetWidth() / 2 - say_image.GetWidth() / 2);
+  say.SetY(word.GetY() + word_image.GetHeight() + 50);
+}
+
 fun progress_callback(duration, progress) {
   n = Math.Int(progress * 12 + 0.5);
   for (i = 0; i < 12; i++) {

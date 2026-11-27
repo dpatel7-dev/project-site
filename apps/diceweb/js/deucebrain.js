@@ -127,6 +127,57 @@
     if (/^(go )?(back|go back)$/.test(t)) return r('back');
     if (/^(go )?(home|go home|take me home|home screen|main menu)$/.test(t) || /^(close|exit|quit)( (this|it|the app|that))?$/.test(t)) return r('home');
 
+    // ---- reminders, the Notebook, notes (Deuce for PC, and the TV too) ----
+    let m;
+    if (/^(remind me|set a reminder|make a reminder|add a reminder|reminder)\b/.test(t)) return r('remind', reminder(t, now));
+    if (/^(what do you know about me|what do you remember|what have you remembered|whats in (my|your) notebook|show (me )?(my|your) notebook|(open )?(the |my )?notebook)$/.test(t)) return r('notebook');
+    m = /^(?:forget|dont remember|stop remembering) (?:that |about )?(.+)$/.exec(t);
+    if (m) return r('forget', { fact: /^(everything|it all|all of it|what you know about me)$/.test(m[1]) ? '' : m[1] });
+    m = /^(?:remember|keep in mind|note to self|dont forget) (?:that )?(.+)$/.exec(t);
+    if (m && !/^(when|what|where|how)\b/.test(m[1])) {
+      if (/\b(password|passcode|pass code|pin|pin number|social security|credit card|card number|bank)\b/.test(m[1])) return r('remember', { secret: true });
+      return r('remember', { fact: m[1] });
+    }
+    m = /^(?:my name is|call me|i go by) (.+)$/.exec(t);
+    if (m) return r('remember', { fact: 'my name is ' + m[1], name: m[1].replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 30) });
+    m = /^(?:take a note|make a note|new note|add a note|write down|jot down|note)(?: that| saying| to)? (.+)$/.exec(t);
+    if (m) return r('note', { note: m[1] });
+
+    // ---- the computer: how it looks, modes, Shield, screenshots, your week ----
+    m = /^(?:turn |switch |go |put )?(?:on |to |into )?(dark|night|light|day) (?:mode|theme)(?: on)?$|^(?:turn on|switch to|use) (?:the )?(dark|night|light|day) (?:mode|theme|look)$/.exec(t);
+    if (m) return r('setting', { what: 'look', value: /dark|night/.test(m[1] || m[2]) ? 'night' : 'day' });
+    m = /^(?:turn |switch )?(on|off) (?:the )?night ?light$|^(?:turn |switch )?(?:the )?night ?light (on|off)$/.exec(t);
+    if (m) return r('setting', { what: 'warm', value: (m[1] || m[2]) === 'on' });
+    m = /^(?:turn |switch )?(on|off) (?:the )?(?:traced|heavenly)(?: looks| mode)?$|^(?:turn |switch )?(?:the )?(?:traced|heavenly)(?: looks| mode)? (on|off)$|^(?:start |use |switch to )?(traced mode|go traced|make it traced|make it look hand ?drawn)$/.exec(t);
+    if (m) return r('setting', { what: 'looks', value: m[3] ? true : (m[1] || m[2]) === 'on' });
+    m = /^(?:turn |switch )?(on|off) (?:do not disturb|dnd)$|^(?:turn |switch )?(?:do not disturb|dnd) (on|off)$|^(dont disturb me|do not disturb|quiet please|no notifications)$/.exec(t);
+    if (m) return r('setting', { what: 'quiet', value: m[3] ? true : (m[1] || m[2]) === 'on' });
+    m = /^(?:turn |switch )?(on|off) (?:the )?bluetooth$|^(?:turn |switch )?(?:the )?bluetooth (on|off)$/.exec(t);
+    if (m) return r('setting', { what: 'bluetooth', value: (m[1] || m[2]) === 'on' });
+    m = new RegExp('^(?:set |turn |change )?(?:the )?(?:screen )?brightness (?:to |at )?(' + NUMWORD + ')(?: percent)?$').exec(t);
+    if (m && !isNaN(number(m[1]))) { const n = number(m[1]); return r('setting', { what: 'bright', value: Math.max(0.1, Math.min(1, n > 10 ? n / 100 : n / 10)) }); }
+    if (/^(brighter|make it brighter|turn (up )?the brightness( up)?|more brightness)$/.test(t)) return r('setting', { what: 'bright', delta: 0.15 });
+    if (/^(dimmer|darker|make it dimmer|make it darker|dim the screen|turn (down )?the brightness( down)?|less brightness)$/.test(t)) return r('setting', { what: 'bright', delta: -0.15 });
+    m = /^(?:end|stop|turn off|leave|exit|cancel|quit) (?:the |my )?(?:([a-z ]{2,20}?) )?mode$|^(?:([a-z ]{2,20}?) mode off)$/.exec(t);
+    if (m && !/^(dark|night|light|day|heavenly|traced)$/.test(m[1] || m[2] || '')) return r('mode', { off: true, name: m[1] || m[2] || '' });
+    m = /^(?:start|turn on|switch to|go into|enter|begin|use|im in) (?:the |my )?([a-z ]{2,20}?) mode$|^([a-z ]{2,20}?) mode(?: on)?$|^(?:time to|lets) (focus|study|play|game|chill|relax|sleep)$/.exec(t);
+    if (m && !/^(dark|night|light|day|heavenly|heaven|traced|airplane|sleep timer)$/.test(m[1] || m[2] || '')) return r('mode', { name: (m[1] || m[2] || m[3]).replace(/^study$/, 'school').replace(/^(game)$/, 'play').replace(/^relax$/, 'chill').trim() });
+    if (/^(how many ads (did you|have you) block(ed)?( today)?|ads blocked( today)?|shield status|how is shield( doing)?)$/.test(t)) return r('shield', { act: 'count' });
+    m = /^(?:turn |switch )?(on|off) (?:the )?(?:ad ?blocker|shield|ad blocking)$|^(?:turn |switch )?(?:the )?(?:ad ?blocker|shield|ad blocking) (on|off)$|^(block ads|stop ads|no more ads)$/.exec(t);
+    if (m) return r('shield', { act: m[3] ? 'on' : (m[1] || m[2]) });
+    m = /^(?:pause|stop) (?:the )?(?:ad ?blocker|shield|blocking ads) (?:on |for )(?:this (?:site|page|website))$|^(?:allow ads|let ads through) (?:on |for )?this (?:site|page|website)$/.exec(t);
+    if (m) return r('shield', { act: 'pause' });
+    if (/^(take a |grab a |make a )?(screenshot|screen shot|screen grab|picture of the screen)$/.test(t)) return r('shot');
+    if (/^(how was my week|my week|your week|show (me )?my week|weekly recap|recap|screen time|how much time did i spend( on the computer)?( this week)?)$/.test(t)) return r('week');
+    if (/^(restart|reload) (the )?desktop$/.test(t)) return r('power', { act: 'restart-desktop' });
+    if (/^lock( the)?( screen| computer)?$/.test(t)) return r('lock');
+
+    // ---- the web: a site, a search, or a question to look up ----
+    m = /^(?:open|go to|visit|take me to|show me|bring up|pull up|load)? ?((?:https?:\/\/)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/\S*)?)$/.exec(String(said || '').toLowerCase().trim().replace(/^(hey |ok )?deuce,? ?/, '').replace(/[?!.]+$/, ''));
+    if (m && /\.[a-z]{2,}(\/|$)/.test(m[1]) && !/^\d+(\.\d+)+$/.test(m[1])) return r('site', { url: /^https?:/.test(m[1]) ? m[1] : 'https://' + m[1] });
+    m = /^(?:search the web for|search online for|search the internet for|google|bing|web search|look up online|search for) (.+)$/.exec(t);
+    if (m && !/ on (youtube|netflix|spotify|hulu|disney|prime|twitch)( app)?$/.test(m[1])) return r('web', { q: m[1] });
+
     // the TV and Dice: on and off
     if (/^(turn|switch|power) (off|it off|the tv off|off the tv|dice off|off dice|everything off)( the tv| dice)?$|^(go to sleep|good ?night|sleep|power off|tv off|shut it off)$/.test(t)) return r('power', { act: 'standby' });
     if (/^(shut down|restart|reboot)( the (computer|pi|raspberry pi|dice))?$/.test(t)) return r('power', { act: /shut/.test(t) ? 'shutdown' : 'reboot' });
@@ -135,7 +186,7 @@
     // sound
     if (/^(un ?mute|sound on|turn the sound (back )?on)( it| the tv| the sound)?$/.test(t)) return r('volume', { mute: false });
     if (/^(mute|silence|sound off|be quiet|quiet)( it| the tv| the sound| everything)?$/.test(t)) return r('volume', { mute: true });
-    let m = new RegExp('^(?:set |turn |change )?(?:the )?volume (?:to |at )?(' + NUMWORD + ')(?: percent)?$').exec(t);
+    m = new RegExp('^(?:set |turn |change )?(?:the )?volume (?:to |at )?(' + NUMWORD + ')(?: percent)?$').exec(t);
     if (m && !isNaN(number(m[1]))) { const n = number(m[1]); return r('volume', { level: Math.max(0, Math.min(1, n > 10 ? n / 100 : n / 10)) }); }
     if (/^(volume up|turn (it |the volume |the sound |the tv )?up|louder|(make it |a bit |little )*louder|raise the volume|increase the volume|i cant hear)/.test(t)) return r('volume', { delta: /a lot|way|much/.test(t) ? 0.2 : 0.1 });
     if (/^(volume down|turn (it |the volume |the sound |the tv )?down|quieter|softer|(make it |a bit |little )*(quieter|softer)|lower the volume|decrease the volume|too loud)/.test(t)) return r('volume', { delta: /a lot|way|much/.test(t) ? -0.2 : -0.1 });
@@ -170,6 +221,7 @@
     if (/weather|forecast|temperature|how (hot|cold|warm) is it|is it (going to |gonna )?(rain|snow|cold|hot|warm|sunny)|do i need (an umbrella|a coat|a jacket)/.test(t)) return r('weather', { tomorrow: /tomorrow/.test(t) });
 
     // HDMI: the other things plugged into the TV
+    if (/^(how (do|can) i )?(set up|setup|use|learn) (the )?(inputs|kvm|kvm switch|hdmi switching|deskflow)( step by step)?$|^(inputs|kvm) (guide|tutorial|help)$|^(help|show me how) (with|to set up) (the )?(inputs|kvm)$/.test(t)) return r('guide');
     if (/^(switch|change|go to|show|show me|open|list)( the)? (inputs?|hdmi inputs?|sources?|devices)$|^(change|switch) (the )?(input|source)$/.test(t)) return r('inputs');
     m = new RegExp('^(?:switch|change|go|turn|flip|put it)(?: the (?:input|tv|source|screen|monitor))?(?: over)? (?:to|on) (?:the |my )?(' + DEVICES + '|hdmi ?(\\d)|input ?(\\d)|hdmi (one|two|three|four))$|^(?:play|turn on|open|use) (?:the |my )?(' + DEVICES + ')$').exec(t);
     if (m) {
@@ -224,7 +276,44 @@
     m = /^(?:find|search|look for|where is|wheres|open) (?:my |the )?(.+?)(?: file| files| document| doc)?$/.exec(t);
     if (m && /\b(file|files|document|doc|pdf|essay|photo|picture|song|video|my)\b/.test(t)) return r('files', { q: m[1].replace(/^(my|the) /, '') });
 
+    // a question Deuce can look up on the web ("why is the sky blue", "who wrote hamlet")
+    if (/^(who|what|whats|when|where|wheres|why|how|hows|which|whose|is|are|was|were|do|does|did|can|could|should|will|would|explain|tell me|define|whats the difference)\b/.test(t) || /\?\s*$/.test(String(said || ''))) return r('ask', { q: String(said || '').replace(/^\s*(hey |ok )?deuce,? ?/i, '').trim() || t });
     return r('unknown', { q: t });
+  }
+
+  // "remind me to call mom at 6", "remind me in 20 minutes to check the oven", "remind me tomorrow at 9 to take out the trash"
+  // → { what, at } (at: the time, in milliseconds; null if you didn't say when)
+  function reminder(t, now) {
+    let s = t.replace(/^(remind me|set a reminder|make a reminder|add a reminder|reminder)( to| about| that| for)?\b ?/, ' ').replace(/\s+/g, ' ');
+    let at = null, day = 0, hm = null, m;
+    m = new RegExp('\\bin (' + NUMWORD + '|a|an|half an?)(?: and a half)? (second|sec|minute|min|hour|hr|day)s?\\b').exec(s);
+    if (m) {
+      const n = /half/.test(m[1]) ? 0.5 : number(m[1]) + (/and a half/.test(m[0]) ? 0.5 : 0), u = m[2][0];
+      if (!isNaN(n)) at = now.getTime() + Math.round(n * (u === 's' ? 1000 : u === 'h' ? 3600000 : u === 'd' ? 86400000 : 60000));
+      s = s.replace(m[0], ' ');
+    }
+    if (/\btomorrow\b/.test(s)) { day = 1; s = s.replace(/\b(tomorrow (morning|afternoon|evening|night)|tomorrow)\b/, (w) => { if (/morning/.test(w)) hm = hm || '09:00'; if (/afternoon/.test(w)) hm = hm || '14:00'; if (/evening|night/.test(w)) hm = hm || '19:00'; return ' '; }); }
+    if (/\b(tonight|this evening)\b/.test(s)) { hm = '20:00'; s = s.replace(/\b(tonight|this evening)\b/, ' '); }
+    if (/\bthis afternoon\b/.test(s)) { hm = '15:00'; s = s.replace(/\bthis afternoon\b/, ' '); }
+    if (/\bthis morning\b/.test(s)) { hm = '09:00'; s = s.replace(/\bthis morning\b/, ' '); }
+    const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    m = /\b(?:on |this |next )?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/.exec(s);
+    if (m) { day = ((DAYS.indexOf(m[1]) - now.getDay() + 7) % 7) || 7; s = s.replace(m[0], ' '); }
+    m = /\b(?:at|by|around) ((?:\d{1,2}(?::\d{2})?|[a-z]+(?: [a-z]+)?)(?: ?(?:am|pm|a m|p m))?|noon|midnight)\b/.exec(s);
+    let bare = false;
+    if (m) {
+      const c = clock(m[1]);
+      if (c) { hm = c; bare = !/am|pm|a m|p m|noon|midnight/.test(m[1]) && +c.slice(0, 2) < 12; s = s.replace(m[0], ' '); }
+    }
+    if (at === null && (hm || day)) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + day, hm ? +hm.slice(0, 2) : 9, hm ? +hm.slice(3) : 0);
+      // "at 6" means the next 6 to come: this evening if this morning's has gone
+      if (bare && !day && d.getTime() <= now.getTime()) d.setHours(d.getHours() + 12);
+      if (!day && d.getTime() <= now.getTime()) d.setDate(d.getDate() + 1);
+      at = d.getTime();
+    }
+    const what = s.replace(/\s+/g, ' ').trim().replace(/^(to|that|about|for) /, '').replace(/ (to|at|on|in)$/, '').trim();
+    return { what, at };
   }
 
   // "7", "7 am", "7:30 pm", "seven thirty", "6 in the morning", "noon"
@@ -298,7 +387,7 @@
     return out;
   }
 
-  const api = { understand, teamsIn, netOf, number, clock, scoreboardUrl, pickGame, broadcasts, clean, LEAGUES, TEAMS };
+  const api = { understand, reminder, teamsIn, netOf, number, clock, scoreboardUrl, pickGame, broadcasts, clean, LEAGUES, TEAMS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DeuceBrain = api;
 })(this);

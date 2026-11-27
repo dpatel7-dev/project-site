@@ -13,6 +13,13 @@ if [ -f /var/lib/dice/display-managers ]; then
   systemctl set-default graphical.target
 fi
 plymouth-set-default-theme -R spinner 2>/dev/null || true
-rm -rf /usr/share/plymouth/themes/dice /etc/dice /var/lib/dice /opt/dice.old
+# Shield's part of /etc/hosts, and SereneTab as the web browser
+if [ -f /etc/hosts ] && grep -q '^# >>> DiceOS Shield' /etc/hosts; then
+  sed -i '/^# >>> DiceOS Shield/,/^# <<< DiceOS Shield <<</d' /etc/hosts
+fi
+update-alternatives --remove x-www-browser /opt/dice/bin/dice-open 2>/dev/null || true
+rm -f /usr/share/applications/serenetab.desktop /etc/chromium/policies/managed/dice-serenetab.json
+[ -f /etc/xdg/mimeapps.list ] && sed -i '/=serenetab\.desktop$/d' /etc/xdg/mimeapps.list
+rm -rf /usr/share/plymouth/themes/dice /usr/share/plymouth/themes/dice-heaven /usr/share/plymouth/themes/dice-traced /etc/dice /var/lib/dice /opt/dice.old /run/dice
 echo "DiceOS is off this Pi. /opt/dice goes next; restart afterwards: sudo reboot"
 rm -rf /opt/dice

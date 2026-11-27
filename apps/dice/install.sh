@@ -113,9 +113,13 @@ if [ -n "$IMAGE" ] && [ "$PI" = 1 ]; then
 fi
 
 say "4 of 5: The start-up splash..."
-rm -rf /usr/share/plymouth/themes/dice
+rm -rf /usr/share/plymouth/themes/dice /usr/share/plymouth/themes/dice-heaven /usr/share/plymouth/themes/dice-traced
 cp -r /opt/dice/plymouth/dice /usr/share/plymouth/themes/dice
-plymouth-set-default-theme dice 2>/dev/null || true
+cp -r /opt/dice/plymouth/dice-traced /usr/share/plymouth/themes/dice-traced
+# Traced mode (in the dice.json from the website) gets the hand-painted start-up splash
+SPLASH=dice
+if [ -f "$SETTINGS_FILE" ] && grep -Eq '"looks"[[:space:]]*:[[:space:]]*"(traced|heaven)"' "$SETTINGS_FILE"; then SPLASH=dice-traced; fi
+plymouth-set-default-theme "$SPLASH" 2>/dev/null || true
 if command -v update-initramfs >/dev/null 2>&1; then update-initramfs -u >/dev/null 2>&1 || true; fi
 if [ "$PI" = 1 ] && [ -f "$BOOT/cmdline.txt" ]; then
   LINE=$(head -n1 "$BOOT/cmdline.txt")

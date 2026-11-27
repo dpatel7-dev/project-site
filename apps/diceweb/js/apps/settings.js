@@ -13,6 +13,12 @@
     SECTIONS.splice(SECTIONS.findIndex((x) => x[0] === 'storage'), 0, ['system', 'Power and updates', 'restart', '#ef6a1f']);
     SECTIONS.splice(SECTIONS.findIndex((x) => x[0] === 'about'), 0, ['device', 'This computer', 'desktop', '#5b6ee0']);
   } else SECTIONS.splice(SECTIONS.findIndex((x) => x[0] === 'about'), 0, ['device', 'Your settings file', 'box', '#5b6ee0']);
+  // panes from other parts of Dice (Shield, Modes, Routines, Your week) come in through D.moreSettings
+  (D.moreSettings || []).forEach((m) => {
+    if (m.when && !m.when()) return;
+    const i = SECTIONS.findIndex((x) => x[0] === m.after);
+    SECTIONS.splice(i >= 0 ? i + 1 : SECTIONS.length - 1, 0, [m.id, m.name, m.icon, m.c]);
+  });
   D.settingsSections = () => SECTIONS.map((s) => [s[0], s[1]]); // for the Dice Bar
   const gb = (n) => (n / 1073741824).toFixed(1) + ' GB';
 
@@ -104,10 +110,11 @@
       },
       look() {
         pane.appendChild(h('<h2>Look</h2>'));
-        // Heavenly looks: far more detail and movement, everywhere
-        const hv = h('<div class="srow heaven-row"><div><b>Heavenly looks</b><span>Everything far more detailed and alive: light through the clouds, glowing air, deeper glass and finer worlds. It asks more of the computer' + (D.sys ? ' (a Raspberry Pi 5 is fine)' : '') + '.</span></div></div>');
-        hv.appendChild(sw(D.state.looks === 'heaven', (v) => { D.set('looks', v ? 'heaven' : 'normal'); D.prefs.live(); }, 'look:heaven', 'Heavenly looks'));
-        pane.appendChild(hv);
+        // Traced mode: the worlds painted by hand, with an ink line round everything and little things going on
+        const tr = h('<div class="srow traced-row"><canvas class="tr-peek" width="120" height="68" aria-hidden="true"></canvas><div><b>Traced mode</b><span>Your world painted by hand, pixel by pixel: brush strokes, an ink line round everything, and small things going on if you watch. Windows get finer edges too. It asks a little more of the computer' + (D.sys ? ' (a Raspberry Pi 5 is fine)' : '') + '.</span></div></div>');
+        tr.appendChild(sw(D.state.looks === 'traced', (v) => { D.set('looks', v ? 'traced' : 'normal'); D.prefs.live(); }, 'look:traced', 'Traced mode'));
+        try { tr.querySelector('.tr-peek').getContext('2d').drawImage(G.Scape.preview(D.state.world || 'hills', D.night(), 120, 68, true), 0, 0); } catch (e) { /* no preview */ }
+        pane.appendChild(tr);
         pane.appendChild(h('<p class="note">Light by day and dark at night, worked out from the time of sunrise and sunset. Or pick one to keep.</p>'));
         pane.appendChild(row('Day or night', D.state.look === 'auto' ? 'It\'s ' + (D.night() ? 'night' : 'day') + ' now.' : '', seg([['auto', 'Follow the clock'], ['day', 'Day'], ['night', 'Night']], D.state.look, (v) => { D.set('look', v); D.applyLook(true); }, 'look')));
         pane.appendChild(row('Brightness', 'Dims the whole screen.', ui.slider(D.state.bright, 0.3, 1, (v) => { D.set('bright', v); D.applyBright(); }, 'look:bright', 'Brightness')));
@@ -167,8 +174,10 @@
       },
       desk() {
         pane.appendChild(h('<h2>Desktop</h2>'));
+        (D.moreDesk || []).forEach((o) => pane.appendChild(row(o.name, o.sub, sw(o.on(), (v) => D.set(o.key, v), 'dk:' + o.key, o.name))));
         pane.appendChild(row('Snap windows', 'Drag a window to an edge or a corner and it fills that part of the screen. Hold the pointer on its maximise button for more layouts.', sw(D.state.snap !== false, (v) => D.set('snap', v), 'dk:snap', 'Snap windows')));
-        pane.appendChild(row('Hot corner', 'Push the pointer into the top-left corner for the overview of every window.', sw(D.state.hotCorner !== false, (v) => D.set('hotCorner', v), 'dk:hot', 'Hot corner')));
+        pane.appendChild(row('Hot corner', 'Push the pointer into the ' + (D.state.deskMac !== false ? 'bottom-left' : 'top-left') + ' corner for the overview of every window.', sw(D.state.hotCorner !== false, (v) => D.set('hotCorner', v), 'dk:hot', 'Hot corner')));
+        pane.appendChild(row('Pick up where you left off', 'Your windows come back where they were when DiceOS starts or restarts (SereneTab keeps its tabs too).', sw(D.state.restoreWins !== false, (v) => D.set('restoreWins', v), 'dk:restore', 'Open my windows again')));
         const wl = Array.isArray(D.state.widgets) ? D.state.widgets : null;
         const wb = h('<button class="b small" data-nav data-key="dk:wid">' + D.glyph('plus', 2) + 'Add a widget</button>');
         wb.onclick = () => { if (D.desk.on && D.deskplus) D.deskplus.gallery(innerWidth / 2 - 200, innerHeight / 3); else D.toast({ icon: 'desktop', title: 'On the desktop', text: 'Right-click the desktop, then Widgets.' }); };
@@ -177,7 +186,7 @@
         rs.onclick = () => { delete D.state.widgets; D.save(); D.emit('look'); D.toast({ icon: 'desktop', title: 'Widgets reset', text: 'The clock, the weather and Axiom are back.' }); };
         pane.appendChild(row('Start the widgets again', 'Takes away the ones you added.', rs));
         pane.appendChild(h('<div class="srow" style="display:block"><b>Quick ways round</b><div class="keys" style="padding:10px 0 0;grid-template-columns:auto 1fr">' +
-          [['Ctrl + Space', 'The Dice Bar: apps, settings, sums, units, timers, tasks'], ['Super, F3', 'Overview of every window'], ['Ctrl + Alt + ← →', 'The other desktops (or Ctrl + Alt + 1 to 4)'], ['Super + ← → ↑ ↓', 'Snap the window (Ctrl + Alt + Shift works too)'], ['Alt + Tab', 'Flip between windows (Alt + ` too)'], ['Super + V', 'Things you copied lately'], ['Super + D', 'Show the desktop']].map(([k, t]) => '<span class="bt bt-keys">' + esc(k) + '</span><span>' + esc(t) + '</span>').join('') + '</div></div>'));
+          [['Ctrl + Space', 'The Dice Bar: apps, settings, sums, units, timers, tasks'], ['Super + C', 'Deuce: ask anything, or tell it what to do'], ['Super, F3', 'Overview of every window'], ['Ctrl + Alt + ← →', 'The other desktops (or Ctrl + Alt + 1 to 4)'], ['Super + ← → ↑ ↓', 'Snap the window (Ctrl + Alt + Shift works too)'], ['Alt + Tab', 'Flip between windows (Alt + ` too)'], ['Super + V', 'Things you copied lately'], ['Super + D', 'Show the desktop']].map(([k, t]) => '<span class="bt bt-keys">' + esc(k) + '</span><span>' + esc(t) + '</span>').join('') + '</div></div>'));
       },
       remote() {
         pane.appendChild(h('<h2>Remotes</h2>'));
@@ -522,11 +531,17 @@
       cancelAnimationFrame(raf);
       listEl.querySelectorAll('.mi').forEach((b) => { b.classList.toggle('here', b.dataset.key === 'set:' + id); b.toggleAttribute('data-first', b.dataset.key === 'set:' + id); });
       pane.innerHTML = '';
-      PANES[id]();
+      if (PANES[id]) PANES[id]();
+      else {
+        const m = (D.moreSettings || []).find((x) => x.id === id);
+        if (m) m.pane(pane, { row, seg, sw, h, esc, ctx, again: () => { if (cur === id) show(id); }, here: () => cur === id && root.isConnected });
+      }
       ctx.setTitle(SECTIONS.find((s) => s[0] === id)[1] + ' – Settings');
     }
     show(cur);
     const offCloud = D.on('cloud', () => { if (cur === 'cloud' && !pane.contains(document.activeElement)) show('cloud'); });
+    // Settings is already open and something asks for one of its pages (Deuce, Your week…)
+    const offGo = D.on('settings:go', (id) => { if (SECTIONS.some((s) => s[0] === id)) show(id); });
     setTimeout(() => { if (ctx.mode !== 'desk') D.nav.focus(listEl.querySelector('[data-key="set:' + cur + '"]')); }, 30);
     return {
       onAction(a) {
@@ -534,7 +549,7 @@
         if (a === 'b' && D.nav.el && pane.contains(D.nav.el)) { D.nav.focus(listEl.querySelector('[data-key="set:' + cur + '"]')); D.S.play('back'); return true; }
         return false;
       },
-      unmount() { cancelAnimationFrame(raf); ro.disconnect(); offCloud(); },
+      unmount() { cancelAnimationFrame(raf); ro.disconnect(); offCloud(); offGo(); },
     };
   } });
 

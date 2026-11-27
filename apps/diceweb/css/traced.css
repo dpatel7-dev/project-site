@@ -1,0 +1,54 @@
+/* Traced mode (Settings, Look). The worlds are painted by hand in js/traced.js; here the rest of the system gets
+   the same care: a fine paper grain in the glass, an ink line round every panel, tile and icon (like the one round
+   everything in the worlds), a lit top edge, and focus shown with a drawn line rather than a glow. Nothing shines. */
+:root[data-looks=traced] {
+  --ink-line: rgba(30, 34, 68, .36);
+  --hi-line: rgba(255, 255, 255, .72);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .38 0 0 0 0 .32 0 0 0 .16 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+:root[data-looks=traced][data-look=dark] {
+  --ink-line: rgba(0, 0, 0, .72);
+  --hi-line: rgba(255, 255, 255, .13);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .9 0 0 0 0 .88 0 0 0 0 .84 0 0 0 .1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+/* panels, menus, the dock, widgets, cards */
+:root[data-looks=traced] .glass { background-image: var(--grain); box-shadow: 0 0 0 1px var(--ink-line), inset 0 1px 0 var(--hi-line), inset 0 0 0 1px var(--line), var(--shadow); }
+:root[data-looks=traced] .win { box-shadow: 0 0 0 1px var(--ink-line), inset 0 1px 0 var(--hi-line), 0 30px 70px -22px rgba(0, 0, 0, .5); }
+:root[data-looks=traced] .win > header { background-image: var(--grain); box-shadow: inset 0 -1px 0 var(--line); }
+:root[data-looks=traced] #desk .mbar { background-image: var(--grain); box-shadow: inset 0 -1px 0 var(--ink-line), inset 0 -2px 0 var(--hi-line); }
+/* tiles and pictures: drawn edges */
+:root[data-looks=traced] .tile .art, :root[data-looks=traced] .wtile, :root[data-looks=traced] .in-tile { box-shadow: 0 0 0 1px var(--ink-line), inset 0 1px 0 var(--hi-line); }
+:root[data-looks=traced] .tile.is-focus, :root[data-looks=traced] .wtile.is-focus, :root[data-looks=traced] .in-tile.is-focus, :root[data-looks=traced] .dblock.is-focus .bk {
+  outline: 2px solid var(--ink); outline-offset: 3px; }
+/* buttons: a lit top, a shaded bottom, an ink edge */
+:root[data-looks=traced] .b { box-shadow: 0 0 0 1px var(--ink-line), inset 0 1px 0 var(--hi-line), inset 0 -2px 0 rgba(0, 0, 0, .08); }
+:root[data-looks=traced] .srow { box-shadow: inset 0 -1px 0 var(--line); }
+/* app icons in the dock and on the desktop get the same ink line as the worlds */
+:root[data-looks=traced] .pin canvas, :root[data-looks=traced] .task canvas, :root[data-looks=traced] .dicon canvas, :root[data-looks=traced] .sgrid canvas {
+  filter: drop-shadow(1px 0 0 var(--ink-line)) drop-shadow(-1px 0 0 var(--ink-line)) drop-shadow(0 1px 0 var(--ink-line)) drop-shadow(0 -1px 0 var(--ink-line)); }
+/* scroll bars: thin and drawn */
+:root[data-looks=traced] * { scrollbar-width: thin; scrollbar-color: var(--ink-line) transparent; }
+
+/* Settings, Look: the switch, with a peek at your world in Traced mode */
+.traced-row { gap: 16px; }
+.traced-row > div { display: grid; gap: 4px; min-width: 0; flex: 1; }
+.traced-row .tr-peek { flex: none; }
+.traced-row > div span { color: var(--muted); font-size: .9rem; line-height: 1.35; }
+.traced-row .tr-peek { width: 120px; height: 68px; border-radius: 8px; image-rendering: pixelated; box-shadow: 0 0 0 1px rgba(30, 34, 68, .4), inset 0 1px 0 rgba(255, 255, 255, .6); }
+.traced-row b { font: 500 1.25rem/1.1 var(--pixel); }
+@media (max-width: 560px) { .traced-row .tr-peek { display: none; } }
+
+/* ---------- the Traced start-up (js/screens.js) ---------- */
+#trboot { position: fixed; inset: 0; z-index: 9000; background: rgb(243, 238, 226); transition: opacity .7s var(--ease); overflow: hidden; }
+#trboot canvas { position: absolute; left: 0; top: 0; display: block; image-rendering: pixelated; }
+#trboot.gone { opacity: 0; pointer-events: none; }
+.tb-skip { position: absolute; left: 0; right: 0; bottom: 22px; text-align: center; font: 600 .82rem/1 var(--read); color: rgba(44, 46, 72, .55); }
+
+/* ---------- restarting and shutting down ---------- */
+#power-screen.traced { background: rgb(243, 238, 226); color: rgb(44, 46, 72); }
+#power-screen.traced .ps-sky { image-rendering: pixelated; width: auto; height: auto; }
+#power-screen.traced .ps-in { padding: 22px 34px 20px; background: rgb(243, 238, 226); box-shadow: 0 0 0 3px rgb(44, 46, 72), inset 0 3px 0 rgba(255, 255, 255, .7), inset 0 -3px 0 rgba(120, 100, 70, .18); }
+#power-screen.traced .ps-die { filter: none; }
+#power-screen.traced .ps-in h1 { text-shadow: none; }
+#power-screen.traced .ps-in p { font: 600 1.05rem/1.3 var(--read); opacity: .75; }
+#power-screen.traced .ps-dots i { background: rgb(44, 46, 72); border-radius: 0; }

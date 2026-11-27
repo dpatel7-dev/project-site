@@ -91,6 +91,12 @@
         case 'hold': tone(660, 0.06, 'triangle', 0.06); tone(880, 0.06, 'triangle', 0.06, 0.06); tone(1320, 0.12, 'triangle', 0.05, 0.12); break;
         case 'wake': [67, 72, 76].forEach((m, i) => tone(NOTE(m), 0.4, 'sine', 0.05, i * 0.08)); break;
         case 'sleep': [76, 72, 67].forEach((m, i) => tone(NOTE(m), 0.4, 'sine', 0.05, i * 0.1)); break;
+        // Traced mode's start-up: the die landing on the picture (a soft wooden knock), then a plain, warm chord
+        case 'traced': tone(NOTE(43), 0.12, 'triangle', 0.08, 0); tone(NOTE(55), 0.08, 'square', 0.012, 0.005); [60, 64, 67, 72].forEach((m, i) => tone(NOTE(m), 1.3 - i * 0.1, 'triangle', 0.026, 0.14 + i * 0.07)); break;
+        // restarting and shutting down: a soft fall
+        case 'bye': [79, 74, 71, 67, 60].forEach((m, i) => tone(NOTE(m), 0.7, 'sine', 0.04, i * 0.12)); break;
+        // Deuce's orb, when it starts listening
+        case 'listen': tone(NOTE(76), 0.12, 'sine', 0.05); tone(NOTE(83), 0.2, 'sine', 0.045, 0.07); break;
         case 'type': noise(0.02, 0.025, 3500, 0, 'highpass'); break;
       }
     } catch (e) { /* ignore */ }

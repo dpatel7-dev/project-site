@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+"""dice-open: DiceOS's web browser, for every other app. A web address opens in SereneTab on
+the desktop (or, before the desktop is up, in a SereneTab window of its own).
+
+    dice-open https://example.com
+
+DiceOS makes this the computer's default browser: x-www-browser, $BROWSER, and the
+default for web addresses (serenetab.desktop), so links from any app come to SereneTab.
+"""
+import json
+import os
+import shutil
+import subprocess
+import sys
+import urllib.request
+
+HERE = os.path.dirname(os.path.realpath(__file__))
+ROOT = os.path.dirname(HERE)
+PORT = int(os.environ.get('DICE_PORT', '7070'))
+
+
+def to_serenetab(url):
+    try:
+        with open('/run/dice/open-token') as f:
+            token = f.read().strip()
+        req = urllib.request.Request('http://127.0.0.1:%d/api/browse' % PORT, data=json.dumps({'url': url}).encode(),
+                                     headers={'Content-Type': 'application/json', 'X-Dice-Open': token})
+        with urllib.request.urlopen(req, timeout=5) as r:
+            return json.loads(r.read() or b'{}').get('ok', False)
+    except (OSError, ValueError):
+        return False
+
+
+def window(url):
+    """DiceOS's helper isn't answering: a SereneTab window (Chromium with Shield) on its own."""
+    browser = shutil.which('chromium') or shutil.which('chromium-browser')
+    if not browser:
+        print('dice-open: no browser to open %s with' % url, file=sys.stderr)
+        return False
+    exts = ','.join(p for p in (os.path.join(ROOT, 'shield'), os.path.join(ROOT, 'serenetab-theme')) if os.path.isfile(os.path.join(p, 'manifest.json')))
+    args = [browser, '--user-data-dir=' + os.path.expanduser('~/.config/dice/browser'), '--no-first-run', '--password-store=basic']
+    if os.environ.get('WAYLAND_DISPLAY'):
+        args.append('--ozone-platform=wayland')
+    if exts:
+        args += ['--load-extension=' + exts, '--disable-features=DisableLoadExtensionCommandLineSwitch']
+    subprocess.Popen(args + ['--new-window', url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    return True
+
+
+def main(argv):
+    links = [a for a in argv if not a.startswith('-')]
+    if not links:
+        print(__doc__.strip())
+        return 0
+    ok = True
+    for link in links:
+        if os.path.exists(link):  # a file on this computer (a saved page, a PDF)
+            link = 'file://' + os.path.abspath(link)
+        if link.startswith(('http://', 'https://')) and to_serenetab(link):
+            continue
+        ok = window(link) and ok
+    return 0 if ok else 1
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
