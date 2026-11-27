@@ -672,6 +672,7 @@ class System:
     def __init__(self, settings_path):
         self.settings_path = settings_path
         self.remote = Remote(settings_path)
+        self.monitors = Monitors()
         self.apps = Apps(self.remote.push)
         self.remote.intercept = lambda ev: ev.get('a') in ('home', 'menu') and self.apps.close_front()  # a TV remote's Home is CEC's "root menu"
         self.power_keys = PowerKeys(self.remote.push, home=self.apps.close_front, front=self.apps.front,
@@ -997,6 +998,181 @@ def parse_cec_key(line):
         return None
     a = CEC_KEYS.get(int(m.group(2), 16))
     return (a, m.group(1).strip()) if a else None
+
+
+# ---- this computer's own details, after it's set up: its name, time zone, keyboard, Wi-Fi country,
+#      SSH and updates. Changing them uses dice-boot's own apply(), the same as a dice.json at start-up.
+_boot = None
+
+
+def boot_module():
+    global _boot
+    if _boot is None:
+        import importlib.machinery
+        import importlib.util
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'bin', 'dice-boot')
+        loader = importlib.machinery.SourceFileLoader('dice_boot', path)
+        spec = importlib.util.spec_from_loader('dice_boot', loader)
+        mod = importlib.util.module_from_spec(spec)
+        loader.exec_module(mod)
+        _boot = mod
+    return _boot
+
+
+def device_info(settings_path):
+    s = load_settings(settings_path)
+    code, tz = run(['timedatectl', 'show', '-p', 'Timezone', '--value'], timeout=5)
+    if code != 0 or not tz:
+        tz = read('/etc/timezone').strip() or os.path.realpath('/etc/localtime').split('zoneinfo/')[-1]
+    kb = dict(re.findall(r'^(XKBLAYOUT|XKBVARIANT)="?([^"\n]*)"?', read('/etc/default/keyboard'), re.M))
+    keyboard = (kb.get('XKBLAYOUT') or 'us') + ('(%s)' % kb['XKBVARIANT'] if kb.get('XKBVARIANT') else '')
+    code, reg = run(['iw', 'reg', 'get'], timeout=5)
+    m = re.search(r'country ([A-Z]{2})', reg or '') if code == 0 else None
+    enabled = lambda unit: run(['systemctl', 'is-enabled', unit], timeout=5)[1].strip() == 'enabled'
+    return {'ok': True, 'computer': socket.gethostname(), 'timezone': tz, 'keyboard': keyboard, 'wifi_country': m.group(1) if m and m.group(1) != '00' else '',
+            'ssh': enabled('ssh'), 'updates': enabled('dice-update.timer'), 'password_set': bool(s.get('password_set')), 'user': desktop_user()}
+
+
+def device_change(settings_path, b):
+    """Settings, This computer: change some details, or use a whole dice.json."""
+    cfg = {}
+    for k in ('computer', 'timezone', 'keyboard', 'name', 'look', 'world', 'buddy', 'boot', 'start', 'homeassistant', 'screen', 'updates', 'ssh', 'password', 'suite',
+              'looks', 'accent', 'text', 'clock', 'units', 'sounds', 'nightlight', 'motion', 'ambient', 'deuce', 'tv', 'desk'):
+        if k in b:
+            cfg[k] = b[k]
+    if isinstance(b.get('wifi'), dict):
+        cfg['wifi'] = {k: v for k, v in b['wifi'].items() if k in ('ssid', 'password', 'country', 'hidden')}
+    if 'computer' in cfg:
+        cfg['computer'] = str(cfg['computer'] or '').strip().lower()
+        if not cfg['computer']:
+            del cfg['computer']
+    if not cfg:
+        return {'ok': False, 'error': 'Nothing to change.'}
+    boot = boot_module()
+    boot.SETTINGS = settings_path
+    done, problems = boot.apply(cfg, quiet=True)
+    return {'ok': not problems or bool(done), 'done': done, 'problems': problems, 'device': device_info(settings_path)}
+
+
+# ---- a PC's screens: the video half of a KVM switch, over DDC/CI ---------------------------------
+# A monitor's own computer link (DDC/CI, in every HDMI and DisplayPort cable) can ask it to show
+# another of its inputs: VCP code 0x60, "Input Source". ddcutil does the asking. (A TV doesn't
+# speak it: a TV is switched with HDMI-CEC, above.)
+INPUT_NAMES = {0x01: 'VGA 1', 0x02: 'VGA 2', 0x03: 'DVI 1', 0x04: 'DVI 2', 0x05: 'Composite 1', 0x06: 'Composite 2', 0x07: 'S-Video 1', 0x08: 'S-Video 2',
+               0x09: 'Tuner 1', 0x0A: 'Tuner 2', 0x0B: 'Tuner 3', 0x0C: 'Component 1', 0x0D: 'Component 2', 0x0E: 'Component 3', 0x0F: 'DisplayPort 1',
+               0x10: 'DisplayPort 2', 0x11: 'HDMI 1', 0x12: 'HDMI 2', 0x13: 'HDMI 3', 0x14: 'HDMI 4', 0x1B: 'USB-C'}
+
+
+class Monitors:
+    """The screens plugged into this computer, and which of their inputs they show."""
+    def __init__(self):
+        self.found = (0.0, [])
+        self.home = {}  # screen number -> the input DiceOS is on, to come back to
+        self.lock = threading.Lock()
+
+    def why(self):
+        if not has('ddcutil'):
+            return 'ddcutil isn\'t installed. In Terminal: sudo apt install ddcutil'
+        if not glob.glob('/dev/i2c-*'):
+            return 'This computer can\'t talk to its screens yet. In Terminal: sudo modprobe i2c-dev'
+        return ''
+
+    @staticmethod
+    def parse_detect(text):
+        """`ddcutil detect --brief`: Display 1 / I2C bus: /dev/i2c-4 / DRM connector: card1-HDMI-A-1 / Monitor: DEL:DELL U2720Q:SERIAL"""
+        out, cur = [], None
+        for line in text.splitlines():
+            m = re.match(r'\s*Display (\d+)\s*$', line)
+            if m:
+                cur = {'n': int(m.group(1)), 'bus': '', 'connector': '', 'name': 'Screen ' + m.group(1)}
+                out.append(cur)
+                continue
+            if re.match(r'\s*Invalid display', line):
+                cur = None
+                continue
+            m = re.match(r'\s*(I2C bus|DRM connector|Monitor):\s*(.+)', line)
+            if m and cur:
+                k, v = m.group(1), m.group(2).strip()
+                if k == 'I2C bus':
+                    cur['bus'] = v
+                elif k == 'DRM connector':
+                    cur['connector'] = v
+                else:
+                    parts = v.split(':')
+                    if len(parts) >= 2 and parts[1].strip():
+                        cur['name'] = parts[1].strip()
+        return out
+
+    @staticmethod
+    def parse_caps(text):
+        """The input codes a screen lists for VCP 60 in `ddcutil capabilities`."""
+        codes, inside = [], False
+        for line in text.splitlines():
+            if re.match(r'\s*Feature:\s*60\b', line):
+                inside = True
+                continue
+            if inside and re.match(r'\s*Feature:', line):
+                break
+            m = re.match(r'\s*([0-9a-fA-F]{2}):\s*(.*)', line) if inside else None
+            if m:
+                codes.append(int(m.group(1), 16))
+        return codes
+
+    @staticmethod
+    def parse_current(text):
+        """`ddcutil getvcp 60 --terse`: VCP 60 SNC x0f (or the long form: ... (sl=0x0f))"""
+        m = re.search(r'VCP 60 SNC x([0-9a-fA-F]+)', text) or re.search(r'sl=0x([0-9a-fA-F]+)', text)
+        return int(m.group(1), 16) & 0xFF if m else None
+
+    def list(self, fresh=False):
+        problem = self.why()
+        if problem:
+            return {'ok': False, 'error': problem, 'screens': []}
+        with self.lock:
+            if fresh or time.time() - self.found[0] > 300:
+                code, out = run(['ddcutil', 'detect', '--brief'], timeout=25)
+                screens = self.parse_detect(out) if code == 0 else []
+                for s in screens:
+                    code, caps = run(['ddcutil', '--display', str(s['n']), 'capabilities'], timeout=20)
+                    s['codes'] = self.parse_caps(caps) if code == 0 else []
+                self.found = (time.time(), screens)
+            screens = [dict(s) for s in self.found[1]]
+        for s in screens:
+            code, out = run(['ddcutil', '--display', str(s['n']), 'getvcp', '60', '--terse'], timeout=10)
+            cur = self.parse_current(out) if code == 0 else None
+            s['current'] = cur
+            if cur and s['n'] not in self.home:
+                self.home[s['n']] = cur  # where DiceOS is: what "come back" goes to
+            here = self.home.get(s['n'])
+            codes = s.pop('codes', None) or ([cur] if cur else [])
+            s['inputs'] = [{'code': c, 'name': INPUT_NAMES.get(c, 'Input %02X' % c), 'here': c == here, 'on': c == cur} for c in codes]
+        return {'ok': True, 'screens': screens}
+
+    def switch(self, n, code):
+        """Show another input on screen n. (Asked of the screen while it still shows DiceOS, so it hears.)"""
+        problem = self.why()
+        if problem:
+            return {'ok': False, 'error': problem}
+        if not isinstance(n, int) or not 1 <= n <= 16 or not isinstance(code, int) or not 1 <= code <= 0xFF:
+            return {'ok': False, 'error': 'That isn\'t a screen\'s input.'}
+        if n not in self.home:
+            c, out = run(['ddcutil', '--display', str(n), 'getvcp', '60', '--terse'], timeout=10)
+            cur = self.parse_current(out) if c == 0 else None
+            if cur:
+                self.home[n] = cur
+        c, out = run(['ddcutil', '--display', str(n), '--noverify', 'setvcp', '60', '0x%02x' % code], timeout=15)
+        if c != 0:
+            return {'ok': False, 'error': 'The screen didn\'t switch: ' + (out.splitlines() or [''])[-1]}
+        return {'ok': True, 'home': self.home.get(n)}
+
+    def back(self):
+        """Every screen back to DiceOS. Most screens still hear this while they show something else."""
+        done = []
+        for n, code in list(self.home.items()):
+            c, _ = run(['ddcutil', '--display', str(n), '--noverify', 'setvcp', '60', '0x%02x' % code], timeout=15)
+            if c == 0:
+                done.append(n)
+        return {'ok': bool(done) or not self.home, 'screens': done}
 
 
 class Remote:
@@ -2013,6 +2189,11 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, sysm.apps.games(q.get('host', '')))
         if path == '/api/cec/devices':
             return self.send(200, sysm.remote.scan())
+        if path == '/api/device':
+            return self.send(200, device_info(self.server.settings_path))
+        if path == '/api/kvm':  # everything Dice can switch to: the TV's HDMI things, and a PC's screens' inputs
+            cec = sysm.remote.scan() if sysm.remote.available else {'ok': False, 'error': sysm.remote.why or 'No HDMI-CEC here.', 'devices': []}
+            return self.send(200, {'ok': True, 'cec': cec, 'monitors': sysm.monitors.list(q.get('fresh') == '1')})
         if path == '/api/voice':
             return self.send(200, sysm.voice.status())
         if path == '/api/lookup':
@@ -2101,6 +2282,22 @@ class Handler(BaseHTTPRequestHandler):
                 sysm.power_keys.learn = time.monotonic() + 12
                 return self.send(200, {'ok': True})
             return self.fail(400, 'Unknown action.')
+        if path == '/api/device':
+            return self.send(200, device_change(self.server.settings_path, b if isinstance(b, dict) else {}))
+        if path == '/api/kvm':
+            act = b.get('action')
+            if act == 'monitor':
+                try:
+                    n, code = int(b.get('n')), int(b.get('code'))
+                except (TypeError, ValueError):
+                    return self.fail(400, 'Which screen, and which input?')
+                return self.send(200, sysm.monitors.switch(n, code))
+            if act == 'back':
+                r = sysm.monitors.back() if sysm.monitors.home else {'ok': True}
+                if sysm.remote.available:
+                    sysm.remote.send('active')
+                return self.send(200, r)
+            return self.fail(400, 'Unknown action.')
         if path == '/api/tuner':
             return self.send(200, sysm.apps.watch(str(b.get('url') or ''), str(b.get('name') or '')[:60]))
         if path == '/api/voice':
@@ -2136,6 +2333,10 @@ class Handler(BaseHTTPRequestHandler):
             if len(pw) < 4 or '\n' in pw:
                 return self.fail(400, 'Use at least 4 characters.')
             code, out = run(['chpasswd'], input_text='%s:%s\n' % (desktop_user(), pw))
+            if code == 0:  # (so SSH may be turned on: it isn't the starting password any more)
+                cur = load_settings(self.server.settings_path)
+                cur['password_set'] = True
+                save_settings(self.server.settings_path, cur)
             return self.send(200, {'ok': code == 0, 'error': None if code == 0 else out})
         if path == '/api/settings':
             cur = load_settings(self.server.settings_path)

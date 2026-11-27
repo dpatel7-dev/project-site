@@ -18,7 +18,7 @@
     brightness: dev.backlight ? 0.9 : null, battery: dev.battery ? { percent: 76, charging: false } : null,
     settings: cfg.settings || {},
   };
-  window.DICE_SYS = { token: 'emulator', version: cfg.version || '2.1.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
+  window.DICE_SYS = { token: 'emulator', version: cfg.version || '2.2.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
   const NETS = [[cfg.wifi && cfg.wifi.ssid ? cfg.wifi.ssid : 'Home', 84, true], ['Upstairs 5G', 61, true], ['Library Guest', 42, false], ['Printer-4F2A', 23, true]];
   const tell = (msg) => { try { parent.postMessage(Object.assign({ dice: 'emu' }, msg), location.origin); } catch (e) { /* not in the emulator after all */ } };
   const reply = (data, status) => new Response(JSON.stringify(data), { status: status || 200, headers: { 'Content-Type': 'application/json' } });
@@ -67,6 +67,24 @@
       case '/api/cec/devices':
         return reply({ ok: true, me: 4, devices: [{ la: 1, kind: 'Playback 1', name: 'PlayStation 5', pa: '1.0.0.0', vendor: 'Sony', power: 'on', active: false },
           { la: 8, kind: 'Playback 2', name: 'Xbox', pa: '3.0.0.0', vendor: 'Microsoft', power: 'standby', active: false }, { la: 3, kind: 'Tuner 1', name: 'Cable box', pa: '4.0.0.0', vendor: 'Arris', power: 'on', active: false }] });
+      case '/api/device': {
+        const dv = sys.device || (sys.device = { ok: true, computer: 'dice', timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', keyboard: 'us', wifi_country: 'US', ssh: false, updates: true, password_set: false, user: 'dice' });
+        if (method === 'POST') {
+          const done = [], problems = [];
+          if (b.computer) { if (/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(b.computer)) { dv.computer = b.computer; done.push('Named this computer ' + b.computer); } else problems.push('The computer name "' + b.computer + '" has letters it can\'t use, so it wasn\'t changed.'); }
+          if (b.timezone) { dv.timezone = b.timezone; done.push('Set the time zone to ' + b.timezone); }
+          if (b.keyboard) { dv.keyboard = b.keyboard; done.push('Set the keyboard to ' + b.keyboard); }
+          if (b.wifi && b.wifi.country) dv.wifi_country = b.wifi.country;
+          if ('updates' in b) { dv.updates = !!b.updates; done.push('Turned automatic updates ' + (b.updates ? 'on' : 'off')); }
+          if ('ssh' in b) { if (b.ssh && !dv.password_set) problems.push('SSH stayed off because no password was set. Set one first.'); else { dv.ssh = !!b.ssh; if (b.ssh) done.push('Turned on SSH'); } }
+          return reply({ ok: !problems.length || !!done.length, done, problems, device: dv });
+        }
+        return reply(dv);
+      }
+      case '/api/kvm':
+        if (method === 'POST') { tell({ event: 'log', text: 'Screen: ' + (b.action === 'back' ? 'back to DiceOS' : 'input 0x' + Number(b.code).toString(16) + ' on screen ' + b.n) + ' (pretend)' }); return reply({ ok: true }); }
+        return reply({ ok: true, cec: { ok: true, me: 4, devices: [{ la: 1, kind: 'Playback 1', name: 'PlayStation 5', pa: '1.0.0.0', vendor: 'Sony', power: 'on', active: false }, { la: 3, kind: 'Tuner 1', name: 'Cable box', pa: '4.0.0.0', vendor: 'Arris', power: 'on', active: false }] },
+          monitors: { ok: true, screens: [{ n: 1, name: 'DELL U2720Q', bus: '/dev/i2c-6', connector: 'card1-DP-1', current: 15, inputs: [{ code: 15, name: 'DisplayPort 1', here: true, on: true }, { code: 17, name: 'HDMI 1', here: false, on: false }, { code: 27, name: 'USB-C', here: false, on: false }] }] } });
       case '/api/cec':
         tell({ event: 'log', text: 'HDMI-CEC: ' + b.action + (b.pa ? ' to ' + b.pa : '') + (b.key ? ' ' + b.key + ' to device ' + b.la : '') + ' (pretend)' });
         return reply({ ok: true });

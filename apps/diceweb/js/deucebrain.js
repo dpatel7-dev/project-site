@@ -109,10 +109,13 @@
     ['fubo|fubo tv', 'fubo'], ['sling|sling tv', 'sling'], ['directv stream|directv|direct tv', 'directv'], ['nba league pass|league pass', 'nba'], ['nfl plus', 'nfl'], ['mlb tv', 'mlb'],
   ].map(([words, id]) => ({ re: new RegExp('^(?:the )?(' + words + ')(?: app)?$'), id }));
   const appOf = (s) => { const t = clean(s); const a = APPS.find((x) => x.re.test(t)); return a ? a.id : null; };
-  const DEVICES = 'playstation 5|playstation 4|playstation|ps5|ps4|ps 5|ps 4|xbox|nintendo switch|nintendo|the switch|switch 2|apple tv box|fire tv|firestick|fire stick|roku|chromecast|google tv|cable box|cable|satellite|blu ray|bluray|dvd|computer|laptop|pc|mac|steam deck|game console|console';
+  const DEVICES = 'playstation 5|playstation 4|playstation|ps5|ps4|ps 5|ps 4|xbox|nintendo switch|nintendo|the switch|switch 2|apple tv box|fire tv|firestick|fire stick|roku|chromecast|google tv|cable box|cable|satellite|blu ray|bluray|dvd|steam deck|game console|console|display ?port|usb c|type c|' +
+    '(?:[a-z0-9]+ )?(?:computer|laptop|pc|mac|macbook|desktop)';
 
-  function understand(said, now) {
+  // ctx.inputs: the names you gave your inputs ("work laptop"), so "switch to the work laptop" works
+  function understand(said, now, ctx) {
     now = now || new Date();
+    ctx = ctx || {};
     let t = clean(said);
     // what isn't the request: "hey deuce", "please", "can you"
     t = t.replace(/^(hey |ok |okay |hi |yo )?deuce\b ?/, '').replace(/^(please |can you |could you |would you |will you |i want to |i wanna |id like to |lets |let s |go ahead and )+/, '').replace(/ please$/, '').trim();
@@ -168,12 +171,14 @@
 
     // HDMI: the other things plugged into the TV
     if (/^(switch|change|go to|show|show me|open|list)( the)? (inputs?|hdmi inputs?|sources?|devices)$|^(change|switch) (the )?(input|source)$/.test(t)) return r('inputs');
-    m = new RegExp('^(?:switch|change|go|turn|flip|put it)(?: the (?:input|tv|source))?(?: over)? (?:to|on) (?:the |my )?(' + DEVICES + '|hdmi ?(\\d)|input ?(\\d)|hdmi (one|two|three|four))$|^(?:play|turn on|open|use) (?:the |my )?(' + DEVICES + ')$').exec(t);
+    m = new RegExp('^(?:switch|change|go|turn|flip|put it)(?: the (?:input|tv|source|screen|monitor))?(?: over)? (?:to|on) (?:the |my )?(' + DEVICES + '|hdmi ?(\\d)|input ?(\\d)|hdmi (one|two|three|four))$|^(?:play|turn on|open|use) (?:the |my )?(' + DEVICES + ')$').exec(t);
     if (m) {
       const port = m[2] || m[3] || (m[4] ? number(m[4]) : 0);
       return r('input', port ? { port: +port, name: 'HDMI ' + port } : { name: (m[1] || m[5]).replace(/^the /, '') });
     }
     if (/^(dice|back to dice|switch (back )?to dice|go back to dice|diceos|dice os)$/.test(t)) return r('input', { name: 'dice', dice: true });
+    m = /^(?:switch|change|go|flip|turn|put)(?: the (?:input|tv|screen|monitor|source))?(?: over)? (?:to|on) (?:the |my )?(.+)$/.exec(t);
+    if (m && (ctx.inputs || []).some((n) => clean(n) === m[1])) return r('input', { name: m[1] });
 
     // a game: "put on the knicks game", "where can i watch the jets", "whats the score of the rangers game"
     const teams = teamsIn(t);

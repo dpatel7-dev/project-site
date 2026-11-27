@@ -11,7 +11,8 @@
   const Hero = D.hero = { app: null, world: null, last: 0, paused: false };
   const cv = $('#hero'), hg = cv.getContext('2d');
   // how many screen pixels make one pixel of the landscapes (smaller numbers, more detail)
-  D.scapeCell = () => Math.max(2, Math.round(Math.max(innerWidth, innerHeight * 1.6) / 640));
+  // (Heavenly looks: half again as many, for finer worlds)
+  D.scapeCell = () => Math.max(2, Math.round(Math.max(innerWidth, innerHeight * 1.6) / (D.state.looks === 'heaven' ? 960 : 640)));
   // Behind Big screen: the world you picked, as a calm landscape across the top of the screen.
   // It stays the same as you move between apps; only the accent colour follows what's focused.
   Hero.size = function () {
@@ -22,7 +23,7 @@
     return { W, H };
   };
   Hero.set = function (app, force) {
-    if (app) { Hero.app = app; document.documentElement.style.setProperty('--c', app.c); }
+    if (app) { Hero.app = app; document.documentElement.style.setProperty('--c', D.tint(app.c)); }
     const { W, H } = Hero.size();
     const world = D.WORLDS && D.WORLDS[D.state.world] ? D.state.world : 'hills';
     if (force || !Hero.world || Hero.world.W !== W || Hero.world.H !== H || Hero.world.night !== D.night() || Hero.world.world !== world) {
@@ -33,7 +34,7 @@
   Hero.draw = function (now, force) {
     if (!Hero.world || (Hero.paused && !force)) return;
     const still = D.reduced();
-    if (!force && (still || now - Hero.last < 1000 / Math.min(20, D.state.fps || 60) - 2)) return;
+    if (!force && (still || now - Hero.last < 1000 / Math.min(D.state.looks === 'heaven' ? 30 : 20, D.state.fps || 60) - 2)) return;
     Hero.last = now;
     Hero.world.draw(hg, now / 1000, still);
   };
@@ -238,7 +239,7 @@
     if (/^(td|w|lv|nw|ch|an):/.test(key)) {
       const s = D.tv.spot(key) || {};
       kick = s.kick || ''; name = s.name || ''; line = s.line || '';
-      if (s.c) document.documentElement.style.setProperty('--c', s.c);
+      if (s.c) document.documentElement.style.setProperty('--c', D.tint(s.c));
     } else if (key === 'r:all') {
       kick = 'Library'; name = 'Everything'; line = 'All ' + tvApps().length + ' apps on this screen, from A to Z.';
     } else if (app) {
@@ -537,6 +538,11 @@
         bt.onclick = () => { Qam.close(true); D.launch('settings', { arg: 'bt' }); };
         body.appendChild(bt);
         D.tools.bt.list().then((r) => { if (!bt.isConnected || !r || !r.ok) return; const on = (r.devices || []).filter((d) => d.connected); bt.querySelector('small').textContent = !r.adapter ? 'This computer has no Bluetooth' : !r.powered ? 'Off' : on.length ? 'Connected: ' + on.map((d) => d.name).join(', ') : 'On, nothing connected'; });
+        if (D.inputs) {
+          const inp = h('<button class="toggle-row" data-nav data-key="q:inputs"><span>Inputs<small>Switch to the other things on the TV or the screen</small></span>' + D.glyph('tv', 2) + '</button>');
+          inp.onclick = () => { Qam.close(true); D.inputs.open(); };
+          body.appendChild(inp);
+        }
         const row = h('<div style="display:flex;gap:8px;padding:10px 8px 4px;flex-wrap:wrap"></div>');
         const shot = h('<button class="b small" data-nav data-key="q:shot">' + D.glyph('camera', 2) + 'Screenshot</button>');
         shot.onclick = () => { Qam.close(true); D.tools.screenshot(); };
@@ -752,7 +758,7 @@
       const inst = def.mount(host.querySelector('.runbody'), D.ctx(id, 'run', { arg: opts.arg })) || {};
       Run.cur = { id, app, inst, since: performance.now() };
       D.touch(isWeb ? app.id : id);
-      document.documentElement.style.setProperty('--c', app.c);
+      document.documentElement.style.setProperty('--c', D.tint(app.c));
       if (!$('#runlegend').innerHTML) $('#runlegend').hidden = true;
     };
     const from = opts.from && opts.from.getBoundingClientRect ? opts.from : null;
@@ -1039,15 +1045,8 @@
     const s = D.sys.settings || {};
     const fresh = first || (s.welcome && D.state.welcomed !== s.welcome.at);
     if (!fresh) return;
-    if (s.name) D.state.name = String(s.name).slice(0, 20);
-    if (['auto', 'day', 'night'].includes(s.look)) D.state.look = s.look;
-    if (s.buddy && (s.buddy === 'cubby' || ART.mascots[s.buddy])) D.state.avatar = s.buddy;
-    if (['full', 'quick', 'off'].includes(s.boot)) D.state.boot = s.boot;
-    D.state.start = s.start === 'gaming' || s.start === 'tv' ? 'game' : s.start === 'home' ? 'home' : 'desk';
-    if (WORLDS[s.world]) D.state.world = s.world;
-    if (s.homeassistant) D.state.ha = s.homeassistant;
-    D.save();
-    D.applyLook(true);
+    // everything dice.json can say (js/prefs.js)
+    D.prefs.apply(Object.assign({ start: s.start || 'desktop' }, s));
   }
   function piWelcome(w) {
     D.state.welcomed = w.at; D.save();
@@ -1063,6 +1062,7 @@
     else if (D.ambient && D.ambient.on) D.ambient.frame(now); // and so does the ambient screen
     else if (!D.desk.on && !document.hidden) Hero.draw(now);
     if (D.desk.on && !(D.wall && D.wall.on)) D.desk.frame(now);
+    if (D.heaven) D.heaven.frame(now);
     Perf.tick(now);
     if (Run.cur && Run.cur.inst.frame && $('#app').classList.contains('running')) Run.cur.inst.frame(now);
     requestAnimationFrame(loop);
@@ -1073,7 +1073,7 @@
     document.title = D.brand;
     // the tab's icon: the same die, drawn small
     try { const l = document.querySelector('link[rel=icon]'); if (l) l.href = G.die(32, null, { key: 'favicon' }).toDataURL('image/png'); } catch (e) { /* keep the drawn one */ }
-    document.documentElement.dataset.motion = D.state.motion;
+    D.prefs.live();
     document.documentElement.setAttribute('data-input', 'keys');
     D.applyLook(true);
     D.applyBright();

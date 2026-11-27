@@ -245,7 +245,7 @@
     w.zi = ++Desk.z; w.el.style.zIndex = w.zi + (w.pinned ? 100000 : 0);
     Desk.wins.forEach((x) => { x.el.classList.toggle('active', x === w); x.task.classList.toggle('on', !x.min); x.task.classList.toggle('active', x === w); });
     dots();
-    document.documentElement.style.setProperty('--c', w.app.c);
+    document.documentElement.style.setProperty('--c', D.tint(w.app.c));
   };
   Desk.area = () => ({ w: innerWidth, h: innerHeight - 62 });
   Desk.open = function (id, opts) {
@@ -322,7 +322,7 @@
       Desk.last = 0;
     }
     const fps = D.state.fps || 60;
-    if (now - Desk.last < 1000 / Math.min(fps, 20)) { for (const w of Desk.wins) if (!w.min && w.inst.frame) w.inst.frame(now); return; }
+    if (now - Desk.last < 1000 / Math.min(fps, D.state.looks === 'heaven' ? 30 : 20)) { for (const w of Desk.wins) if (!w.min && w.inst.frame) w.inst.frame(now); return; }
     Desk.last = now;
     Desk.world.draw(wg, now / 1000, D.reduced());
     for (const w of Desk.wins) if (!w.min && w.inst.frame) w.inst.frame(now);

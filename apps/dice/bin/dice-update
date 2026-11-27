@@ -38,9 +38,10 @@ chmod +x /opt/dice/bin/*
 rm -rf "$TMP"
 # helpers newer DiceOS uses, for computers installed before them (quietly, best effort)
 MISSING=""
-for p in flatpak xwayland wlopm mpv speech-dispatcher espeak-ng python3-venv cec-utils alsa-utils libwidevinecdm0; do
+for p in flatpak xwayland wlopm mpv speech-dispatcher espeak-ng python3-venv cec-utils alsa-utils libwidevinecdm0 ddcutil; do
   dpkg -s "$p" >/dev/null 2>&1 || { apt-cache show "$p" >/dev/null 2>&1 && MISSING="$MISSING $p"; }
 done
+[ -f /etc/modules-load.d/dice-i2c.conf ] || { echo i2c-dev > /etc/modules-load.d/dice-i2c.conf; modprobe i2c-dev 2>/dev/null || true; }
 if [ -n "$MISSING" ]; then
   echo "Adding:$MISSING"
   # shellcheck disable=SC2086

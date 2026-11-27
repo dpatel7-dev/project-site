@@ -171,7 +171,8 @@
     pc: { name: 'A PC and a monitor', w: 1920, h: 1080, frame: 'monitor', model: 'PC', mem: 16e9, disk: 1e12 },
   };
   // the keys DiceOS keeps (the same list as dice-boot), and the ones it reads once
-  const KEEP = ['name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh'];
+  const KEEP = ['name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh',
+    'looks', 'accent', 'text', 'clock', 'units', 'sounds', 'nightlight', 'motion', 'ambient', 'deuce', 'tv', 'desk'];
   const KNOWN = KEEP.concat(['dice', 'password', 'wifi']);
   const st = { dev: 'pi7', power: 'off', file: null, fileName: '', code: null, used: {}, t0: 0, timers: [], version: '1.2.0' };
   try { const d = localStorage.getItem('dice-emu-device'); if (DEVICES[d]) st.dev = d; } catch (e) { /* fine */ }
@@ -217,6 +218,10 @@
       if (s.wifi && flags.wifiPassword) s.wifi.password = '(set)';
       if (s.wifi && !s.wifi.ssid) delete s.wifi;
       for (const k of ['name', 'computer', 'homeassistant']) if (!s[k]) delete s[k];
+      // (the page keeps two of its choices its own way)
+      if ('heavenly' in s) { s.looks = s.heavenly ? 'heaven' : 'normal'; delete s.heavenly; }
+      if ('lessMotion' in s) { s.motion = s.lessMotion ? 'less' : 'full'; delete s.lessMotion; }
+      if (s.tv && !s.tv.live) s.tv.live = null;
       return s;
     } catch (e) { return null; }
   }

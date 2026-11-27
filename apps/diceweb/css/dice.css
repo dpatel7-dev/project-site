@@ -712,3 +712,54 @@ html[data-fit] body { transform: scale(var(--fit)); transform-origin: 50% 50%; b
 .du-talk.is-focus { box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--ink) !important; }
 #deuce .b.go { background: var(--ink); color: var(--bg); }
 #deuce .b.go.is-focus { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--ink); }
+#inputs .in-box { max-height: calc(100vh - 2 * var(--gut)); overflow: auto; }
+.in-sec h3 { margin: 14px 0 0; font: 600 1rem/1.2 var(--read); color: var(--muted); }
+.in-sec .in-grid { margin-top: 8px; }
+.in-kb { display: flex; gap: 18px; align-items: center; justify-content: space-between; margin-top: 16px; padding: 14px 16px; border-radius: 18px; background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.in-kb > div { display: grid; gap: 4px; min-width: 0; }
+.in-kb .b { flex: none; }
+.in-foot { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-top: 6px; }
+.in-none { margin: 10px 0 0; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, #f5a623 14%, transparent); }
+/* Settings: selects, swatches, Heavenly looks */
+.srow select.sel { max-width: 260px; padding: 10px 14px; border-radius: 10px; border: 0; background: var(--bg); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); font: 600 .95rem var(--read); }
+.srow select.sel.is-focus, .srow select.sel:focus { box-shadow: inset 0 0 0 2px var(--ink); outline: 0; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatches button { width: 34px; height: 34px; border-radius: 11px; background: var(--sw); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.swatches button.auto { width: auto; padding: 0 12px; background: conic-gradient(from 200deg, #ff707a, #f5c431, #8fd16a, #3a9be8, #d39cf5, #ff707a); color: #fff; font: 700 .8rem var(--read); text-shadow: 0 1px 2px rgba(0, 0, 0, .45); }
+.swatches button[aria-pressed=true] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+.swatches button.is-focus { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink), 0 0 0 7px color-mix(in srgb, var(--ink) 25%, transparent); }
+.heaven-row { background: linear-gradient(120deg, color-mix(in srgb, #ffd98a 26%, transparent), color-mix(in srgb, #b9d4ff 24%, transparent) 55%, color-mix(in srgb, #f3c9ff 22%, transparent)); border-radius: 18px; padding: 16px 18px !important; margin: 4px 0 10px; }
+.heaven-row b { font: 500 1.25rem/1.1 var(--pixel); }
+
+/* ---------- Heavenly looks (Settings, Look): js/heaven.js paints the light; this deepens the glass ---------- */
+#heaven { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+#app.running #heaven { visibility: hidden; }
+:root[data-looks=heaven] {
+  --glass: rgba(255, 255, 255, .5); --glass-hi: rgba(255, 255, 255, .8); --rim: rgba(255, 255, 255, 1); --rim-2: rgba(255, 248, 232, .5);
+  --shadow: 0 40px 80px -36px rgba(70, 50, 130, .42), 0 0 44px -14px rgba(255, 232, 190, .5), 0 2px 8px rgba(24, 24, 60, .06);
+  --halo: rgba(255, 236, 196, .75);
+}
+:root[data-looks=heaven][data-look=dark] {
+  --glass: rgba(26, 30, 56, .5); --glass-hi: rgba(40, 44, 74, .78); --rim: rgba(206, 220, 255, .6); --rim-2: rgba(160, 180, 255, .14);
+  --shadow: 0 40px 80px -30px rgba(0, 0, 20, .9), 0 0 54px -14px rgba(150, 172, 255, .34);
+  --halo: rgba(176, 198, 255, .7);
+}
+/* glass that catches the light: a bright edge at the top, a warm wash from the corner the light comes from */
+:root[data-looks=heaven] .glass { -webkit-backdrop-filter: blur(34px) saturate(220%) brightness(1.05); backdrop-filter: blur(34px) saturate(220%) brightness(1.05);
+  background-image: linear-gradient(168deg, rgba(255, 255, 255, .38), rgba(255, 255, 255, .04) 34%, transparent 60%), radial-gradient(130% 90% at 100% 0%, rgba(255, 236, 200, .22), transparent 58%); }
+:root[data-looks=heaven][data-look=dark] .glass { background-image: linear-gradient(168deg, rgba(190, 206, 255, .16), transparent 40%), radial-gradient(130% 90% at 100% 0%, rgba(150, 172, 255, .16), transparent 60%); }
+/* tiles glow in their own colour, and what's picked has a breathing halo of light (it doesn't jump) */
+:root[data-looks=heaven] .wtile { box-shadow: 0 18px 36px -22px var(--wc), inset 0 1px 0 rgba(255, 255, 255, .35); }
+:root[data-looks=heaven] .wtile::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(160deg, rgba(255, 255, 255, .3), transparent 42%), radial-gradient(90% 70% at 85% 110%, rgba(0, 0, 0, .18), transparent 70%); }
+:root[data-looks=heaven] .tile .art { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
+:root[data-looks=heaven] .tile.is-focus, :root[data-looks=heaven] .wtile.is-focus, :root[data-looks=heaven] .in-tile.is-focus, :root[data-looks=heaven] .dblock.is-focus .bk {
+  animation: hv-halo 3.8s ease-in-out infinite; }
+@keyframes hv-halo {
+  0%, 100% { filter: drop-shadow(0 0 10px color-mix(in srgb, var(--wc, var(--c)) 45%, transparent)) drop-shadow(0 0 22px var(--halo)); }
+  50% { filter: drop-shadow(0 0 16px color-mix(in srgb, var(--wc, var(--c)) 65%, transparent)) drop-shadow(0 0 40px var(--halo)); }
+}
+:root[data-looks=heaven] .shelf h2, :root[data-looks=heaven] .tvb-now h1, :root[data-looks=heaven] #where { text-shadow: 0 0 22px var(--halo); }
+:root[data-looks=heaven] .win { box-shadow: 0 50px 90px -40px rgba(40, 30, 100, .55), 0 0 60px -20px var(--halo), inset 0 0 0 1px var(--line); }
+:root[data-looks=heaven] #veil { opacity: .9; }
+:root[data-looks=heaven][data-motion=less] .is-focus { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { :root[data-looks=heaven] .is-focus { animation: none !important; } }

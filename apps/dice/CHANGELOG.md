@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.0
+
+- Inputs on a PC: a screen's other inputs over DDC/CI (`ddcutil`, VCP 60), with what DiceOS was on remembered so it comes back. `/api/kvm` lists the TV's HDMI-CEC devices and the screens' inputs together; POST switches a screen or comes back. ddcutil and the i2c-dev driver are installed with DiceOS and by dice-update.
+- This computer: `/api/device` shows and changes the computer's name, time zone, keyboard, Wi-Fi country, SSH and automatic updates, using dice-boot's own apply(), and takes a whole dice.json from Settings.
+- `dice-boot --apply file.json` uses a dice.json any time, from Terminal.
+- SSH can be turned on after install once a password of your own is set (DiceOS remembers that it was).
+- dice.json keeps the new choices for DiceWeb: looks (Heavenly), accent, text, clock, units, sounds, nightlight, motion, ambient, deuce, tv and desk.
+- DiceWeb 2.2.0.
+
 ## 2.1.0
 
 - Deuce's ears and voice: diced runs `dice-listen` (Vosk, offline, with a small English model, set up from Settings) while the remote's microphone button is held, and sends what it hears to DiceWeb. It says answers out loud with speech-dispatcher or espeak-ng, even with an app on top.

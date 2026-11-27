@@ -46,10 +46,14 @@ fi
 # real apps (from Flathub, with Flatpak), and Xwayland for the ones that still need X11
 # (and wlopm turns the picture off for standby, mpv plays an antenna tuner's channels,
 #  speech-dispatcher and espeak-ng let Deuce talk, python3-venv is for Deuce's ears, and
-#  libwidevinecdm0 is the video protection Netflix, Disney+ and the rest need to play)
-for p in flatpak xwayland wlopm mpv speech-dispatcher espeak-ng python3-venv libwidevinecdm0; do apt-cache show "$p" >/dev/null 2>&1 && PKGS="$PKGS $p"; done
+#  libwidevinecdm0 is the video protection Netflix, Disney+ and the rest need to play, and
+#  ddcutil switches a PC's screen to its other inputs, for Inputs)
+for p in flatpak xwayland wlopm mpv speech-dispatcher espeak-ng python3-venv libwidevinecdm0 ddcutil; do apt-cache show "$p" >/dev/null 2>&1 && PKGS="$PKGS $p"; done
 # shellcheck disable=SC2086
 apt-get install -y --no-install-recommends $PKGS
+# (screens answer ddcutil through the i2c-dev driver: load it now and at every start)
+echo i2c-dev > /etc/modules-load.d/dice-i2c.conf
+modprobe i2c-dev 2>/dev/null || true
 if command -v flatpak >/dev/null 2>&1; then
   flatpak remote-add --system --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo || say "Couldn't add Flathub now; the Dice Store can do it later."
 fi

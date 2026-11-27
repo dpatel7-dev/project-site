@@ -76,6 +76,13 @@
   .side { position: sticky; top: 84px; display: grid; gap: 16px; }
   .screen { position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 16 / 10; box-shadow: 0 0 0 10px #1b1b1f, 0 0 0 11px var(--line), 0 34px 60px -30px rgba(0, 0, 0, .5); background: #000; margin: 10px; }
   .screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+  .screen canvas#wall-hv { image-rendering: auto; pointer-events: none; }
+  .swatch-seg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .swatch-seg button { width: 32px; height: 32px; border-radius: 10px; border: 0; background: var(--sw); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); cursor: pointer; }
+  .swatch-seg button.auto { width: auto; padding: 0 12px; color: #fff; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,.4); background: conic-gradient(from 200deg, #ff707a, #f5c431, #8fd16a, #3a9be8, #d39cf5, #ff707a); }
+  .swatch-seg button[aria-pressed=true] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
+  .heaven-pick { padding: 14px 16px; border-radius: 16px; background: linear-gradient(120deg, color-mix(in srgb, #ffd98a 26%, transparent), color-mix(in srgb, #b9d4ff 24%, transparent) 55%, color-mix(in srgb, #f3c9ff 22%, transparent)); }
+  .sets select.wide { width: 100%; }
   .screen .win { position: absolute; left: 9%; top: 11%; width: 58%; padding: 12px 14px; border-radius: 14px; display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: center; }
   .screen .win canvas { position: static; width: 40px; height: 40px; border-radius: 10px; }
   .screen .win b { display: block; font: 700 1.05rem/1.1 var(--pixel); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -185,10 +192,47 @@
         <legend>Look</legend>
         <div class="f"><span>Day or night</span><div class="seg" data-seg="look"><button type="button" data-v="auto">Follow the clock</button><button type="button" data-v="day">Always day</button><button type="button" data-v="night">Always night</button></div><small>Following the clock means light by day and dark after sunset.</small></div>
         <div class="f"><span>Your desktop's world</span><div class="picks worlds" id="worlds"></div></div>
+        <label class="sw heaven-pick"><span><b>Heavenly looks</b><small class="hint">Everything far more detailed and alive: light through the clouds, glowing air, petals on the breeze, deeper glass. The preview shows it.</small></span><input class="toggle" type="checkbox" data-k="heavenly"></label>
+        <div class="f"><span>Accent colour</span><div class="swatch-seg" id="accent"></div><small>Auto takes the colour of whatever's picked.</small></div>
+        <div class="two">
+          <div class="f"><span>Text size</span><div class="seg" data-seg="text"><button type="button" data-v="normal">Normal</button><button type="button" data-v="large">Large</button><button type="button" data-v="larger">Larger</button></div></div>
+          <div class="f"><span>Clock</span><div class="seg" data-seg="clock"><button type="button" data-v="auto">Auto</button><button type="button" data-v="12">12 hours</button><button type="button" data-v="24">24 hours</button></div></div>
+        </div>
+        <div class="two">
+          <div class="f"><span>Temperatures</span><div class="seg" data-seg="units"><button type="button" data-v="f">°F</button><button type="button" data-v="c">°C</button></div></div>
+          <div class="f"><span>Night light</span><div class="seg" data-seg="nightlight"><button type="button" data-v="off">Off</button><button type="button" data-v="night">At night</button><button type="button" data-v="on">Always</button></div></div>
+        </div>
+        <div class="two">
+          <label class="sw"><span><b>Less motion</b><small class="hint">Calmer screens: no dissolves, no flying tiles.</small></span><input class="toggle" type="checkbox" data-k="lessMotion"></label>
+          <label class="sw"><span><b>Sounds</b><small class="hint">Clicks and chimes as you move around.</small></span><input class="toggle" type="checkbox" data-k="sounds"></label>
+        </div>
         <div class="two">
           <div class="f"><span>Start in</span><div class="seg" data-seg="start"><button type="button" data-v="desktop">The desktop</button><button type="button" data-v="gaming">DiceTV</button><button type="button" data-v="home">Dice Home</button></div></div>
           <div class="f"><span>Start-up animation</span><div class="seg" data-seg="boot"><button type="button" data-v="full">Full</button><button type="button" data-v="quick">Quick</button><button type="button" data-v="off">Off</button></div></div>
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>DiceTV</legend>
+        <div class="two">
+          <label class="f"><span>Your live TV service</span><select data-k="tv.live" id="tvlive" class="wide"></select><small>Channels you don't have another way open in its app.</small></label>
+          <label class="f"><span>Antenna tuner</span><input type="text" data-k="tv.tuner" maxlength="80" placeholder="hdhomerun.local"><small>Free local channels from an antenna, if you have a tuner like an HDHomeRun.</small></label>
+        </div>
+        <div class="f"><span>Apps you pay for</span><div class="chips" id="tvhave"></div><small>Tried first when a channel or a game is on more than one.</small></div>
+        <div class="two">
+          <label class="sw"><span><b>Deuce</b><small class="hint">The voice assistant: hold the remote's microphone button and talk.</small></span><input class="toggle" type="checkbox" data-k="deuce.on"></label>
+          <label class="sw"><span><b>Deuce talks back</b><small class="hint">Says its answers out loud.</small></span><input class="toggle" type="checkbox" data-k="deuce.talk"></label>
+        </div>
+        <div class="f"><span>Ambient screen</span><div class="seg" data-seg="ambient.after"><button type="button" data-v="5">After 5 min</button><button type="button" data-v="10">10 min</button><button type="button" data-v="30">30 min</button><button type="button" data-v="0">Never</button></div><small>A big clock over your world when nothing's open.</small></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Desktop</legend>
+        <div class="two">
+          <label class="sw"><span><b>Snap windows</b><small class="hint">Drag a window to an edge to fill that half.</small></span><input class="toggle" type="checkbox" data-k="desk.snap"></label>
+          <label class="sw"><span><b>Hot corner</b><small class="hint">The top-left corner shows every window.</small></span><input class="toggle" type="checkbox" data-k="desk.hotCorner"></label>
+        </div>
+        <label class="sw"><span><b>Home on the desktop</b><small class="hint">The Home folder in the corner of the desktop.</small></span><input class="toggle" type="checkbox" data-k="desk.homeIcon"></label>
       </fieldset>
 
       <fieldset>
@@ -327,7 +371,7 @@
     <div><dt>The password</dt><dd>The user is dice, password dice, until you set one above or in Settings, You.</dd></div>
     <div><dt>Your passwords</dt><dd>They never leave this computer. After the first start, DiceOS wipes them out of dice.json and renames it dice-applied.json.</dd></div>
     <div><dt>Trying it first</dt><dd>The <a href="/dice/try">emulator</a> starts DiceOS with your settings on a pretend Pi or PC, right here in the browser, and shows what it did with them.</dd></div>
-    <div><dt>Changing things later</dt><dd>Use Settings in DiceOS, or drop a new dice.json onto the card or a USB stick and restart.</dd></div>
+    <div><dt>Changing things later</dt><dd>In DiceOS, Settings, This computer: the computer's name, time zone, keyboard, SSH and the rest, or Use a dice.json to take a whole new one. It can save its own as dice.json too, to set up another computer the same way.</dd></div>
     <div><dt>Just curious?</dt><dd><a href="/diceweb/">DiceWeb</a> is the same thing in your browser: the desktop, Music, Notes, Files and a pretend Terminal.</dd></div>
   </dl>
 </section>
@@ -338,6 +382,7 @@
 <script src="/diceweb/js/die3d.js"></script>
 <script src="/diceweb/js/gfx.js"></script>
 <script src="/diceweb/js/scape.js"></script>
+<script src="/diceweb/js/heaven.js"></script>
 <script>
 (function () {
   const G = window.DiceGfx, $ = (s) => document.querySelector(s);
@@ -353,7 +398,9 @@
   const KB = [['us', 'English (US)'], ['gb', 'English (UK)'], ['us(dvorak)', 'Dvorak'], ['us(colemak)', 'Colemak'], ['de', 'German'], ['fr', 'French'], ['es', 'Spanish'], ['it', 'Italian'], ['pt', 'Portuguese'], ['br', 'Portuguese (Brazil)'], ['se', 'Swedish'], ['no', 'Norwegian'], ['dk', 'Danish'], ['fi', 'Finnish'], ['ch', 'Swiss'], ['jp', 'Japanese']];
   const kbGuess = { GB: 'gb', DE: 'de', AT: 'de', FR: 'fr', ES: 'es', IT: 'it', PT: 'pt', BR: 'br', SE: 'se', NO: 'no', DK: 'dk', FI: 'fi', CH: 'ch', JP: 'jp' }[region] || 'us';
   const cfg = { dice: 1, name: '', computer: '', password: '', wifi: { ssid: '', password: '', country: region, hidden: false }, timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
-    keyboard: kbGuess, look: 'auto', world: 'hills', buddy: 'cubby', start: 'desktop', boot: 'full', screen: { rotate: 0 }, homeassistant: '', suite: [], ssh: false, updates: true };
+    keyboard: kbGuess, look: 'auto', world: 'hills', buddy: 'cubby', start: 'desktop', boot: 'full', screen: { rotate: 0 }, homeassistant: '', suite: [], ssh: false, updates: true,
+    heavenly: false, accent: 'auto', text: 'normal', clock: 'auto', units: region === 'US' ? 'f' : 'c', nightlight: 'off', lessMotion: false, sounds: true,
+    tv: { live: '', tuner: '', have: [] }, deuce: { on: true, talk: true }, ambient: { after: 10 }, desk: { snap: true, hotCorner: true, homeIcon: true } };
   try { const saved = JSON.parse(localStorage.getItem('dice-setup') || 'null'); if (saved) { delete saved.password; if (saved.wifi) delete saved.wifi.password; deep(cfg, saved); } } catch (e) { /* start fresh */ }
   function deep(a, b) { for (const k in b) { if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]) && a[k] && typeof a[k] === 'object') deep(a[k], b[k]); else a[k] = b[k]; } }
   const get = (k) => k.split('.').reduce((o, x) => (o ? o[x] : undefined), cfg);
@@ -375,6 +422,27 @@
   if (![...tz.options].some((o) => o.value === cfg.timezone)) tz.add(new Option(cfg.timezone, cfg.timezone));
   const kb = $('#kb');
   KB.forEach(([v, n]) => kb.add(new Option(n, v)));
+  const LIVE = [['', 'None'], ['ytv', 'YouTube TV'], ['hululive', 'Hulu + Live TV'], ['fubo', 'Fubo'], ['directv', 'DirecTV Stream'], ['sling', 'Sling TV'], ['optimum', 'Optimum TV'], ['fios', 'Fios TV'], ['xfinity', 'Xfinity Stream'], ['spectrum', 'Spectrum TV']];
+  LIVE.forEach(([v, n]) => $('#tvlive').add(new Option(n, v)));
+  [['dazn', 'DAZN'], ['espn', 'ESPN'], ['foxone', 'FOX One'], ['peacock', 'Peacock'], ['paramount', 'Paramount+'], ['hbomax', 'HBO Max'], ['prime', 'Prime Video'], ['netflix', 'Netflix'], ['disney', 'Disney+'], ['hulu', 'Hulu'], ['apple', 'Apple TV'], ['nba', 'NBA League Pass'], ['nfl', 'NFL+'], ['mlb', 'MLB.TV']].forEach(([id, n]) => {
+    const l = document.createElement('label');
+    l.innerHTML = '<input type="checkbox">';
+    l.appendChild(document.createTextNode(n));
+    const box = l.querySelector('input');
+    box.checked = cfg.tv.have.includes(id);
+    box.addEventListener('change', () => { cfg.tv.have = cfg.tv.have.filter((x) => x !== id).concat(box.checked ? [id] : []); changed(); });
+    $('#tvhave').appendChild(l);
+  });
+  const acc = $('#accent');
+  ['auto', '#ff707a', '#f5a623', '#f5c431', '#8fd16a', '#2bc4b2', '#3a9be8', '#7c9cff', '#d39cf5', '#ff7ac8'].forEach((c) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.dataset.v = c; b.setAttribute('aria-label', c === 'auto' ? 'Auto' : c);
+    if (c === 'auto') { b.className = 'auto'; b.textContent = 'Auto'; } else b.style.setProperty('--sw', c);
+    b.addEventListener('click', () => { set('accent', c); markAcc(); });
+    acc.appendChild(b);
+  });
+  const markAcc = () => acc.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === cfg.accent)));
+  markAcc();
   document.querySelectorAll('[data-k]').forEach((el) => {
     const k = el.dataset.k, v = get(k);
     if (el.type === 'checkbox') el.checked = !!v; else el.value = v == null ? '' : v;
@@ -435,6 +503,9 @@
   const previewNight = () => (cfg.look === 'night' ? true : cfg.look === 'day' ? false : isNight());
   let world = null, wallKey = '', lastDraw = 0;
   const wall = $('#wall'), wg = wall.getContext('2d');
+  // Heavenly looks: the same light DiceOS paints, over the little screen
+  const hvc = document.createElement('canvas'); hvc.id = 'wall-hv'; wall.after(hvc);
+  const hv = window.DiceHeaven ? new DiceHeaven(hvc) : null;
   function paintWall(now, force) {
     const r = wall.getBoundingClientRect();
     // the same calm landscape DiceOS draws behind its desktop
@@ -445,6 +516,12 @@
     if (!force && now - lastDraw < 60) return;
     lastDraw = now;
     world.draw(wg, now / 1000, still);
+    hvc.hidden = !(hv && cfg.heavenly);
+    if (hv && cfg.heavenly) {
+      const sun = world.sunAt ? { x: world.sunAt.x / W, y: world.sunAt.y / H, r: world.sunAt.r * cell } : null;
+      hv.setup({ W: r.width, H: r.height, scale: 1, night: previewNight(), world: cfg.world, under: cfg.world === 'deep', sun, horizon: (world.hy || H * 0.6) / H });
+      hv.draw(now / 1000, still);
+    }
   }
   function preview() {
     const night = previewNight();
@@ -495,6 +572,11 @@
     if (!c.password) delete c.password;
     if (!c.wifi.ssid) delete c.wifi;
     for (const k of ['name', 'computer', 'homeassistant']) if (!c[k]) delete c[k];
+    // as DiceOS reads them
+    c.looks = c.heavenly ? 'heaven' : 'normal'; delete c.heavenly;
+    c.motion = c.lessMotion ? 'less' : 'full'; delete c.lessMotion;
+    c.ambient = { after: +c.ambient.after };
+    if (!c.tv.live) c.tv.live = null;
     return c;
   }
   // the emulator reads what you've picked from this browser; passwords stay here, it's only told whether you typed them

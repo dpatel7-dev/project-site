@@ -523,10 +523,10 @@
     const pick = D.state.amb || 'world', ch = pick !== 'world' && pick !== 'dark' && D.channels && D.channels.LIST.some((c) => c.id === pick);
     const cv = amb.querySelector('.am-bg'), cell = ch ? D.channels.cell() : D.scapeCell ? D.scapeCell() : 3;
     amb.classList.toggle('am-dark', pick === 'dark');
-    if (pick === 'dark') return;
+    if (pick === 'dark') { A.scene = null; return; }
     const photos = pick === 'photos' && D.drive && D.drive.on() ? D.drive.photos() : null;
     amb.classList.toggle('am-photos', !!(photos && photos.length));
-    if (photos && photos.length) return photoStep(photos, now);
+    if (photos && photos.length) { A.scene = null; return photoStep(photos, now); }
     const Wd = Math.ceil(innerWidth / cell), Hd = Math.ceil(innerHeight / cell), night = D.night(), key = Wd + 'x' + Hd + night + D.state.world + pick;
     if (key !== sceneKey) {
       sceneKey = key; cv.width = Wd; cv.height = Hd; cv.style.width = Wd * cell + 'px'; cv.style.height = Hd * cell + 'px';
@@ -534,7 +534,9 @@
       else scene = new G.Scape({ world: D.state.world || 'hills', night, W: Wd, H: Hd, seed: 'ambient' });
       scene.last = 0;
     }
-    if (now - (scene.last || 0) < 1000 / Math.min(ch ? 30 : 20, D.state.fps || 20)) return;
+    // (Heavenly looks puts its light over your world here too: js/heaven.js)
+    A.el = amb; A.scene = ch ? null : scene; A.cell = cell;
+    if (now - (scene.last || 0) < 1000 / Math.min(ch || D.state.looks === 'heaven' ? 30 : 20, D.state.fps || 30)) return;
     scene.last = now;
     scene.draw(cv.getContext('2d'), now / 1000, D.reduced());
   };

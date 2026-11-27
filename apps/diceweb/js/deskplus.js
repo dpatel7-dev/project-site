@@ -226,6 +226,7 @@
       ['DiceTV', 'tv big screen couch controller', 'tv', () => Desk.exit()],
       ['Dice Home', 'wall clock home assistant', 'home', () => D.wall && D.wall.enter()],
     ];
+    if (D.sys && D.inputs) A.push(['Inputs', 'kvm switch hdmi displayport usb-c input source screen monitor tv playstation xbox laptop', 'tv', () => D.inputs.open()]);
     if (D.sys) A.push(['Take a screenshot', 'screen capture picture print', 'camera', () => D.tools.screenshot()], ['Restart the desktop', 'reload', 'restart', () => D.sys.power('restart-desktop')], ['Shut down', 'power off', 'power', () => D.sys.power('shutdown')]);
     (D.settingsSections ? D.settingsSections() : Object.entries(NAMES)).forEach(([k, n]) => A.push(['Settings: ' + n, 'settings ' + k + ' ' + n.toLowerCase(), 'gear', () => D.launch('settings', { arg: k })]));
     return A.map(([name, words, icon, run]) => ({ kind: 'Do it', name, words, icon, run }));

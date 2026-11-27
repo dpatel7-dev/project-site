@@ -11,7 +11,8 @@
   if (D.sys) {
     SECTIONS.splice(2, 0, ['wifi', 'Wi-Fi', 'wifi', '#2bc4b2'], ['bt', 'Bluetooth', 'bt', '#3a7bd5'], ['display', 'Screen', 'desktop', '#7cc4ff']);
     SECTIONS.splice(SECTIONS.findIndex((x) => x[0] === 'storage'), 0, ['system', 'Power and updates', 'restart', '#ef6a1f']);
-  }
+    SECTIONS.splice(SECTIONS.findIndex((x) => x[0] === 'about'), 0, ['device', 'This computer', 'desktop', '#5b6ee0']);
+  } else SECTIONS.splice(SECTIONS.findIndex((x) => x[0] === 'about'), 0, ['device', 'Your settings file', 'box', '#5b6ee0']);
   D.settingsSections = () => SECTIONS.map((s) => [s[0], s[1]]); // for the Dice Bar
   const gb = (n) => (n / 1073741824).toFixed(1) + ' GB';
 
@@ -103,6 +104,10 @@
       },
       look() {
         pane.appendChild(h('<h2>Look</h2>'));
+        // Heavenly looks: far more detail and movement, everywhere
+        const hv = h('<div class="srow heaven-row"><div><b>Heavenly looks</b><span>Everything far more detailed and alive: light through the clouds, glowing air, deeper glass and finer worlds. It asks more of the computer' + (D.sys ? ' (a Raspberry Pi 5 is fine)' : '') + '.</span></div></div>');
+        hv.appendChild(sw(D.state.looks === 'heaven', (v) => { D.set('looks', v ? 'heaven' : 'normal'); D.prefs.live(); }, 'look:heaven', 'Heavenly looks'));
+        pane.appendChild(hv);
         pane.appendChild(h('<p class="note">Light by day and dark at night, worked out from the time of sunrise and sunset. Or pick one to keep.</p>'));
         pane.appendChild(row('Day or night', D.state.look === 'auto' ? 'It\'s ' + (D.night() ? 'night' : 'day') + ' now.' : '', seg([['auto', 'Follow the clock'], ['day', 'Day'], ['night', 'Night']], D.state.look, (v) => { D.set('look', v); D.applyLook(true); }, 'look')));
         pane.appendChild(row('Brightness', 'Dims the whole screen.', ui.slider(D.state.bright, 0.3, 1, (v) => { D.set('bright', v); D.applyBright(); }, 'look:bright', 'Brightness')));
@@ -131,6 +136,20 @@
         wr.style.cssText = 'flex-direction:column;align-items:stretch';
         wr.appendChild(worlds);
         pane.appendChild(wr);
+        // your colour, the size of words, the clock
+        const acc = h('<div class="swatches" data-row role="group" aria-label="Accent colour"></div>');
+        const paintAcc = () => acc.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.c === (D.state.accent || 'auto'))));
+        [['auto', 'Follows what\'s picked']].concat(D.prefs.ACCENTS.map((c) => [c, c])).forEach(([c, label]) => {
+          const b = h('<button data-nav data-key="look:acc:' + c + '" data-c="' + c + '" aria-label="' + esc(label) + '"' + (c === 'auto' ? ' class="auto"' : ' style="--sw:' + c + '"') + '>' + (c === 'auto' ? 'Auto' : '') + '</button>');
+          b.onclick = () => { D.set('accent', c); if (c === 'auto' && D.hero && D.hero.app) document.documentElement.style.setProperty('--c', D.hero.app.c); D.prefs.live(); paintAcc(); };
+          acc.appendChild(b);
+        });
+        paintAcc();
+        pane.appendChild(row('Accent colour', 'Auto takes the colour of whatever\'s picked. Or keep one.', acc));
+        pane.appendChild(row('Text size', 'Bigger words everywhere, for a TV across the room.', seg([['normal', 'Normal'], ['large', 'Large'], ['larger', 'Larger']], D.state.text || 'normal', (v) => { D.set('text', v); D.prefs.live(); }, 'look:text')));
+        pane.appendChild(row('Clock', '12 hours (7:30) or 24 hours (19:30). Auto goes by your language.', seg([['auto', 'Auto'], ['12', '12 hours'], ['24', '24 hours']], D.state.clock || 'auto', (v) => { D.set('clock', v); D.emit('prefs'); }, 'look:clock')));
+        const un = (D.state.st && D.state.st.units) || (/^en-US$/i.test(navigator.language || '') ? 'f' : 'c');
+        pane.appendChild(row('Temperatures', 'For the weather everywhere.', seg([['f', '°F'], ['c', '°C']], un, (v) => { D.state.st = Object.assign({}, D.state.st, { units: v }); D.save(); D.emit('prefs'); }, 'look:units')));
         pane.appendChild(row('Home on the desktop', 'The Home folder in the top corner of the desktop.', sw(D.state.deskIcons !== 'none', (v) => D.set('deskIcons', v ? 'home' : 'none'), 'look:icons', 'Home on the desktop')));
         pane.appendChild(row('Less motion', 'Calmer screens: no dissolves, no flying tiles.', sw(D.state.motion === 'less', (v) => { D.set('motion', v ? 'less' : 'full'); document.documentElement.dataset.motion = v ? 'less' : 'full'; }, 'look:motion', 'Less motion')));
       },
@@ -246,6 +265,68 @@
         const tr = row('The microphone button', 'If holding it doesn\'t bring Deuce up, teach DiceOS which button it is.', teach);
         tr.firstChild.appendChild(hint);
         pane.appendChild(tr);
+      },
+      device() {
+        // this computer's own details (DiceOS), and dice.json in and out (everywhere)
+        pane.appendChild(h('<h2>' + (D.sys ? 'This computer' : 'Your settings file') + '</h2>'));
+        const files = h('<div class="dca-btns"><button class="b small" data-nav data-key="dev:use">' + D.glyph('box', 2) + 'Use a dice.json</button><button class="b small" data-nav data-key="dev:save">' + D.glyph('copy', 2) + 'Save as dice.json</button></div>');
+        let dev = null;
+        files.querySelector('[data-key="dev:save"]').onclick = async () => {
+          const r = await D.prefs.save(dev);
+          D.toast(r.ok ? { icon: 'box', c: '#4fc16b', title: 'Saved dice.json', text: 'In ' + r.where + '. Passwords aren\'t in it. Use it to set up another computer the same way.' } : { icon: 'box', c: '#ff4d5e', title: 'Couldn\'t save it', text: '' });
+        };
+        files.querySelector('[data-key="dev:use"]').onclick = async () => {
+          const cfg = await D.prefs.pick();
+          if (!cfg) return D.toast({ icon: 'box', c: '#ff4d5e', title: 'That isn\'t a dice.json', text: 'Make one on the website, or save one here.' });
+          const n = D.prefs.apply(cfg);
+          let msg = n + (n === 1 ? ' setting' : ' settings') + ' changed.';
+          if (D.sys) {
+            const r = await D.sys.post('/api/device', cfg);
+            if (r && r.done) msg = [msg].concat(r.done).concat((r.problems || []).map((p) => 'Heads up: ' + p)).join(' ');
+          }
+          D.toast({ icon: 'box', c: '#4fc16b', title: 'Used your dice.json', text: msg });
+          show('device');
+        };
+        pane.appendChild(row('dice.json', D.sys ? 'Your settings in one file: use one made on the website to change things now, or save this computer\'s to set up another the same way.' : 'Your settings in one file: save them, or use one made on the website. It also sets up a computer with DiceOS.', files));
+        if (!D.sys) return;
+        const box = h('<div class="spane" style="padding:0;gap:6px"><p class="muted">Asking this computer…</p></div>');
+        pane.appendChild(box);
+        const change = async (what, label) => {
+          const r = await D.sys.post('/api/device', what);
+          const bad = r && r.problems && r.problems.length;
+          D.toast(r && r.ok !== false && !bad ? { icon: 'desktop', c: '#4fc16b', title: label, text: (r.done || []).join('. ') } : { icon: 'desktop', c: '#ff4d5e', title: 'Not changed', text: bad ? r.problems.join(' ') : (r && r.error) || '' });
+          if (r && r.device) paint(r.device);
+        };
+        const KB = [['us', 'English (US)'], ['gb', 'English (UK)'], ['us(dvorak)', 'Dvorak'], ['us(colemak)', 'Colemak'], ['de', 'German'], ['fr', 'French'], ['es', 'Spanish'], ['it', 'Italian'], ['pt', 'Portuguese'], ['br', 'Portuguese (Brazil)'], ['se', 'Swedish'], ['no', 'Norwegian'], ['dk', 'Danish'], ['fi', 'Finnish'], ['ch', 'Swiss'], ['jp', 'Japanese']];
+        const COUNTRIES = ['US', 'CA', 'GB', 'IE', 'AU', 'NZ', 'IN', 'DE', 'FR', 'ES', 'IT', 'NL', 'BE', 'CH', 'AT', 'SE', 'NO', 'DK', 'FI', 'PL', 'PT', 'BR', 'MX', 'JP', 'KR', 'SG', 'ZA', 'AE'];
+        const sel = (key, opts, value, label) => { const s = h('<select class="sel" data-nav data-key="' + key + '" aria-label="' + esc(label) + '"></select>'); opts.forEach(([v, n]) => s.add(new Option(n, v))); if (![...s.options].some((o) => o.value === value) && value) s.add(new Option(value, value)); s.value = value || ''; return s; };
+        function paint(d) {
+          dev = d;
+          if (cur !== 'device') return;
+          box.replaceChildren();
+          if (!d || d.ok === false) { box.appendChild(h('<p class="note">This computer\'s helper didn\'t answer.</p>')); return; }
+          const nm = h('<span class="dca-btns"><input type="text" data-nav data-key="dev:name" maxlength="40" aria-label="The computer\'s name"><button class="b small" data-nav data-key="dev:namego">Save</button></span>');
+          nm.querySelector('input').value = d.computer;
+          nm.querySelector('button').onclick = () => { const v = nm.querySelector('input').value.trim().toLowerCase(); if (!/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(v)) return D.toast({ icon: 'desktop', c: '#ff4d5e', title: 'That name won\'t work', text: 'Small letters, numbers and dashes, like dice-tv.' }); change({ computer: v }, 'Now called ' + v); };
+          box.appendChild(row('The computer\'s name', 'On your network: other computers find it as ' + esc(d.computer) + '.local.', nm));
+          const zones = (Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : [d.timezone]).map((z) => [z, z.replace(/_/g, ' ')]);
+          const tz = sel('dev:tz', zones, d.timezone, 'Time zone');
+          tz.onchange = () => change({ timezone: tz.value }, 'Time zone changed');
+          box.appendChild(row('Time zone', 'Now ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: d.timezone }) + ' there.', tz));
+          const kb = sel('dev:kb', KB, d.keyboard, 'Keyboard');
+          kb.onchange = () => change({ keyboard: kb.value }, 'Keyboard changed').then(() => D.toast({ icon: 'keys', c: '#7c9cff', title: 'Restart the desktop to type with it', text: 'Screen, Restart the desktop. (Nothing closes that isn\'t saved.)' }));
+          box.appendChild(row('Keyboard', 'The layout of the keys you type with.', kb));
+          const names = Intl.DisplayNames ? new Intl.DisplayNames([navigator.language || 'en'], { type: 'region' }) : null;
+          const wc = sel('dev:wc', [['', 'Not set']].concat(COUNTRIES.map((c) => [c, names ? names.of(c) : c]).sort((a, b) => a[1].localeCompare(b[1]))), d.wifi_country, 'Wi-Fi country');
+          wc.onchange = () => wc.value && change({ wifi: { country: wc.value } }, 'Wi-Fi country set');
+          box.appendChild(row('Wi-Fi country', 'Wi-Fi rules differ by country; some channels only work with it set.', wc));
+          const ssh = sw(!!d.ssh, (v) => change({ ssh: v }, v ? 'SSH is on' : 'SSH is off'), 'dev:ssh', 'SSH');
+          const sr = row('SSH', d.password_set ? 'Sign in to this computer from another one: ssh ' + esc(d.user || 'dice') + '@' + esc(d.computer) + '.local' : 'Set a password of your own first (You, Password): the one DiceOS comes with is the same for everyone.', ssh);
+          if (!d.password_set && !d.ssh) ssh.disabled = true;
+          box.appendChild(sr);
+          box.appendChild(row('Automatic updates', 'Checks for a newer DiceOS once a week.', sw(!!d.updates, (v) => change({ updates: v }, v ? 'Automatic updates on' : 'Automatic updates off'), 'dev:up', 'Automatic updates')));
+        }
+        D.sys.get('/api/device').then(paint);
       },
       pads() {
         pane.appendChild(h('<h2>Controllers</h2>'));

@@ -188,7 +188,7 @@
     phase('think');
     sayEl.textContent = '';
     let it;
-    try { it = B.understand(text); } catch (e) { it = { kind: 'unknown', q: text }; }
+    try { it = B.understand(text, new Date(), { inputs: Object.values(D.state.inputNames || {}) }); } catch (e) { it = { kind: 'unknown', q: text }; }
     DU.last = it;
     try { await (DO[it.kind] || DO.unknown)(it); } catch (e) { say('Something went wrong doing that. Try again?'); }
   };

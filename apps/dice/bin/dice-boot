@@ -6,7 +6,9 @@ dice-boot: runs at every start-up, as root, before the desktop.
    drive, a PC's EFI partition, or a USB stick, it applies it: your name, the computer's name, password,
    Wi-Fi, time zone, keyboard, look, screen, apps, SSH and updates. Passwords
    are then wiped from the file and it's renamed dice-applied.json, so it
-   only happens once. Drop a new dice.json on the card to change things again.
+   only happens once. Drop a new dice.json on the card to change things again,
+   or use one in Settings, This computer (diced calls apply() with it, or
+   `dice-boot --apply file.json` does the same from Terminal).
    Only USB sticks and other removable drives are looked at, never the
    computer's own disks, and they're opened read-only until a dice.json turns up.
 2. Starts the DiceOS desktop for the person who uses this computer.
@@ -26,7 +28,9 @@ SETTINGS = '/etc/dice/settings.json'
 PLACES = ['/boot/firmware/dice.json', '/boot/dice.json', '/boot/efi/dice.json', '/etc/dice/dice.json']
 APPLIED = '/var/lib/dice/applied'  # fingerprints of files that couldn't be tidied (read-only sticks)
 SITE = os.environ.get('DICE_SITE', 'https://djp7.pythonanywhere.com')
-KEEP = ('name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh')
+KEEP = ('name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh',
+        # how DiceOS looks and behaves (DiceWeb takes these; see DiceOS's README for each)
+        'looks', 'accent', 'text', 'clock', 'units', 'sounds', 'nightlight', 'motion', 'ambient', 'deuce', 'tv', 'desk')
 
 
 def log(msg):
@@ -154,10 +158,13 @@ def wait_for_networkmanager(seconds=40):
     return False
 
 
-def apply(cfg):
+def apply(cfg, quiet=False):
+    """quiet: from Settings (it shows what happened itself), so no welcome next start."""
     done, problems = [], []
     who = user()
     settings = {k: cfg[k] for k in KEEP if k in cfg}
+    before = load(SETTINGS) if os.path.isfile(SETTINGS) else {}
+    before = before or {}
 
     # the computer's name
     host = str(cfg.get('computer') or '').strip().lower()
@@ -179,6 +186,9 @@ def apply(cfg):
     if pw and who:
         code, out = sh(['chpasswd'], input='%s:%s\n' % (who, pw))
         (done if code == 0 else problems).append('Set your password' if code == 0 else 'The password couldn\'t be set: ' + out)
+        if code == 0:
+            settings['password_set'] = True
+    pw_ok = (pw and settings.get('password_set')) or before.get('password_set')
 
     # Wi-Fi
     wifi = cfg.get('wifi') or {}
@@ -230,7 +240,7 @@ def apply(cfg):
 
     # SSH: only with a password set, or anyone could get in with the default one
     if 'ssh' in cfg:
-        if cfg['ssh'] and pw:
+        if cfg['ssh'] and pw_ok:
             sh(['systemctl', 'enable', '--now', 'ssh'])
             done.append('Turned on SSH')
         elif cfg['ssh']:
@@ -241,8 +251,10 @@ def apply(cfg):
     # automatic updates
     if 'updates' in cfg:
         sh(['systemctl', 'enable' if cfg['updates'] else 'disable', '--now', 'dice-update.timer'])
+        done.append('Turned automatic updates ' + ('on' if cfg['updates'] else 'off'))
 
-    settings['welcome'] = {'name': cfg.get('name') or '', 'done': done, 'problems': problems, 'at': int(time.time())}
+    if not quiet:
+        settings['welcome'] = {'name': cfg.get('name') or '', 'done': done, 'problems': problems, 'at': int(time.time())}
     save_settings(settings)
 
     # the Terminal apps, in the background once the internet is up
@@ -281,6 +293,15 @@ def scrub(path, cfg, mnt):
 def main():
     if os.geteuid() != 0:
         sys.exit('dice-boot needs to run as root (it runs by itself at start-up).')
+    # `dice-boot --apply file.json`: use a dice.json now, from anywhere (it isn't changed)
+    if '--apply' in sys.argv:
+        i = sys.argv.index('--apply')
+        cfg = load(sys.argv[i + 1]) if i + 1 < len(sys.argv) else None
+        if cfg is None:
+            sys.exit('Give it a dice.json: dice-boot --apply /path/to/dice.json')
+        done, problems = apply(cfg)
+        print(json.dumps({'done': done, 'problems': problems}, indent=2))
+        return
     path, mnt = find()
     if path and fingerprint(path) in read(APPLIED).split():
         log('this dice.json was already used')

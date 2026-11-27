@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.0
+
+- Heavenly looks (Settings, Look, or in dice.json): everything far more detailed and alive. Sunbeams fan down through the clouds (moonbeams at night, shafts of light under the sea), lit clouds drift in layers, motes of light rise and glint, petals, leaves or snow ride the breeze, cloud shadows cross the land, and at night there's starlight, aurora and the odd shooting star. The worlds are drawn half again as finely, the glass is deeper and catches the light, and what's picked breathes a soft halo (it doesn't jump). On DiceTV, the desktop and the ambient screen. It eases off by itself if the computer can't keep up, and Less motion keeps one still, lit moment.
+- Inputs on a PC: DiceOS switches a screen to its other inputs (HDMI, DisplayPort, USB-C) over DDC/CI, so a PC is a KVM switch too; Esc or Home brings DiceOS back. A PC with a USB HDMI-CEC adapter can switch a TV as well. "Get Deskflow" shares this keyboard and mouse with the other computer. Inputs is in Quick access and the Dice Bar now, on the desktop too.
+- Inputs can have names of your own ("Work laptop"), and Deuce knows them: "switch to my work laptop", "switch the screen to DisplayPort".
+- This computer (Settings, on DiceOS): change the computer's name, time zone, keyboard, Wi-Fi country, SSH and automatic updates after installing. SSH waits for a password of your own.
+- dice.json both ways: use one in Settings to change things now, or save this computer's settings as one (no passwords) to set up another the same way. In a browser, it's in Settings, Your settings file.
+- More to choose, in Settings and in dice.json: an accent colour of your own, text size (Large and Larger, for across the room), a 12 or 24-hour clock everywhere, °F or °C, and the Look ones above.
+- dice.json carries everything else too: sounds, Night light, Less motion, the ambient screen, Deuce (on, talks back), TV setup (live TV service, apps you pay for, antenna tuner) and the desktop (snap windows, hot corner, Home on the desktop).
+
 ## 2.1.0
 
 - Deuce, Dice's voice assistant (two pips, like the deuce on a die):
