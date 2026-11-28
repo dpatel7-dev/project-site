@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.4.0
+
+- Deuce has a brain: a language model that runs on the computer itself (nothing you say leaves it). On DiceOS, Settings, Deuce sets it up in one go and picks the model for the computer: Qwen 3.5 in five sizes, from Quick (2B) for small computers and Smart (4B) for a Raspberry Pi 5 with 8 GB, up to Smartest (35B) for a big PC. In Chrome 148 or newer, Deuce uses Chrome's built-in model instead.
+- With it, Deuce understands whatever you say, however you put it, and keeps up with a conversation ("and tomorrow?"). It does things on the computer (anything Deuce could already do, now from any wording, and several at once), looks things up on the web and answers with its sources, reads the page or window in front of you ("what's this page about?"), writes things for you (an email, a message, a plan) with Copy and Save to Notes, and works out sums exactly. You see each step it takes.
+- The quick, sure things ("volume 30", "open Netflix") still happen instantly, without the brain. Settings, Deuce can send everything to the brain, or nothing.
+- Deuce knows more without the brain too: sums and conversions ("15% of 80", "5 miles in km", "70 F in C"), the time in other places ("what time is it in Tokyo"), how long until a day ("how many days until Christmas", "days until June 18"), a briefing for your day ("good morning"), and two things at once ("turn on dark mode and play some music").
+- The desktop looks like DiceTV now, with a Mac's way of working: the menus and the clock in two glass pills along the top, DiceTV's big app tiles in the dock with a name when you point at one and die pips under what's open (two under the one you're in), glossy window buttons, and each window's app tile and name in its title bar, tinted with the app's colour.
+- App icons draw their pictures bigger, like DiceTV's tiles.
+- Fixed: Files on a brand-new computer couldn't list the Trash. Settings, Look's row of ambient-screen choices could push the page wider than the window.
+
 ## 2.3.0
 
 - Traced mode (Settings, Look; it used to be Heavenly looks, and that setting carries over): every world is painted by hand, pixel by pixel. The sky comes in dithered bands with brush strokes and high wisps, the sun in stepped rings, the moon with the Milky Way behind it. The land is laid in with two sizes of brush, warm where the light hits and cool in the shade, and an ink line is traced round everything that stands in front of something else.

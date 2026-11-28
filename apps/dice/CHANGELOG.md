@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.4.0
+
+- Deuce's brain: diced sets up Ollama (from ollama.com, as a service listening only on 127.0.0.1, one model loaded at a time) with `bin/dice-brain`, picks a Qwen 3.5 model for the computer (2B to 35B, by memory, graphics card and whether it's a Pi), fetches it with progress, and keeps it loaded. `/api/brain` shows and changes it; `/api/brain/chat` passes Deuce's conversation and tools to the model and streams the answer back. Uninstalling DiceOS takes it away too.
+- `/api/search` and `/api/read`, for Deuce's brain to look things up. Reading refuses addresses on this computer or your network.
+- zstd is installed (Ollama's download is packed with it).
+- DiceWeb 2.4.0: Deuce's brain, a desktop that looks like DiceTV with a Mac's way of working, and more Deuce knows without the brain.
+
 ## 2.3.0
 
 - Shield: blocks ads and trackers for the whole computer through a block in /etc/hosts (a list of about 360 built in, and StevenBlack's list once a week), and inside SereneTab with its own extension (`shield/`, Manifest V3, declarativeNetRequest), which also cleans up YouTube's ads. `/api/shield` shows what it kept out and turns it on, off, or off for a site.

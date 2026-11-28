@@ -152,7 +152,8 @@
   FS.move = (p, toDir) => into(p, toDir, false);
 
   // ---- the Trash ----------------------------------------------------------------------------------
-  const bin = () => { FS.tidyHome(); return L.walk(D.state.disk, home() + '/.Trash'); };
+  // the Trash folder (made if it isn't there yet, as on a brand-new disk)
+  const bin = () => { FS.tidyHome(); let b = L.walk(D.state.disk, home() + '/.Trash'); if (!b) { L.makeDir(D.state.disk, home() + '/.Trash'); b = L.walk(D.state.disk, home() + '/.Trash'); } return b || { kids: {} }; };
   FS.trash = function (p) {
     const { dir, name, path } = split(p);
     if (path === home() || path === home() + '/.Trash') err('Not your whole home folder.');

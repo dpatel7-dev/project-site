@@ -62,8 +62,8 @@
     box.innerHTML = '';
     Desk.PINS.filter((id) => D.app(id)).forEach((id) => {
       const app = D.app(id);
-      const b = h('<button class="pin" data-id="' + id + '" title="' + esc(app.name) + '" aria-label="' + esc(app.name) + '"></button>');
-      b.appendChild(mini(app, 34));
+      const b = h('<button class="pin" data-id="' + id + '" data-name="' + esc(app.name) + '" aria-label="' + esc(app.name) + '"></button>');
+      b.appendChild(mini(app, 48));
       b.onclick = () => { const w = Desk.wins.find((x) => x.id === id); if (w) { if (w.min || w !== Desk.top()) Desk.focus(w); else w.minimise(); } else Desk.open(id); };
       box.appendChild(b);
     });
@@ -147,9 +147,9 @@
       const n = Desk.wins.length;
       const W = Math.min(w, area.w - 40), H = Math.min(hh, area.h - 40);
       this.box = { x: Math.max(10, Math.round((area.w - W) / 2 + (n % 5) * 28 - 56)), y: Math.max(10, Math.round((area.h - H) / 2 + (n % 5) * 24 - 40)), w: W, h: H };
-      this.el = h('<section class="win glass" role="dialog" aria-label="' + esc(app.name) + '"><header><span class="wico"></span><b class="wt">' + esc(app.name) + '</b><span class="wbtns"><button class="wmin" aria-label="Minimise"></button><button class="wmax" aria-label="Maximise"></button><button class="wclose" aria-label="Close">' + D.glyph('close', 1) + '</button></span></header><div class="wbody"></div><span class="wgrip" aria-hidden="true"></span></section>');
+      this.el = h('<section class="win glass" role="dialog" style="--app:' + esc(app.c || '#7c9cff') + '" aria-label="' + esc(app.name) + '"><header><span class="wico"></span><b class="wt">' + esc(app.name) + '</b><span class="wbtns"><button class="wmin" aria-label="Minimise"></button><button class="wmax" aria-label="Maximise"></button><button class="wclose" aria-label="Close">' + D.glyph('close', 1) + '</button></span></header><div class="wbody"></div><span class="wgrip" aria-hidden="true"></span></section>');
       this.el._win = this;
-      this.el.querySelector('.wico').appendChild(mini(app, 16));
+      this.el.querySelector('.wico').appendChild(mini(app, 20));
       this.body = this.el.querySelector('.wbody');
       this.place();
       root.querySelector('.wins').appendChild(this.el);
@@ -157,8 +157,8 @@
       const def = id.startsWith('web:') ? D.webApp(app) : D.apps[id];
       const ctx = D.ctx(id, 'desk', { arg: opts.arg, win: this });
       this.inst = def.mount(this.body, ctx) || {};
-      this.task = h('<button class="task" title="' + esc(app.name) + '" aria-label="' + esc(app.name) + '"></button>');
-      this.task.appendChild(mini(app, 34));
+      this.task = h('<button class="task" data-name="' + esc(app.name) + '" aria-label="' + esc(app.name) + '"></button>');
+      this.task.appendChild(mini(app, 48));
       if (Desk.PINS.includes(id)) this.task.hidden = true; // pinned apps show a dot under their pin instead
       root.querySelector('.dsep').hidden = !Desk.wins.concat([this]).some((w) => !Desk.PINS.includes(w.id));
       this.task.onclick = () => { if (this.min || this !== Desk.top()) Desk.focus(this); else this.minimise(); };

@@ -41,9 +41,14 @@
   }
   const phase = (p) => { if (usePC()) return pc.phase(p); if (p === undefined) return el ? el.dataset.phase : ''; el.dataset.phase = p; };
   const heard = (t) => { if (usePC()) pc.heard(t); else heardEl.textContent = t; };
-  const status = (t) => { if (usePC()) pc.status(t); else sayEl.textContent = t; };
+  const status = (t) => { if (DU.capturing) return; if (usePC()) pc.status(t); else sayEl.textContent = t; };
+  DU.status = (t) => { if (usePC()) pc.status(t); else if (sayEl) { phase('think'); sayEl.textContent = t; } };
+  DU.pcPanel = () => (usePC() ? pc : null);
+  // words appearing as Deuce's brain thinks of them (not spoken until the end)
+  DU.stream = (t) => { if (usePC()) pc.stream(t); else if (sayEl) { phase('answer'); sayEl.textContent = t; } };
   DU.show = function () {
     if (usePC()) { pc.show(); return; }
+    if (!DU.on) D.emit('deuce-open');
     if (!el) build();
     if (D.ambient && D.ambient.on) D.ambient.exit();
     if (!DU.on) { DU.prev = D.nav.el; S.play('open'); }
@@ -69,6 +74,9 @@
   const later = (fn, ms) => { clearTimeout(laterT); laterT = setTimeout(fn, ms); };
   // say something (and out loud, if Deuce talks)
   function say(text, card) {
+    // Deuce's brain (js/deucemind.js) running a command: what it says goes back to the brain, cards still show
+    if (DU.capturing) { if (text) DU.capturing.said.push(text); if (card) DU.capturing.cards.push(card); return; }
+    DU.lastSaid = text;
     if (usePC()) { pc.say(text, card); talk(text); return; }
     phase('answer');
     sayEl.textContent = text;
@@ -78,6 +86,7 @@
     else if (DU.on) D.nav.focus(el.querySelector('.du-talk'));
     talk(text);
   }
+  DU.talk = (text) => talk(text);
   function talk(text) {
     if (!cfg().talk || !text) return;
     // DiceOS speaks it itself (so it's heard with an app on top, too)
@@ -202,10 +211,38 @@
     else { heardEl.textContent = text; sayEl.textContent = ''; }
     phase('think');
     let it;
-    try { it = B.understand(text, new Date(), { inputs: Object.values(D.state.inputNames || {}) }); } catch (e) { it = { kind: 'unknown', q: text }; }
+    const ctx = { inputs: Object.values(D.state.inputNames || {}) };
+    try { it = B.understand(text, new Date(), ctx); } catch (e) { it = { kind: 'unknown', q: text }; }
+    // two or more things at once, each one Deuce knows: do them in turn
+    if (['unknown', 'ask', 'web'].includes(it.kind) && B.split) {
+      const its = B.split(text, new Date(), ctx);
+      if (its) { DU.last = its[its.length - 1]; return DU.many(its); }
+    }
+    // Deuce's brain (a language model on this computer) takes what the rules don't understand,
+    // questions, follow-ups and anything said at length
+    if (DU.mind && (await DU.mind.wants(text, it))) { DU.last = it; return DU.mind.run(text, it); }
     DU.last = it;
     const fn = (usePC() && pc.DO[it.kind]) || DO[it.kind] || DO.unknown;
+    DU.lastSaid = '';
     try { await fn(it); } catch (e) { say('Something went wrong doing that. Try again?'); }
+    // the brain hears about it too, so "and tomorrow?" makes sense afterwards
+    if (DU.mind && DU.mind.note) DU.mind.note(text, DU.lastSaid);
+  };
+  // run an understood command and hand back what Deuce said about it (for the brain, and for "this and that")
+  DU.run = async function (it) {
+    const prev = DU.capturing, cap = DU.capturing = { said: [], cards: [] };
+    try { await ((usePC() && pc.DO[it.kind] && it.kind !== 'ask' && it.kind !== 'unknown' && it.kind !== 'help') ? pc.DO[it.kind] : DO[it.kind] || DO.unknown)(it); }
+    catch (e) { cap.said.push('That didn\'t work: ' + (e.message || 'something went wrong') + '.'); }
+    finally { DU.capturing = prev; }
+    return cap;
+  };
+  DU.many = async function (its) {
+    const said = [], cards = [];
+    for (const it of its) { const r = await DU.run(it); said.push(...r.said); cards.push(...r.cards); }
+    const box = cards.length ? h('<div class="du-many"></div>') : null;
+    cards.forEach((c) => box.appendChild(c));
+    say(said.join(' ') || 'Done.', box);
+    if (DU.mind && DU.mind.note) DU.mind.note(its.map((x) => x.text).join(' and '), said.join(' '));
   };
   const pct = (v) => Math.round(v * 100);
   const timeWords = (d) => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -266,7 +303,51 @@
       return say('Alarm set for ' + D.alarm.t12(a.time) + (n ? ', ' + dayWords(n) : '') + (a.days.length ? ', ' + D.alarm.daysText(a).toLowerCase() : '') + '. The TV turns on for it.',
         card('', '', [{ label: 'Done', go: true, run: () => DU.hide() }, { label: 'Undo', run: () => { const i = list.indexOf(a); if (i >= 0) list.splice(i, 1); D.save(); D.emit('alarms'); done('Alarm taken off.'); } }]));
     },
-    time: () => done('It\'s ' + timeWords(new Date()) + '.', 4000),
+    time: (it) => {
+      if (!it.tz) return done('It\'s ' + timeWords(new Date()) + '.', 4000);
+      const there = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZone: it.tz }), day = new Date().toLocaleDateString([], { weekday: 'long', timeZone: it.tz });
+      const here = new Date().toLocaleDateString([], { weekday: 'long' });
+      return done('It\'s ' + there + (day !== here ? ' on ' + day : '') + ' in ' + it.place + '.', 5000);
+    },
+    // sums and conversions, worked out exactly (js/deucecalc.js)
+    calc: (it) => {
+      const r = window.DeuceCalc && window.DeuceCalc.eval(it.expr);
+      if (!r) return say('I couldn\'t work that one out. Try writing it like "15% of 80" or "5 miles in km".');
+      if (!r.ok) return say(r.text);
+      return say(/ is /.test(r.text) ? r.text : 'That\'s ' + r.text + '.', card(r.text.replace(/\.$/, ''), String(it.expr).replace(/^\s*(what'?s|what is|whats|calculate|convert)\s+/i, '').replace(/[?]$/, ''), [
+        { label: 'Copy', icon: 'copy', run: () => { try { navigator.clipboard.writeText(String(Math.round(r.value * 1e8) / 1e8)); D.toast({ icon: 'copy', c: '#4b7bec', title: 'Copied', text: String(Math.round(r.value * 1e8) / 1e8) }); } catch (e) { /* no clipboard here */ } } }]));
+    },
+    until: (it) => {
+      const when = new Date(it.at).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+      if (it.days === 0) return say('That\'s today, ' + when + '.');
+      const w = it.days >= 14 ? ' (' + Math.floor(it.days / 7) + ' weeks' + (it.days % 7 ? ' and ' + (it.days % 7) + (it.days % 7 === 1 ? ' day' : ' days') : '') + ')' : '';
+      return say(it.days + (it.days === 1 ? ' day' : ' days') + w + ' until ' + it.what.replace(/^(christmas|halloween|easter|thanksgiving)/i, (s) => s[0].toUpperCase() + s.slice(1)) + ', on ' + when + '.');
+    },
+    // "good morning": the day in one go
+    brief: async () => {
+      const now = new Date(), hr = now.getHours(), name = D.state.name && D.state.name !== 'player' ? ', ' + D.state.name : '';
+      const bits = [(hr < 12 ? 'Good morning' : hr < 17 ? 'Good afternoon' : 'Good evening') + name + '. It\'s ' + now.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }) + '.'];
+      const rows = h('<ul class="du-brief"></ul>');
+      const add = (icon, title, text) => { const li = h('<li>' + D.glyph(icon, 2) + '<div><b></b><span></span></div></li>'); li.querySelector('b').textContent = title; li.querySelector('span').textContent = text; rows.appendChild(li); };
+      const p = (D.state.home && D.state.home.place) || (D.state.st && D.state.st.place);
+      if (p && D.weather) {
+        try {
+          const u = (D.state.st && D.state.st.units) || (/^en-US$/i.test(navigator.language || '') ? 'f' : 'c'), d = await D.weather.get(p.lat, p.lon, u), w = D.weather.words(d.code).text.toLowerCase();
+          bits.push('It\'s ' + d.t + '° and ' + w + ', with a high of ' + d.hi + '°.');
+          add('sun', 'Weather in ' + p.name, d.t + '°, ' + w + '. High ' + d.hi + '°, low ' + d.lo + '°.');
+        } catch (e) { /* no weather just now */ }
+      }
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime();
+      const today = R.upcoming().filter((r) => r.at < end);
+      if (today.length) { bits.push('You have ' + today.length + (today.length === 1 ? ' reminder' : ' reminders') + ' today.'); today.slice(0, 4).forEach((r) => add('bell', r.what.replace(/^./, (c) => c.toUpperCase()), whenWords(r.at))); }
+      const key = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+      const due = ((D.state.axiom || {}).tasks || []).filter((t) => !t.done && t.due && t.due <= key);
+      if (due.length) { bits.push(due.length + (due.length === 1 ? ' thing is' : ' things are') + ' due.'); due.slice(0, 3).forEach((t) => add('timer', t.title || t.name || 'A task', t.due < key ? 'Overdue' : 'Due today')); }
+      if (!today.length && !due.length) bits.push('Nothing\'s due and there are no reminders.');
+      const mode = D.modes && D.modes.current && D.modes.current();
+      if (mode) add('spark', mode.name + ' mode is on', 'Say "end ' + mode.name.toLowerCase() + ' mode" to stop it.');
+      return say(bits.join(' '), rows.children.length ? rows : null);
+    },
     date: () => done('It\'s ' + new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }) + '.', 4000),
     weather: async (it) => {
       const p = (D.state.home && D.state.home.place) || (D.state.st && D.state.st.place);

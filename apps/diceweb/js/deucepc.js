@@ -72,7 +72,7 @@
     root: () => (turn ? turn : body) || document.createElement('div'),
     show() {
       if (!el) build();
-      if (!open) { open = true; el.hidden = false; el.classList.add('navtrap'); place(); greet(); D.S.play('open'); requestAnimationFrame(() => el.classList.add('on')); paintTab(); P.prev = document.activeElement; }
+      if (!open) { open = true; el.hidden = false; el.classList.add('navtrap'); place(); greet(); D.S.play('open'); requestAnimationFrame(() => el.classList.add('on')); paintTab(); P.prev = document.activeElement; D.emit('deuce-open'); }
       setTimeout(() => { if (open && !turn) try { input.focus(); } catch (e) { /* not on screen */ } }, 60);
       paintDock();
     },
@@ -106,6 +106,34 @@
       const c = turn.querySelector('.dp-card');
       c.replaceChildren();
       if (card) c.appendChild(card);
+      P.phase('answer');
+      body.scrollTop = body.scrollHeight;
+    },
+    // Deuce's brain (js/deucemind.js): the steps it takes, its words as they come, and its answer with sources
+    step(t, how) {
+      if (!turn) P.asked('');
+      let ul = turn.querySelector('.dp-tools');
+      if (!ul) { ul = h('<ul class="dp-tools" aria-label="What Deuce did"></ul>'); turn.querySelector('.dp-me').insertBefore(ul, turn.querySelector('.dp-text')); }
+      ul.querySelectorAll('li.now').forEach((li) => li.classList.remove('now'));
+      if (t !== 'Thinking') { const li = h('<li class="now' + (how === 'x' ? ' x' : '') + '"><i></i><span></span></li>'); li.querySelector('span').textContent = t; ul.appendChild(li); }
+      P.status(t === 'Thinking' ? 'Thinking' : 'Working');
+      body.scrollTop = body.scrollHeight;
+    },
+    stream(text) {
+      if (!turn) P.asked('');
+      turn.querySelector('.dp-steps').hidden = true;
+      turn.querySelector('.dp-text').innerHTML = paras(text);
+      body.scrollTop = body.scrollHeight;
+    },
+    answer(text, sources, box, by) {
+      if (!turn) P.asked('');
+      turn.querySelector('.dp-steps').hidden = true;
+      turn.querySelectorAll('.dp-tools li.now').forEach((li) => li.classList.remove('now'));
+      const tx = turn.querySelector('.dp-text');
+      DU.renderAnswer(tx, { answer: text, sources, note: by && sources.length ? 'Answered by ' + by + ' on this computer, from ' + sources.length + ' web page' + (sources.length === 1 ? '' : 's') + '. Check the sources for anything important.' : 'x' });
+      if (!by || !sources.length) { const f = tx.querySelector('.dp-foot'); if (f) f.remove(); }
+      turn.querySelector('.dp-card').replaceChildren(...(box ? [box] : []));
+      history.push({ q: turn.querySelector('.dp-you').textContent, a: text });
       P.phase('answer');
       body.scrollTop = body.scrollHeight;
     },

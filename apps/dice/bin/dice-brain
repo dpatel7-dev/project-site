@@ -1,0 +1,64 @@
+#!/bin/sh
+# dice-brain: Deuce's brain, a language model that runs on this computer (Ollama).
+#
+#   dice-brain setup FILE   put Ollama (FILE, the .tar.zst from ollama.com that diced downloaded) in
+#                           place and start it, listening only to this computer
+#   dice-brain remove       take it away again, models and all
+#   dice-brain status       is it running, and which models does it have
+#
+# diced runs "setup" from Settings, Deuce. It needs root.
+set -eu
+say() { echo "dice-brain: $*"; }
+fail() { echo "dice-brain: $*" >&2; exit 1; }
+
+case "${1:-status}" in
+setup)
+  [ "$(id -u)" = 0 ] || fail "run this with sudo"
+  file="${2:-}"
+  [ -f "$file" ] || fail "give it the Ollama download (a .tar.zst file)"
+  command -v zstd >/dev/null 2>&1 || { DEBIAN_FRONTEND=noninteractive apt-get install -y -qq zstd >/dev/null 2>&1 || fail "couldn't add zstd, which unpacks the download"; }
+  say "putting Ollama in /usr"
+  rm -rf /usr/lib/ollama
+  tar --zstd -xf "$file" -C /usr || fail "couldn't unpack the download"
+  [ -x /usr/bin/ollama ] || fail "the download didn't have Ollama in it"
+  id ollama >/dev/null 2>&1 || useradd -r -s /bin/false -U -m -d /usr/share/ollama ollama
+  # it listens to this computer only, keeps one model loaded for half an hour, and answers one thing at a time
+  cat > /etc/systemd/system/ollama.service <<'UNIT'
+[Unit]
+Description=Ollama, Deuce's brain (DiceOS)
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/ollama serve
+User=ollama
+Group=ollama
+Restart=always
+RestartSec=3
+Environment="OLLAMA_HOST=127.0.0.1:11434"
+Environment="OLLAMA_KEEP_ALIVE=30m"
+Environment="OLLAMA_MAX_LOADED_MODELS=1"
+Environment="OLLAMA_NUM_PARALLEL=1"
+Nice=5
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+  systemctl daemon-reload
+  systemctl enable --now ollama >/dev/null 2>&1 || systemctl restart ollama
+  rm -f "$file"
+  say "Ollama is running"
+  ;;
+remove)
+  [ "$(id -u)" = 0 ] || fail "run this with sudo"
+  systemctl disable --now ollama >/dev/null 2>&1 || true
+  rm -f /etc/systemd/system/ollama.service
+  systemctl daemon-reload 2>/dev/null || true
+  rm -rf /usr/lib/ollama /usr/bin/ollama /usr/share/ollama
+  id ollama >/dev/null 2>&1 && userdel ollama 2>/dev/null || true
+  say "Deuce's brain is gone (Deuce still does the simple things)"
+  ;;
+status)
+  if command -v ollama >/dev/null 2>&1; then ollama list 2>/dev/null || say "installed, but not running"; else say "not set up (Settings, Deuce)"; fi
+  ;;
+*) fail "setup FILE, remove or status" ;;
+esac

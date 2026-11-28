@@ -4,6 +4,7 @@
 // In the browser it becomes window.DeuceBrain; in Node, require('./js/deucebrain.js').
 (function (root) {
   'use strict';
+  const Calc = typeof module !== 'undefined' && module.exports ? require('./deucecalc.js') : root.DeuceCalc;
 
   // ---- the teams: city|nickname, then other names people use ----------------------------------
   const LEAGUES = {
@@ -126,6 +127,16 @@
     if (/^(never ?mind|cancel|stop listening|forget it|nothing|no thanks)$/.test(t)) return r('cancel');
     if (/^(go )?(back|go back)$/.test(t)) return r('back');
     if (/^(go )?(home|go home|take me home|home screen|main menu)$/.test(t) || /^(close|exit|quit)( (this|it|the app|that))?$/.test(t)) return r('home');
+
+    // sums and conversions, worked out here: "15% of 80", "5 miles in km" (from what was said, symbols and all)
+    const raw = String(said || '').replace(/^\s*(hey |ok |okay )?deuce,?\s*/i, '');
+    if (Calc && Calc.looks(raw)) return r('calc', { expr: raw });
+    // a morning briefing
+    if (/^(good morning|morning|brief me|(my |the )?(daily |morning )?briefing|whats (on|happening) today|what do i have (on )?today|whats my day( look like)?|how does my day look|catch me up|whats up today)$/.test(t)) return r('brief');
+    // the time somewhere else, and how long until a day
+    let mt;
+    if ((mt = /^(?:what time is it|whats the time|what is the time|time|the time|current time|what time)(?: right now| now)? in ([a-z .]+)$/.exec(t))) { const z = zoneOf(mt[1]); if (z) return r('time', { place: z[0], tz: z[1] }); }
+    if ((mt = /^(?:how (?:many|much) (?:days?|weeks?|time)|how long|days|count ?down)(?: is it| are there| left)? (?:until|till|til|to|before) (.+?)\??$/.exec(t))) { const u = untilOf(mt[1], now); if (u) return r('until', u); }
 
     // ---- reminders, the Notebook, notes (Deuce for PC, and the TV too) ----
     let m;
@@ -387,7 +398,65 @@
     return out;
   }
 
-  const api = { understand, reminder, teamsIn, netOf, number, clock, scoreboardUrl, pickGame, broadcasts, clean, LEAGUES, TEAMS };
+  // ---- other places' time: "what time is it in tokyo" --------------------------------------------------------
+  const ZONES = ('new york,nyc,manhattan,brooklyn,boston,miami,atlanta,washington,dc,philadelphia,new jersey,toronto,montreal|America/New_York;' +
+    'chicago,dallas,houston,austin,mexico city,minneapolis,new orleans,nashville|America/Chicago;denver,salt lake city,phoenix|America/Denver;' +
+    'los angeles,la,san francisco,seattle,las vegas,vancouver,san diego,portland|America/Los_Angeles;anchorage,alaska|America/Anchorage;honolulu,hawaii|Pacific/Honolulu;' +
+    'sao paulo,rio,rio de janeiro,brazil|America/Sao_Paulo;buenos aires,argentina|America/Argentina/Buenos_Aires;lima,peru|America/Lima;bogota,colombia|America/Bogota;' +
+    'london,uk,england,britain,dublin,ireland,lisbon,portugal|Europe/London;paris,france,berlin,germany,madrid,spain,rome,italy,amsterdam,brussels,vienna,zurich,stockholm,oslo,copenhagen,prague,warsaw|Europe/Paris;' +
+    'athens,greece,istanbul,turkey,cairo,egypt,helsinki,kyiv,ukraine,jerusalem,israel|Europe/Athens;moscow,russia|Europe/Moscow;dubai,abu dhabi|Asia/Dubai;' +
+    'mumbai,delhi,new delhi,bangalore,bengaluru,india,kolkata,chennai,hyderabad|Asia/Kolkata;karachi,pakistan|Asia/Karachi;dhaka,bangladesh|Asia/Dhaka;' +
+    'bangkok,thailand,jakarta,vietnam,hanoi|Asia/Bangkok;singapore,kuala lumpur,malaysia,manila,philippines,hong kong,beijing,shanghai,china,taipei,taiwan,perth|Asia/Singapore;' +
+    'tokyo,japan,osaka,seoul,korea,south korea|Asia/Tokyo;sydney,melbourne,australia,canberra|Australia/Sydney;brisbane|Australia/Brisbane;auckland,new zealand|Pacific/Auckland;' +
+    'johannesburg,south africa,cape town|Africa/Johannesburg;lagos,nigeria|Africa/Lagos;nairobi,kenya|Africa/Nairobi;reykjavik,iceland|Atlantic/Reykjavik').split(';').map((x) => { const [n, z] = x.split('|'); return [n.split(','), z]; });
+  function zoneOf(place) {
+    const p = clean(place).replace(/^the /, '');
+    for (const [names, z] of ZONES) if (names.includes(p)) return [p.replace(/\b\w/g, (c) => c.toUpperCase()).replace(/\b(Uk|La|Dc|Nyc)\b/g, (s) => s.toUpperCase()), z];
+    return null;
+  }
+
+  // ---- how long until: "christmas", "june 18", "friday", "new years", "thanksgiving" -------------------------------
+  const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+  function untilOf(what, now) {
+    const t = clean(what).replace(/^(the |my )/, ''), y = now.getFullYear();
+    const next = (mo, d) => { let x = new Date(y, mo, d); if (x < new Date(y, now.getMonth(), now.getDate())) x = new Date(y + 1, mo, d); return x; };
+    const nthDow = (yy, mo, dow, n) => { const d = new Date(yy, mo, 1); const first = (dow - d.getDay() + 7) % 7; return new Date(yy, mo, 1 + first + (n - 1) * 7); };
+    const easter = (yy) => { const a = yy % 19, b = Math.floor(yy / 100), c = yy % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), mo = Math.floor((h + l - 7 * m + 114) / 31), dd = ((h + l - 7 * m + 114) % 31) + 1; return new Date(yy, mo - 1, dd); };
+    const yearly = (fn) => { let x = fn(y); if (x < new Date(y, now.getMonth(), now.getDate())) x = fn(y + 1); return x; };
+    const DAYS = { christmas: () => next(11, 25), 'christmas eve': () => next(11, 24), 'new year': () => next(0, 1), 'new years': () => next(0, 1), 'new years day': () => next(0, 1), 'new years eve': () => next(11, 31),
+      halloween: () => next(9, 31), valentines: () => next(1, 14), 'valentines day': () => next(1, 14), 'july 4th': () => next(6, 4), 'fourth of july': () => next(6, 4), 'independence day': () => next(6, 4),
+      thanksgiving: () => yearly((yy) => nthDow(yy, 10, 4, 4)), easter: () => yearly(easter), 'mothers day': () => yearly((yy) => nthDow(yy, 4, 0, 2)), 'fathers day': () => yearly((yy) => nthDow(yy, 5, 0, 3)),
+      summer: () => next(5, 21), winter: () => next(11, 21), spring: () => next(2, 20), fall: () => next(8, 22), autumn: () => next(8, 22), 'the weekend': () => null, weekend: () => null };
+    let at = null, name = what.trim();
+    if (DAYS[t] !== undefined) {
+      at = DAYS[t]();
+      if (!at) { const d = new Date(now); d.setDate(d.getDate() + ((6 - d.getDay() + 7) % 7 || 7)); at = new Date(d.getFullYear(), d.getMonth(), d.getDate()); name = 'the weekend'; }
+    }
+    let m;
+    if (!at && (m = new RegExp('^(' + MONTHS.join('|') + '|' + MONTHS.map((x) => x.slice(0, 3)).join('|') + ') (\\d{1,2})(?:st|nd|rd|th)?(?: (\\d{4}))?$').exec(t))) {
+      const mo = MONTHS.findIndex((x) => x.startsWith(m[1].slice(0, 3)));
+      at = m[3] ? new Date(+m[3], mo, +m[2]) : next(mo, +m[2]);
+    }
+    if (!at && (m = /^(\d{1,2})(?:st|nd|rd|th)? (?:of )?([a-z]+)(?: (\d{4}))?$/.exec(t))) {
+      const mo = MONTHS.findIndex((x) => x.startsWith(m[2].slice(0, 3)));
+      if (mo >= 0) at = m[3] ? new Date(+m[3], mo, +m[1]) : next(mo, +m[1]);
+    }
+    const wd = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(t.replace(/^next /, ''));
+    if (!at && wd >= 0) { const d = new Date(now.getFullYear(), now.getMonth(), now.getDate()); d.setDate(d.getDate() + ((wd - d.getDay() + 7) % 7 || 7)); at = d; }
+    if (!at) return null;
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return { what: name, at: at.getTime(), days: Math.round((at - today) / 864e5) };
+  }
+
+  // ---- two things at once: "turn on dark mode and play some music" --------------------------------------------------
+  function split(said, now, ctx) {
+    const parts = String(said || '').split(/\s*(?:,\s*)?(?:\band then\b|\bthen\b|\band also\b|\band\b|;)\s*/i).map((s) => s.trim()).filter(Boolean);
+    if (parts.length < 2 || parts.length > 4) return null;
+    const its = parts.map((p) => understand(p, now, ctx));
+    return its.every((x) => !['unknown', 'ask', 'none', 'web', 'help', 'cancel'].includes(x.kind)) ? its : null;
+  }
+
+  const api = { understand, split, reminder, untilOf, zoneOf, teamsIn, netOf, number, clock, scoreboardUrl, pickGame, broadcasts, clean, LEAGUES, TEAMS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DeuceBrain = api;
 })(this);

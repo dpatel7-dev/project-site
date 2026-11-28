@@ -1,72 +1,98 @@
-/* The desktop, more like a Mac (js/menubar.js): a menu bar along the top, round window buttons on the left,
-   a roomier dock with dots under what's open, and the new widgets. Settings, Desktop can turn the menu bar off. */
+/* The desktop (js/menubar.js): a Mac's way of working in DiceTV's clothes. Two glass pills along the top with the
+   menus and the clock, glossy window buttons, DiceTV's big tiles in the dock with die pips under what's open, and the
+   widgets. Settings, Desktop can turn the top bar off. */
 
-/* ---------- the menu bar ---------- */
-#desk .mbar { position: absolute; left: 0; right: 0; top: 0; height: 28px; z-index: 950; display: flex; align-items: center; gap: 1px; padding: 0 8px;
-  background: color-mix(in srgb, var(--glass-hi) 58%, transparent); -webkit-backdrop-filter: blur(34px) saturate(180%); backdrop-filter: blur(34px) saturate(180%);
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ink) 10%, transparent); font: 500 .84rem/1 var(--read); color: var(--ink); user-select: none; }
+/* ---------- the bar on top: two glass pills, like DiceTV's, with a Mac's menus ---------- */
+#desk .mbar { position: absolute; left: 12px; right: 12px; top: 10px; height: 46px; z-index: 950; display: flex; align-items: center; gap: 10px;
+  pointer-events: none; font: 600 .9rem/1 var(--read); color: var(--ink); user-select: none; }
 #desk .mbar[hidden] { display: none; }
-#desk .mbar button { height: 22px; padding: 0 9px; border-radius: 5px; display: inline-flex; align-items: center; gap: 6px; color: inherit; font: inherit; white-space: nowrap; flex: none; }
-#desk .mbar button:hover, #desk .mbar button.open { background: color-mix(in srgb, var(--ink) 12%, transparent); }
-#desk .mbar button:focus-visible { outline: 2px solid var(--c); outline-offset: -2px; }
-#desk .mbar .mb-die { padding: 0 10px 0 8px; }
-#desk .mbar .mb-app b { font-weight: 800; }
-#desk .mb-r { margin-left: auto; display: flex; align-items: center; min-width: 0; }
-#desk .mb-r button { padding: 0 7px; }
-#desk .mb-clock { font-variant-numeric: tabular-nums; padding: 0 8px !important; }
-#desk .mb-music { max-width: 220px; }
+#desk .mb-l, #desk .mb-r { pointer-events: auto; height: 46px; display: flex; align-items: center; gap: 1px; padding: 0 6px 0 5px; border-radius: 999px; min-width: 0;
+  background: var(--glass); -webkit-backdrop-filter: blur(22px) saturate(160%); backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 rgba(255, 255, 255, .45), 0 10px 26px -14px rgba(0, 0, 0, .4); }
+#desk .mb-r { margin-left: auto; padding: 0 8px 0 6px; }
+#desk .mbar button { height: 34px; padding: 0 11px; border-radius: 999px; display: inline-flex; align-items: center; gap: 7px; color: inherit; font: inherit; white-space: nowrap; flex: none; }
+#desk .mbar button:hover, #desk .mbar button.open { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+#desk .mbar button:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+/* the die, in its own tile like DiceTV's */
+#desk .mbar .mb-die { width: 36px; height: 36px; padding: 0; justify-content: center; border-radius: 12px; background: var(--glass-hi); box-shadow: inset 0 0 0 1px var(--line), inset 0 -2px 0 color-mix(in srgb, var(--ink) 12%, transparent); margin-right: 4px; }
+#desk .mbar .mb-die:hover, #desk .mbar .mb-die.open { background: var(--glass-hi); box-shadow: inset 0 0 0 2px var(--ink); }
+#desk .mbar .mb-app { padding: 0 12px 0 8px; }
+#desk .mbar .mb-app b { font: 500 1.18rem/1 var(--pixel); letter-spacing: .01em; }
+#desk .mbar .mb-m { color: color-mix(in srgb, var(--ink) 82%, transparent); }
+#desk .mb-r button { width: 36px; padding: 0; justify-content: center; }
+#desk .mb-r .mb-music { width: auto; max-width: 220px; padding: 0 10px; font: 700 .82rem/1 var(--read); }
+#desk .mb-r .mb-clock { width: auto; padding: 0 8px 0 10px; font: 500 1.08rem/1 var(--pixel); letter-spacing: .02em; font-variant-numeric: tabular-nums; }
 #desk .mb-np { overflow: hidden; text-overflow: ellipsis; }
 #desk .mb-deuce svg { display: block; }
-@media (max-width: 760px) { #desk .mbar .mb-m { display: none; } #desk .mb-music, #desk .mb-shield { display: none !important; } }
+@media (max-width: 980px) { #desk .mbar .mb-m { display: none; } #desk .mb-music, #desk .mb-shield { display: none !important; } }
 
-/* the rest of the desktop makes room for it */
-#desk.mac .wins, #desk.mac .dwid { top: 28px; }
-#desk.mac .dicons { top: 42px; left: auto; right: 14px; }
+/* the rest of the desktop makes room */
+#desk.mac .wins, #desk.mac .dwid { top: 56px; bottom: 92px; }
+#desk.mac .dicons { top: 70px; left: auto; right: 16px; }
 #desk.mac .dtray { display: none; }
 #desk.mac .dhot { top: auto; bottom: 0; }
-.desk-mac.desk-on #qam { top: 34px; bottom: auto; right: 8px; height: min(640px, calc(100vh - 110px)); }
+.desk-mac.desk-on #qam { top: 64px; bottom: auto; right: 12px; height: min(640px, calc(100vh - 170px)); }
 
-/* the menus drop down like a Mac's: words only, tighter */
-.dmenu.dmenu-mb { min-width: 220px; padding: 5px; border-radius: 10px; gap: 0; }
-.dmenu.dmenu-mb > button { padding: 5px 10px 5px 6px; border-radius: 5px; gap: 6px; font: 500 .86rem/1.2 var(--read); }
-.dmenu.dmenu-mb > button:hover, .dmenu.dmenu-mb > button:focus-visible { background: var(--c, #4b7bec); color: #fff; }
-.dmenu.dmenu-mb > button:hover kbd { color: rgba(255, 255, 255, .85); }
+/* the menus drop down like a Mac's, in DiceTV's glass: words only, a tick by the one that's on */
+.dmenu.dmenu-mb { min-width: 230px; padding: 6px; border-radius: 16px; gap: 0; }
+.dmenu.dmenu-mb > button { padding: 7px 10px 7px 6px; border-radius: 10px; gap: 6px; font: 600 .88rem/1.2 var(--read); }
+.dmenu.dmenu-mb > button:hover, .dmenu.dmenu-mb > button:focus-visible { background: var(--ink); color: var(--bg, #fff); }
+.dmenu.dmenu-mb > button:hover kbd, .dmenu.dmenu-mb > button:focus-visible kbd { color: inherit; opacity: .8; }
 .dmenu.dmenu-mb > button[aria-checked="true"]::after { content: none; }
 .dmenu.dmenu-mb > button[aria-checked="true"] .dmi::before { content: "✓"; font-weight: 700; font-size: .8rem; }
 .dmenu.dmenu-mb .dmi { width: 14px; text-align: center; }
-.dmenu.dmenu-mb kbd { font: 500 .78rem/1 var(--read); }
-.dmenu.dmenu-mb hr { margin: 4px 8px; }
+.dmenu.dmenu-mb kbd { font: 600 .74rem/1 var(--read); padding: 3px 6px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.dmenu.dmenu-mb hr { margin: 5px 10px; }
 
-/* ---------- windows: close, minimise and zoom on the left, the name in the middle ---------- */
-#desk.mac .win { border-radius: 12px; }
+/* ---------- windows: DiceTV's glass, glossy buttons on the left, the app's tile and name in the middle ---------- */
+#desk.mac .win { border-radius: 20px; }
 #desk.mac .win.max { border-radius: 0; }
-#desk.mac .win > header { height: 38px; gap: 8px; padding: 0 12px 0 14px; }
-#desk.mac .win > header .wico { display: none; }
-#desk.mac .win > header .wt { text-align: center; padding-right: 56px; font: 700 .86rem/1 var(--read); }
-#desk.mac .wbtns { order: -1; gap: 8px; }
-#desk.mac .wbtns button { width: 13px; height: 13px; border-radius: 50%; padding: 0; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .22); }
-#desk.mac .wbtns .wclose { order: -1; background: #ff5f57; color: rgba(90, 0, 0, .78); }
-#desk.mac .wbtns .wmin { background: #febc2e; color: rgba(110, 64, 0, .82); }
-#desk.mac .wbtns .wmax { background: #28c840; color: rgba(0, 84, 10, .82); }
-#desk.mac .wbtns button:hover { filter: brightness(.96); }
-#desk.mac .wbtns .wclose:hover { background: #ff5f57; color: rgba(90, 0, 0, .78); }
-#desk.mac .wbtns .wclose .gl { width: 7px !important; height: 7px !important; opacity: 0; }
-#desk.mac .wbtns .wmin::before { width: 7px; height: 1.5px; opacity: 0; }
-#desk.mac .wbtns .wmax::before { width: 7px; height: 7px; box-shadow: none; border-radius: 0; background: currentColor; clip-path: polygon(0 0, 62% 0, 0 62%, 0 0, 38% 100%, 100% 100%, 100% 38%, 38% 100%); opacity: 0; }
+#desk.mac .win > header { position: relative; height: 46px; gap: 9px; padding: 0 92px; justify-content: center;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--app, #7c9cff) 16%, transparent), transparent); }
+#desk.mac .win > header .wico { display: grid; flex: none; }
+#desk.mac .win > header .wico canvas { width: 22px !important; height: 22px !important; border-radius: 6px; }
+#desk.mac .win > header .wt { flex: 0 1 auto; text-align: center; font: 500 1.08rem/1 var(--pixel); letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#desk.mac .wbtns { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); gap: 9px; }
+/* candy buttons: a bright top, a darker lip underneath, like DiceTV's tiles */
+#desk.mac .wbtns button { width: 15px; height: 15px; border-radius: 50%; padding: 0;
+  background-image: radial-gradient(circle at 34% 28%, rgba(255, 255, 255, .8) 0 16%, transparent 18%);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .22), inset 0 0 0 1px rgba(0, 0, 0, .12), 0 1px 0 rgba(255, 255, 255, .5); }
+#desk.mac .wbtns .wclose { order: -1; background-color: #ff5f57; color: rgba(90, 0, 0, .8); }
+#desk.mac .wbtns .wmin { background-color: #febc2e; color: rgba(110, 64, 0, .85); }
+#desk.mac .wbtns .wmax { background-color: #28c840; color: rgba(0, 84, 10, .85); }
+#desk.mac .wbtns button:hover { filter: brightness(1.04); }
+#desk.mac .wbtns .wclose:hover { background-color: #ff5f57; color: rgba(90, 0, 0, .8); }
+#desk.mac .wbtns .wclose .gl { width: 8px !important; height: 8px !important; opacity: 0; }
+#desk.mac .wbtns .wmin::before { width: 8px; height: 2px; opacity: 0; }
+#desk.mac .wbtns .wmax::before { width: 8px; height: 8px; box-shadow: none; border-radius: 0; background: currentColor; clip-path: polygon(0 0, 62% 0, 0 62%, 0 0, 38% 100%, 100% 100%, 100% 38%, 38% 100%); opacity: 0; }
 #desk.mac .wbtns:hover .wclose .gl, #desk.mac .wbtns:hover .wmin::before, #desk.mac .wbtns:hover .wmax::before, #desk.mac .wbtns:focus-within button::before, #desk.mac .wbtns:focus-within .gl { opacity: 1; }
-#desk.mac .win:not(.active) .wbtns button { background: color-mix(in srgb, var(--ink) 16%, var(--glass-hi)); box-shadow: inset 0 0 0 .5px color-mix(in srgb, var(--ink) 14%, transparent); }
-#desk.mac .win:not(.active) .wbtns:hover .wclose { background: #ff5f57; } #desk.mac .win:not(.active) .wbtns:hover .wmin { background: #febc2e; } #desk.mac .win:not(.active) .wbtns:hover .wmax { background: #28c840; }
+#desk.mac .win:not(.active) .wbtns button { background-color: color-mix(in srgb, var(--ink) 18%, var(--glass-hi)); background-image: none; }
+#desk.mac .win:not(.active) .wbtns:hover .wclose { background-color: #ff5f57; } #desk.mac .win:not(.active) .wbtns:hover .wmin { background-color: #febc2e; } #desk.mac .win:not(.active) .wbtns:hover .wmax { background-color: #28c840; }
+#desk.mac .win:not(.active) > header { background: none; }
 
-/* ---------- the dock ---------- */
-#desk.mac .dshelf { height: 60px; bottom: 6px; border-radius: 19px; padding: 0 7px; gap: 3px; max-width: calc(100vw - 32px); }
-#desk.mac .pin, #desk.mac .task { width: 48px; height: 48px; border-radius: 12px; }
-#desk.mac .dshelf .launch { width: 42px; height: 42px; }
-#desk.mac .pin.open::after, #desk.mac .task::after { bottom: -5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; opacity: .7; }
-#desk.mac .pin.active::after, #desk.mac .task.active::after { width: 4px; margin-left: -2px; opacity: 1; }
-#desk.mac .dsep { height: 38px; margin: 0 6px; }
-/* magnify (Settings, Desktop): grows sideways and up together, quickly, like a Mac's */
+/* ---------- the dock: DiceTV's tiles, a name when you point at one, die pips under what's open ---------- */
+#desk.mac .dshelf { height: 76px; bottom: 10px; border-radius: 26px; padding: 0 10px; gap: 6px; max-width: calc(100vw - 32px); overflow: visible; }
+#desk.mac .pin, #desk.mac .task { position: relative; width: 56px; height: 56px; border-radius: 15px; display: grid; place-items: center; }
+#desk.mac .pin canvas, #desk.mac .task canvas { width: 50px !important; height: 50px !important; border-radius: 13px; filter: drop-shadow(0 3px 0 rgba(0, 0, 0, .2)) drop-shadow(0 6px 8px rgba(0, 0, 0, .18)); }
+#desk.mac .pin:hover, #desk.mac .task:hover { background: none; }
+#desk.mac .dshelf .launch { width: 50px; height: 50px; border-radius: 15px; }
+#desk.mac .dsep { height: 46px; margin: 0 4px; }
+/* the name, in DiceTV's label: white, or dark for the one you're on */
+#desk.mac .pin::before, #desk.mac .task::before { content: attr(data-name); position: absolute; bottom: calc(100% + 12px); left: 50%; transform: translateX(-50%); padding: 6px 11px; border-radius: 999px;
+  background: var(--glass-hi); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line), 0 6px 16px -8px rgba(0, 0, 0, .4); font: 600 .84rem/1 var(--read); white-space: nowrap; pointer-events: none; opacity: 0; transition: opacity .12s; }
+#desk.mac .pin:hover::before, #desk.mac .task:hover::before, #desk.mac .pin.is-focus::before, #desk.mac .pin:focus-visible::before, #desk.mac .task:focus-visible::before { opacity: 1; }
+#desk.mac .pin.is-focus::before, #desk.mac .pin:focus-visible::before, #desk.mac .task:focus-visible::before { background: var(--ink); color: var(--bg, #fff); }
+/* pips: one under what's open, two under the one you're in */
+#desk.mac .pin.open::after, #desk.mac .task::after { content: ""; position: absolute; bottom: -7px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 1.5px; background: var(--ink); opacity: .75; }
+#desk.mac .pin.active::after, #desk.mac .task.active::after { width: 5px; margin-left: -6.5px; opacity: 1; box-shadow: 8px 0 0 var(--ink); }
+/* magnify (Settings, Desktop): grows sideways and up together, quickly */
 #desk.mag .pin, #desk.mag .task, #desk.mag .dshelf .launch { transform: scale(var(--mag, 1)); transform-origin: 50% 100%; transition: transform .09s linear; }
-#desk.mag .dshelf { overflow: visible; }
+
+/* Home and the other desktop icons get DiceTV's label pills */
+#desk.mac .dicon b, #desk.mac .dicon span { padding: 4px 10px; border-radius: 999px; background: var(--glass-hi); color: var(--ink); text-shadow: none; box-shadow: inset 0 0 0 1px var(--line); font-weight: 600; }
+
+/* widgets: DiceTV's panels */
+#desk.mac .dw { border-radius: 24px; }
 
 /* ---------- the new widgets ---------- */
 .dw-mon { font: 700 .95rem/1.1 var(--read); }

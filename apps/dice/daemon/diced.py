@@ -691,6 +691,293 @@ class Answers:
 
 
 # ---------------------------------------------------------------------------
+# Deuce's brain: a language model running on this computer (Ollama, listening only on 127.0.0.1), so
+# Deuce understands whatever you say, follows a conversation, and uses DiceOS's abilities as tools.
+# Nothing you say leaves the computer. The model is picked for the computer it's on.
+OLLAMA = 'http://127.0.0.1:11434'
+OLLAMA_URL = 'https://ollama.com/download/ollama-linux-%s.tar.zst'
+# (tag, name, about how big a download in GB, how much memory it wants, what it's like)
+BRAIN_MODELS = [
+    ('qwen3.5:2b', 'Quick', 2.0, 4, 'Fast on small computers. Good at doing things; plain answers.'),
+    ('qwen3.5:4b', 'Smart', 3.4, 7, 'The one for a Raspberry Pi 5 with 8 GB. Follows a conversation and answers well.'),
+    ('qwen3.5:9b', 'Smarter', 6.6, 14, 'For a PC with 16 GB of memory, or a graphics card with 8 GB.'),
+    ('qwen3.5:27b', 'Very smart', 17, 22, 'For a graphics card with 24 GB.'),
+    ('qwen3.5:35b', 'Smartest', 24, 40, 'For a PC with 48 GB of memory or more: quick for its size.'),
+]
+BRAIN_TAGS = [m[0] for m in BRAIN_MODELS]
+
+
+def machine():
+    """How much this computer can think with: memory, a graphics card's memory, and whether it's a Pi."""
+    hw = {'ram': 0.0, 'vram': 0.0, 'gpu': None, 'pi': False, 'arch': os.uname().machine}
+    try:
+        with open('/proc/meminfo') as f:
+            for line in f:
+                if line.startswith('MemTotal:'):
+                    hw['ram'] = round(int(line.split()[1]) / 1048576, 1)
+    except (OSError, ValueError, IndexError):
+        pass
+    try:
+        with open('/proc/device-tree/model', 'rb') as f:
+            hw['pi'] = b'Raspberry Pi' in f.read()
+    except OSError:
+        pass
+    if shutil.which('nvidia-smi'):
+        try:
+            out = subprocess.run(['nvidia-smi', '--query-gpu=name,memory.total', '--format=csv,noheader,nounits'], capture_output=True, text=True, timeout=5).stdout
+            name, mb = out.strip().splitlines()[0].rsplit(',', 1)
+            hw['gpu'], hw['vram'] = name.strip(), round(int(mb) / 1024, 1)
+        except (OSError, ValueError, IndexError, subprocess.SubprocessError):
+            pass
+    if not hw['gpu']:
+        for p in glob.glob('/sys/class/drm/card*/device/mem_info_vram_total'):
+            try:
+                with open(p) as f:
+                    v = int(f.read().strip()) / 1073741824
+                if v >= 2:
+                    hw['gpu'], hw['vram'] = 'AMD graphics', round(v, 1)
+                    break
+            except (OSError, ValueError):
+                pass
+    return hw
+
+
+def is_private_url(url):
+    """True for an address on this computer or this network (Deuce reads the web, not your router)."""
+    import ipaddress
+    host = urllib.parse.urlsplit(url).hostname or ''
+    if not host or host == 'localhost' or host.endswith('.local') or host.endswith('.lan') or '.' not in host and ':' not in host:
+        return True
+    try:
+        addrs = {ai[4][0] for ai in socket.getaddrinfo(host, None)}
+    except (OSError, UnicodeError):
+        return True
+    for a in addrs:
+        ip = ipaddress.ip_address(a.split('%')[0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
+            return True
+    return False
+
+
+def brain_pick(hw):
+    """The best model this computer runs at a speed you'd wait for."""
+    ram, vram = hw.get('ram') or 0, hw.get('vram') or 0
+    if hw.get('pi'):
+        return 'qwen3.5:4b' if ram >= 7 else 'qwen3.5:2b'
+    if vram >= 22:
+        return 'qwen3.5:35b' if vram >= 26 or ram >= 32 else 'qwen3.5:27b'
+    if ram >= 46:
+        return 'qwen3.5:35b'
+    if vram >= 7.5 or ram >= 14:
+        return 'qwen3.5:9b'
+    if ram >= 7 or vram >= 4:
+        return 'qwen3.5:4b'
+    return 'qwen3.5:2b'
+
+
+class Brain:
+    """Ollama on this computer: setting it up, fetching a model, and passing Deuce's conversations to it."""
+
+    def __init__(self, settings_path, http=None, runner=None):
+        self.settings_path = settings_path
+        self.http = http or self._http
+        self.run = runner or (lambda cmd: subprocess.run(cmd, capture_output=True, text=True, timeout=600))
+        self.busy = None      # {'what': 'install'|'pull', 'text': ..., 'pct': 0-100}
+        self.error = None
+        self.hw = None
+        self.lock = threading.Lock()
+
+    @staticmethod
+    def _http(path, body=None, method=None, timeout=10, stream=False):
+        data = json.dumps(body).encode() if body is not None else None
+        req = urllib.request.Request(OLLAMA + path, data=data, method=method or ('POST' if data else 'GET'), headers={'Content-Type': 'application/json'})
+        r = urllib.request.urlopen(req, timeout=timeout)
+        if stream:
+            return r
+        with r:
+            return json.loads(r.read().decode() or '{}')
+
+    def cfg(self):
+        b = load_settings(self.settings_path).get('brain')
+        return b if isinstance(b, dict) else {}
+
+    def save(self, **kw):
+        s = load_settings(self.settings_path)
+        b = s.get('brain') if isinstance(s.get('brain'), dict) else {}
+        b.update(kw)
+        s['brain'] = b
+        save_settings(self.settings_path, s)
+
+    def machine(self):
+        if self.hw is None:
+            self.hw = machine()
+        return self.hw
+
+    def models(self):
+        try:
+            return [m.get('name') or m.get('model') for m in self.http('/api/tags', timeout=3).get('models', [])]
+        except (OSError, ValueError, urllib.error.URLError):
+            return None
+
+    def model(self):
+        """The model Deuce talks to: the one you picked, if it's here, else the best one that's here."""
+        have = self.models() or []
+        want = self.cfg().get('model')
+        if want in have:
+            return want
+        for tag in reversed(BRAIN_TAGS):
+            if tag in have:
+                return tag
+        return have[0] if have else None
+
+    def state(self):
+        hw = self.machine()
+        have = self.models()
+        running = have is not None
+        try:
+            version = self.http('/api/version', timeout=2).get('version') if running else None
+        except (OSError, ValueError, urllib.error.URLError):
+            version = None
+        pick = brain_pick(hw)
+        model = self.model() if running else None
+        mem = max(hw['ram'], hw['vram'] * 1.15)
+        return {'ok': True, 'installed': running or bool(shutil.which('ollama')), 'running': running, 'version': version, 'models': have or [],
+                'model': model, 'ready': bool(model), 'chosen': self.cfg().get('model'), 'recommended': pick, 'busy': self.busy, 'error': self.error,
+                'machine': {'ram': hw['ram'], 'gpu': hw['gpu'], 'vram': hw['vram'], 'pi': hw['pi']},
+                'choices': [{'tag': t, 'name': n, 'size': s, 'need': need, 'about': about, 'fits': mem >= need * 0.9, 'here': t in (have or [])}
+                            for t, n, s, need, about in BRAIN_MODELS]}
+
+    # -- setting it up --
+    def start_install(self, model=None):
+        with self.lock:
+            if self.busy:
+                return self.state()
+            self.busy, self.error = {'what': 'install', 'text': 'Starting', 'pct': 0}, None
+        threading.Thread(target=self.install, args=(model,), daemon=True).start()
+        return self.state()
+
+    def install(self, model=None):
+        try:
+            if self.models() is None:
+                arch = {'x86_64': 'amd64', 'aarch64': 'arm64', 'arm64': 'arm64'}.get(os.uname().machine)
+                if not arch:
+                    raise ValueError('Ollama doesn\'t run on this computer\'s kind of processor (%s).' % os.uname().machine)
+                path = '/var/cache/dice/ollama.tar.zst'
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                self.busy = {'what': 'install', 'text': 'Downloading the brain\'s engine (Ollama)', 'pct': 0}
+                req = urllib.request.Request(OLLAMA_URL % arch, headers={'User-Agent': 'DiceOS/%s' % VERSION})
+                with urllib.request.urlopen(req, timeout=30) as r, open(path + '.part', 'wb') as f:
+                    total, got = int(r.headers.get('Content-Length') or 0), 0
+                    while True:
+                        chunk = r.read(1 << 20)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        got += len(chunk)
+                        if total:
+                            self.busy = {'what': 'install', 'text': 'Downloading the brain\'s engine (Ollama)', 'pct': round(got * 100 / total)}
+                os.replace(path + '.part', path)
+                self.busy = {'what': 'install', 'text': 'Putting it in place', 'pct': 100}
+                r = self.run([os.path.join(ROOT, 'bin', 'dice-brain'), 'setup', path])
+                if r.returncode != 0:
+                    raise ValueError((r.stderr or r.stdout or 'Setting it up didn\'t work.').strip().splitlines()[-1])
+                for _ in range(30):
+                    if self.models() is not None:
+                        break
+                    time.sleep(1)
+                else:
+                    raise ValueError('Ollama didn\'t start. Try again, or restart the computer.')
+            self.busy = None
+            self.pull(model or self.cfg().get('model') or brain_pick(self.machine()))
+        except (OSError, ValueError, urllib.error.URLError) as e:
+            self.error = str(e) or 'Setting up the brain didn\'t work. Is the internet on?'
+            self.busy = None
+
+    def start_pull(self, tag):
+        if tag not in BRAIN_TAGS:
+            return dict(self.state(), ok=False, error='Pick one of the models listed.')
+        with self.lock:
+            if self.busy:
+                return self.state()
+            self.busy, self.error = {'what': 'pull', 'text': 'Starting', 'pct': 0, 'model': tag}, None
+        threading.Thread(target=self.pull, args=(tag,), daemon=True).start()
+        return self.state()
+
+    def pull(self, tag):
+        """Fetch a model (a few GB, once), showing how far along it is."""
+        try:
+            name = dict((m[0], m[1]) for m in BRAIN_MODELS).get(tag, tag)
+            self.busy = {'what': 'pull', 'text': 'Downloading ' + name, 'pct': 0, 'model': tag}
+            with self.http('/api/pull', {'model': tag, 'stream': True}, timeout=60, stream=True) as r:
+                for line in r:
+                    try:
+                        p = json.loads(line)
+                    except ValueError:
+                        continue
+                    if p.get('error'):
+                        raise ValueError(p['error'])
+                    pct = round(p['completed'] * 100 / p['total']) if p.get('total') and p.get('completed') else self.busy.get('pct', 0)
+                    self.busy = {'what': 'pull', 'text': 'Downloading ' + name if 'pull' in str(p.get('status')) or p.get('total') else 'Getting ' + name + ' ready', 'pct': pct, 'model': tag}
+            self.save(model=tag)
+            self.busy = None
+            self.warm()
+        except (OSError, ValueError, urllib.error.URLError) as e:
+            self.error = 'Couldn\'t fetch the model: %s' % (str(e) or 'is the internet on?')
+            self.busy = None
+
+    def choose(self, tag):
+        if tag not in BRAIN_TAGS:
+            return dict(self.state(), ok=False, error='Pick one of the models listed.')
+        if tag not in (self.models() or []):
+            return self.start_pull(tag)
+        self.save(model=tag)
+        threading.Thread(target=self.warm, daemon=True).start()
+        return self.state()
+
+    def remove(self, tag):
+        if tag not in (self.models() or []):
+            return self.state()
+        try:
+            self.http('/api/delete', {'model': tag}, method='DELETE')
+        except (OSError, ValueError, urllib.error.URLError):
+            pass
+        return self.state()
+
+    def warm(self):
+        """Load the model now, so the first thing you ask isn't slow."""
+        m = self.model()
+        if m:
+            try:
+                self.http('/api/generate', {'model': m, 'prompt': '', 'keep_alive': '30m'}, timeout=300)
+            except (OSError, ValueError, urllib.error.URLError):
+                pass
+
+    # -- talking --
+    def chat(self, b):
+        """Deuce's conversation, passed to the model; its answer comes back a few words at a time (an open stream)."""
+        model = self.model()
+        if not model:
+            raise ValueError('Deuce\'s brain isn\'t set up yet. Settings, Deuce.')
+        msgs = []
+        for m in (b.get('messages') or [])[-40:]:
+            if not isinstance(m, dict) or m.get('role') not in ('system', 'user', 'assistant', 'tool'):
+                continue
+            out = {'role': m['role'], 'content': str(m.get('content') or '')[:24000]}
+            if m['role'] == 'assistant' and isinstance(m.get('tool_calls'), list):
+                out['tool_calls'] = m['tool_calls'][:6]
+            if m['role'] == 'tool' and m.get('tool_name'):
+                out['tool_name'] = str(m['tool_name'])[:60]
+            msgs.append(out)
+        body = {'model': model, 'messages': msgs, 'stream': True, 'think': bool(b.get('think')), 'keep_alive': '30m',
+                'options': {'temperature': 0.4, 'num_ctx': 8192}}
+        if isinstance(b.get('tools'), list):
+            body['tools'] = b['tools'][:16]
+        if isinstance(b.get('format'), dict):
+            body['format'] = b['format']
+        return self.http('/api/chat', body, timeout=300, stream=True)
+
+
+# ---------------------------------------------------------------------------
 # SereneTab is the computer's web browser: links from any app (dice-open, which is
 # x-www-browser and the default for web addresses) come here and open in SereneTab.
 # dice-open shows this small secret, which only the person at the desktop can read.
@@ -1108,6 +1395,7 @@ class System:
         self.voice = Voice(self.remote.push, self.apps)
         self.shield = Shield(settings_path)
         self.answers = Answers(settings_path)
+        self.brain = Brain(settings_path)
         self.standby_on = False
 
     # -- status --
@@ -2526,6 +2814,32 @@ class Handler(BaseHTTPRequestHandler):
     def fail(self, code, message):
         self.send(code, {'ok': False, 'error': message})
 
+    def stream_chat(self, b):
+        """Passes the model's answer on as it comes, one JSON line at a time (chunked)."""
+        try:
+            r = self.server.system.brain.chat(b)
+        except (OSError, ValueError, urllib.error.URLError) as e:
+            return self.fail(503, str(e) or 'Deuce\'s brain isn\'t answering.')
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/x-ndjson')
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('Transfer-Encoding', 'chunked')
+        self.end_headers()
+        try:
+            with r:
+                for line in r:
+                    line = line.strip()
+                    if line:
+                        self.wfile.write(b'%x\r\n%s\n\r\n' % (len(line) + 1, line))
+                        self.wfile.flush()
+        except (OSError, ValueError):
+            pass
+        try:
+            self.wfile.write(b'0\r\n\r\n')
+        except OSError:
+            pass
+
     # -- who's asking --
     def local_host(self):
         host = (self.headers.get('Host') or '').lower()
@@ -2656,6 +2970,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, sysm.shield.state())
         if path == '/api/ask/ai':
             return self.send(200, sysm.answers.ai_public())
+        if path == '/api/brain':
+            return self.send(200, sysm.brain.state())
         if path == '/api/lookup':
             return self.send(200, lookup(q.get('url', '')))
         if path == '/api/tuner':
@@ -2712,6 +3028,31 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, sysm.answers.ask(b.get('q'), b.get('history') if isinstance(b.get('history'), list) else []))
         if path == '/api/ask/ai':
             return self.send(200, sysm.answers.set_ai(b))
+        if path == '/api/brain':
+            act = b.get('action')
+            if act == 'install':
+                return self.send(200, sysm.brain.start_install(b.get('model') if b.get('model') in BRAIN_TAGS else None))
+            if act == 'pull':
+                return self.send(200, sysm.brain.start_pull(b.get('model')))
+            if act == 'choose':
+                return self.send(200, sysm.brain.choose(b.get('model')))
+            if act == 'remove':
+                return self.send(200, sysm.brain.remove(b.get('model')))
+            if act == 'warm':
+                threading.Thread(target=sysm.brain.warm, daemon=True).start()
+                return self.send(200, {'ok': True})
+            return self.fail(400, 'Install, pull, choose, remove or warm.')
+        if path == '/api/brain/chat':
+            return self.stream_chat(b)
+        if path == '/api/search':
+            q = re.sub(r'\s+', ' ', str(b.get('q') or '')).strip()[:300]
+            return self.send(200, {'ok': bool(q), 'results': sysm.answers.search(q) if q else []})
+        if path == '/api/read':
+            r = [{'url': str(b.get('url') or ''), 'title': ''}]
+            if not re.match(r'^https?://', r[0]['url']) or is_private_url(r[0]['url']):
+                return self.fail(400, 'That isn\'t a web page I can read.')
+            sysm.answers.read_pages(r, 1)
+            return self.send(200, {'ok': bool(r[0].get('text')), 'url': r[0]['url'], 'text': (r[0].get('text') or '')[:12000]})
         if path == '/api/browse':
             return self.send(200, sysm.browse(b.get('url')))
         if path == '/api/wifi':
@@ -3058,6 +3399,7 @@ def main(argv=None):
         write_open_token(desktop_user())
         srv.system.shield.start()
         threading.Thread(target=ensure_splash, args=(a.settings,), daemon=True).start()
+        threading.Thread(target=srv.system.brain.warm, daemon=True).start()
     print('diced %s: the DiceOS desktop is at http://127.0.0.1:%d/' % (VERSION, a.port), flush=True)
     try:
         srv.serve_forever()

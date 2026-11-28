@@ -18,7 +18,7 @@
     brightness: dev.backlight ? 0.9 : null, battery: dev.battery ? { percent: 76, charging: false } : null,
     settings: cfg.settings || {},
   };
-  window.DICE_SYS = { token: 'emulator', version: cfg.version || '2.3.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
+  window.DICE_SYS = { token: 'emulator', version: cfg.version || '2.4.0', settings: sys.settings, user: sys.user, host: sys.host, emulated: true };
   const NETS = [[cfg.wifi && cfg.wifi.ssid ? cfg.wifi.ssid : 'Home', 84, true], ['Upstairs 5G', 61, true], ['Library Guest', 42, false], ['Printer-4F2A', 23, true]];
   const tell = (msg) => { try { parent.postMessage(Object.assign({ dice: 'emu' }, msg), location.origin); } catch (e) { /* not in the emulator after all */ } };
   const reply = (data, status) => new Response(JSON.stringify(data), { status: status || 200, headers: { 'Content-Type': 'application/json' } });
@@ -30,6 +30,7 @@
     try { body = init && typeof init.body === 'string' ? JSON.parse(init.body) : null; } catch (e) { body = null; }
     const method = ((init && init.method) || 'GET').toUpperCase();
     if (url.pathname === '/api/events') return Promise.resolve(events());
+    if (url.pathname === '/api/brain/chat') return Promise.resolve(fakeBrain(body || {}));
     const query = Object.fromEntries(url.searchParams);
     return new Promise((res) => setTimeout(() => res(route(method, url.pathname, body || {}, query)), 80 + Math.random() * 160));
   };
@@ -46,6 +47,37 @@
     streams.forEach((c) => { try { c.enqueue(line); } catch (err) { streams.delete(c); } });
   });
   let updateAsked = 0;
+  // the tests' pretend brain: a few scripted answers, streamed a word at a time like Ollama's
+  const FAKE_BRAIN = /[?&]fakebrain=1\b/.test(location.search);
+  let brainModel = 'qwen3.5:4b';
+  function fakeBrain(b) {
+    const msgs = b.messages || [], last = msgs[msgs.length - 1] || {}, said = String(last.content || '').toLowerCase();
+    const user = String((msgs.filter((m) => m.role === 'user').pop() || {}).content || '').toLowerCase();
+    const call = (name, args) => ({ function: { name, arguments: args } });
+    let words = '', calls = [];
+    if (last.role === 'tool') {
+      if (last.tool_name === 'web_search') words = 'Blue light is scattered more than the other colours because its waves are shorter [1], which is called Rayleigh scattering [2].';
+      else if (last.tool_name === 'calculate') words = 'That comes to ' + last.content.replace(/\.$/, '') + '.';
+      else if (last.tool_name === 'look_at_screen') words = 'You have ' + (last.content.match(/The (\w+) window/) || [0, 'a'])[1] + ' window in front.';
+      else if (last.tool_name === 'write_draft') words = 'Here is the email. Copy it when you are ready.';
+      else words = 'Done: ' + last.content;
+      if (last.tool_name === 'do' && /and play/.test(user) && msgs.filter((m) => m.role === 'tool').length < 2) { words = ''; calls = [call('do', { command: 'play some music' })]; }
+    } else if (/timer/.test(said)) { words = 'Sure. '; calls = [call('do', { command: 'set a timer for ' + ((said.match(/\d+/) || ['10'])[0]) + ' minutes' })]; }
+    else if (/dark mode and play/.test(said)) calls = [call('do', { command: 'turn on dark mode' })];
+    else if (/%|percent|miles|km|tip/.test(said)) calls = [call('calculate', { expression: said.match(/\d+%? of \d+|\d+ miles in km/) ? said.match(/\d+%? of \d+|\d+ miles in km/)[0] : '15% of 80' })];
+    else if (/why|who|what is/.test(said)) calls = [call('web_search', { query: said })];
+    else if (/write|email/.test(said)) calls = [call('write_draft', { title: 'Email to my teacher', text: 'Hi Ms. Lee,\n\nI\'m sick today and won\'t be in class. I\'ll catch up on the homework tomorrow.\n\nThanks,\nDhruv' })];
+    else if (/screen|this window|this page/.test(said)) calls = [call('look_at_screen', {})];
+    else if (/and tomorrow|what about/.test(said)) words = 'Following on from before: you asked "' + String((msgs.filter((m) => m.role === 'user').slice(-2, -1)[0] || {}).content || '') + '".';
+    else words = 'I am a pretend brain, for the tests.';
+    tell({ event: 'log', text: 'Deuce\'s brain (pretend): ' + (calls.length ? calls.map((c) => c.function.name).join(', ') : words.slice(0, 60)) });
+    const lines = words.split(/(?<= )/).filter(Boolean).map((w) => ({ message: { role: 'assistant', content: w } }));
+    if (calls.length) lines.push({ message: { role: 'assistant', content: '', tool_calls: calls } });
+    lines.push({ done: true });
+    let i = 0;
+    const stream = new ReadableStream({ pull(c) { return new Promise((res) => setTimeout(() => { if (i >= lines.length) c.close(); else c.enqueue(enc.encode(JSON.stringify(lines[i++]) + '\n')); res(); }, 30)); } });
+    return new Response(stream, { status: 200, headers: { 'Content-Type': 'application/x-ndjson' } });
+  }
   const emuShield = { system: true, allow: [] };
   let emuAi = null;
   // a pretend Bluetooth: a controller and a speaker already paired, two more nearby when you look
@@ -94,6 +126,19 @@
       case '/api/ask/ai':
         if (method === 'POST') emuAi = b.provider ? { provider: b.provider, model: b.model || '' } : null;
         return reply({ ok: true, set: !!emuAi, provider: emuAi && emuAi.provider, model: emuAi && emuAi.model, providers: [{ id: 'groq', name: 'Groq', model: 'llama-3.3-70b-versatile', keyUrl: 'https://console.groq.com/keys' }, { id: 'openrouter', name: 'OpenRouter', model: 'meta-llama/llama-3.3-70b-instruct:free', keyUrl: 'https://openrouter.ai/keys' }, { id: 'google', name: 'Google AI Studio', model: 'gemini-2.5-flash', keyUrl: 'https://aistudio.google.com/apikey' }, { id: 'ollama', name: 'Ollama, on this computer', model: 'llama3.2', keyUrl: 'https://ollama.com/download', noKey: true }] });
+      // Deuce's brain: only pretended for the tests (?fakebrain=1); otherwise the emulator has none
+      case '/api/brain': {
+        if (!FAKE_BRAIN) return reply({ ok: false, running: false, ready: false, error: 'The emulator has no brain of its own.' });
+        if (b.action === 'choose' && b.model) brainModel = b.model;
+        const choices = [['qwen3.5:2b', 'Quick', 2, 4], ['qwen3.5:4b', 'Smart', 3.4, 7], ['qwen3.5:9b', 'Smarter', 6.6, 14], ['qwen3.5:27b', 'Very smart', 17, 22], ['qwen3.5:35b', 'Smartest', 24, 40]]
+          .map(([tag, name, size, need]) => ({ tag, name, size, need, about: 'A pretend model.', fits: need <= 8, here: tag === brainModel }));
+        return reply({ ok: true, installed: true, running: true, ready: true, version: '0.40.17', models: [brainModel], model: brainModel, recommended: 'qwen3.5:4b', choices, busy: null, error: null, machine: { ram: 8, gpu: null, vram: 0, pi: true } });
+      }
+      case '/api/search':
+        return reply({ ok: true, results: [{ title: 'Why Is the Sky Blue? | NASA Space Place', url: 'https://spaceplace.nasa.gov/blue-sky/', snippet: 'Sunlight reaches Earth\'s atmosphere and is scattered in all directions by all the gases and particles in the air. Blue light is scattered more than the other colors because it travels as shorter, smaller waves.' },
+          { title: 'Rayleigh scattering - Wikipedia', url: 'https://en.wikipedia.org/wiki/Rayleigh_scattering', snippet: 'Rayleigh scattering is the scattering of light by particles much smaller than its wavelength; it is why the sky looks blue.' }] });
+      case '/api/read':
+        return reply({ ok: true, url: b.url, text: 'A pretend page for the tests. ' + b.url });
       case '/api/ask': {
         const qq = String(b.q || '').toLowerCase();
         tell({ event: 'log', text: 'Deuce looked up: ' + b.q + ' (pretend)' });

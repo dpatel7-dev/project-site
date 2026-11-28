@@ -238,6 +238,8 @@
         const tryIt = h('<button class="b small go" data-nav data-key="du:try">Try it</button>');
         tryIt.onclick = () => DU.listen();
         pane.appendChild(row('Ask something', 'Or type it, if there\'s no microphone.', tryIt));
+        // Deuce's brain: a language model on this computer (js/deucemind.js)
+        if (DU && DU.mind && DU.mind.pane) DU.mind.pane(pane, { row, seg, sw, here: () => cur === 'deuce' });
         if (!D.sys) { pane.appendChild(h('<p class="note">In this browser, Deuce listens with the browser\'s own speech recognition (Chrome, Edge and Safari have it) the first time you allow the microphone.</p>')); return; }
         // DiceOS: its ears (Vosk, on the computer) and the remote's button
         pane.appendChild(h('<h3 style="margin:22px 0 4px">Hearing</h3>'));

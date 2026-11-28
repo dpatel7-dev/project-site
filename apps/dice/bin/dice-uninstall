@@ -13,6 +13,8 @@ if [ -f /var/lib/dice/display-managers ]; then
   systemctl set-default graphical.target
 fi
 plymouth-set-default-theme -R spinner 2>/dev/null || true
+# Deuce's brain (Ollama and its models), if it was set up from Settings
+[ -f /etc/systemd/system/ollama.service ] && grep -q "Deuce's brain" /etc/systemd/system/ollama.service && /opt/dice/bin/dice-brain remove || true
 # Shield's part of /etc/hosts, and SereneTab as the web browser
 if [ -f /etc/hosts ] && grep -q '^# >>> DiceOS Shield' /etc/hosts; then
   sed -i '/^# >>> DiceOS Shield/,/^# <<< DiceOS Shield <<</d' /etc/hosts

@@ -24,6 +24,8 @@
 :root[data-looks=traced] .b { box-shadow: 0 0 0 1px var(--ink-line), inset 0 1px 0 var(--hi-line), inset 0 -2px 0 rgba(0, 0, 0, .08); }
 :root[data-looks=traced] .srow { box-shadow: inset 0 -1px 0 var(--line); }
 /* app icons in the dock and on the desktop get the same ink line as the worlds */
+:root[data-looks=traced] #desk.mac .pin canvas, :root[data-looks=traced] #desk.mac .task canvas {
+  filter: drop-shadow(1px 0 0 var(--ink-line)) drop-shadow(-1px 0 0 var(--ink-line)) drop-shadow(0 1px 0 var(--ink-line)) drop-shadow(0 -1px 0 var(--ink-line)) drop-shadow(0 3px 0 rgba(0, 0, 0, .2)); }
 :root[data-looks=traced] .pin canvas, :root[data-looks=traced] .task canvas, :root[data-looks=traced] .dicon canvas, :root[data-looks=traced] .sgrid canvas {
   filter: drop-shadow(1px 0 0 var(--ink-line)) drop-shadow(-1px 0 0 var(--ink-line)) drop-shadow(0 1px 0 var(--ink-line)) drop-shadow(0 -1px 0 var(--ink-line)); }
 /* scroll bars: thin and drawn */

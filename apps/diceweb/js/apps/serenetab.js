@@ -738,6 +738,8 @@
     // links from anywhere (other apps on DiceOS, Deuce, the Dice Bar) open as a new tab here
     SR.open = (url) => { newTab(url, { user: true, after: true }); };
     SR.site = () => siteOf(cur);
+    // the page in front (Deuce reads it when you ask about "this page")
+    SR.page = () => { const e = cur && cur.hist[cur.at]; return e && /^https?:/.test(e.url || '') ? { url: e.url, title: e.title || '' } : null; };
     SR.reload = () => { if (cur) show(cur); };
     paintEngine();
     setTimeout(() => { if (ctx.mode === 'run') D.nav.first(root); }, 40);

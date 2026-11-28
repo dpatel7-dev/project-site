@@ -372,7 +372,7 @@
       const n = Math.round(S * 0.7), d = G.die(Math.max(16, Math.min(64, Math.round(n / dpr))), null, { key: 'appicon', outline: [70, 70, 82] });
       g.imageSmoothingEnabled = false; g.drawImage(d, Math.round((S - n) / 2), Math.round((S - n) / 2), n, n);
     } else {
-      const gl = glyph(id), cell = Math.max(1, Math.floor((S * 0.64) / 16)), off = Math.round((S - cell * 16) / 2);
+      const gl = glyph(id), cell = Math.max(1, Math.round((S * 0.6) / 16)), off = Math.round((S - cell * 16) / 2);
       const pal = { W: '#ffffff', w: 'rgba(255,255,255,.72)', A: mix(tile, '#000000', 0.12), D: '#1d2028', G: '#8fe07a', R: '#e5534b', O: '#f0a43a', P: '#4a4846', o: '#f0945a', q: '#c06a3a', K: '#34322f', k: '#211f1d' };
       // a soft shadow under the picture, one cell down
       g.fillStyle = 'rgba(0,0,0,.14)';

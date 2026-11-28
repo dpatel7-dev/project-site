@@ -1,6 +1,8 @@
-// The menu bar along the top of the desktop, like a Mac's: the die menu, the app you're in and its
-// menus (File, Edit, View, Window, Help), and on the right Shield, Wi-Fi, sound, search, Deuce,
-// Control Centre and the clock. Windows get round close, minimise and zoom buttons on the left.
+// The desktop's top bar: a Mac's menus in DiceTV's clothes. Two glass pills float over your world,
+// like DiceTV's: on the left the die (its menu), the app you're in and its menus (File, Edit, View,
+// Window, Help); on the right Shield, Wi-Fi, sound, search, Deuce, Control Centre and the clock.
+// Windows get glossy close, minimise and zoom buttons; the dock gets DiceTV's big tiles, a name
+// when you point at one, and die pips under what's open (two under the one you're in).
 // Settings, Desktop has a switch to go back to the tray at the bottom instead.
 (function () {
   'use strict';
@@ -89,16 +91,16 @@
   function build() {
     const desk = D.$('#desk');
     if (!desk || MB.el) return;
-    MB.el = h('<div class="mbar" role="menubar" aria-label="Menu bar">' +
-      '<button class="mb-die" data-m="die" aria-label="Dice menu">' + D.glyph('die', 1) + '</button>' +
+    MB.el = h('<div class="mbar" role="menubar" aria-label="Menu bar"><span class="mb-l">' +
+      '<button class="mb-die" data-m="die" aria-label="Dice menu">' + D.icon('die', null, 2) + '</button>' +
       '<button class="mb-app" data-m="app"><b></b></button>' +
       ['File', 'Edit', 'View', 'Window', 'Help'].map((m) => '<button class="mb-m" data-m="' + m + '">' + m + '</button>').join('') +
-      '<span class="mb-r">' +
+      '</span><span class="mb-r">' +
         '<button class="mb-music" hidden aria-label="Now playing"><span class="eqmini"><i></i><i></i><i></i></span><span class="mb-np"></span></button>' +
-        '<button class="mb-shield" aria-label="Shield" title="Shield">' + D.glyph('shield', 1) + '</button>' +
+        '<button class="mb-shield" aria-label="Shield" title="Shield">' + D.glyph('shield', 2) + '</button>' +
         '<button class="mb-wifi" aria-label="Wi-Fi" title="Wi-Fi"></button>' +
         '<button class="mb-vol" aria-label="Sound" title="Sound"></button>' +
-        '<button class="mb-search" aria-label="Search (Ctrl + Space)" title="Search">' + D.glyph('search', 1) + '</button>' +
+        '<button class="mb-search" aria-label="Search (Ctrl + Space)" title="Search">' + D.glyph('search', 2) + '</button>' +
         '<button class="mb-deuce" aria-label="Deuce (Super + C)" title="Deuce"></button>' +
         '<button class="mb-cc" aria-label="Control Centre (Q)" title="Control Centre"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="1" y="2.5" width="14" height="4.5" rx="2.25" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="4.6" cy="4.75" r="1.5" fill="currentColor"/><rect x="1" y="9" width="14" height="4.5" rx="2.25" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="11.4" cy="11.25" r="1.5" fill="currentColor"/></svg></button>' +
         '<button class="mb-clock" aria-label="Date and time"></button>' +
@@ -118,8 +120,8 @@
     MB.el.querySelector('.mb-cc').onclick = () => (D.qam.isOpen() ? D.qam.close() : D.qam.open('quick'));
     MB.el.querySelector('.mb-clock').onclick = () => Desk.open('calendar');
     MB.el.querySelector('.mb-music').onclick = () => Desk.open('music');
-    if (D.deuce && D.deuce.orbSvg) MB.el.querySelector('.mb-deuce').innerHTML = D.deuce.orbSvg(16);
-    else MB.el.querySelector('.mb-deuce').innerHTML = D.glyph('spark', 1);
+    if (D.deuce && D.deuce.orbSvg) MB.el.querySelector('.mb-deuce').innerHTML = D.deuce.orbSvg(22);
+    else MB.el.querySelector('.mb-deuce').innerHTML = D.glyph('spark', 2);
     MB.paint();
   }
   // what's on the right, and the name of the app you're in
@@ -129,8 +131,8 @@
     MB.el.querySelector('.mb-clock').textContent = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + '  ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     MB.el.querySelector('.mb-app b').textContent = appName();
     const st = D.sys && D.sys.status;
-    MB.el.querySelector('.mb-wifi').innerHTML = D.glyph(st && st.wifi ? (st.wifi.ssid ? 'wifi' : 'nowifi') : navigator.onLine ? 'wifi' : 'nowifi', 1);
-    MB.el.querySelector('.mb-vol').innerHTML = D.glyph(D.state.volume > 0 ? 'volume' : 'mute', 1);
+    MB.el.querySelector('.mb-wifi').innerHTML = D.glyph(st && st.wifi ? (st.wifi.ssid ? 'wifi' : 'nowifi') : navigator.onLine ? 'wifi' : 'nowifi', 2);
+    MB.el.querySelector('.mb-vol').innerHTML = D.glyph(D.state.volume > 0 ? 'volume' : 'mute', 2);
     const M = D.M, m = MB.el.querySelector('.mb-music');
     m.hidden = !(M && M.now);
     if (M && M.now) { m.querySelector('.mb-np').textContent = M.now.name; m.querySelector('.eqmini').classList.toggle('still', !M.now.playing); }
@@ -147,9 +149,10 @@
     if (MB.el) MB.el.hidden = !MB.on();
     MB.paint();
   };
-  // Desk.area leaves room for the menu bar
+  // Desk.area leaves room for the bar on top and the bigger dock
   const area0 = Desk.area;
-  Desk.area = () => { const a = area0(); return MB.on() ? { w: a.w, h: a.h - 28 } : a; };
+  Desk.area = () => { const a = area0(); return MB.on() ? { w: a.w, h: a.h - MB.TOP - (MB.DOCK - 62) } : a; };
+  MB.TOP = 56; MB.DOCK = 92;
 
   // the dock grows under the pointer, if you'd like that (Settings, Desktop)
   function magnify(e) {
