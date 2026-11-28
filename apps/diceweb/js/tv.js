@@ -73,6 +73,14 @@
     if (now) np.style.setProperty('--tc', now.c); else np.style.removeProperty('--tc');
     const left = D.tools.sleepLeft(), sc = q('sleep');
     sc.innerHTML = '<span class="tlab">' + D.glyph('moon', 1) + 'Sleep timer</span><b class="tmid">' + (left ? left + ' min left' : 'Off') + '</b><span class="tsub">' + (left ? 'Then the music stops and the screen sleeps.' : 'Press to fall asleep to something.') + '</span>';
+    // a fridge note for whoever's next, and the die for when nobody can decide
+    const nc = q('note'), note = D.fridge && D.fridge.get();
+    if (nc) {
+      nc.hidden = !note;
+      if (note) nc.innerHTML = '<span class="tlab">' + D.glyph('box', 1) + 'A note' + (note.by ? ' from ' + esc(note.by) : '') + '</span><b class="tnote">' + esc(note.text) + '</b><span class="tsub">' + esc(D.fridge.ago(note)) + '. Press when you\'ve seen it.</span>';
+    }
+    const rc = q('roll');
+    if (rc && !rc.firstChild) rc.innerHTML = '<span class="tlab">' + D.glyph('die', 1) + 'Can\'t decide?</span><b class="tmid">Roll for it</b><span class="tsub">The die picks something to watch.</span>';
     const ac = q('alarm');
     if (ac && D.alarm) {
       const on = D.alarm.list().filter((a) => a.on).map((a) => [D.alarm.next(a), a]).filter((x) => x[0]).sort((x, y) => x[0] - y[0])[0];
@@ -103,13 +111,20 @@
     const alarm = card('alarm', 't-alarm', 'Alarms');
     alarm.classList.remove('glass');
     alarm.onclick = () => D.launch('clock', { arg: 'alarm' });
-    today.append(time, wxc, due, np, sleep, alarm);
+    const note = card('note', 't-note', 'Done'), roll = card('roll', 't-roll', 'Roll', 'Anything');
+    [note, roll].forEach((c) => c.classList.remove('glass'));
+    note.hidden = true;
+    note.onclick = () => { if (D.fridge) D.fridge.clear(); };
+    roll.onclick = () => D.roll && D.roll.open('watch');
+    roll._x = () => D.roll && D.roll.open('any');
+    today.append(time, note, wxc, due, np, sleep, alarm, roll);
     paintToday(true);
   };
   setInterval(paintToday, 20000);
   M.on(() => paintToday());
   D.on('sleeptimer', () => paintToday());
   D.on('alarms', () => paintToday());
+  D.on('fridge', () => { paintToday(); if (amb && !amb.hidden) paintAmbient(true); });
 
   // ---- Watch: your streaming sites ---------------------------------------------------------
   // Each shows the site's own icon, fetched as the tile appears (the way a browser shows
@@ -457,7 +472,7 @@
   const A = D.ambient = { on: false, last: Date.now() };
   let amb = null, scene = null, sceneKey = '', lastMin = -1, lastSec = -1;
   function buildAmbient() {
-    amb = h('<div id="ambient" hidden aria-hidden="true"><canvas class="am-bg"></canvas><img class="am-ph" alt=""><img class="am-ph" alt=""><div class="am-veil"></div><div class="am-in"><b class="am-clock"></b><span class="am-date"></span><span class="am-wx"></span><span class="am-np"></span></div></div>');
+    amb = h('<div id="ambient" hidden aria-hidden="true"><canvas class="am-bg"></canvas><img class="am-ph" alt=""><img class="am-ph" alt=""><div class="am-veil"></div><div class="am-in"><b class="am-clock"></b><span class="am-date"></span><span class="am-wx"></span><span class="am-np"></span><span class="am-note"></span></div></div>');
     amb.addEventListener('pointerdown', () => A.exit());
     document.body.appendChild(amb);
   }
@@ -497,6 +512,8 @@
       amb.querySelector('.am-in').style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
       const np = M.now;
       amb.querySelector('.am-np').innerHTML = np && np.playing ? '<span class="eqmini"><i></i><i></i><i></i></span>' + esc(np.name) : '';
+      const note = D.fridge && D.fridge.get();
+      amb.querySelector('.am-note').innerHTML = note ? D.glyph('box', 2) + '<span>' + esc(note.text) + (note.by ? '<small>' + esc(note.by) + '</small>' : '') + '</span>' : '';
       const w = await weather();
       amb.querySelector('.am-wx').innerHTML = w ? D.weather.icon(w.words.kind, D.night()) + '<span>' + w.t + '°, ' + esc(w.words.text.toLowerCase()) + ' in ' + esc(w.place) + '</span>' : '';
     }

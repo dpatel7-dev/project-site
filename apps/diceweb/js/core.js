@@ -148,6 +148,7 @@
     Dice.state.recent = r.slice(0, 12);
     Dice.state.last[id] = Date.now();
     Dice.save();
+    Dice.emit('opened', id);
   };
 
   // ---- Notifications and pop-ups --------------------------------------------------

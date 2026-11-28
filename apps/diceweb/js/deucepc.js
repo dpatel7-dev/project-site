@@ -195,7 +195,8 @@
   P.DO.help = () => {
     const groups = [['Ask', ['Why is the sky blue?', 'Who won the Knicks game?', 'What\'s the weather tomorrow?']],
       ['Do', ['Turn on dark mode', 'Start focus mode', 'Open github.com', 'Set a timer for 10 minutes', 'Take a screenshot']],
-      ['Remember', ['Remind me to call Mom at 6', 'Remember that my locker is 42', 'Note: buy milk', 'What do you know about me?']]];
+      ['Remember', ['Remind me to call Mom at 6', 'Remind me to stretch next time I open Netflix', 'Remember that my locker is 42', 'What do you know about me?']],
+      ['Only on Dice', ['Undo that', 'Tell me when the Knicks game starts', 'Let me know when it stops raining', 'How do I change the wallpaper?', 'Roll for it', 'Float this window']]];
     const c = h('<div class="dp-help"></div>');
     groups.forEach(([g, list]) => { const sec = h('<div><h4>' + g + '</h4></div>'); list.forEach((x) => { const b = h('<button class="dp-chip" data-nav data-key="dp:ex:' + esc(x) + '"></button>'); b.textContent = x; b.onclick = () => DU.ask(x); sec.appendChild(b); }); c.appendChild(sec); });
     P.say('Here\'s some of what I can do. Type it, or press the microphone and say it.', c);
@@ -237,7 +238,7 @@
     // what's coming up
     const up = cardEl('dp-up', 'bell', '#4b7bec', 'Up next');
     const items = [];
-    DU.reminders.upcoming().slice(0, 4).forEach((r) => items.push({ t: r.at, what: r.what, when: DU.whenWords(r.at), kind: 'Reminder' }));
+    DU.reminders.upcoming().slice(0, 4).forEach((r) => items.push({ t: r.at, what: r.what, when: DU.reminders.when(r), kind: 'Reminder' }));
     const A = D.state.axiom;
     if (A && Array.isArray(A.tasks) && D.L.planBuckets) {
       const tk = D.L.dayKey(new Date()), bk = D.L.planBuckets(A.tasks, tk);
@@ -309,11 +310,13 @@
     const list = DU.reminders.list().slice().sort((a, b) => a.at - b.at);
     if (!list.length) box.appendChild(h('<p class="dp-empty">No reminders. Add one above, or just say "remind me to water the plants tomorrow".</p>'));
     list.forEach((r) => {
-      const row = h('<div class="dp-item' + (r.done ? ' done' : '') + '"><i></i><div><b></b><small>' + esc(r.done ? 'Done' : DU.whenWords(r.at)) + ', ' + esc(new Date(r.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })) + '</small></div><button class="dp-del" data-nav data-key="dp:rx-' + esc(r.id) + '" aria-label="Remove">' + CLOSE + '</button></div>');
+      const row = h('<div class="dp-item' + (r.done ? ' done' : '') + '"><i></i><div><b></b><small>' + esc(r.done ? 'Done' : DU.reminders.when(r)) + (r.on ? '' : ', ' + esc(new Date(r.at).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }))) + '</small></div><button class="dp-del" data-nav data-key="dp:rx-' + esc(r.id) + '" aria-label="Remove">' + CLOSE + '</button></div>');
       row.querySelector('b').textContent = r.what.replace(/^./, (c) => c.toUpperCase());
       row.querySelector('.dp-del').onclick = () => { DU.reminders.remove(r.id); paintTab(); };
       box.appendChild(row);
     });
+    // and what Deuce is keeping watch for
+    if (D.lookouts) box.appendChild(D.lookouts.panel(() => paintTab()));
     body.appendChild(box);
   }
   function notebook() {
@@ -348,6 +351,7 @@
     body.appendChild(box);
   }
   D.on('reminders', () => { if (open && tab === 'reminders') paintTab(); });
+  D.on('lookouts', () => { if (open && tab === 'reminders' && !el.contains(document.activeElement)) paintTab(); });
   D.on('notebook', () => { if (open && tab === 'notebook') paintTab(); });
 
   // ---- the orb in the dock, Super + C, and clicking away --------------------------------------------------------

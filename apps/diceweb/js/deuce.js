@@ -419,6 +419,10 @@
     // ---- reminders, the Notebook, notes ----
     remind: (it) => {
       if (!it.what) return say('What should I remind you about? Say it like "remind me to call Mom at 6".');
+      if (it.on) {
+        const r = DU.reminders.add(it.what, 0, it.on);
+        return say('OK. I\'ll remind you to ' + it.what + ' ' + R.when(r) + '.', card('', '', [{ label: 'Done', go: true, run: () => DU.hide() }, { label: 'Undo', run: () => { DU.reminders.remove(r.id); done('Reminder taken off.'); } }]));
+      }
       if (!it.at) {
         const at = (ms) => () => { DU.reminders.add(it.what, ms); done('OK. I\'ll remind you to ' + it.what + ' ' + whenWords(ms) + '.'); };
         const d = new Date(), tonight = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 20).getTime(), morning = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 9).getTime();
@@ -508,6 +512,53 @@
       const short = plain.length > 300 ? plain.slice(0, 300).replace(/\s+\S*$/, '') + '…' : plain;
       return say(short, card('', 'From ' + r.sources.slice(0, 3).map((s) => s.site).join(', '), [{ label: 'Read more', icon: 'link', go: true, run: () => { DU.hide(); D.browse('serene:ask?q=' + encodeURIComponent(it.q)); } }, { label: 'OK', run: () => DU.hide() }]));
     },
+    // ---- Oops, Lookouts, Show me how, Roll for it, Float, Fridge notes ----
+    oops: (it) => {
+      const O = D.oops;
+      if (it.act === 'list') { DU.hide(); O.open(); return; }
+      const e = O.list().find((x) => !x.undone);
+      if (!e) return say('There\'s nothing to undo yet. When you change a setting, close a window or move something to the Trash, I can take it back.');
+      if (!O.undo(e.id)) return say('I couldn\'t take that one back: ' + e.title.replace(/^./, (c) => c.toLowerCase()) + '.');
+      return say('Undone: ' + e.title.replace(/^./, (c) => c.toLowerCase()) + '.', card('', '', [{ label: 'OK', go: true, run: () => DU.hide() }, { label: 'See every change', icon: 'loop', run: () => { DU.hide(); O.open(); } }]));
+    },
+    lookout: (it) => {
+      const LK = D.lookouts, list = LK.list();
+      if (it.act === 'list') {
+        if (!list.length) return say('I\'m not watching for anything. Try "tell me when the Knicks game starts" or "let me know when it stops raining".');
+        return say('I\'m keeping an eye out ' + list.map((l) => LK.words(l)).join(', and ') + '.', card('', '', [{ label: 'OK', go: true, run: () => DU.hide() }, { label: 'Stop them all', run: () => { LK.stop('all'); done('OK, I stopped watching.'); } }]));
+      }
+      if (it.act === 'stop') { const n = LK.stop(it.what); return done(n ? 'OK. I stopped watching' + (n > 1 ? ' for ' + n + ' things.' : '.') : 'I wasn\'t watching for that.'); }
+      if (it.act === 'cant') return say('I can keep an eye on games, the weather, web pages and the internet. Try "tell me when the Knicks game starts", "let me know if it snows" or "tell me when this page changes".');
+      const r = LK.add(it);
+      if (!r.ok) {
+        return say({
+          town: 'Which town should I watch the sky in? Say "remember that I live in" and your town, then ask again.',
+          nopage: 'Open the page in SereneTab first, then ask me again. Or say the site, like "tell me when example.com changes".',
+          dice: 'Watching web pages needs DiceOS: it reads them for me. In a browser I can watch games, the weather and the internet.',
+          full: 'I\'m already keeping an eye on 12 things. Say "stop watching" and one of them first.',
+          online: 'You\'re online right now.',
+        }[r.why] || 'I can\'t keep an eye on that.');
+      }
+      return say((r.again ? 'I\'m already on it: I\'ll tell you ' : 'OK. I\'ll tell you ') + LK.words(r.lookout) + '.', card('', '', [{ label: 'Done', go: true, run: () => DU.hide() }, { label: 'Stop watching', run: () => { LK.remove(r.lookout.id); done('OK, I won\'t.'); } }]));
+    },
+    howto: (it) => {
+      if (!D.showme || !D.showme.has(it.topic)) return DO.ask({ q: it.text });
+      DU.hide();
+      setTimeout(() => D.showme.start(it.topic), 260);
+    },
+    roll: (it) => { DU.hide(); setTimeout(() => D.roll.open(it.what), 200); },
+    float: (it) => {
+      const name = D.float && D.float.set(it.on);
+      if (!name) return say(D.desk && D.desk.on ? 'There\'s no window open to float.' : 'Float is for windows on the desktop. Switch to the desktop, then ask me again.');
+      return done(it.on ? name + ' is floating on top. Move the mouse over it to see it clearly.' : name + ' is back to normal.');
+    },
+    fridge: (it) => {
+      const F = D.fridge, n = F.get();
+      if (it.clear) { if (!n) return done('There\'s no note up.'); F.clear(); return done('Note taken down.'); }
+      if (it.read) return say(n ? 'The note says: ' + n.text + (n.by ? ', from ' + n.by : '') + '.' : 'There\'s no note up. Say "leave a note on the TV" and what it should say.');
+      F.set(it.note);
+      return say('Note left on DiceTV: "' + it.note + '". Whoever\'s next sees it on the home screen and the big clock.', card('', '', [{ label: 'Done', go: true, run: () => DU.hide() }, { label: 'Take it down', run: () => { F.clear(); done('Note taken down.'); } }]));
+    },
     unknown: (it) => {
       const q = it.q || it.text || '';
       say('I\'m not sure what "' + q + '" means.', card('', '', [
@@ -533,12 +584,45 @@
   // ---- reminders: "remind me to call Mom at 6" ----------------------------------------------------
   const R = DU.reminders = {
     list: () => (Array.isArray(D.state.reminders) ? D.state.reminders : (D.state.reminders = [])),
-    add(what, at) { const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), what: String(what).slice(0, 200), at: +at, done: false }; R.list().push(r); R.list().sort((a, b) => a.at - b.at); D.save(); D.emit('reminders'); return r; },
+    // on: instead of a time, a moment ({ app: 'netflix' } next time it's opened, { place: 'desk' | 'tv' })
+    add(what, at, on) { const r = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5), what: String(what).slice(0, 200), at: on ? LATER : +at, done: false }; if (on) r.on = on; R.list().push(r); R.list().sort((a, b) => a.at - b.at); D.save(); D.emit('reminders'); return r; },
     remove(id) { D.state.reminders = R.list().filter((r) => r.id !== id); D.save(); D.emit('reminders'); },
     upcoming: () => R.list().filter((r) => !r.done),
+    // "in 20 minutes", or "next time you open Netflix"
+    when(r) {
+      if (!r.on) return whenWords(r.at);
+      if (r.on.place) return r.on.place === 'desk' ? 'when you\'re next on the desktop' : 'when you\'re next on DiceTV';
+      const a = appNamed(r.on.app);
+      return 'next time you open ' + (a ? a.name : r.on.app.replace(/\b\w/g, (c) => c.toUpperCase()));
+    },
   };
+  const LATER = 8.64e15; // the end of time, as far as a Date goes (moment reminders wait there)
+  // which app a name means ("netflix" → Netflix, "files" → Files)
+  function appNamed(name) {
+    const n = B.clean(name), W = D.watch && D.watch.SVC;
+    if (W) { const k = Object.keys(W).find((id) => B.clean(W[id].name) === n || id === n); if (k) return { id: k, name: W[k].name }; }
+    const a = Object.values(D.apps || {}).find((x) => x && x.name && B.clean(x.name) === n);
+    return a ? { id: a.id, name: a.name } : null;
+  }
+  // a moment came: the reminders waiting for it go off
+  function moment(test) {
+    const hit = R.list().filter((r) => !r.done && r.on && test(r.on));
+    if (!hit.length) return;
+    hit.forEach((r) => {
+      r.done = true; r.at = Date.now();
+      D.notify({ icon: 'bell', c: '#4b7bec', title: 'Reminder', text: r.what.replace(/^./, (c) => c.toUpperCase()), urgent: true });
+      D.S.play('wake');
+      talk('Reminder: ' + r.what);
+    });
+    D.save(); D.emit('reminders');
+  }
+  const named = (on, name) => { if (!on.app || !name) return false; const a = B.clean(on.app), b = B.clean(name); return a === b || (a.length > 2 && (b.startsWith(a) || a.startsWith(b))); };
+  D.on('opened', (id) => { const a = D.app && D.app(id); moment((on) => on.app && (B.clean(on.app) === id || (a && named(on, a.name)))); });
+  D.on('watching', (w) => moment((on) => named(on, w && w.name) || (w && w.url && on.app && new RegExp('\\b' + B.clean(on.app).replace(/ /g, '') + '\\.').test(w.url))));
+  D.on('desk', (on) => setTimeout(() => moment((m) => m.place === (on ? 'desk' : 'tv')), 1500));
+  D.on('booted', () => setTimeout(() => moment((m) => m.place === (D.desk && D.desk.on ? 'desk' : 'tv')), 4000));
   setInterval(() => {
-    const now = Date.now(), due = R.list().filter((r) => !r.done && r.at <= now);
+    const now = Date.now(), due = R.list().filter((r) => !r.done && !r.on && r.at <= now);
     if (!due.length) return;
     due.forEach((r) => {
       r.done = true;
@@ -548,7 +632,7 @@
       talk('Reminder: ' + r.what);
     });
     // done ones go after a day
-    D.state.reminders = R.list().filter((r) => !r.done || now - r.at < 864e5);
+    D.state.reminders = R.list().filter((r) => !r.done || (now - r.at < 864e5 && r.at < LATER));
     D.save(); D.emit('reminders');
   }, 10000);
 
@@ -605,7 +689,7 @@
   };
 
   function helpCard() {
-    const ex = ['Put on the Knicks game', 'Put on MSG', 'Open Netflix', 'Play lofi on YouTube', 'Switch to the PlayStation', 'Turn it up', 'Set a timer for 10 minutes', 'Wake me up at 7', 'What\'s the weather?', 'Turn off the TV'];
+    const ex = ['Put on the Knicks game', 'Tell me when the Knicks game starts', 'Open Netflix', 'Roll for it', 'Undo that', 'How do I pair headphones?', 'Leave a note on the TV: back at 6', 'Set a timer for 10 minutes', 'What\'s the weather?', 'Turn off the TV'];
     const list = h('<ul class="du-ex"></ul>');
     ex.forEach((x) => { const li = h('<li><button class="du-chip" data-nav data-key="du:ex:' + esc(x) + '"></button></li>'); li.firstChild.textContent = '"' + x + '"'; li.firstChild.onclick = () => DU.ask(x); list.appendChild(li); });
     const c = h('<div class="du-res"></div>');

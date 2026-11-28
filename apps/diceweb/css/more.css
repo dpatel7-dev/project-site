@@ -368,3 +368,109 @@ html.serene-page #legend, html.serene-page #tb, html.serene-page .legend { displ
 .dm-tags i { font: 700 .7rem/1 var(--read); font-style: normal; padding: 4px 8px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 8%, transparent); white-space: nowrap; }
 .dm-tags i.rec { background: color-mix(in srgb, #2fa59a 20%, transparent); color: color-mix(in srgb, #2fa59a 70%, var(--ink)); }
 .dm-tags i.warn { background: color-mix(in srgb, #ef6a55 18%, transparent); color: color-mix(in srgb, #ef6a55 70%, var(--ink)); }
+
+/* ================================================================ DiceWeb 2.5: only on Dice */
+
+/* ---------------------------------------------------------------- Oops: undo for the whole computer */
+#oops { position: fixed; inset: 0; z-index: 99990; display: flex; justify-content: flex-end; align-items: flex-start; padding: 70px 18px 84px; background: rgba(6, 8, 18, .16);
+  opacity: 0; transition: opacity .22s var(--ease); }
+#oops.on { opacity: 1; }
+#oops .oo-in { width: min(440px, 100%); max-height: 100%; display: flex; flex-direction: column; border-radius: 26px; overflow: hidden; transform: translateX(24px); transition: transform .3s var(--ease); }
+#oops.on .oo-in { transform: none; }
+#oops header, #smlist header { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 18px 18px 14px; }
+#oops header b, #smlist header b { display: block; font: 500 1.4rem/1.1 var(--pixel); }
+#oops header span, #smlist header span { font-size: .88rem; color: var(--muted); }
+.oo-ico { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; color: #fff; background: linear-gradient(140deg, #2fa59a, #3a9be8 55%, #f5a623); box-shadow: 0 10px 22px -12px #2fa59a; }
+.oo-x { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; color: var(--muted); }
+.oo-x:hover, .oo-x.is-focus { background: var(--soft-2); color: var(--ink); }
+.oo-list { list-style: none; margin: 0; padding: 0 10px 14px; overflow-y: auto; flex: 1; position: relative; }
+/* a thread down the left, through every change, newest at the top */
+.oo-list::before { content: ""; position: absolute; left: 31px; top: 8px; bottom: 18px; width: 2px; border-radius: 2px; background: linear-gradient(180deg, #2fa59a, color-mix(in oklab, #f5a623 60%, transparent) 70%, transparent); opacity: .45; }
+.oo-list li { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 14px; }
+.oo-list li:hover { background: var(--soft); }
+.oo-list li b { display: block; font-weight: 700; font-size: .95rem; line-height: 1.3; }
+.oo-list li small { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.oo-k { width: 26px; height: 26px; border-radius: 9px; display: grid; place-items: center; background: var(--glass-hi); box-shadow: inset 0 0 0 1px var(--line); color: #2fa59a; z-index: 1; }
+.oo-list li.done { opacity: .55; }
+.oo-list li.done b { text-decoration: line-through; text-decoration-thickness: 1px; }
+.oo-list li em { font-style: normal; font: 700 .78rem/1 var(--read); color: var(--muted); }
+.oo-none { display: block !important; padding: 18px 14px !important; color: var(--muted); line-height: 1.5; }
+#oopsbar { position: fixed; left: 50%; bottom: 96px; z-index: 99989; display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 18px; border-radius: 999px; max-width: min(560px, 92vw);
+  transform: translate(-50%, 16px); opacity: 0; pointer-events: none; transition: opacity .2s var(--ease), transform .26s var(--ease); }
+#oopsbar.on { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
+#oopsbar span { font-weight: 700; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#oopsbar .b { border-radius: 999px; background: linear-gradient(135deg, #2fa59a, #3a9be8); color: #fff; }
+#oopsbar .ob-x { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); }
+
+/* ---------------------------------------------------------------- Show me how: a ring of light round the one thing */
+#showme { position: fixed; inset: 0; z-index: 99994; pointer-events: none; opacity: 0; transition: opacity .25s var(--ease); }
+#showme.on { opacity: 1; }
+#showme .sm-ring { position: fixed; border-radius: 16px; opacity: 0; transition: left .3s var(--ease), top .3s var(--ease), width .3s var(--ease), height .3s var(--ease), opacity .2s;
+  box-shadow: 0 0 0 3px #fff, 0 0 0 6px #4b7bec, 0 0 26px 8px color-mix(in oklab, #3fd0b8 55%, transparent); }
+#showme.found .sm-ring { opacity: 1; animation: sm-in .6s var(--ease) 1; }
+@keyframes sm-in { from { box-shadow: 0 0 0 3px #fff, 0 0 0 22px color-mix(in oklab, #4b7bec 0%, transparent), 0 0 0 0 transparent; } }
+#showme .sm-dim { position: fixed; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .3s var(--ease); }
+#showme .sm-dim path { fill: rgba(6, 8, 18, .52); }
+#showme.found .sm-dim { opacity: 1; }
+#showme .sm-bubble { position: fixed; left: 0; top: 0; width: min(360px, 90vw); padding: 14px 16px 14px; border-radius: 20px; pointer-events: auto; display: grid; gap: 8px; transition: transform .3s var(--ease); }
+#showme .sm-top { display: flex; align-items: center; gap: 10px; }
+#showme .sm-orb, #smlist .sm-orb { flex: none; display: grid; place-items: center; }
+#showme .sm-count { font: 700 .82rem/1.2 var(--read); color: var(--muted); flex: 1; }
+#showme .sm-step { font: 500 .9rem/1 var(--pixel); color: #4b7bec; font-variant-numeric: tabular-nums; }
+#showme .sm-say { margin: 0; font-weight: 700; font-size: 1.02rem; line-height: 1.4; }
+#showme .sm-hint { color: var(--muted); font-size: .8rem; }
+#showme .sm-acts { display: flex; gap: 8px; }
+@media (prefers-reduced-motion: reduce) { #showme .sm-ring, #showme .sm-bubble { transition: none; animation: none !important; } }
+#smlist { position: fixed; inset: 0; z-index: 99990; display: grid; place-items: center; padding: 24px; background: rgba(6, 8, 18, .3); opacity: 0; transition: opacity .2s var(--ease); }
+#smlist.on { opacity: 1; }
+.sml-in { width: min(820px, 100%); max-height: calc(100vh - 60px); display: flex; flex-direction: column; border-radius: 28px; overflow: hidden; }
+.sml-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; padding: 4px 18px 20px; overflow-y: auto; }
+.sml-t { padding: 13px 14px; border-radius: 14px; background: var(--soft); font-weight: 700; font-size: .93rem; line-height: 1.3; box-shadow: inset 3px 0 0 #4b7bec; }
+.sml-t:nth-child(3n+2) { box-shadow: inset 3px 0 0 #3fd0b8; }
+.sml-t:nth-child(3n) { box-shadow: inset 3px 0 0 #9b6bf0; }
+.sml-t:hover, .sml-t.is-focus { background: var(--soft-2); box-shadow: inset 3px 0 0 #4b7bec, 0 0 0 2px var(--ink); }
+
+/* ---------------------------------------------------------------- Roll for it */
+#roll { position: fixed; inset: 0; z-index: 99990; display: grid; place-items: center; padding: 24px; background: rgba(6, 8, 18, .36); opacity: 0; transition: opacity .22s var(--ease); }
+#roll.on { opacity: 1; }
+.rl-in { width: min(480px, 100%); padding: 18px 20px 20px; border-radius: 30px; display: grid; justify-items: center; gap: 12px;
+  background: radial-gradient(90% 70% at 50% 0%, color-mix(in oklab, #f5a623 18%, transparent), transparent 70%), radial-gradient(80% 60% at 100% 100%, color-mix(in oklab, #7c9cff 18%, transparent), transparent 70%), var(--glass-hi); }
+.rl-kinds { justify-self: stretch; display: grid; grid-template-columns: repeat(4, 1fr); }
+.rl-stage { --y: 0px; position: relative; height: 170px; width: 100%; display: grid; place-items: end center; padding-bottom: 18px; }
+.rl-die { width: 128px; height: 128px; transform: translateY(var(--y)); filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .28)); }
+.rl-shadow { position: absolute; bottom: 10px; left: 50%; width: 96px; height: 14px; margin-left: -48px; border-radius: 50%; background: rgba(0, 0, 0, .22); filter: blur(4px);
+  transform: scale(calc(1 + var(--y) / 160px)); }
+.rl-out { --c: #7c9cff; min-height: 104px; display: grid; justify-items: center; text-align: center; gap: 4px; opacity: 0; transform: scale(.96); transition: opacity .25s var(--ease), transform .35s var(--spring); }
+.rl-out.in { opacity: 1; transform: none; }
+.rl-kind { font: 700 .85rem/1 var(--read); color: var(--muted); }
+.rl-name { font: 500 clamp(2rem, 5vw, 2.8rem)/1.05 var(--pixel); background: linear-gradient(135deg, var(--c), color-mix(in oklab, var(--c) 55%, #f5a623)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+:root[data-look=dark] .rl-name { background: linear-gradient(135deg, color-mix(in oklab, var(--c) 70%, #fff), color-mix(in oklab, var(--c) 45%, #f5c431)); -webkit-background-clip: text; background-clip: text; }
+.rl-sub { color: var(--muted); font-size: .95rem; }
+.rl-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.rl-acts .b.go { background: linear-gradient(135deg, #f5a623, #ff707a); color: #141416; }
+.rl-acts .b[disabled] { opacity: .45; pointer-events: none; }
+
+/* ---------------------------------------------------------------- Float: on top, small, and see-through until you point at it */
+#desk .win.float { opacity: .82; transition: opacity .18s var(--ease); box-shadow: 0 0 0 2px color-mix(in oklab, var(--app, #7c9cff) 70%, transparent), 0 24px 50px -20px rgba(0, 0, 0, .55); }
+#desk .win.float:hover, #desk .win.float:focus-within, #desk .win.float.dragging { opacity: 1; }
+#desk .win.float.pinned header::after { content: "Floating"; }
+
+/* ---------------------------------------------------------------- Fridge notes, on DiceTV */
+.tcard.t-note { color: #2a2410; background: linear-gradient(160deg, #fff3a8, #ffe066 55%, #f5c431); box-shadow: 0 14px 30px -18px rgba(120, 90, 0, .6); }
+.tcard.t-note::before { content: ""; position: absolute; top: -7px; left: 50%; width: 64px; height: 16px; margin-left: -32px; border-radius: 3px; background: rgba(255, 255, 255, .55); box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+.tcard.t-note .tlab, .tcard.t-note .tsub { color: rgba(42, 36, 16, .7); }
+.tcard .tnote { font-weight: 700; font-size: clamp(1.05rem, 1.4vw, 1.25rem); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.tcard.t-roll { background: radial-gradient(90% 90% at 100% 0%, color-mix(in oklab, #f5a623 26%, transparent), transparent 70%), radial-gradient(90% 90% at 0% 100%, color-mix(in oklab, #7c9cff 24%, transparent), transparent 70%), var(--soft); }
+#ambient .am-note { display: inline-flex; align-items: center; gap: 10px; margin-top: 10px; padding: 9px 16px 9px 12px; border-radius: 14px; color: #2a2410; background: linear-gradient(160deg, #fff3a8, #f5c431);
+  font: 700 clamp(1rem, 2.8vh, 1.35rem)/1.25 var(--read); max-width: min(720px, 80vw); box-shadow: 0 14px 30px -14px rgba(0, 0, 0, .5); }
+#ambient .am-note:empty { display: none; }
+#ambient .am-note small { display: block; font-size: .7em; opacity: .7; }
+
+/* ---------------------------------------------------------------- Lookouts, in Deuce for PC */
+.lk-list { margin-top: 16px; }
+.lk-list h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; font: 700 .9rem/1 var(--read); color: var(--muted); }
+.lk-item .lk-k { flex: none; width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in oklab, var(--c) 16%, transparent); }
+
+/* ---------------------------------------------------------------- Quick access: Dice's own three */
+.q-own { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 8px 4px; }
+.q-own .b { gap: 8px; }

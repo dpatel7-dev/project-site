@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.5.0
+
+- DiceWeb 2.5.0, with three things no other computer does: Oops (undo for the whole computer, your real files included: Super + Z, or "Deuce, undo that"), Lookouts (Deuce keeps watch for a game starting, the weather, a web page changing or saying something, the internet coming back, and tells you) and Show me how (ask how to do something, and Dice opens the place and puts a ring of light round the very switch). Also: reminders for "next time I open Netflix", Roll for it (the die picks something to watch), Float (a window on top in a corner, see-through until you point at it) and fridge notes on DiceTV for whoever's next.
+- Lookouts on web pages use `/api/read`, which already refuses addresses on this computer or your network.
+
 ## 2.4.0
 
 - Deuce's brain: diced sets up Ollama (from ollama.com, as a service listening only on 127.0.0.1, one model loaded at a time) with `bin/dice-brain`, picks a Qwen 3.5 model for the computer (2B to 35B, by memory, graphics card and whether it's a Pi), fetches it with progress, and keeps it loaded. `/api/brain` shows and changes it; `/api/brain/chat` passes Deuce's conversation and tools to the model and streams the answer back. Uninstalling DiceOS takes it away too.

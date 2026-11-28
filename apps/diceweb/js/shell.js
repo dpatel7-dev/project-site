@@ -535,6 +535,14 @@
       po.onclick = () => D.tools.pictureOff();
       ev.appendChild(po);
       body.appendChild(ev);
+      // Dice's own: take something back, be shown the way, let the die decide
+      const own = h('<div class="q-own" data-row></div>');
+      [['loop', 'Undo a change', 'q:oops', () => D.oops && D.oops.open()], ['help', 'Show me how', 'q:showme', () => D.showme && D.showme.pick()], ['die', 'Roll for it', 'q:roll', () => D.roll && D.roll.open('any')]].forEach(([ic, n, k, run]) => {
+        const b = h('<button class="b small" data-nav data-key="' + k + '">' + D.glyph(ic, 2) + n + '</button>');
+        b.onclick = () => { Qam.close(true); setTimeout(run, 120); };
+        own.appendChild(b);
+      });
+      body.appendChild(own);
       if (D.sys) {
         const bt = h('<button class="toggle-row" data-nav data-key="q:bt"><span>Bluetooth<small>Controllers, headphones and speakers</small></span>' + D.glyph('bt', 2) + '</button>');
         bt.onclick = () => { Qam.close(true); D.launch('settings', { arg: 'bt' }); };

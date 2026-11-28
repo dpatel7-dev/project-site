@@ -29,7 +29,7 @@
     return {
       real: true,
       list: (p) => s.get('/api/files?path=' + enc(p)).then((r) => (r.error ? Promise.reject(new Error(r.error)) : r)),
-      op: (b) => s.post('/api/files', b).then(ok),
+      op: (b) => s.post('/api/files', b).then(ok).then((r) => { if (D.oops) D.oops.fileOp(b, r); return r; }), // (Oops can take it back)
       read: (p) => s.blob(p),
       upload: (p, f) => s.upload(p, f).then(ok),
       trash: () => s.get('/api/trash').then((r) => (r && r.items) || []),
@@ -695,7 +695,7 @@
     }
     let redraw = 0;
     const later = () => { clearTimeout(redraw); redraw = setTimeout(() => { if (alive && !root.querySelector('.fx-ren')) load(); }, 250); };
-    const offs = [D.on('disk', () => { if (!local.real && !isCloud(cur)) later(); }),
+    const offs = [D.on('disk', () => { if (!local.real && !isCloud(cur)) later(); }), D.on('sysfiles', () => { if (local.real && !isCloud(cur)) later(); }),
       D.on('drive', () => { paintUps(); if (isCloud(cur) || isFind(cur)) later(); }),
       D.on('cloud', () => { if (isCloud(cur)) later(); })];
     new ResizeObserver(() => paintInfo()).observe(root);

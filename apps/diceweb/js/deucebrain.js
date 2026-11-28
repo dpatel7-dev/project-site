@@ -138,8 +138,37 @@
     if ((mt = /^(?:what time is it|whats the time|what is the time|time|the time|current time|what time)(?: right now| now)? in ([a-z .]+)$/.exec(t))) { const z = zoneOf(mt[1]); if (z) return r('time', { place: z[0], tz: z[1] }); }
     if ((mt = /^(?:how (?:many|much) (?:days?|weeks?|time)|how long|days|count ?down)(?: is it| are there| left)? (?:until|till|til|to|before) (.+?)\??$/.exec(t))) { const u = untilOf(mt[1], now); if (u) return r('until', u); }
 
-    // ---- reminders, the Notebook, notes (Deuce for PC, and the TV too) ----
     let m;
+    // ---- Oops: take back the last change, or see what changed ----
+    if (/^(oops|whoops|undo|undo (that|it|this|the last (thing|change)|my last change)|take (that|it) back|put (it|that) back|change (it|that) back|i didnt mean (that|to do that)|go back to how it was|make it how it was)$/.test(t)) return r('oops', { act: 'undo' });
+    if (/^(what (did|have) i (just )?changed?|what (just )?changed|show (me )?(my )?(recent )?changes|(open )?oops|undo history|what can i undo)$/.test(t)) return r('oops', { act: 'list' });
+    // ---- Lookouts: Deuce keeps watch, and tells you ----
+    if (/^(what are you (watching|keeping an eye on|looking out for)|(show (me )?)?(my |the )?lookouts|whats on the lookout)$/.test(t)) return r('lookout', { act: 'list' });
+    m = /^(?:stop|cancel|forget) (?:watching|the lookouts?|my lookouts?|keeping an eye on|looking out for|all (?:the |my )?lookouts)(?: (?:for |on )?(.+))?$/.exec(t);
+    if (m) return r('lookout', { act: 'stop', what: m[1] || '' });
+    m = /^(?:tell me|let me know|notify me|alert me|ping me|warn me|give me a (?:heads up|shout)|wake me(?: up)?|say something|call me) (?:when|if|once|as soon as|the moment) (.+)$|^(?:keep an eye on|watch out for|look out for|keep watch (?:on|for)|keep watching|be on the lookout for) (.+)$/.exec(t);
+    if (m) { const lk = lookout(m[1] || m[2], raw, now, !!m[2]); if (lk) return r('lookout', lk); if (m[1]) return r('lookout', { act: 'cant', said: m[1] }); }
+    // ---- Show me how: Deuce lights the way to a setting ----
+    m = /^(?:how (?:do|can|would|should) (?:i|you|we)|how to|show me how (?:to|do i|i can)|show me where (?:to|i can|i)|where (?:do|can|would) i|where(?: is|s)(?: the)?|help me|teach me(?: how)? to|walk me through(?: how to)?|i (?:dont|do not) know how to|whats the way to|is there a way to|can i) (.+?)\??$/.exec(t);
+    if (m) { const topic = howto(m[1]); if (topic) return r('howto', { topic }); }
+    // ---- Roll for it: the die picks ----
+    m = /^(?:roll for it|roll (?:the )?(?:dice|die)|roll(?: one)?|(?:just )?pick (?:something|one|a (?:show|movie|game|thing))(?: for me)?(?: to (watch|play|listen to))?|you pick|surprise me|im bored|i cant (?:decide|choose)(?: what to (watch|play|listen to))?|what should i (watch|play|listen to)(?: (?:now|tonight|today))?|decide for me|(?:give me|find me) something to (watch|play|listen to))$/.exec(t);
+    if (m) { const w = m[1] || m[2] || m[3] || m[4] || ''; return r('roll', { what: /watch/.test(w) ? 'watch' : /play/.test(w) ? 'play' : /listen/.test(w) ? 'listen' : 'any' }); }
+    // ---- Float: keep a window on top ----
+    if (/^(?:stop floating|unfloat|dont float|unpin|let (?:it|this|the window) go|put (?:it|this) back)(?: (?:this|that|the|it))?(?: window| app)?(?: on top)?$/.test(t)) return r('float', { on: false });
+    if (/^(?:float|pin|keep|stick)(?: (?:this|that|the|it|my))?(?: window| app| one)?(?: (?:on top|above everything|over everything|in front))?$|^(?:always on top|keep (?:it|this) (?:on top|in front)|picture in picture)$/.test(t) && /float|top|front|above|over|pin|stick|picture/.test(t)) return r('float', { on: true });
+    // ---- Fridge notes: a note on DiceTV for whoever's next ----
+    if (/^(?:clear|remove|take (?:down|off)|delete|done with|wipe|erase) (?:the |my )?(?:fridge |tv |home screen )?note(?: (?:on|from) (?:the )?(?:tv|fridge|home screen))?$/.test(t)) return r('fridge', { clear: true });
+    if (/^(?:whats the note|read (?:me )?the (?:fridge |tv )?note|is there a note|any notes for me)$/.test(t)) return r('fridge', { read: true });
+    m = /^(?:leave|write|put|stick|post|pin|add) (?:up )?(?:a |the )?(?:fridge )?note (?:on|for|to) (?:the )?(?:tv|fridge|home screen|everyone|whoever(?: comes next| is next| s next)?|the family|my family|family):?(?: (?:saying|that says|that|which says|reading))? (.+)$|^(?:fridge note|tv note)(?: saying| that says)? (.+)$/.exec(t);
+    if (m) {
+      // the note as it was typed (its capitals and !), if it can be found
+      const rs = String(said || ''), nm = /\b(?:tv|fridge|screen|everyone|next|family|note)\s*[:—–-]\s*(.+)$/i.exec(rs) || /\b(?:saying|that says|which says|reading)\s+(.+)$/i.exec(rs);
+      const note = (nm && nm[1].trim()) || m[1] || m[2];
+      return r('fridge', { note: note.replace(/^["'“]|["'”]$/g, '').replace(/^./, (c) => c.toUpperCase()).slice(0, 160) });
+    }
+
+    // ---- reminders, the Notebook, notes (Deuce for PC, and the TV too) ----
     if (/^(remind me|set a reminder|make a reminder|add a reminder|reminder)\b/.test(t)) return r('remind', reminder(t, now));
     if (/^(what do you know about me|what do you remember|what have you remembered|whats in (my|your) notebook|show (me )?(my|your) notebook|(open )?(the |my )?notebook)$/.test(t)) return r('notebook');
     m = /^(?:forget|dont remember|stop remembering) (?:that |about )?(.+)$/.exec(t);
@@ -297,6 +326,14 @@
   function reminder(t, now) {
     let s = t.replace(/^(remind me|set a reminder|make a reminder|add a reminder|reminder)( to| about| that| for)?\b ?/, ' ').replace(/\s+/g, ' ');
     let at = null, day = 0, hm = null, m;
+    // not a time but a moment: "next time I open Netflix", "when I'm on the desktop", "when I turn on the TV"
+    m = /\b(?:the )?(?:next time|when(?:ever)?|as soon as|once|the moment) (?:i |im |i am )(?:next )?(?:open|start|launch|use|go (?:on|to|into)|get (?:on|to|back to|into)|watch|turn on|switch (?:on|to)|am on|on|at|back (?:on|at)|sit down at|come back to)? ?(?:the |my )?([a-z0-9][a-z0-9 ]*?)(?= to | that | about |$)/.exec(s);
+    if (m && m[1]) {
+      const name = m[1].trim().replace(/ (app|again|next)$/, '');
+      const on = /^(desktop|computer|pc|laptop|desk)$/.test(name) ? { place: 'desk' } : /^(tv|television|dicetv|dice tv|couch)$/.test(name) ? { place: 'tv' } : { app: name };
+      const what = s.replace(m[0], ' ').replace(/\s+/g, ' ').trim().replace(/^(to|that|about|for) /, '').replace(/ (to|at|on|in)$/, '').trim();
+      return { what, at: null, on };
+    }
     m = new RegExp('\\bin (' + NUMWORD + '|a|an|half an?)(?: and a half)? (second|sec|minute|min|hour|hr|day)s?\\b').exec(s);
     if (m) {
       const n = /half/.test(m[1]) ? 0.5 : number(m[1]) + (/and a half/.test(m[0]) ? 0.5 : 0), u = m[2][0];
@@ -325,6 +362,87 @@
     }
     const what = s.replace(/\s+/g, ' ').trim().replace(/^(to|that|about|for) /, '').replace(/ (to|at|on|in)$/, '').trim();
     return { what, at };
+  }
+
+  // ---- Lookouts: what to keep watch for ("the Knicks game starts", "it stops raining", "this page changes") ----
+  const GAMEWORDS = /\b(game|match|plays?|playing|starts?|starting|begins?|kicks? off|kickoff|tips? off|tipoff|puck drop|first pitch|on tv|is on|are on|ends?|over|final|finished|score)\b/;
+  function lookout(c, raw, now, eye) {
+    c = c.replace(/^(?:for |on )/, '').replace(/ please$/, '').trim();
+    // the internet coming back
+    if (/\b(internet|wi ?fi|connection|network)\b.*\b(back|on|up|works?|working|returns?|comes back)\b|\b(back|im|we re|were) online\b|^online$/.test(c)) return { what: 'online' };
+    // a web page: "this page changes", "example.com mentions tickets", "the price drops below 50"
+    const url = (/((?:https?:\/\/)?(?:[a-z0-9-]+\.)+(?:com|org|net|io|dev|app|co|us|uk|ca|tv|gg|me|info|edu|gov|store|shop|news)(?:\/[^\s,]*)?)/i.exec(String(raw || '')) || [])[1];
+    const here = /\b(this|the|that) (page|site|website|tab|article|listing|product|post|thread|item)\b/.test(c);
+    if (url || here) {
+      const u = url ? (/^https?:/i.test(url) ? url : 'https://' + url).replace(/[.,!?;:]+$/, '') : 'this';
+      let mm = new RegExp('\\b(?:price|cost|it)\\b.*?\\b(?:below|under|less than|to|cheaper than) \\$?(' + NUMWORD + ')').exec(c);
+      if (mm && !isNaN(number(mm[1]))) return { what: 'page', url: u, cond: 'below', n: number(mm[1]) };
+      mm = /\b(?:mentions?|says?|shows?|has|lists?|includes?|contains?|talks about|is about) (.+)$/.exec(c);
+      if (mm) return { what: 'page', url: u, cond: 'says', words: mm[1].replace(/^(?:the words? |that |something about )/, '').trim() };
+      if (/\b(changes?|changed|updates?|updated|is different|anything new|something new|new post|new posts)\b/.test(c) || eye) return { what: 'page', url: u, cond: 'change' };
+    }
+    // a game: "the Knicks game starts", "the Jets are on"
+    const teams = teamsIn(c);
+    const game = (tm) => ({ what: 'game', team: tm.nick, full: tm.full, end: /\b(ends?|over|final|finished|done)\b/.test(c) });
+    const nickSaid = teams.filter((tm) => tm.names.some((n) => has(clean(c), n)));
+    if (teams.length && (GAMEWORDS.test(c) || nickSaid.length)) return game(inSeason(nickSaid.length ? nickSaid : teams, now.getMonth() + 1)[0]);
+    // the weather: "it stops raining", "it snows", "it gets above 60"
+    if (/\b(rain|raining|rains|snow|snowing|snows|storm|storms|storming|thunder|weather|degrees|temperature|temp|warm|warmer|cold|colder|hot|hotter|freezing|freeze|sunny|clears? up|dry|drizzle|sleet)\b/.test(c)) {
+      let cond = null, n = null;
+      if (/\b(stops? (?:raining|snowing|storming)|is dry|gets dry|dries up|clears? up|stops?)\b/.test(c)) cond = 'dry';
+      else if (/\b(snow|snowing|snows|sleet)\b/.test(c)) cond = 'snow';
+      else if (/\b(storm|storms|storming|thunder)\b/.test(c)) cond = 'storm';
+      else if (/\b(rain|raining|rains|drizzle)\b/.test(c)) cond = 'rain';
+      const mm = new RegExp('\\b(above|over|warmer than|hotter than|at least|below|under|colder than|cooler than|less than|drops? (?:below|under|to)|falls? (?:below|under|to)|gets? (?:to|up to|down to)|hits?|reaches?|goes (?:above|over|below|under)) (' + NUMWORD + ')').exec(c);
+      if (mm && !isNaN(number(mm[2]))) { n = number(mm[2]); cond = /below|under|colder|cooler|less|drop|fall|down/.test(mm[1]) ? 'below' : 'above'; }
+      else if (/\b(freezing|freeze)\b/.test(c)) cond = 'freezing';
+      if (cond) return { what: 'weather', cond, n };
+    }
+    return null;
+  }
+
+  // ---- Show me how: which of Dice's walk-throughs is meant ----
+  const HOWTO = [
+    ['oops', /\b(undo|take (it |that |something )?back|oops)\b/],
+    ['float', /\b(float|always on top|on top|pin (a |the |this )?window)\b/],
+    ['world', /\b(wallpaper|background|world|scenery|desktop picture|backdrop)\b/],
+    ['dark', /\b(dark|night|light) (mode|theme|look)\b|\b(dark|light) ?mode\b|\bmake (it|the screen|everything) (dark|darker|light|lighter)\b/],
+    ['traced', /\btraced\b|\bhand ?drawn\b/],
+    ['accent', /\b(accent|highlight|main) colou?r\b|\bcolou?r of (the )?(buttons|highlights)\b/],
+    ['text', /\b(text|font|letters|words|writing)\b.*\b(bigger|smaller|size|larger|easier to read)\b|\b(bigger|larger|smaller) (text|font|letters|words)\b/],
+    ['warm', /\bnight ?light\b|\bwarm(er)? (screen|colou?rs?)\b|\bblue light\b/],
+    ['bright', /\bbright(ness|er)?\b|\bdim(mer)?\b/],
+    ['idle', /\b(screen ?saver|ambient (screen|mode)|big clock)\b/],
+    ['clock', /\b(24 ?hour|twelve hour|12 ?hour|clock style|military time)\b/],
+    ['units', /\b(celsius|fahrenheit|units|degrees)\b/],
+    ['motion', /\b(less motion|reduce (motion|animations?)|animations?|motion)\b/],
+    ['pad', /\b(controller|game ?pad|joystick|xbox controller|ps5 controller|dualsense)\b/],
+    ['bt', /\b(bluetooth|headphones|earbuds|airpods|speaker|pair)\b/],
+    ['wifi', /\b(wi ?fi|wireless|internet|network)\b/],
+    ['display', /\b(resolution|display|screen size|overscan|refresh rate|hertz|4k|1080p)\b/],
+    ['sound', /\b(sounds?|volume|clicks?|beeps?|audio)\b/],
+    ['dnd', /\b(do not disturb|dnd|notifications?|stop (the )?pop ?ups?)\b/],
+    ['name', /\b(my name|change (my )?name|what you call me|user ?name)\b/],
+    ['pw', /\bpassword\b/],
+    ['pin', /\b(pin|lock screen|lock (the )?(screen|computer)|passcode)\b/],
+    ['remote', /\b(phone (as a )?remote|remote (on|from) (my )?phone|use my phone|phone remote|the remote)\b/],
+    ['brain', /\b(deuce'?s? brain|smarter|brain|local model|ai model|llm|qwen)\b/],
+    ['voice', /\b(deuce|voice|talk|speak|hey deuce)\b/],
+    ['update', /\b(update|upgrade|new version|latest version)\b/],
+    ['backup', /\b(back ?up|backup|restore|export|save (my|everything))\b/],
+    ['snap', /\b(snap|tile|side by side|split screen|arrange) (windows?|apps?)?\b|\bwindows? side by side\b/],
+    ['hot', /\bhot ?corner\b/],
+    ['widgets', /\bwidgets?\b/],
+    ['menubar', /\b(menu ?bar|top bar|dock)\b/],
+    ['modes', /\b(focus|study|school|chill|play|sleep|movie)? ?modes?\b/],
+    ['shield', /\b(ad ?block(er|ing)?|ads|shield|trackers?)\b/],
+    ['start', /\b(start ?up|boot|starts? (on|in|with)|open (on|in) (the )?(desktop|tv))\b/],
+    ['air', /\b(air ?mouse|pointer|cursor|ipazzport)\b/],
+  ];
+  function howto(s) {
+    s = clean(s);
+    const hit = HOWTO.find(([, re]) => re.test(s));
+    return hit ? hit[0] : null;
   }
 
   // "7", "7 am", "7:30 pm", "seven thirty", "6 in the morning", "noon"
@@ -456,7 +574,7 @@
     return its.every((x) => !['unknown', 'ask', 'none', 'web', 'help', 'cancel'].includes(x.kind)) ? its : null;
   }
 
-  const api = { understand, split, reminder, untilOf, zoneOf, teamsIn, netOf, number, clock, scoreboardUrl, pickGame, broadcasts, clean, LEAGUES, TEAMS };
+  const api = { understand, split, reminder, lookout, howto, HOWTO, untilOf, zoneOf, teamsIn, netOf, number, clock, scoreboardUrl, pickGame, broadcasts, clean, LEAGUES, TEAMS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.DeuceBrain = api;
 })(this);

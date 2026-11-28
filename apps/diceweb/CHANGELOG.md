@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.5.0
+
+Three things no other computer does:
+
+- **Oops: undo for the whole computer.** Changed a setting, closed a window, moved a file to the Trash, removed a widget, deleted a reminder, started a mode, took down a note? It's all on one list, newest first, each with Undo. Super + Z takes back the last change on the desktop (Super + Shift + Z, or the die menu, shows the list); on the TV it's in Quick access, or say "Deuce, undo that" or "what did I change?". A window comes back where it was; a file goes back to its folder. The things you'd most want back show a bar with Undo for a few seconds. It's kept across restarts. On DiceOS it covers your real files too.
+- **Lookouts: Deuce keeps watch and tells you.** "Tell me when the Knicks game starts" (with Watch it when it does), "let me know when it stops raining", "warn me if it drops below freezing", "tell me when this page changes" (it quotes what's new), "tell me when bestbuy.com says in stock" (Deuce's brain reads the page, so it doesn't have to be the exact words), "let me know when the price on this page drops below 50", "tell me when the internet is back". Up to 12 at once; they're in Deuce for PC's Reminders tab with a Stop button, and they end by themselves after a week. Pages need DiceOS (it reads them); games, the weather and the internet work everywhere.
+- **Show me how: Deuce lights the way.** Ask "how do I change the wallpaper?" or "where's Bluetooth?" and, instead of directions, Dice opens the right place itself, dims everything else and puts a ring of light round the very switch you need, with a line on what it does. Press it (OK on the remote) and it goes on to the next step. 35 walk-throughs; Help, Show me how lists them all.
+
+And more:
+
+- Reminders for a moment, not a time: "remind me to stretch next time I open Netflix", "remind me to check email when I'm on the desktop", "…when I turn on the TV".
+- Roll for it: can't decide? The die tumbles and picks something to watch, listen to or play, leaning toward what you haven't opened in a while. "What should I watch?", the die menu, Quick access, or the card at the end of DiceTV's Today.
+- Float: any window, small and on top in a corner, see-through until you point at it, and it comes along to every desktop. The Window menu, the window's own menu, or "Deuce, float this window".
+- Fridge notes: "Deuce, leave a note on the TV: pizza's in the fridge". It's a yellow note at the top of DiceTV's Today and under the big clock, for whoever's next. Press it when you've seen it (and Oops can put it back).
+
 ## 2.4.0
 
 - Deuce has a brain: a language model that runs on the computer itself (nothing you say leaves it). On DiceOS, Settings, Deuce sets it up in one go and picks the model for the computer: Qwen 3.5 in five sizes, from Quick (2B) for small computers and Smart (4B) for a Raspberry Pi 5 with 8 GB, up to Smartest (35B) for a big PC. In Chrome 148 or newer, Deuce uses Chrome's built-in model instead.

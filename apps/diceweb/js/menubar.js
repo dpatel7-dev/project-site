@@ -27,6 +27,9 @@
     die: () => [
       { label: 'About this computer', run: () => D.launch('settings', { arg: D.sys ? 'about' : 'you' }) },
       '-',
+      { label: 'Oops: undo a change…', icon: 'loop', key: 'Super Shift Z', run: () => D.oops.open() },
+      { label: 'Roll for it…', icon: 'die', run: () => D.roll.open('any') },
+      '-',
       { label: 'Settings…', icon: 'gear', key: 'Ctrl ,', run: () => Desk.open('settings') },
       { label: 'Store…', icon: 'store', run: () => Desk.open('store') },
       '-',
@@ -78,10 +81,12 @@
         { label: 'Minimise', icon: 'pause', key: 'Ctrl M', run: () => w && w.minimise() },
         { label: 'Zoom', icon: 'desktop', run: () => w && w.toggleMax() },
         { label: 'Bring all to front', icon: 'stack', run: () => list.forEach((x) => Desk.focus(x)) },
+        { label: 'Float on top', icon: 'spark', on: !!(w && w.float), run: () => w && D.float.set(!w.float, w) },
       ].concat(list.length ? ['-'] : [], list.map((x) => ({ label: x.app.name + (x.min ? ' (minimised)' : ''), icon: x === w ? 'check' : 'dot', on: x === w, run: () => Desk.focus(x) })));
     },
     Help: () => [
       { label: 'Ask Deuce…', icon: 'spark', key: 'Super C', run: () => (D.deuceAsk ? D.deuce.pc && D.deuce.pc.show ? D.deuce.pc.show() : D.deuceAsk('help') : D.launch('deuce')) },
+      { label: 'Show me how…', icon: 'help', run: () => D.showme.pick() },
       { label: 'Keyboard shortcuts', run: () => D.launch('settings', { arg: 'desk' }) },
       { label: 'Set up Inputs, step by step', icon: 'tv', run: () => D.inputs && D.inputs.guide ? D.inputs.guide() : Desk.open('settings') },
       { label: 'What\'s new in DiceOS', icon: 'info', run: () => D.launch('settings', { arg: D.sys ? 'about' : 'you' }) },

@@ -32,7 +32,11 @@
       'remind me to call mom at 6pm · wake me up at 7 on weekdays · turn on dark mode · turn on night light · brightness 50 · start focus mode · end focus mode · ' +
       'switch to the playstation · take a note buy milk · remember my locker is 42 · forget my locker · find my history essay · go to wikipedia.org · ' +
       'take a screenshot · lock the screen · turn off the tv · whats the weather tomorrow · what time is it in tokyo · how many days until christmas · ' +
-      'how many ads were blocked today · show my week · show my notebook · turn on traced mode',
+      'how many ads were blocked today · show my week · show my notebook · turn on traced mode · ' +
+      'undo that (takes back the last change they made) · what did i change · tell me when the knicks game starts · let me know when it stops raining · ' +
+      'tell me when this page changes · tell me when example.com says in stock · what are you keeping an eye on · stop watching the knicks · ' +
+      'remind me to finish the show next time i open netflix · show me how to change the wallpaper (lights up the setting on screen; use it for any "how do I" about Dice) · ' +
+      'roll for it (the die picks something to watch) · what should i watch · float this window · leave a note on the tv: pizza in the fridge · clear the note',
     { command: str('The command, like "set a timer for 10 minutes"') }, ['command']),
     fn('web_search', 'Search the web. Use it for anything current or that you are not sure of: news, sports, prices, people, places, facts, how-tos.', { query: str('What to search for') }, ['query']),
     fn('read_page', 'Read a whole web page from the search results when the snippets are not enough.', { url: str('The page\'s address') }, ['url']),
@@ -67,7 +71,7 @@
     if (nb.facts.length) bits.push('They asked you to remember: ' + nb.facts.slice(-12).map((f) => f.t).join('; ') + '.');
     if (nb.teams.length) bits.push('Teams they follow: ' + nb.teams.join(', ') + '.');
     const rem = DU.reminders ? DU.reminders.upcoming().slice(0, 3) : [];
-    if (rem.length) bits.push('Their next reminders: ' + rem.map((r) => r.what + ' (' + DU.whenWords(r.at) + ')').join('; ') + '.');
+    if (rem.length) bits.push('Their next reminders: ' + rem.map((r) => r.what + ' (' + DU.reminders.when(r) + ')').join('; ') + '.');
     return bits.join('\n');
   }
 
@@ -96,7 +100,7 @@
   Mind.name = () => (st && st.where === 'browser' ? 'Chrome\'s built-in model' : st && st.model ? (st.choices || []).reduce((n, c) => (c.tag === st.model ? c.name + ' (' + c.tag + ')' : n), st.model) : 'the brain');
 
   // ---- who answers: the rules, or the brain -----------------------------------------------------------------------------
-  const FAST = ['volume', 'media', 'back', 'home', 'cancel', 'none', 'picture'];
+  const FAST = ['volume', 'media', 'back', 'home', 'cancel', 'none', 'picture', 'oops', 'float', 'roll', 'howto', 'fridge'];
   const FOLLOW = /^(and|but|also|so|then|what about|how about|why|why not|how come|tell me more|more|explain|what does (that|it) mean|which|who|whose|is that|are they|was it|thanks|thank you|ok|okay|it|that|this|those|them|do it|yes|yeah|no|nope|sure|really|wait|actually|instead|again)\b/;
   Mind.wants = async function (text, it) {
     const c = DU.cfg();
@@ -403,6 +407,21 @@
 
   // keep the brain loaded on DiceOS when Deuce opens, so it answers straight away
   D.on('deuce-open', () => { if (onDice()) Mind.status().then((s) => { if (s.ready) D.sys.post('/api/brain', { action: 'warm' }); }); });
+  // for Lookouts: read a page, and ask the brain a yes-or-no question about it
+  Mind.onDice = onDice;
+  Mind.readPage = readPage;
+  Mind.judge = async function (question, text) {
+    const s = await Mind.status().catch(() => null);
+    if (!s || !s.ready) return null;
+    const sys = 'You check a web page for someone. Answer with one word: yes or no.';
+    const ask = 'The page says:\n' + String(text).slice(0, 6000) + '\n\nQuestion: ' + question + '\nAnswer yes or no.';
+    if (s.where === 'dice') { const r = await chatDice([{ role: 'system', content: sys }, { role: 'user', content: ask }], { stream() {} }); return /^\W*yes\b/i.test(visible(r.msg.content)); }
+    const session = await window.LanguageModel.create({ initialPrompts: [{ role: 'system', content: sys }], expectedInputs: [{ type: 'text', languages: ['en'] }], expectedOutputs: [{ type: 'text', languages: ['en'] }] });
+    try {
+      const out = await session.prompt(ask, { responseConstraint: { type: 'object', properties: { yes: { type: 'boolean' } }, required: ['yes'] } });
+      try { return !!JSON.parse(out).yes; } catch (e) { return /^\W*yes\b/i.test(out); }
+    } finally { try { session.destroy(); } catch (e) { /* gone already */ } }
+  };
   Mind.TOOLS = TOOLS;
   Mind.SYSTEM = SYSTEM;
   Mind.context = context;

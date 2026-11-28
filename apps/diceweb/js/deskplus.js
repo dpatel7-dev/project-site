@@ -95,7 +95,8 @@
   Desk.winMenu = function (w, x, y) {
     const items = [{ label: 'Snap left', icon: 'prev', key: 'Super ←', run: () => w.snapTo('left') }, { label: 'Snap right', icon: 'next', key: 'Super →', run: () => w.snapTo('right') },
       { label: w.max ? 'Restore' : 'Maximise', icon: 'desktop', key: 'Super ↑', run: () => (w.max || w.snap ? w.unsnap() : w.toggleMax()) }, { label: 'Layouts…', icon: 'dots', run: () => layouts(w, x, y) }, '-',
-      { label: 'Keep on top', icon: 'lock', on: !!w.pinned, run: () => { w.pinned = !w.pinned; w.el.classList.toggle('pinned', w.pinned); Desk.focus(w); } }];
+      { label: 'Keep on top', icon: 'lock', on: !!w.pinned && !w.float, run: () => { if (w.float) D.float.set(false, w); w.pinned = !w.pinned; w.el.classList.toggle('pinned', w.pinned); Desk.focus(w); } },
+      { label: 'Float', icon: 'spark', on: !!w.float, run: () => D.float.set(!w.float, w) }];
     [0, 1, 2, 3].filter((i) => i !== w.ws).forEach((i) => items.push({ label: 'Move to desktop ' + (i + 1), icon: 'next', run: () => P.moveTo(w, i) }));
     items.push('-', { label: 'Minimise', icon: 'pause', run: () => w.minimise() }, { label: 'Close', icon: 'close', key: 'Alt F4', run: () => w.close() });
     menu(x, y, items);
@@ -440,7 +441,7 @@
         };
       }
       const ul = body.querySelector('.dw-rem');
-      ul.innerHTML = list.length ? list.map((r) => '<li><button class="dw-tick" data-id="' + esc(r.id) + '" aria-label="Done: ' + esc(r.what) + '"></button><span>' + esc(r.what.replace(/^./, (c) => c.toUpperCase())) + '<small>' + esc(D.deuce.whenWords ? D.deuce.whenWords(r.at) : new Date(r.at).toLocaleString()) + '</small></span></li>').join('') : '<li class="dw-none">Nothing to remember. Type one below.</li>';
+      ul.innerHTML = list.length ? list.map((r) => '<li><button class="dw-tick" data-id="' + esc(r.id) + '" aria-label="Done: ' + esc(r.what) + '"></button><span>' + esc(r.what.replace(/^./, (c) => c.toUpperCase())) + '<small>' + esc(D.deuce.reminders.when ? D.deuce.reminders.when(r) : new Date(r.at).toLocaleString()) + '</small></span></li>').join('') : '<li class="dw-none">Nothing to remember. Type one below.</li>';
       ul.querySelectorAll('.dw-tick').forEach((b) => { b.onclick = () => { R.remove(b.dataset.id); fill(el, w); }; });
     }
     if (w.type === 'world') {
@@ -517,7 +518,7 @@
       const el = h('<section class="dw glass dw-' + w.type + '" aria-label="' + esc(KINDS[w.type] ? KINDS[w.type][0] : 'Widget') + '"><header><span>' + esc(KINDS[w.type] ? KINDS[w.type][0] : '') + '</span><button class="dw-x" aria-label="Remove this widget">' + D.glyph('close', 1) + '</button></header><div class="dw-b"></div></section>');
       el.style.left = Math.round(Math.max(0, Math.min(0.96, w.x)) * a.w) + 'px';
       el.style.top = Math.round(Math.max(0, Math.min(0.92, w.y)) * a.h) + 'px';
-      el.querySelector('.dw-x').onclick = () => { wlist().splice(i, 1); D.save(); widgets(); };
+      el.querySelector('.dw-x').onclick = () => { const gone = wlist().splice(i, 1)[0]; D.save(); widgets(); if (gone && D.oops) D.oops.widgetGone(gone); };
       const head = el.querySelector('header');
       head.addEventListener('pointerdown', (e) => {
         if (e.target.closest('button')) return;
@@ -548,6 +549,7 @@
   setInterval(() => { if (!Desk.on) return; D.$$('#desk .dw-weather').forEach((el) => { const w = wlist().find((x) => x.type === 'weather'); if (w) fill(el, w); }); }, 10 * 60000);
   M.on(() => { if (Desk.on) D.$$('#desk .dw-music').forEach((el) => fill(el, { type: 'music' })); });
   D.on('look', () => { if (Desk.on) widgets(); });
+  D.on('widgets', () => { if (Desk.on) widgets(); });
   addEventListener('resize', () => { if (Desk.on) widgets(); });
 
   // ---- keys -------------------------------------------------------------------------------------------------------
