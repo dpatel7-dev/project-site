@@ -98,6 +98,26 @@
   .code.on { display: grid; }
   .code b { font: 700 2rem/1 var(--pixel); letter-spacing: .12em; }
   .warn { color: #c2410c; font-weight: 700; font-size: .9rem; }
+  /* apps to install, websites as apps, your home screens, your files */
+  .chips label small { font-weight: 700; font-size: .72rem; padding: 2px 6px; border-radius: 6px; color: var(--muted); background: var(--soft); }
+  .addrow { display: flex; gap: 8px; min-width: 0; }
+  .addrow input { flex: 1 1 0; }
+  .addrow .btn { flex: none; }
+  .rows { display: grid; gap: 6px; }
+  .rows:empty { display: none; }
+  .row { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 8px 8px 8px 12px; border-radius: 12px; background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+  .row b { flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: .88rem; }
+  .row button { flex: none; width: 30px; height: 30px; border: 0; border-radius: 9px; background: none; color: var(--muted); font: 700 1.1rem/1 var(--read); cursor: pointer; }
+  .row button:hover { background: var(--soft); color: var(--ink); }
+  .row i { flex: none; width: 10px; height: 10px; border-radius: 3px; }
+  .lay { display: grid; gap: 8px; }
+  .lay div { display: grid; grid-template-columns: 9.5em minmax(0, 1fr); gap: 10px; align-items: baseline; }
+  .lay dt { font-weight: 700; }
+  .lay dd { margin: 0; color: var(--muted); font-size: .92rem; }
+  .total { font-weight: 700; font-size: .92rem; }
+  .total.over { color: #c2410c; }
+  :root[data-look=dark] .total.over { color: #ffb48a; }
   :root[data-look=dark] .warn { color: #ffb48a; }
 
   /* getting it onto a card */
@@ -242,8 +262,27 @@
 
       <fieldset>
         <legend>Apps</legend>
+        <div class="f"><span>Apps to install</span><div class="chips" id="flathub"></div><small>From Flathub. DiceOS installs them by itself the first time it's online. Flathub doesn't make every app for a Raspberry Pi, so a Pi skips the PC ones.</small></div>
+        <div class="f"><span>Another app</span><span class="addrow"><input type="text" id="fhid" placeholder="Its Flathub ID, like org.mozilla.Thunderbird" spellcheck="false" autocapitalize="off"><button class="btn soft" type="button" id="fhadd">Add</button></span><small>It's the last part of the app's address on flathub.org.</small></div>
+        <div class="f"><span>Websites as apps</span><div class="rows" id="webapps"></div><span class="addrow"><input type="text" id="waname" placeholder="Name" maxlength="40" aria-label="The website's name"><input type="url" id="waurl" placeholder="https://" aria-label="Its address"><button class="btn soft" type="button" id="waadd">Add</button></span><small>Each one opens in its own window, like an app, and sits with your other apps.</small></div>
         <label class="f"><span>Your Home Assistant</span><input type="url" data-k="homeassistant" placeholder="http://homeassistant.local:8123"><small>Its address. SereneTab, DiceOS's browser, gets a shortcut to your dashboard.</small></label>
         <div class="f"><span>Terminal apps to install too</span><div class="chips" id="suite"></div><small>They install by themselves after the first start, once it's online.</small></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Your home screens</legend>
+        <p class="hint">Open a version of DiceOS in a new tab and set it up the way you want it: what's in the dock, the big tiles on DiceTV's Home, what's pinned in the Dice menu and the widgets on the desktop. Its Store picks apps to install, and its Settings change the look. It all comes back here.</p>
+        <dl class="lay" id="layout"></dl>
+        <div class="go2"><button class="btn main" type="button" id="arrange">Open a version to set up</button><button class="btn soft" type="button" id="unarrange">Back to the usual</button></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Your files</legend>
+        <p class="hint">Copy files and folders from this computer onto your DiceOS. Nothing is uploaded: they're packed into <b>dice-files.zip</b> right here, and it goes next to your dice.json. Folders keep their names; single files go into Pictures, Music, Videos or Documents.</p>
+        <div class="go2"><button class="btn soft" type="button" id="addfiles">Add files</button><button class="btn soft" type="button" id="addfolder">Add a folder</button></div>
+        <input type="file" id="filepick" multiple hidden><input type="file" id="folderpick" webkitdirectory multiple hidden>
+        <div class="rows" id="files"></div>
+        <p class="total" id="filetotal" hidden></p>
       </fieldset>
 
       <fieldset>
@@ -265,6 +304,8 @@
       <h3>Your DiceOS</h3>
       <p>Save your settings as <b>dice.json</b>. On a Pi, drop it onto the card's <b>bootfs</b> drive after writing DiceOS. On a PC, put it on a USB stick.</p>
       <div class="go2"><button class="btn main" type="button" id="save">Save dice.json</button><button class="btn soft" type="button" id="try">Try it in the emulator</button></div>
+      <div class="go2" id="zipbox" hidden><button class="btn main" type="button" id="savezip">Save dice-files.zip</button></div>
+      <p id="ziphint" hidden>Your files are in <b>dice-files.zip</b>. Put it in the same place as dice.json.</p>
       <p class="warn" id="warn" hidden></p>
       <p>Installing onto a computer that already runs Raspberry Pi OS, Debian or Ubuntu? A setup code carries everything except the passwords.</p>
       <button class="btn soft" type="button" id="getcode">Get a setup code</button>
@@ -294,7 +335,7 @@
         <li><div><b>Open Raspberry Pi Imager</b><span>Get it free from raspberrypi.com/software. On a Mac it asks for an administrator password to write cards.</span></div></li>
         <li><div><b>Choose your Pi, then the DiceOS file</b><span>Under Operating System, scroll to the bottom, choose Use custom, and pick the file you downloaded.</span></div></li>
         <li><div><b>Choose where it goes</b><span>The microSD card, or the NVMe drive in a USB adapter. When it asks about OS customisation, choose No: your dice.json does that.</span></div></li>
-        <li><div><b>Write, then add your settings</b><span>When it's finished, the card shows up as a drive called bootfs. Drag your dice.json onto it, then eject it.</span></div></li>
+        <li><div><b>Write, then add your settings</b><span>When it's finished, the card shows up as a drive called bootfs. Drag your dice.json onto it (and dice-files.zip, if you made one), then eject it. bootfs has room for about 400 MB of files; for more, put both on a USB stick instead.</span></div></li>
         <li><div><b>Switch the Pi on</b><span>The die turns while it starts, then DiceOS says hello by name.</span></div></li>
       </ol>
       <div class="aside"><h3>NVMe drives</h3><p>On a Pi 5 with an NVMe drive, write DiceOS onto the drive through a USB adapter, or use the Pi itself (the next tab). With no microSD card in, the Pi 5 starts from the NVMe drive.</p></div>
@@ -302,7 +343,7 @@
 
     <div class="route" data-route="pi" role="tabpanel">
       <ol class="steps">
-        <li><div><b>Copy two files onto a USB stick</b><span>The DiceOS file and your dice.json. Copying files doesn't need an administrator.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-arm64.img.xz">Download DiceOS</a></div></div></li>
+        <li><div><b>Copy two files onto a USB stick</b><span>The DiceOS file and your dice.json (and dice-files.zip, if you made one). Copying files doesn't need an administrator.</span><div style="margin-top:10px"><a class="btn main" href="https://github.com/dpatel7-dev/DiceOS/releases/latest/download/dice-arm64.img.xz">Download DiceOS</a></div></div></li>
         <li><div><b>Plug everything into the Pi</b><span>The USB stick, a keyboard, a screen, an Ethernet cable to your router, and the microSD card or NVMe drive for DiceOS. Take Home Assistant's card out first.</span></div></li>
         <li><div><b>Start Network Install</b><span>Switch the Pi on. With nothing to start from, it offers Network Install: hold Shift. It downloads Raspberry Pi Imager and opens it right on the Pi.</span></div></li>
         <li><div><b>Choose the DiceOS file</b><span>Under Operating System, choose Use custom, and pick the DiceOS file on the USB stick.</span></div></li>
@@ -334,7 +375,7 @@
         <li><div><b>Write it onto a USB stick</b><span>8 GB or bigger. In Raspberry Pi Imager choose Use custom and pick the file, or use balenaEtcher. Everything on the stick is erased.</span></div></li>
         <li><div><b>Start the PC from the stick</b><span>Plug it in and switch the PC on. Tap its start-up menu key straight away (often F12, F11, F9 or Esc) and pick the USB stick.</span></div></li>
         <li><div><b>Try it, or install it</b><span>Pick DiceOS to try it from the stick. Pick Install to put it on the PC's own drive: that erases the drive, and asks for your name and a password.</span></div></li>
-        <li><div><b>Bring your settings</b><span>Put your dice.json on a second USB stick and plug it in too. DiceOS finds it when it starts.</span></div></li>
+        <li><div><b>Bring your settings</b><span>Put your dice.json (and dice-files.zip, if you made one) on a second USB stick and plug it in too. DiceOS finds it when it starts.</span></div></li>
       </ol>
       <div class="aside"><h3>If the PC won't start from the stick</h3><p>Look in its settings (often F2 or Del as it starts) for the start-up order, and put USB first. Some PCs also need Secure Boot turned off.</p></div>
     </div>
@@ -405,7 +446,10 @@
   const cfg = { dice: 1, name: '', computer: '', password: '', wifi: { ssid: '', password: '', country: region, hidden: false }, timezone: (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
     keyboard: kbGuess, look: 'auto', world: 'hills', buddy: 'cubby', start: 'desktop', boot: 'full', screen: { rotate: 0 }, homeassistant: '', suite: [], ssh: false, updates: true,
     traced: false, accent: 'auto', text: 'normal', clock: 'auto', units: region === 'US' ? 'f' : 'c', nightlight: 'off', lessMotion: false, sounds: true,
-    tv: { live: '', tuner: '', have: [] }, deuce: { on: true, talk: true }, ambient: { after: 10 }, desk: { snap: true, hotCorner: true, homeIcon: true }, shield: { system: true } };
+    tv: { live: '', tuner: '', have: [] }, deuce: { on: true, talk: true }, ambient: { after: 10 }, desk: { snap: true, hotCorner: true, homeIcon: true }, shield: { system: true },
+    apps: [], webapps: [] };
+  // every part of the form that shows what's picked: run again when the set-up tab changes things
+  const syncs = [];
   try { const saved = JSON.parse(localStorage.getItem('dice-setup') || 'null'); if (saved) { delete saved.password; if (saved.wifi) delete saved.wifi.password; if ('heavenly' in saved) { saved.traced = !!saved.heavenly; delete saved.heavenly; } deep(cfg, saved); } } catch (e) { /* start fresh */ }
   function deep(a, b) { for (const k in b) { if (b[k] && typeof b[k] === 'object' && !Array.isArray(b[k]) && a[k] && typeof a[k] === 'object') deep(a[k], b[k]); else a[k] = b[k]; } }
   const get = (k) => k.split('.').reduce((o, x) => (o ? o[x] : undefined), cfg);
@@ -435,6 +479,7 @@
     l.appendChild(document.createTextNode(n));
     const box = l.querySelector('input');
     box.checked = cfg.tv.have.includes(id);
+    syncs.push(() => { box.checked = (cfg.tv.have || []).includes(id); });
     box.addEventListener('change', () => { cfg.tv.have = cfg.tv.have.filter((x) => x !== id).concat(box.checked ? [id] : []); changed(); });
     $('#tvhave').appendChild(l);
   });
@@ -447,10 +492,12 @@
     acc.appendChild(b);
   });
   const markAcc = () => acc.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === cfg.accent)));
-  markAcc();
+  markAcc(); syncs.push(markAcc);
   document.querySelectorAll('[data-k]').forEach((el) => {
-    const k = el.dataset.k, v = get(k);
-    if (el.type === 'checkbox') el.checked = !!v; else el.value = v == null ? '' : v;
+    const k = el.dataset.k;
+    const show = () => { const v = get(k); if (el.type === 'checkbox') el.checked = !!v; else if (document.activeElement !== el && el.type !== 'password') el.value = v == null ? '' : v; };
+    show(); syncs.push(show);
+    if (el.type === 'password') el.value = get(k) || '';
     el.addEventListener(el.tagName === 'SELECT' || el.type === 'checkbox' ? 'change' : 'input', () => set(k, el.type === 'checkbox' ? el.checked : el.value));
   });
   $('[data-k="computer"]').addEventListener('input', (e) => { e.target.dataset.touched = '1'; });
@@ -459,7 +506,7 @@
     const k = seg.dataset.seg;
     const mark = () => seg.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v) === String(get(k))));
     seg.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { set(k, /^\d+$/.test(b.dataset.v) ? +b.dataset.v : b.dataset.v); mark(); }));
-    mark();
+    mark(); syncs.push(mark);
   });
   // pictures
   const buddies = $('#buddies');
@@ -500,8 +547,200 @@
     l.title = a.blurb;
     const box = l.querySelector('input');
     box.checked = cfg.suite.includes(a.id);
+    syncs.push(() => { box.checked = (cfg.suite || []).includes(a.id); });
     box.addEventListener('change', () => { cfg.suite = cfg.suite.filter((x) => x !== a.id).concat(box.checked ? [a.id] : []); changed(); });
     suite.appendChild(l);
+  });
+  syncs.push(marks);
+
+  // ---- apps to install, from Flathub (the Store's suggestions, and any other by its ID) ----
+  const APP_ID = /^[A-Za-z][\w-]*(\.[\w-]+){2,}$/;
+  const PC_ONLY = ['com.valvesoftware.Steam', 'com.spotify.Client', 'com.discordapp.Discord'];
+  const KNOWN_APPS = {};
+  (CATALOG.flathub || []).forEach(([, list]) => list.forEach(([id, name, blurb]) => { KNOWN_APPS[id] = { name, blurb }; }));
+  const COLS = ['#ff707a', '#f5a623', '#8fd16a', '#2bc4b2', '#3a9be8', '#7c6cf0', '#d39cf5', '#ef6a8a'];
+  const colOf = (s) => { let x = 0; for (const ch of s) x = (x * 31 + ch.charCodeAt(0)) >>> 0; return COLS[x % COLS.length]; };
+  function paintApps() {
+    const box = $('#flathub');
+    box.innerHTML = '';
+    if (!Array.isArray(cfg.apps)) cfg.apps = [];
+    Object.keys(KNOWN_APPS).concat(cfg.apps.filter((id) => !KNOWN_APPS[id])).forEach((id) => {
+      const known = KNOWN_APPS[id], l = document.createElement('label');
+      l.innerHTML = '<input type="checkbox"><i></i>';
+      l.querySelector('i').style.background = colOf(id);
+      l.appendChild(document.createTextNode(known ? known.name : id.split('.').pop()));
+      if (PC_ONLY.includes(id)) { const s = document.createElement('small'); s.textContent = 'PC'; s.title = 'Flathub only has it for PCs'; l.appendChild(s); }
+      l.title = known ? known.blurb : id;
+      const box2 = l.querySelector('input');
+      box2.checked = cfg.apps.includes(id);
+      box2.addEventListener('change', () => { cfg.apps = cfg.apps.filter((x) => x !== id).concat(box2.checked ? [id] : []); changed(); });
+      box.appendChild(l);
+    });
+  }
+  syncs.push(paintApps);
+  $('#fhadd').addEventListener('click', () => {
+    const inp = $('#fhid'), id = inp.value.trim().replace(/^https?:\/\/flathub\.org\/(?:[a-z-]+\/)?apps\/(?:details\/)?/i, '').replace(/[/?#].*$/, '');
+    if (!APP_ID.test(id)) { inp.setCustomValidity('That isn\'t a Flathub ID. They look like org.mozilla.Thunderbird'); inp.reportValidity(); inp.oninput = () => inp.setCustomValidity(''); return; }
+    if (!cfg.apps.includes(id)) cfg.apps = cfg.apps.concat([id]);
+    inp.value = ''; paintApps(); changed();
+  });
+  // ---- websites as apps ----
+  function paintWeb() {
+    const box = $('#webapps');
+    box.innerHTML = '';
+    if (!Array.isArray(cfg.webapps)) cfg.webapps = [];
+    cfg.webapps.forEach((w, i) => {
+      const r = document.createElement('div');
+      r.className = 'row';
+      r.innerHTML = '<i></i><b></b><span></span><button type="button" aria-label="Take it off">\u00d7</button>';
+      r.querySelector('i').style.background = colOf(w.url);
+      r.querySelector('b').textContent = w.name; r.querySelector('span').textContent = w.url.replace(/^https?:\/\//, '');
+      r.querySelector('button').onclick = () => { cfg.webapps.splice(i, 1); paintWeb(); changed(); };
+      box.appendChild(r);
+    });
+  }
+  syncs.push(paintWeb);
+  $('#waadd').addEventListener('click', () => {
+    const nm = $('#waname'), ur = $('#waurl');
+    let u;
+    try { u = new URL(/^https?:\/\//i.test(ur.value.trim()) ? ur.value.trim() : 'https://' + ur.value.trim()); } catch (e) { u = null; }
+    if (!u || !u.hostname.includes('.')) { ur.setCustomValidity('Type a web address, like example.com'); ur.reportValidity(); ur.oninput = () => ur.setCustomValidity(''); return; }
+    const name = nm.value.trim().slice(0, 40) || u.hostname.replace(/^www\./, '').split('.')[0].replace(/^./, (c) => c.toUpperCase());
+    cfg.webapps = cfg.webapps.filter((w) => w.url !== u.href).concat([{ name, url: u.href }]).slice(0, 40);
+    nm.value = ''; ur.value = ''; paintWeb(); changed();
+  });
+
+  // ---- your home screens: arranged on a version of DiceOS in another tab (diceweb/?setup=1) ----
+  const NAMES = {};
+  CATALOG.builtins.forEach((a) => { NAMES[a.id] = a.name; });
+  const WIDGETS = { clock: 'Clock', weather: 'Weather', due: 'Axiom', music: 'Music', sticky: 'Sticky note', calendar: 'Calendar', reminders: 'Reminders', world: 'World clock', timer: 'Timer', countdown: 'Countdown', shield: 'Shield', week: 'Screen time', modes: 'Modes', deuce: 'Ask Deuce', system: 'This computer' };
+  const DOCK = ['files', 'browser', 'terminal', 'notes', 'hum', 'gossip', 'store', 'settings'];
+  function paintLayout() {
+    const L = cfg.layout || {}, box = $('#layout');
+    const line = (ids) => ids.map((id) => NAMES[id] || id).join(', ');
+    const rows = [['The dock', L.dock ? line(L.dock) : 'As usual: ' + line(DOCK)], ['DiceTV\'s Home', L.tv ? line(L.tv) : 'As usual: your favourites first'], ['The Dice menu', L.menu ? line(L.menu) : 'As usual'],
+      ['Widgets', L.widgets ? (L.widgets.length ? L.widgets.map((w) => WIDGETS[w.type] || w.type).join(', ') : 'None') : 'As usual: Clock, Weather, Axiom']];
+    box.innerHTML = '';
+    rows.forEach(([t, d]) => { const r = document.createElement('div'); r.innerHTML = '<dt></dt><dd></dd>'; r.querySelector('dt').textContent = t; r.querySelector('dd').textContent = d; box.appendChild(r); });
+    $('#unarrange').hidden = !cfg.layout;
+  }
+  syncs.push(paintLayout);
+  let setupTab = null;
+  $('#arrange').addEventListener('click', () => {
+    remember();
+    // its own tab, so this page (and any passwords you've typed, which are only kept here) stays as it is
+    if (setupTab && !setupTab.closed) { setupTab.focus(); return; }
+    setupTab = window.open('/diceweb/?setup=1', 'dice-setup');
+    if (!setupTab) location.href = '/diceweb/?setup=1';
+  });
+  $('#unarrange').addEventListener('click', () => { delete cfg.layout; paintLayout(); changed(); });
+  // the set-up tab writes to the same place this page keeps your settings: take what it changed
+  addEventListener('storage', (e) => {
+    if (e.key !== 'dice-setup' || !e.newValue) return;
+    let s;
+    try { s = JSON.parse(e.newValue); } catch (err) { return; }
+    if (!s || typeof s !== 'object') return;
+    const pw = cfg.password, wpw = cfg.wifi.password;
+    delete s.password; if (s.wifi) delete s.wifi.password;
+    deep(cfg, s);
+    cfg.layout = s.layout; cfg.apps = Array.isArray(s.apps) ? s.apps : []; cfg.webapps = Array.isArray(s.webapps) ? s.webapps : [];
+    cfg.password = pw; cfg.wifi.password = wpw;
+    syncs.forEach((f) => f());
+    clearTimeout(changed.t); changed.t = setTimeout(preview, 60);
+  });
+
+  // ---- your files: packed into dice-files.zip here, never uploaded ----
+  const picked = []; // { path (in your home folder), file }
+  const JUNK = /(^|\/)(\.DS_Store|Thumbs\.db|desktop\.ini|__MACOSX)(\/|$)/i;
+  const KIND = [[/\.(jpe?g|png|gif|webp|heic|heif|bmp|tiff?|svg|avif)$/i, 'Pictures'], [/\.(mp3|m4a|flac|wav|ogg|opus|aac|wma|aiff?)$/i, 'Music'], [/\.(mp4|mkv|mov|webm|avi|m4v|wmv|mpe?g)$/i, 'Videos']];
+  const safe = (p) => p.split('/').map((x) => x.replace(/[\u0000-\u001f<>:"\\|?*]/g, '_').replace(/^\.+$/, '_').slice(0, 120)).filter(Boolean).join('/');
+  const size = (n) => (n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : n >= 1e6 ? Math.round(n / 1e6) + ' MB' : n >= 1e3 ? Math.round(n / 1e3) + ' KB' : n + ' bytes');
+  function addFiles(list, folder) {
+    [...list].forEach((f) => {
+      const rel = folder ? (f.webkitRelativePath || f.name) : (KIND.find(([re]) => re.test(f.name)) || [0, 'Documents'])[1] + '/' + f.name;
+      if (JUNK.test(rel)) return;
+      const path = safe(rel);
+      if (!path || picked.length >= 60000) return;
+      const i = picked.findIndex((x) => x.path === path);
+      if (i >= 0) picked[i].file = f; else picked.push({ path, file: f });
+    });
+    paintFiles();
+  }
+  function paintFiles() {
+    // grouped by what's at the top of your home folder: Photos (120 files), Pictures/beach.jpg…
+    const groups = new Map();
+    picked.forEach((x) => {
+      const top = x.path.split('/')[0], loose = ['Pictures', 'Music', 'Videos', 'Documents'].includes(top) && x.path.split('/').length === 2;
+      const key = loose ? x.path : top;
+      const g = groups.get(key) || { key, n: 0, bytes: 0, loose };
+      g.n++; g.bytes += x.file.size; groups.set(key, g);
+    });
+    const box = $('#files');
+    box.innerHTML = '';
+    groups.forEach((g) => {
+      const r = document.createElement('div');
+      r.className = 'row';
+      r.innerHTML = '<b></b><span></span><button type="button" aria-label="Take it off">\u00d7</button>';
+      r.querySelector('b').textContent = g.loose ? g.key.split('/')[1] : g.key + '/';
+      r.querySelector('span').textContent = (g.loose ? 'Into ' + g.key.split('/')[0] + ', ' : g.n + ' file' + (g.n === 1 ? '' : 's') + ', ') + size(g.bytes);
+      r.querySelector('button').onclick = () => { for (let i = picked.length - 1; i >= 0; i--) if (g.loose ? picked[i].path === g.key : picked[i].path.split('/')[0] === g.key) picked.splice(i, 1); paintFiles(); };
+      box.appendChild(r);
+    });
+    const bytes = picked.reduce((n, x) => n + x.file.size, 0), tot = $('#filetotal');
+    tot.hidden = !picked.length;
+    tot.classList.toggle('over', bytes > 400e6);
+    tot.textContent = picked.length + ' file' + (picked.length === 1 ? '' : 's') + ', ' + size(bytes) + (bytes > 3.9e9 ? '. That\'s too much for one zip: take some off.' : bytes > 400e6 ? '. That\'s more than fits on a Pi card\'s bootfs drive: put dice.json and dice-files.zip on a USB stick instead.' : '');
+    $('#zipbox').hidden = $('#ziphint').hidden = !picked.length;
+  }
+  $('#addfiles').addEventListener('click', () => $('#filepick').click());
+  $('#addfolder').addEventListener('click', () => $('#folderpick').click());
+  $('#filepick').addEventListener('change', (e) => { addFiles(e.target.files, false); e.target.value = ''; });
+  $('#folderpick').addEventListener('change', (e) => { addFiles(e.target.files, true); e.target.value = ''; });
+  // a zip with no squashing (pictures, songs and films are squashed already): each file's CRC, then the file itself
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  async function crcOf(file, tick) {
+    let c = 0xFFFFFFFF;
+    const rd = file.stream().getReader();
+    for (;;) {
+      const { done, value } = await rd.read();
+      if (done) break;
+      for (let i = 0; i < value.length; i++) c = CRC[(c ^ value[i]) & 0xFF] ^ (c >>> 8);
+      tick(value.length);
+    }
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+  async function zipOf(list, progress) {
+    const enc = new TextEncoder(), parts = [], dir = [], total = list.reduce((n, x) => n + x.file.size, 0) || 1;
+    let off = 0, done = 0;
+    for (const x of list) {
+      const name = enc.encode(x.path), n = x.file.size, crc = await crcOf(x.file, (b) => { done += b; progress(done / total); });
+      const d = new Date(x.file.lastModified || Date.now());
+      const tm = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), dt = ((Math.max(1980, d.getFullYear()) - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+      const lh = new DataView(new ArrayBuffer(30));
+      [[0, 0x04034b50, 4], [4, 20, 2], [6, 0x0800, 2], [8, 0, 2], [10, tm, 2], [12, dt, 2], [14, crc, 4], [18, n, 4], [22, n, 4], [26, name.length, 2], [28, 0, 2]].forEach(([at, v, w]) => (w === 4 ? lh.setUint32(at, v, true) : lh.setUint16(at, v, true)));
+      parts.push(lh.buffer, name, x.file);
+      const ch = new DataView(new ArrayBuffer(46));
+      [[0, 0x02014b50, 4], [4, 0x0314, 2], [6, 20, 2], [8, 0x0800, 2], [10, 0, 2], [12, tm, 2], [14, dt, 2], [16, crc, 4], [20, n, 4], [24, n, 4], [28, name.length, 2], [30, 0, 2], [32, 0, 2], [34, 0, 2], [36, 0, 2], [38, 0x81A40000, 4], [42, off, 4]]
+        .forEach(([at, v, w]) => (w === 4 ? ch.setUint32(at, v >>> 0, true) : ch.setUint16(at, v, true)));
+      dir.push(ch.buffer, name);
+      off += 30 + name.length + n;
+    }
+    const dirSize = dir.reduce((s, p) => s + p.byteLength, 0), end = new DataView(new ArrayBuffer(22));
+    [[0, 0x06054b50, 4], [8, list.length, 2], [10, list.length, 2], [12, dirSize, 4], [16, off, 4]].forEach(([at, v, w]) => (w === 4 ? end.setUint32(at, v, true) : end.setUint16(at, v, true)));
+    return new Blob(parts.concat(dir, [end.buffer]), { type: 'application/zip' });
+  }
+  $('#savezip').addEventListener('click', async () => {
+    const btn = $('#savezip'), bytes = picked.reduce((n, x) => n + x.file.size, 0);
+    if (!picked.length || bytes > 3.9e9 || btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const blob = await zipOf(picked, (f) => { btn.textContent = 'Packing your files… ' + Math.floor(f * 100) + '%'; });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'dice-files.zip'; a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+      btn.textContent = 'Saved. Put it next to dice.json';
+    } catch (e) { btn.textContent = 'A file couldn\'t be read. Take it off and try again'; }
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = 'Save dice-files.zip'; }, 4000);
   });
 
   // ---- the preview ----
@@ -529,7 +768,7 @@
     $('#pv-wifi').textContent = cfg.wifi.ssid ? 'On ' + cfg.wifi.ssid : 'No Wi-Fi yet';
     const shelf = $('#pv-shelf');
     shelf.innerHTML = '';
-    ['files', 'browser', 'terminal', 'notes', 'music', 'store', 'settings'].forEach((id) => { const i = document.createElement('i'); i.style.background = 'url(' + G.appIcon(id, 24).toDataURL() + ') center / cover'; shelf.appendChild(i); });
+    ((cfg.layout && cfg.layout.dock) || DOCK).slice(0, 9).forEach((id) => { const i = document.createElement('i'); i.style.background = 'url(' + G.appIcon(id, 24).toDataURL() + ') center / cover'; shelf.appendChild(i); });
     $('#pv-wf').textContent = cfg.wifi.ssid ? '▂▄▆' : '';
     $('#pv-time').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '');
     document.body.style.setProperty('--c', WORLDS[cfg.world]);
@@ -573,6 +812,10 @@
     c.motion = c.lessMotion ? 'less' : 'full'; delete c.lessMotion;
     c.ambient = { after: +c.ambient.after };
     if (!c.tv.live) c.tv.live = null;
+    if (!c.apps || !c.apps.length) delete c.apps;
+    if (!c.webapps || !c.webapps.length) delete c.webapps;
+    if (!c.layout) delete c.layout;
+    if (picked.length) c.files = 'dice-files.zip';
     return c;
   }
   // the emulator reads what you've picked from this browser; passwords stay here, it's only told whether you typed them
@@ -593,7 +836,10 @@
   $('#getcode').addEventListener('click', () => {
     const btn = $('#getcode');
     btn.disabled = true; btn.textContent = 'Getting a code…';
-    fetch('/dice/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(clean(false)) })
+    const c = clean(false);
+    delete c.files; // your files never leave this computer: only dice-files.zip carries them
+    if (JSON.stringify(c).length > 8000 && c.layout) delete c.layout.widgets;
+    fetch('/dice/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(c) })
       .then((r) => r.json()).then((r) => {
         if (!r.code) throw new Error(r.error || 'no code');
         $('#code').classList.add('on'); $('#code-v').textContent = r.code;
@@ -679,6 +925,7 @@
   })();
 
   drawWorlds();
+  paintApps(); paintWeb(); paintLayout();
   changed();
   preview();
   heroDraw(performance.now());

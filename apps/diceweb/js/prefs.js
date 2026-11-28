@@ -6,7 +6,9 @@
 //   name, look (auto/day/night), buddy, boot (full/quick/off), start (desktop/gaming/home), world,
 //   homeassistant, looks (normal/traced), accent (auto or #rrggbb), text (normal/large/larger),
 //   clock (auto/12/24), units (f/c), sounds, nightlight (off/night/on), motion (full/less),
-//   ambient {after: minutes, show}, deuce {on, talk}, tv {live, have, tuner}, desk {snap, hotCorner, homeIcon}
+//   ambient {after: minutes, show}, deuce {on, talk}, tv {live, have, tuner}, desk {snap, hotCorner, homeIcon},
+//   layout {dock, tv, menu: app ids in order; widgets}, webapps [{name, url}] (websites as apps)
+// (apps, Flathub apps to install, and files, a dice-files.zip to copy, are DiceOS's own: bin/dice-boot)
 (function () {
   'use strict';
   const D = window.Dice;
@@ -16,6 +18,23 @@
   if (D.state.looks === 'heaven') { D.state.looks = 'traced'; D.save(); }
   P.looks = (v) => (v === 'traced' || v === 'heaven' ? 'traced' : 'normal');
   P.ACCENTS = ['#ff707a', '#f5a623', '#f5c431', '#8fd16a', '#2bc4b2', '#3a9be8', '#7c9cff', '#d39cf5', '#ff7ac8'];
+  // app ids in a list (the dock, DiceTV's Home, the Dice menu), kept to ones that look right
+  const idList = (a, max) => (Array.isArray(a) ? a.filter((x, i) => typeof x === 'string' && /^[a-z][a-z0-9-]{1,23}$/.test(x) && a.indexOf(x) === i).slice(0, max) : null);
+  // a widget: its type, where it sits, and its own few plain settings (a sticky's text, a countdown's date)
+  const clamp01 = (n) => (typeof n === 'number' && isFinite(n) ? Math.max(0, Math.min(0.9, n)) : 0.1);
+  function widget(w) {
+    if (!w || typeof w !== 'object' || !/^[a-z]{2,12}$/.test(w.type)) return null;
+    const o = {};
+    Object.keys(w).slice(0, 16).forEach((k) => {
+      const v = w[k];
+      if (!/^[a-zA-Z]{1,16}$/.test(k) || k === 'editing') return;
+      if ((typeof v === 'number' && isFinite(v)) || typeof v === 'boolean' || (typeof v === 'string' && v.length <= 600)) o[k] = v;
+      else if (Array.isArray(v) && v.length <= 12 && v.every((x) => typeof x === 'string' && x.length <= 60)) o[k] = v.slice();
+    });
+    o.x = clamp01(o.x); o.y = clamp01(o.y);
+    return o;
+  }
+  P.widget = widget;
 
   // a dice.json's fields into DiceOS
   P.apply = function (s) {
@@ -55,6 +74,18 @@
       if ('hotCorner' in s.desk) put('hotCorner', !!s.desk.hotCorner);
       if ('homeIcon' in s.desk) put('deskIcons', s.desk.homeIcon ? 'home' : 'none');
     }
+    // your home screens, arranged before installing (Make it yours) or on another computer
+    if (s.layout && typeof s.layout === 'object') {
+      const dock = idList(s.layout.dock, 20), tv = idList(s.layout.tv, 7), menu = idList(s.layout.menu, 24);
+      if (dock && dock.length) put('dock', dock);
+      if (tv && tv.length) put('homeApps', tv);
+      if (menu && menu.length) put('startPins', menu);
+      if (Array.isArray(s.layout.widgets)) put('widgets', s.layout.widgets.slice(0, 16).map(widget).filter(Boolean));
+    }
+    // websites as apps (the Store's Web apps)
+    if (Array.isArray(s.webapps) && D.myApps && D.myApps.addWeb) {
+      s.webapps.slice(0, 40).forEach((w) => { try { if (w && /^https?:\/\//.test(String(w.url))) { D.myApps.addWeb(String(w.name || '').slice(0, 40), String(w.url)); n++; } } catch (e) { /* not a web address: skipped */ } });
+    }
     D.save();
     P.live();
     return n;
@@ -74,6 +105,15 @@
       desk: { snap: st.snap !== false, hotCorner: st.hotCorner !== false, homeIcon: st.deskIcons !== 'none' },
     };
     if (st.ha) out.homeassistant = st.ha;
+    // your home screens (only what you've changed from the usual) and websites as apps
+    const layout = {};
+    if (Array.isArray(st.dock) && st.dock.length) layout.dock = st.dock.slice();
+    if (Array.isArray(st.homeApps) && st.homeApps.length) layout.tv = st.homeApps.slice();
+    if (Array.isArray(st.startPins) && st.startPins.length) layout.menu = st.startPins.slice();
+    if (Array.isArray(st.widgets)) layout.widgets = st.widgets.map(widget).filter(Boolean);
+    if (Object.keys(layout).length) out.layout = layout;
+    const web = st.myapps && Array.isArray(st.myapps.web) ? st.myapps.web : [];
+    if (web.length) out.webapps = web.map((a) => ({ name: a.name, url: a.url }));
     if (device && device.ok) {
       out.computer = device.computer; out.timezone = device.timezone; out.keyboard = device.keyboard; out.ssh = !!device.ssh; out.updates = !!device.updates;
       if (device.wifi_country) out.wifi = { country: device.wifi_country };

@@ -27,7 +27,7 @@
     desk.appendChild(h('<div class="dhot" aria-hidden="true"></div>'));
     // the dock gets an overview button; the tray gets the desktops
     const launch = desk.querySelector('.launch');
-    const ov = h('<button class="launch ovbtn" aria-label="Overview (Super)" title="Overview"><svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="3" width="6" height="5" rx="1.2"/><rect x="10" y="3" width="6" height="5" rx="1.2"/><rect x="2" y="10" width="6" height="5" rx="1.2"/><rect x="10" y="10" width="6" height="5" rx="1.2"/></svg></button>');
+    const ov = h('<button class="launch ovbtn" aria-label="Overview (Super + Tab)" title="Overview"><svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="2" y="3" width="6" height="5" rx="1.2"/><rect x="10" y="3" width="6" height="5" rx="1.2"/><rect x="2" y="10" width="6" height="5" rx="1.2"/><rect x="10" y="10" width="6" height="5" rx="1.2"/></svg></button>');
     ov.onclick = () => P.overview();
     launch.after(ov);
     const bar = h('<button class="launch barbtn" aria-label="Dice Bar (Ctrl + Space)" title="Dice Bar (Ctrl + Space)">' + D.glyph('search', 2) + '</button>');
@@ -530,6 +530,20 @@
       layer.appendChild(el);
       fill(el, w);
     });
+    requestAnimationFrame(() => unstack(layer));
+  }
+  // on a smaller screen than they were placed on, widgets can land on each other: nudge them down (not saved)
+  function unstack(layer) {
+    const placed = [];
+    Array.from(layer.children).map((el) => ({ el, r: el.getBoundingClientRect() })).sort((x, y) => x.r.top - y.r.top).forEach(({ el, r }) => {
+      let top = r.top;
+      for (let n = 0, moved = true; moved && n < 20; n++) {
+        moved = false;
+        for (const p of placed) if (r.left < p.right && r.right > p.left && top < p.bottom + 8 && top + r.height > p.top - 8) { top = p.bottom + 10; moved = true; }
+      }
+      if (top !== r.top) el.style.top = Math.round(parseFloat(el.style.top) + top - r.top) + 'px';
+      placed.push({ left: r.left, right: r.right, top, bottom: top + r.height });
+    });
   }
   function addWidget(type, x, y) {
     const a = Desk.area();
@@ -541,6 +555,7 @@
     menuEl.classList.add('wide');
   }
   P.gallery = gallery;
+  P.KINDS = KINDS;
   P.menu = menu;
   // the ones you type into, or that tick by themselves, aren't redrawn every 15 seconds
   const SELF = ['sticky', 'weather', 'timer', 'countdown', 'deuce', 'modes'];
@@ -579,7 +594,11 @@
       const t = Desk.top();
       if (!t || !/^Arrow/.test(k)) return;
       stop();
-      if (k === 'ArrowLeft') { if (t.snap === 'right' || t.snap === 'tr' || t.snap === 'br') t.unsnap(); else t.snapTo('left'); }
+      // on a wide monitor, pressing again goes half → a third → two thirds, like Rectangle on a Mac
+      const wide = innerWidth / innerHeight >= 2;
+      if (k === 'ArrowLeft' && wide) { t.snapTo({ left: 'l3', l3: 'l23', l23: 'left' }[t.snap] || (t.snap === 'r3' ? 'c3' : t.snap === 'c3' ? 'l3' : 'left')); }
+      else if (k === 'ArrowRight' && wide) { t.snapTo({ right: 'r3', r3: 'r23', r23: 'right' }[t.snap] || (t.snap === 'l3' ? 'c3' : t.snap === 'c3' ? 'r3' : 'right')); }
+      else if (k === 'ArrowLeft') { if (t.snap === 'right' || t.snap === 'tr' || t.snap === 'br') t.unsnap(); else t.snapTo('left'); }
       else if (k === 'ArrowRight') { if (t.snap === 'left' || t.snap === 'tl' || t.snap === 'bl') t.unsnap(); else t.snapTo('right'); }
       else if (k === 'ArrowUp') t.snapTo(t.snap === 'bl' ? 'left' : t.snap === 'br' ? 'right' : t.snap === 'left' ? 'tl' : t.snap === 'right' ? 'tr' : 'top');
       else if (k === 'ArrowDown') { if (t.max) t.unsnap(); else if (t.snap === 'left') t.snapTo('bl'); else if (t.snap === 'right') t.snapTo('br'); else if (t.snap) t.unsnap(); else t.minimise(); }
@@ -588,7 +607,8 @@
   addEventListener('keyup', (e) => {
     if (!Desk.on) return;
     if (alt && (e.key === 'Alt' || !e.altKey)) altDone(true);
-    if ((e.key === 'Meta' || e.key === 'OS') && superAlone) { superAlone = false; P.overview(); }
+    // the Windows key on its own: the Dice menu (the overview is Super + Tab, F3 or the hot corner)
+    if ((e.key === 'Meta' || e.key === 'OS') && superAlone) { superAlone = false; if (ovOn) P.closeOverview(); Desk.toggleStart(undefined, 'top'); }
   }, true);
 
   // buttons (controllers and remotes) while the overview or the bar is up

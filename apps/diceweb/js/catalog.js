@@ -1,7 +1,7 @@
 // Everything DiceWeb knows about: its own apps, the apps for your computer,
 // and the friends (the mascots). The suite list matches the website's.
 window.CATALOG = {
-  version: '2.5.0',
+  version: '2.6.0',
   site: 'https://djp7.pythonanywhere.com',
 
   // Cubby: DiceWeb's own mascot, a die with feet.
@@ -32,8 +32,18 @@ window.CATALOG = {
 
   // Built into DiceWeb.
   builtins: [
-    { id: 'music', name: 'Music', kind: 'app', c: '#d39cf5', who: 'cubby', land: 'concert', blurb: 'Dice Radio and your own songs',
-      line: 'Dice Radio makes little songs as it plays, and you can add your own. The flowers dance along.', words: 'songs radio audio player mp3 listen' },
+    { id: 'hum', name: 'hum', kind: 'app', c: '#f5c431', who: 'hum', land: 'garden', os: true, blurb: 'Your music, off to one side',
+      line: 'Dice Radio, your own songs and YouTube links in a panel at the side, with playlists. Bumble flies along the bar and the garden dances.', words: 'music songs radio audio player mp3 listen playlist youtube hum' },
+    { id: 'gossip', name: 'gossip', kind: 'app', c: '#7cc4ff', who: 'gossip', land: 'ice', os: true, blurb: 'Private chat with your friends',
+      line: 'Chat with your friends, end to end encrypted: the same accounts and people as gossip in Terminal. Pebble keeps the list tidy.', words: 'chat message friends talk dm encrypted gossip' },
+    { id: 'tidy', name: 'tidy', kind: 'app', c: '#e8913a', who: 'tidy', land: 'autumn', os: true, blurb: 'Sorts a messy folder, and shows you first',
+      line: 'Pick a folder and tidy sorts it into neat folders: by kind, by date, or however you say. You see the plan first, and Undo puts it all back.', words: 'organize sort folder downloads clean tidy files' },
+    { id: 'hey', name: 'hey', kind: 'app', c: '#f2c14e', who: 'hey', land: 'park', os: true, blurb: 'Plain words in, a command out',
+      line: 'Say what you want to do in plain words and get the Terminal command, what each part does, and how risky it is.', words: 'terminal command help shell hey explain' },
+    { id: 'magpie', name: 'magpie', kind: 'app', c: '#6a9be6', who: 'magpie', land: 'town', os: true, blurb: 'Everything you copied, to paste again',
+      line: 'Remembers what you copy, in a strip of glass at the side. Pin things, name them, change them as you paste. Super + V.', words: 'clipboard copy paste history magpie' },
+    { id: 'den', name: 'den', kind: 'app', c: '#f0843c', who: 'den', land: 'forest', os: true, blurb: 'A friendly code editor for learning',
+      line: 'Write and run code with Ember the fox beside you: files, tabs, colours, a console, examples to start from, and help in plain words.', words: 'code editor learn programming ide python javascript html den' },
     { id: 'terminal', name: 'Terminal', kind: 'app', c: '#8fd16a', who: null, land: 'screen', blurb: 'A pretend command line to play with',
       line: 'A command line that lives in your browser, with its own pretend disk. Type help to start.', words: 'shell command line console cli bash' },
     { id: 'notes', name: 'Notes', kind: 'app', c: '#e8913a', who: null, land: 'paper', blurb: 'Write things down',
@@ -41,7 +51,7 @@ window.CATALOG = {
     { id: 'files', name: 'Files', kind: 'app', c: '#5aa9e6', who: 'tidy', land: 'autumn', blurb: 'Your folders and files',
       line: 'Your folders and files. On a computer running DiceOS, your real ones, and any USB stick you plug in.', words: 'folders documents finder explorer usb' },
     { id: 'browser', name: 'SereneTab', kind: 'app', c: '#3d86d6', who: 'scout', land: 'mountains', blurb: 'The web, with a calm new tab',
-      line: 'A web browser with tabs, and a new tab page with a city skyline under its real sky, the weather and your shortcuts.', words: 'browser web internet chrome website serenetab new tab search home assistant' },
+      line: 'A web browser with your tabs down the side, so lots of them fit, and a new tab page with a city skyline under its real sky, the weather, your shortcuts and pages saved for later.', words: 'browser web internet chrome website serenetab new tab search home assistant read later reading list' },
     { id: 'calculator', name: 'Calculator', kind: 'app', c: '#5d6b8a', who: null, land: 'gears', blurb: 'Work out sums',
       line: 'Type a sum or press the keys. It keeps your last few answers.', words: 'calc maths math sum add numbers' },
     { id: 'calendar', name: 'Axiom', kind: 'app', c: '#d4a857', who: null, land: 'paper', blurb: 'A calm planner for school',
@@ -98,6 +108,14 @@ window.CATALOG = {
   ],
 
   // The friends: what they are, and what they say when you say hi.
+  // apps from Flathub the Store suggests (and the DiceOS page offers to install before you start).
+  // Flathub only has some for a Pi's ARM chip: Steam, Spotify and Discord are PC only
+  flathub: [
+    ['Watch and listen', [['org.videolan.VLC', 'VLC', 'Plays almost any video or song file'], ['tv.kodi.Kodi', 'Kodi', 'A whole media centre for your films, shows and music'], ['com.spotify.Client', 'Spotify', 'Music and podcasts']]],
+    ['Play', [['com.moonlight_stream.Moonlight', 'Moonlight', 'Play the games on your gaming PC, here (DiceGaming uses it)'], ['com.valvesoftware.Steam', 'Steam', 'Your Steam games'], ['org.libretro.RetroArch', 'RetroArch', 'Old consoles\' games, with a controller'], ['org.prismlauncher.PrismLauncher', 'Prism Launcher', 'Minecraft: Java Edition, with mods'], ['net.supertuxkart.SuperTuxKart', 'SuperTuxKart', 'A free kart racer']]],
+    ['Make things', [['org.gimp.GIMP', 'GIMP', 'Edit photos and pictures'], ['org.kde.krita', 'Krita', 'Paint and draw'], ['org.inkscape.Inkscape', 'Inkscape', 'Drawings that scale to any size'], ['org.blender.Blender', 'Blender', '3D models and animation'], ['org.audacityteam.Audacity', 'Audacity', 'Record and edit sound'], ['com.obsproject.Studio', 'OBS Studio', 'Record and stream your screen']]],
+    ['Work and school', [['org.libreoffice.LibreOffice', 'LibreOffice', 'Documents, spreadsheets and slides'], ['org.mozilla.firefox', 'Firefox', 'A web browser'], ['com.visualstudio.code', 'Visual Studio Code', 'A code editor'], ['com.discordapp.Discord', 'Discord', 'Talk with friends']]],
+  ],
   friends: {
     gossip: ['the penguin', ['Psst. Did you hear? Rowan grew a new leaf.', 'I can keep a secret. Only you and me can read this.']],
     tot: ['the tree', ['I asked six AIs what to say to you. They all said hi.', 'Branching out today. Literally.']],

@@ -37,8 +37,10 @@
   Dice.origin = Dice.onSite ? location.origin : CATALOG.site;
 
   // ---- What DiceWeb remembers ------------------------------------------------------
-  // the emulator on the website keeps its own pretend computer, apart from your DiceWeb
-  const KEY = window.DICE_SYS && window.DICE_SYS.emulated ? 'diceweb-emu' : 'diceweb';
+  // the emulator on the website keeps its own pretend computer, apart from your DiceWeb; so does
+  // set-up mode (diceweb/?setup=1, from the DiceOS page's Make it yours: js/setupmode.js)
+  Dice.setupMode = !window.DICE_SYS && /[?&]setup=1(&|$)/.test(location.search);
+  const KEY = window.DICE_SYS && window.DICE_SYS.emulated ? 'diceweb-emu' : Dice.setupMode ? 'diceweb-setup' : 'diceweb';
   const DEFAULTS = {
     v: 2, name: 'player', avatar: 'cubby', look: 'auto', volume: 0.7, ui: true, musicVol: 0.8, motion: 'full', boot: 'full', start: 'desk',
     perf: 0, fps: 30, bright: 1, friendPops: false, deskIcons: 'home', recent: [], played: {}, last: {}, seen: {}, notifs: [], said: {},
@@ -139,7 +141,9 @@
   Dice.apps = {};
   Dice.register = (def) => { Dice.apps[def.id] = def; };
   Dice.all = function () {
-    return CATALOG.builtins.map((a) => Object.assign({ suite: false }, a)).concat(CATALOG.suite.map((a) => Object.assign({ kind: 'suite', suite: true, who: ART.mascots[a.id] ? a.id : null }, a)));
+    // (hum, gossip, tidy, hey, magpie and den are part of DiceOS itself now: their suite entries step aside)
+    const own = new Set(CATALOG.builtins.map((a) => a.id));
+    return CATALOG.builtins.map((a) => Object.assign({ suite: false }, a)).concat(CATALOG.suite.filter((a) => !own.has(a.id)).map((a) => Object.assign({ kind: 'suite', suite: true, who: ART.mascots[a.id] ? a.id : null }, a)));
   };
   Dice.app = (id) => Dice.all().find((a) => a.id === id);
   Dice.touch = function (id) { // remember what was opened, newest first

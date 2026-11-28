@@ -728,3 +728,18 @@ html[data-fit] body { transform: scale(var(--fit)); transform-origin: 50% 50%; b
 .swatches button.auto { width: auto; padding: 0 12px; background: conic-gradient(from 200deg, #ff707a, #f5c431, #8fd16a, #3a9be8, #d39cf5, #ff707a); color: #fff; font: 700 .8rem var(--read); text-shadow: 0 1px 2px rgba(0, 0, 0, .45); }
 .swatches button[aria-pressed=true] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink); }
 .swatches button.is-focus { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--ink), 0 0 0 7px color-mix(in srgb, var(--ink) 25%, transparent); }
+
+/* ---------- a widescreen monitor or TV (21:9, 32:9): DiceTV keeps a 16:9 stage in the middle, with your
+   world running out to both edges, so nothing is stranded at the far left ---------- */
+@media (min-aspect-ratio: 21/10) {
+  :root { --stage: calc(100vh * 16 / 9); --side: calc((100vw - var(--stage)) / 2);
+    --gut: calc(var(--side) + clamp(20px, calc(var(--stage) * .04), 64px)); --tile: clamp(124px, calc(var(--stage) * .106), 196px); }
+  html:not(.desk-on) #menu { left: calc(var(--side) + 10px); transform: translateX(calc(-100% - 40px - var(--side))); }
+  html:not(.desk-on) #qam { right: calc(var(--side) + 10px); transform: translateX(calc(100% + 40px + var(--side))); }
+  html:not(.desk-on) #menu.open, html:not(.desk-on) #qam.open { transform: none; }
+}
+/* DiceTV's menu has the die at the top (the Windows key opens it too) */
+#menu .menu-brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 14px; }
+#menu .menu-brand b { font: 500 1.5rem/1 var(--pixel); }
+#menu .menu-brand small { margin-left: auto; color: var(--muted); font: 700 .74rem/1 var(--read); }
+#menu .mb-dietile { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--glass-hi); box-shadow: inset 0 0 0 1px var(--line), inset 0 -2px 0 color-mix(in srgb, var(--ink) 12%, transparent); }

@@ -85,12 +85,7 @@
 
   // ---- what the Store suggests -------------------------------------------------------------------------
   // (Flathub app ids; ones Flathub doesn't have for this computer, like Steam on a Pi, don't show up)
-  const PICKS = [
-    ['Watch and listen', [['org.videolan.VLC', 'VLC', 'Plays almost any video or song file'], ['tv.kodi.Kodi', 'Kodi', 'A whole media centre for your films, shows and music'], ['com.spotify.Client', 'Spotify', 'Music and podcasts']]],
-    ['Play', [['com.moonlight_stream.Moonlight', 'Moonlight', 'Play the games on your gaming PC, here (DiceGaming uses it)'], ['com.valvesoftware.Steam', 'Steam', 'Your Steam games'], ['org.libretro.RetroArch', 'RetroArch', 'Old consoles\' games, with a controller'], ['org.prismlauncher.PrismLauncher', 'Prism Launcher', 'Minecraft: Java Edition, with mods'], ['net.supertuxkart.SuperTuxKart', 'SuperTuxKart', 'A free kart racer']]],
-    ['Make things', [['org.gimp.GIMP', 'GIMP', 'Edit photos and pictures'], ['org.kde.krita', 'Krita', 'Paint and draw'], ['org.inkscape.Inkscape', 'Inkscape', 'Drawings that scale to any size'], ['org.blender.Blender', 'Blender', '3D models and animation'], ['org.audacityteam.Audacity', 'Audacity', 'Record and edit sound'], ['com.obsproject.Studio', 'OBS Studio', 'Record and stream your screen']]],
-    ['Work and school', [['org.libreoffice.LibreOffice', 'LibreOffice', 'Documents, spreadsheets and slides'], ['org.mozilla.firefox', 'Firefox', 'A web browser'], ['com.visualstudio.code', 'Visual Studio Code', 'A code editor'], ['com.discordapp.Discord', 'Discord', 'Talk with friends']]],
-  ];
+  const PICKS = CATALOG.flathub; // (in catalog.js: the DiceOS page offers the same ones to install before you start)
   const CATS = [['', 'Everything'], ['Game', 'Games'], ['AudioVideo', 'Watch and listen'], ['Graphics', 'Draw and photos'], ['Office', 'Work'], ['Education', 'Learn'], ['Development', 'Code'], ['Network', 'Internet'], ['Utility', 'Tools']];
   const WEB = [['Photopea', 'https://www.photopea.com/', 'Edit photos, in the browser'], ['Excalidraw', 'https://excalidraw.com/', 'A whiteboard to sketch on'], ['Desmos', 'https://www.desmos.com/calculator', 'A graphing calculator'],
     ['Scratch', 'https://scratch.mit.edu/', 'Make games with blocks'], ['Khan Academy', 'https://www.khanacademy.org/', 'Lessons for every subject'], ['Duolingo', 'https://www.duolingo.com/', 'Learn a language'],
@@ -131,6 +126,15 @@
     // ---- Apps: Flathub, on DiceOS --------------------------------------------------------------------
     let cache = { picks: null, results: null, rq: null };
     async function appsTab() {
+      // set-up mode (Make it yours): pick the apps DiceOS installs by itself once it's online
+      if (!D.sys && D.setup) {
+        const picked = new Set(D.setup.apps());
+        body.innerHTML = '';
+        body.appendChild(h('<div class="sto-hero glass"><div><h2>Apps to install</h2><p>Pick the apps you want on your DiceOS. It installs them by itself the first time it\'s online (a Pi only gets the ones Flathub makes for it: Steam, Spotify and Discord are PC only). Pick one again to take it off.</p></div></div>'));
+        PICKS.forEach(([title, list]) => body.appendChild(section(title, '', grid(list.map(([id, name, summary]) => card({ id: 'fp:' + id, app: id, name, summary, kind: 'real' },
+          [[picked.has(id) ? '\u2713 On the list' : 'Install it', picked.has(id) ? 'on' : 'go', () => { D.setup.toggleApp(id); keepFocus(appsTab); }, 'sto:pick:' + id]]))))));
+        return;
+      }
       if (!D.sys) {
         body.innerHTML = '';
         body.appendChild(h('<div class="sto-hero glass"><div><h2>Real apps live on DiceOS</h2><p>On a computer running DiceOS (a Raspberry Pi, a PC, your TV), the Store installs real apps from Flathub: VLC, Kodi, GIMP, LibreOffice, Minecraft\'s launcher, Steam on a PC, and thousands more. Here in the browser, add any website as an app instead.</p></div>' +

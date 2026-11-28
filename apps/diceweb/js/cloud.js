@@ -87,7 +87,7 @@
       legacy() { return this.items(); },
     },
     axiom: { name: 'Axiom', split: axSplit, items: () => axSplit(D.state.axiom), put: axPut, legacy: () => D.state.axiom || null },
-    serenetab: Object.assign(whole(() => pick(D.state.st, ['shortcuts', 'engine', 'city', 'units', 'place', 'note']), (v) => { D.state.st = Object.assign(D.state.st || {}, v || {}); }),
+    serenetab: Object.assign(whole(() => pick(D.state.st, ['shortcuts', 'engine', 'city', 'units', 'place', 'note', 'later']), (v) => { D.state.st = Object.assign(D.state.st || {}, v || {}); }),
       { name: 'SereneTab', legacy: () => pick(D.state.st, ['shortcuts', 'engine', 'city', 'units', 'place', 'note']) }),
     home: Object.assign(whole(() => D.state.home || null, (v) => { if (v) D.state.home = v; }), { name: 'Dice Home', legacy: () => D.state.home || null }),
     watch: Object.assign(whole(() => (Array.isArray(D.state.watch) ? D.state.watch : null), (v) => { if (Array.isArray(v)) D.state.watch = v; }), { name: 'The Watch list on DiceTV' }),

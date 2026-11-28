@@ -410,6 +410,22 @@
   // for Lookouts: read a page, and ask the brain a yes-or-no question about it
   Mind.onDice = onDice;
   Mind.readPage = readPage;
+  // one question, one answer, no tools: for hey, tidy and den. schema: a JSON shape the answer must have.
+  Mind.once = async function (sys, ask, schema) {
+    const s = await Mind.status().catch(() => null);
+    if (!s || !s.ready) return null;
+    const parse = (t) => { const m = /\{[\s\S]*\}/.exec(String(t || '')); try { return m ? JSON.parse(m[0]) : null; } catch (e) { return null; } };
+    if (s.where === 'dice') {
+      const r = await chatDice([{ role: 'system', content: sys + (schema ? '\nAnswer with JSON only, shaped like: ' + JSON.stringify(schema) : '') }, { role: 'user', content: ask }], { stream() {} });
+      const out = visible(r.msg.content);
+      return schema ? parse(out) : out;
+    }
+    const session = await window.LanguageModel.create({ initialPrompts: [{ role: 'system', content: sys }], expectedInputs: [{ type: 'text', languages: ['en'] }], expectedOutputs: [{ type: 'text', languages: ['en'] }] });
+    try {
+      const out = await session.prompt(ask, schema ? { responseConstraint: schema } : undefined);
+      return schema ? parse(out) : out;
+    } finally { try { session.destroy(); } catch (e) { /* gone already */ } }
+  };
   Mind.judge = async function (question, text) {
     const s = await Mind.status().catch(() => null);
     if (!s || !s.ready) return null;

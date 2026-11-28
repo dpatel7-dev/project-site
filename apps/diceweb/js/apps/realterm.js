@@ -56,12 +56,14 @@
     ro.observe(box);
     connect();
     setTimeout(() => keys.focus({ preventScroll: true }), 80);
+    // hey (and den) type a command in for you; you press Enter
+    const offType = D.on('terminal-type', (cmd) => { const go = () => { send(String(cmd)); keys.focus({ preventScroll: true }); }; if (ws && ws.readyState === 1) go(); else setTimeout(go, 700); });
     ctx.legend([]);
     return {
       onAction(a) { return a !== 'menu' && a !== 'quick'; },
       resume() { setTimeout(() => keys.focus({ preventScroll: true }), 60); fit(); },
       resize() { fit(); },
-      unmount() { closed = true; if (ws) ws.close(); ro.disconnect(); D.keyHook = null; },
+      unmount() { closed = true; if (ws) ws.close(); ro.disconnect(); D.keyHook = null; offType(); },
     };
   } });
 })();

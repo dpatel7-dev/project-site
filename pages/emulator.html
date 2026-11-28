@@ -172,8 +172,8 @@
   };
   // the keys DiceOS keeps (the same list as dice-boot), and the ones it reads once
   const KEEP = ['name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh',
-    'looks', 'accent', 'text', 'clock', 'units', 'sounds', 'nightlight', 'motion', 'ambient', 'deuce', 'tv', 'desk', 'shield'];
-  const KNOWN = KEEP.concat(['dice', 'password', 'wifi']);
+    'looks', 'accent', 'text', 'clock', 'units', 'sounds', 'nightlight', 'motion', 'ambient', 'deuce', 'tv', 'desk', 'shield', 'layout', 'webapps'];
+  const KNOWN = KEEP.concat(['dice', 'password', 'wifi', 'files']);
   const st = { dev: 'pi7', power: 'off', file: null, fileName: '', code: null, used: {}, t0: 0, timers: [], version: '1.2.0' };
   try { const d = localStorage.getItem('dice-emu-device'); if (DEVICES[d]) st.dev = d; } catch (e) { /* fine */ }
   fetch('/versions.json').then((r) => r.json()).then((v) => { const a = v.apps || v; if (a && a.dice) st.version = a.dice.version || a.dice; }).catch(() => {});
@@ -292,6 +292,10 @@
     if (cfg.start && !['desktop', 'gaming', 'home'].includes(cfg.start)) notes.push('"' + cfg.start + '" isn\'t desktop, gaming or home, so it opens on the desktop.');
     const suite = (cfg.suite || []).filter((a) => /^[a-z]{2,10}$/.test(String(a)));
     if (suite.length) notes.push('Will install ' + suite.join(', ') + ' once it\'s online');
+    const apps = (Array.isArray(cfg.apps) ? cfg.apps : []).filter((a) => /^[A-Za-z][\w-]*(\.[\w-]+){2,}$/.test(String(a)));
+    if (apps.length) notes.push('Will install ' + apps.length + ' app' + (apps.length === 1 ? '' : 's') + ' from Flathub once it\'s online (' + apps.map((a) => a.split('.').pop()).join(', ') + ')');
+    if (cfg.layout) notes.push('Arranged your home screens the way you set them up');
+    if (cfg.files) done.push('Copied the files in ' + String(cfg.files).replace(/[^\w. -]/g, '') + ' into your home folder');
     settings.welcome = { name: cfg.name || '', done, problems, at: Math.floor(Date.now() / 1000) };
     return { settings, done, problems, notes, host: host && /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/.test(host) ? host : 'dice' };
   }

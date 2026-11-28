@@ -54,3 +54,8 @@
 #power-screen.traced .ps-in h1 { text-shadow: none; }
 #power-screen.traced .ps-in p { font: 600 1.05rem/1.3 var(--read); opacity: .75; }
 #power-screen.traced .ps-dots i { background: rgb(44, 46, 72); border-radius: 0; }
+/* Traced mode's start-up: filmed (js/screens.js cineBoot); the painting comes after, over the real screen */
+#cineboot { position: fixed; inset: 0; z-index: 9001; background: #05060b; overflow: hidden; }
+#cineboot canvas { position: absolute; inset: 0; display: block; }
+#cineboot .cb-skip { color: rgba(244, 239, 226, .45); bottom: 13vh; }
+#trboot.paint { z-index: 8999; }

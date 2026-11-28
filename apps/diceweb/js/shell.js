@@ -68,7 +68,7 @@
     $('#tb-dnd').hidden = !D.tools.quiet();
   }
   D.on('sleeptimer', chips); D.on('dnd', chips);
-  $('#tb-music').onclick = () => D.launch('music');
+  $('#tb-music').onclick = () => D.launch('hum');
   function clock() {
     const d = new Date();
     $('#clock').textContent = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '');
@@ -161,7 +161,7 @@
     if (restore && view.scroll) page.scrollTop = view.scroll;
     const want = restore && view.focusKey ? page.querySelector('[data-key="' + CSS.escape(view.focusKey) + '"]') : null;
     if (want) Nav.focus(want, { scroll: false }); else Nav.first(page);
-    if (!Nav.el || !page.contains(Nav.el)) { const fallback = D.app(view.v === 'page' ? view.arg : (D.state.recent[0] || 'music')); if (fallback) Hero.set(fallback); }
+    if (!Nav.el || !page.contains(Nav.el)) { const fallback = D.app(view.v === 'page' ? view.arg : (D.state.recent[0] || 'hum')); if (fallback) Hero.set(fallback); }
     Legend.update();
   };
 
@@ -208,8 +208,12 @@
     const run = D.running();
     const ids = [];
     if (run) ids.push(run.id);
-    D.state.recent.forEach((id) => { if (!ids.includes(id) && D.app(id) && !D.app(id).suite && !D.app(id).pc) ids.push(id); });
-    ['music', 'channels', 'browser', 'calendar', 'weather', 'files', 'notes', 'photos'].forEach((id) => { if (ids.length < 7 && D.app(id) && !ids.includes(id)) ids.push(id); });
+    // your own Home (set in Settings, You, or before installing in Make it yours): those first, in your order
+    const mine = Array.isArray(D.state.homeApps) && D.state.homeApps.length ? D.state.homeApps : null;
+    const put = (id) => { if (ids.length < 7 && !ids.includes(id) && D.app(id) && !D.app(id).suite && !D.app(id).pc) ids.push(id); };
+    if (mine) mine.forEach(put);
+    D.state.recent.forEach(put);
+    ['hum', 'channels', 'browser', 'calendar', 'weather', 'files', 'notes', 'photos'].forEach(put);
     ids.slice(0, 7).forEach((id, i) => {
       const app = D.app(id), live = run && run.id === id;
       const t = block(app, { flag: live ? 'Running' : '', a: live ? 'Resume' : 'Open', x: live ? 'Close' : '' });
@@ -409,17 +413,18 @@
     Qam.close(true); Search.close(true);
     Menu.prev = Nav.el;
     const v = Shell.view ? Shell.view.v : 'home';
-    const items = [['home', 'Home', 'home', '#ff707a'], ['library', 'Library', 'library', '#7cc4ff'], ['music', 'Music', 'music', '#d39cf5'], ['settings', 'Settings', 'gear', '#7c9cff']];
+    const items = [['home', 'Home', 'home', '#ff707a'], ['library', 'Library', 'library', '#7cc4ff'], ['hum', 'hum', 'music', '#f5c431'], ['settings', 'Settings', 'gear', '#7c9cff']];
     const run = D.running();
-    menuEl.innerHTML = '<button class="me" data-nav data-key="m:me"><canvas width="58" height="58"></canvas><span><b>' + esc(D.state.name) + '</b><span>Your name and picture</span></span></button>' +
+    menuEl.innerHTML = '<div class="menu-brand" aria-hidden="true"><span class="mb-dietile"></span><b>Dice</b><small>Windows key or M</small></div><button class="me" data-nav data-key="m:me"><canvas width="58" height="58"></canvas><span><b>' + esc(D.state.name) + '</b><span>Your name and picture</span></span></button>' +
       '<div class="menu-list">' + (run ? '<button class="mi" data-nav data-key="m:resume" data-first>' + D.icon('play', run.app.c, 2) + 'Resume ' + esc(run.app.name) + '</button><button class="mi" data-nav data-key="m:exit">' + D.icon('close', '#ff4d5e', 3) + 'Close ' + esc(run.app.name) + '</button>' : '') +
       items.map(([id, n, ic, c]) => '<button class="mi ' + (v === id ? 'here' : '') + '" data-nav data-key="m:' + id + '" ' + (!run && v === id ? 'data-first' : '') + '>' + D.icon(ic, c, 2) + n + '</button>').join('') +
       '<button class="mi" data-nav data-key="m:power" aria-expanded="false">' + D.icon('power', '#ff4d5e', 2) + 'Power</button><div class="power" hidden></div></div>' +
       '<div class="menu-foot"><span>' + D.brand + ' ' + (D.sys ? D.sys.info.version : D.version) + '</span><span>' + D.glyph(D.night() ? 'moon' : 'sun', 1) + ' ' + (D.night() ? 'Night' : 'Day') + '</span></div>';
-    menuEl.querySelector('canvas').getContext('2d').drawImage(G.face(D.state.avatar, 58, G.hexA(G.colourOf(D.state.avatar), 0.25)), 0, 0);
+    if (D.dicemenu) menuEl.querySelector('.mb-dietile').appendChild(D.dicemenu.die(30));
+    menuEl.querySelector('.me canvas').getContext('2d').drawImage(G.face(D.state.avatar, 58, G.hexA(G.colourOf(D.state.avatar), 0.25)), 0, 0);
     const pick = (k) => menuEl.querySelector('[data-key="m:' + k + '"]');
     pick('me').onclick = () => { Menu.close(true); D.launch('settings', { arg: 'you' }); };
-    items.forEach(([id]) => { pick(id).onclick = () => { Menu.close(true); if (id === 'music') return D.launch('music'); if (id === 'settings') return D.launch('settings'); D.suspendIfRunning(); Shell.go(id, null, { root: id === 'home' }); if (id !== 'home') Shell.stack.unshift({ v: 'home' }); }; });
+    items.forEach(([id]) => { pick(id).onclick = () => { Menu.close(true); if (id === 'hum') return D.launch('hum'); if (id === 'settings') return D.launch('settings'); D.suspendIfRunning(); Shell.go(id, null, { root: id === 'home' }); if (id !== 'home') Shell.stack.unshift({ v: 'home' }); }; });
     if (run) { pick('resume').onclick = () => { Menu.close(true); D.launch(run.id); }; pick('exit').onclick = () => { Menu.close(true); D.closeApp(); }; }
     pick('power').onclick = () => {
       const p = menuEl.querySelector('.power'), b = pick('power');
@@ -576,7 +581,7 @@
       btn('prev', 'q:prev', () => M.prev(), 'Previous');
       btn(now && now.playing ? 'pause' : 'play', 'q:play', () => M.toggle(), 'Play or pause');
       btn('next', 'q:next', () => M.next(), 'Next');
-      const open = h('<button class="b small" data-nav data-key="q:openmusic">Open Music</button>'); open.onclick = () => { Qam.close(true); D.launch('music'); }; row.appendChild(open);
+      const open = h('<button class="b small" data-nav data-key="q:openmusic">Open hum</button>'); open.onclick = () => { Qam.close(true); D.launch('hum'); }; row.appendChild(open);
       body.appendChild(row);
       body.appendChild(sliderRow('Music volume', D.state.musicVol, 0, 1, (v) => { D.set('musicVol', v); S.setMusic(v); }, 'q:mvol', 'volume'));
       body.appendChild(h('<h2 style="font-size:1.05rem;margin-top:18px">Dice Radio</h2>'));
@@ -714,7 +719,7 @@
   D.ctx = function (id, mode, extra) {
     extra = extra || {};
     const ctx = {
-      id, mode, arg: extra.arg, night: D.night, sound: S, music: M, state: D.state, save: D.save, toast: D.toast, notify: D.notify,
+      id, mode, arg: extra.arg, win: extra.win || null, night: D.night, sound: S, music: M, state: D.state, save: D.save, toast: D.toast, notify: D.notify,
       close: () => (mode === 'desk' ? extra.win && extra.win.close() : mode === 'page' ? Shell.back() : D.closeApp()),
       setTitle: (t) => { if (extra.win) extra.win.setTitle(t); },
       open: (aid, arg) => D.launch(aid, { arg }),
@@ -993,7 +998,7 @@
     const el = $('#boot');
     if (kind === 'off') { el.classList.add('gone'); el.hidden = true; then && then(); return; }
     // Traced mode: a start-up of its own (js/screens.js)
-    if (D.state.looks === 'traced' && D.screens && D.screens.tracedBoot) { el.classList.add('gone'); el.hidden = true; return D.screens.tracedBoot(kind, then); }
+    if (D.state.looks === 'traced' && D.screens && D.screens.cineBoot) { el.classList.add('gone'); el.hidden = true; return D.screens.cineBoot(kind, then); }
     D.booting = true;
     el.hidden = false; el.classList.remove('gone');
     el.innerHTML = '<div class="stage"><canvas width="72" height="84"></canvas><div class="word pix" aria-label="' + D.brand + '"></div><div class="bar">' + '<i></i>'.repeat(12) + '</div></div><div class="skip">Press any button to skip</div>';
@@ -1097,7 +1102,7 @@
     M.load();
     const first = D.state.fresh;
     if (D.sys) fromPi(first);
-    Hero.set(D.app(D.state.recent[0] || 'music'));
+    Hero.set(D.app(D.state.recent[0] || 'hum'));
     Shell.go('home', null, { root: true, quiet: true });
     requestAnimationFrame(loop);
     // a SereneTab window's new tab page on DiceOS: only SereneTab, straight away

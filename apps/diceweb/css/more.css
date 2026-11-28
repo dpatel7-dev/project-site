@@ -31,51 +31,7 @@
 .sh-allow input { flex: 1; min-width: 0; padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--soft); }
 @media (max-width: 760px) { .sh-hero { grid-template-columns: auto 1fr; } .sh-week { grid-column: 1 / -1; } }
 
-/* ---------------------------------------------------------------- SereneTab's new parts */
-.st-shield { position: relative; color: #3b6fd8; }
-.st-shield.off { color: var(--st-ink2); }
-.st-shield .st-svg { fill: color-mix(in oklab, currentColor 18%, transparent); }
-.st-badge { position: absolute; right: 1px; top: 2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; display: grid; place-items: center;
-  font: 700 .62rem/1 var(--pixel); color: #fff; background: linear-gradient(135deg, #3fd0b8, #4b7bec 55%, #9b6bf0); box-shadow: 0 2px 6px -2px rgba(75, 123, 236, .7), inset 0 0 0 1px rgba(255, 255, 255, .5); }
-.st-zoom { flex: none; margin-right: 4px; padding: 3px 8px; border-radius: 9px; font: 700 .72rem/1 var(--pixel); background: rgba(47, 111, 214, .14); color: var(--st-accent); }
-.st-zoomrow { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; font-weight: 700; }
-.st-zoomrow span { flex: 1; }
-.st-zoomrow b { min-width: 46px; text-align: center; font: 700 .82rem/1 var(--pixel); }
-.st-shieldpop { display: flex; align-items: center; gap: 12px; padding: 8px 10px 10px; max-width: 300px; }
-.st-shieldpop b { display: block; font-size: .95rem; }
-.st-shieldpop span { display: block; font-size: .82rem; color: var(--st-ink2); }
-/* pinned and private tabs */
-.st-tab.pin { flex: 0 0 44px; min-width: 44px; }
-.st-tab.pin .st-tabgo { justify-content: center; padding: 0; }
-.st-tab.pin .st-tabgo > span:last-child { display: none; }
-.st-tab.priv { background: linear-gradient(135deg, rgba(106, 79, 176, .18), rgba(212, 93, 154, .12)); }
-.st-tab.priv.on { background: linear-gradient(135deg, rgba(231, 222, 255, .95), rgba(255, 228, 242, .9)); }
-.st-tab.paired:not(.on) { box-shadow: inset 0 -2px 0 rgba(47, 111, 214, .45); }
-.st.st-private .st-chrome { background: linear-gradient(160deg, rgba(214, 196, 255, .86), rgba(255, 206, 232, .7)); box-shadow: inset 0 1px 0 var(--st-shine), 0 10px 30px -14px rgba(106, 79, 176, .6); }
-.st.st-private .st-omni { box-shadow: inset 0 0 0 2px rgba(106, 79, 176, .35); }
-/* split view */
-.st-pages.split > .st-page.st-left { right: calc(50% + 3px); }
-.st-pages.split > .st-page.st-right { left: calc(50% + 3px); }
-.st-pages.split > .st-page { container-type: size; }
-.st-pages.split .st-side { display: none; }
-.st-pages.split > .st-page.st-paneon::after { content: ""; position: absolute; left: 6px; right: 6px; top: calc(var(--st-top) + 10px); height: 3px; border-radius: 3px; pointer-events: none;
-  background: linear-gradient(90deg, #3fd0b8, #4b7bec, #9b6bf0); }
-/* Deuce's answers, in a tab */
-.st-ask { position: absolute; inset: 0; overflow-y: auto; padding: calc(var(--st-top) + 30px) 24px 40px; }
-.st-askin { max-width: 760px; margin: 0 auto; display: grid; gap: 22px; }
-.st-askblock { display: grid; gap: 10px; }
-.st-askblock h1 { margin: 0; font: 700 clamp(1.4rem, 3vw, 2rem)/1.2 var(--read); letter-spacing: -.01em; }
-.st-askans { padding: 18px 20px; border-radius: 20px; background: var(--st-glass); border: 1px solid var(--st-edge); box-shadow: inset 0 1px 0 var(--st-shine), 0 10px 30px -14px rgba(16, 26, 54, .45);
-  -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%); }
-.st-askmore { position: sticky; bottom: 0; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-radius: 18px; background: var(--st-glass); border: 1px solid var(--st-edge);
-  box-shadow: inset 0 1px 0 var(--st-shine), 0 14px 30px -14px rgba(16, 26, 54, .5); -webkit-backdrop-filter: blur(18px) saturate(180%); backdrop-filter: blur(18px) saturate(180%); }
-.st-askmore input { flex: 1; min-width: 0; border: 0; background: none; padding: 8px 4px; font-size: 1rem; }
-.st-askorb { display: grid; }
-.st-sugg .st-sask { background: linear-gradient(90deg, rgba(63, 208, 184, .12), rgba(75, 123, 236, .1), rgba(155, 107, 240, .1)); }
-/* a SereneTab window's new tab page */
-.st.st-solo .st-chrome { display: none; }
-.st.st-solo { --st-top: 0px; }
-html.serene-page #legend, html.serene-page #tb, html.serene-page .legend { display: none !important; }
+/* (SereneTab's styles all live in serenetab.css since 2.6) */
 
 /* ---------------------------------------------------------------- Deuce for PC */
 .dp { position: fixed; z-index: 80; width: min(430px, calc(100vw - 24px)); height: min(680px, calc(100vh - 110px)); display: grid; grid-template-rows: auto auto 1fr auto;

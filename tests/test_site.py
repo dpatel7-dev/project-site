@@ -309,6 +309,26 @@ class Site(unittest.TestCase):
         self.assertEqual(call('/dice/setup', method='POST', body=b'x' * 9000, headers={'CONTENT_TYPE': 'application/json'})[0], 400)
         self.assertEqual(call('/dice/setup', method='POST', body=b'[1, 2]', headers={'CONTENT_TYPE': 'application/json'})[0], 400)
 
+    def test_dice_setup_codes_carry_apps_and_home_screens(self):
+        settings = {'name': 'Dhruv', 'apps': ['org.videolan.VLC', 'rm -rf /', 'tv.kodi.Kodi'],
+                    'webapps': [{'name': 'Desmos', 'url': 'https://www.desmos.com/calculator'}, {'name': 'Bad', 'url': 'javascript:alert(1)'}],
+                    'layout': {'dock': ['files', 'browser', '<script>'], 'tv': ['hum', 'channels', 'browser', 'calendar', 'weather', 'files', 'notes', 'photos'], 'widgets': [{'type': 'sticky', 'x': 0.2, 'text': 'hi', 'password': 'x'}]},
+                    'files': 'dice-files.zip'}
+        code, h, body = call('/dice/setup', method='POST', body=json.dumps(settings).encode(), headers={'CONTENT_TYPE': 'application/json'})
+        self.assertEqual(code, 200)
+        got = json.loads(call('/dice/setup/%s.json' % json.loads(body)['code'])[2])
+        self.assertEqual(got['apps'], ['org.videolan.VLC', 'tv.kodi.Kodi'])
+        self.assertEqual(got['webapps'], [{'name': 'Desmos', 'url': 'https://www.desmos.com/calculator'}])
+        self.assertEqual(got['layout']['dock'], ['files', 'browser'])
+        self.assertEqual(len(got['layout']['tv']), 7)
+        self.assertEqual(got['layout']['widgets'], [{'type': 'sticky', 'x': 0.2, 'text': 'hi'}])
+        self.assertNotIn('files', got)  # your files never go through the website
+
+    def test_dice_page_offers_apps_home_screens_and_files(self):
+        page = call('/dice')[2].decode()
+        for need in ('id="flathub"', 'id="webapps"', 'id="arrange"', '/diceweb/?setup=1', 'webkitdirectory', 'dice-files.zip'):
+            self.assertIn(need, page)
+
     def test_dice_cloud_keeps_only_locked_boxes(self):
         box_id = 'ab' * 16
         code, h, _ = call('/dice/cloud/' + box_id, method='OPTIONS')

@@ -209,7 +209,7 @@
       if (s === 4 || s === 12) drum('snare', at, tr.soft);
       if (s % 2 === 0 && !(tr.soft && s % 4)) drum('hat', at, tr.soft);
       nextAt += spb; step++;
-      if (s === 15) { bars++; if (bars >= 32) { setTimeout(() => M.next(), 0); return; } }
+      if (s === 15) { bars++; if (bars >= 32) { setTimeout(() => (M.onEnd ? M.onEnd() : M.next()), 0); return; } }
     }
   }
   function stopRadio() { if (sched) clearInterval(sched); sched = null; song = null; }
@@ -217,7 +217,7 @@
   function getAudio() {
     if (!audio) {
       audio = new Audio(); audio.preload = 'auto';
-      audio.addEventListener('ended', () => M.next());
+      audio.addEventListener('ended', () => (M.onEnd ? M.onEnd() : M.next()));
       audio.addEventListener('play', tell); audio.addEventListener('pause', tell);
     }
     if (!src && ctx) { try { src = ctx.createMediaElementSource(audio); src.connect(musicBus); } catch (e) { /* ignore */ } }

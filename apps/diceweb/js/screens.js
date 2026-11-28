@@ -1,6 +1,8 @@
 // Start-up and power screens.
 //
-// - Traced mode has a start-up of its own: your world is drawn by hand in front of you. First a
+// - Traced mode starts up like a film (cineBoot): the die lands under a spotlight, the name opens out, the
+//   bars open onto paper, and only then is your world painted in over the screen (tracedPaint). Before 2.6 it
+//   had a start-up of its own (tracedBoot, still here): your world drawn by hand in front of you. First a
 //   pen traces its outline across a sheet of paper, then brushes paint it in, stroke by stroke;
 //   the pixel die drops onto it, DiceOS's name and a hello appear, and the picture becomes your
 //   desktop (it's the same world, so nothing jumps).
@@ -164,6 +166,146 @@
     const key = (e) => { if (!done && D.booting) { e.preventDefault(); D.skipBoot(); } };
     addEventListener('keydown', key, { once: true, capture: true });
     raf = requestAnimationFrame(frame);
+  };
+
+  // ---- Traced mode's start-up: Dice's own, filmed like the opening of a film --------------------------------------
+  // Letterbox bars close in on the dark; the die tumbles down in slow motion under a spotlight and lands;
+  // a band of light sweeps across it; DiceOS's name opens out letter by letter with the hello under it.
+  // Then the bars open, the screen turns to paper, and only now does the painting happen: your world is
+  // traced and brushed in over the real desktop (or DiceTV), which is ready underneath when the paint dries.
+  SC.cineBoot = function (kind, then) {
+    const quick = kind === 'quick' || D.reduced();
+    const back = D.state.byeAt && Date.now() - D.state.byeAt < 15 * 60000;
+    if (back) { D.state.byeAt = 0; D.save(); }
+    const el = D.h('<div id="cineboot" role="img" aria-label="' + D.esc(D.brand + ' is starting') + '"><canvas></canvas><div class="tb-skip cb-skip">Press any key to skip</div></div>');
+    document.body.appendChild(el);
+    const c = el.querySelector('canvas'), g = c.getContext('2d'), night = D.night();
+    const T = quick ? { bars: 1, drop: 1, land: 1, sweep: 1, word: 1, hold: 1, open: 260 } : { bars: 700, drop: 1500, land: 0, sweep: 700, word: 900, hold: 550, open: 650 };
+    const A = T.bars, B = A + T.drop, C = B + T.sweep, W1 = C + T.word, H1 = W1 + T.hold, END = H1 + T.open;
+    let t0 = 0, raf = 0, done = false, landed = false, painted = false;
+    const grain = (() => { const n = cv(160, 90), ng = n.getContext('2d'), r = G.seeded(11); for (let i = 0; i < 2600; i++) { ng.fillStyle = r() < 0.5 ? 'rgba(255,255,255,.07)' : 'rgba(0,0,0,.18)'; ng.fillRect((r() * 160) | 0, (r() * 90) | 0, 1, 1); } return n; })();
+    D.booting = true;
+    function size() { const dpr = Math.min(2, devicePixelRatio || 1); c.width = Math.round(innerWidth * dpr); c.height = Math.round(innerHeight * dpr); c.style.width = innerWidth + 'px'; c.style.height = innerHeight + 'px'; g.setTransform(dpr, 0, 0, dpr, 0, 0); }
+    size();
+    const font = (w, px, fam) => w + ' ' + px + 'px ' + getComputedStyle(document.documentElement).getPropertyValue(fam);
+    function frame(now) {
+      if (!t0) t0 = now;
+      const ms = now - t0, W = innerWidth, H = innerHeight, u = Math.min(W, H) / 900;
+      SC.at = ms;
+      // the dark, with a slow push in
+      const push = 1.06 - 0.06 * smooth(0, END, ms);
+      const bg = g.createRadialGradient(W / 2, H * 0.44, 10, W / 2, H * 0.44, Math.max(W, H) * 0.75);
+      bg.addColorStop(0, night ? '#1f2440' : '#2a2f4e'); bg.addColorStop(0.55, '#10121f'); bg.addColorStop(1, '#05060b');
+      g.fillStyle = bg; g.fillRect(0, 0, W, H);
+      g.save(); g.translate(W / 2, H * 0.44); g.scale(push, push); g.translate(-W / 2, -H * 0.44);
+      // a spotlight comes up where the die will land
+      const spot = smooth(A * 0.4, B, ms), cy = H * 0.42, sz = Math.max(128, Math.round((190 * u) / 32) * 32);
+      if (spot > 0) {
+        const sp = g.createRadialGradient(W / 2, cy + sz * 0.5, 4, W / 2, cy + sz * 0.5, sz * 1.9);
+        sp.addColorStop(0, 'rgba(255,236,196,' + (0.34 * spot) + ')'); sp.addColorStop(1, 'rgba(255,236,196,0)');
+        g.fillStyle = sp; g.fillRect(0, 0, W, H);
+      }
+      // the die: down in slow motion, turning, then a bounce and the thud
+      const dk = quick ? 1 : (ms - A) / T.drop;
+      if (dk > 0) {
+        const k = Math.min(1, dk), fall = 1 - Math.pow(1 - Math.min(1, k / 0.72), 2.2);
+        let y = -sz + (cy + sz) * fall;
+        if (k > 0.72) y = cy - Math.abs(Math.sin((k - 0.72) / 0.28 * Math.PI)) * sz * 0.12 * (1 - (k - 0.72) / 0.28);
+        if (k > 0.7 && !landed) { landed = true; S.play('land'); }
+        const sh = Math.min(1, fall);
+        g.fillStyle = 'rgba(0,0,0,' + (0.45 * sh) + ')';
+        g.beginPath(); g.ellipse(W / 2, cy + sz * 0.56, sz * 0.42 * sh, sz * 0.07 * sh, 0, 0, Math.PI * 2); g.fill();
+        g.imageSmoothingEnabled = false;
+        const img = k < 1 ? G.die(64, window.DiceDie ? window.DiceDie.tumble(k) : null, { key: 'cb' + Math.round(k * 48) + (night ? 'n' : ''), ss: 2, outline: [58, 58, 70] }) : G.die(64, null, { key: 'cb-rest' + (night ? 'n' : ''), ss: 3, outline: [58, 58, 70], ray: true });
+        g.drawImage(img, Math.round(W / 2 - sz / 2), Math.round(y - sz / 2), sz, sz);
+        // a band of light across it
+        const sk = quick ? 1 : smooth(B, C, ms);
+        if (sk > 0 && sk < 1) {
+          g.save(); g.beginPath(); g.rect(W / 2 - sz / 2, cy - sz / 2, sz, sz); g.clip();
+          const bx = W / 2 - sz + sk * sz * 2, band = g.createLinearGradient(bx - sz * 0.25, 0, bx + sz * 0.25, 0);
+          band.addColorStop(0, 'rgba(255,255,255,0)'); band.addColorStop(0.5, 'rgba(255,255,255,.55)'); band.addColorStop(1, 'rgba(255,255,255,0)');
+          g.globalCompositeOperation = 'lighter'; g.fillStyle = band; g.fillRect(W / 2 - sz / 2, cy - sz / 2, sz, sz); g.restore();
+        }
+      }
+      // the name, opening out letter by letter, then the hello
+      const wk = quick ? 1 : smooth(B + T.sweep * 0.4, W1, ms);
+      if (wk > 0) {
+        const fs = Math.round(62 * u + 18), ty = cy + sz * 0.62 + fs * 0.95, text = D.brand;
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.font = font('500', fs, '--pixel');
+        const track = (1 - ease(wk)) * fs * 0.6;
+        let x = W / 2 - (g.measureText(text).width + track * (text.length - 1)) / 2;
+        [...text].forEach((ch, i) => {
+          const a = Math.max(0, Math.min(1, wk * text.length - i));
+          const cw = g.measureText(ch).width;
+          g.globalAlpha = a; g.fillStyle = '#f4efe2'; g.fillText(ch, x + cw / 2, ty + (1 - a) * 8);
+          x += cw + track;
+        });
+        g.globalAlpha = smooth(W1 - T.word * 0.3, H1, ms) * 0.8;
+        g.font = font('600', Math.round(fs * 0.34), '--read');
+        g.fillStyle = '#d8d2c4'; g.fillText(hello(back), W / 2, ty + fs * 0.9);
+        g.globalAlpha = 1;
+      }
+      g.restore();
+      // film grain, and the letterbox bars: in at the start, out at the end
+      g.globalAlpha = 0.5; g.imageSmoothingEnabled = false; g.drawImage(grain, ((ms / 40) | 0) % 7 - 6, ((ms / 60) | 0) % 5 - 4, W + 12, H + 12); g.globalAlpha = 1;
+      const bar = H * 0.11 * (quick ? 1 : ease(ms / T.bars)) * (1 - ease((ms - H1) / T.open));
+      g.fillStyle = '#000'; g.fillRect(0, 0, W, bar); g.fillRect(0, H - bar, W, bar);
+      // the end: the dark lifts away as the bars open, onto paper
+      const lift = quick ? smooth(0, T.open, ms) : smooth(H1, END, ms);
+      if (lift > 0) { g.fillStyle = 'rgba(' + PAPER.join(',') + ',' + lift + ')'; g.fillRect(0, 0, W, H); }
+      if (ms >= END) return finish();
+      raf = requestAnimationFrame(frame);
+    }
+    function finish() {
+      if (done) return;
+      done = true;
+      cancelAnimationFrame(raf);
+      removeEventListener('resize', size);
+      D.booting = false; D.skipBoot = () => {};
+      // now the painting: the world, traced and brushed in over the screen that's ready underneath
+      then && then();
+      SC.tracedPaint(quick, () => { el.remove(); });
+      setTimeout(() => el.remove(), 60);
+    }
+    addEventListener('resize', size);
+    D.skipBoot = () => { if (!t0) t0 = performance.now(); t0 = Math.min(t0, performance.now() - END); };
+    const skip = (e) => { if (D.booting) { e.preventDefault(); D.skipBoot(); } };
+    el.addEventListener('pointerdown', skip); el.addEventListener('wheel', skip, { passive: false });
+    addEventListener('keydown', (e) => { if (!done && D.booting) { e.preventDefault(); D.skipBoot(); } }, { once: true, capture: true });
+    raf = requestAnimationFrame(frame);
+  };
+  // the painting on its own, after the start-up: pen lines, then the brush, then the real screen shows through
+  SC.tracedPaint = function (quick, then) {
+    const el = D.h('<div id="trboot" class="paint" aria-hidden="true"><canvas class="tb-art"></canvas></div>');
+    document.body.appendChild(el);
+    const art = el.querySelector('canvas'), ag = art.getContext('2d'), cell = D.scapeCell ? D.scapeCell() : 2;
+    let sh = null;
+    try { sh = Sheet(cell); } catch (e) { sh = null; }
+    if (!sh || D.reduced()) { el.remove(); then && then(); return; }
+    art.width = sh.Wd; art.height = sh.Hd; art.style.width = sh.Wd * cell + 'px'; art.style.height = sh.Hd * cell + 'px';
+    ag.fillStyle = 'rgb(' + PAPER.join(',') + ')'; ag.fillRect(0, 0, art.width, art.height);
+    const r = G.seeded(7);
+    for (let i = 0; i < art.width * art.height * 0.06; i++) { ag.fillStyle = r() < 0.5 ? 'rgba(120,100,70,.06)' : 'rgba(255,255,255,.35)'; ag.fillRect((r() * art.width) | 0, (r() * art.height) | 0, 1, 1); }
+    const T = quick ? { pen: 350, paint: 450 } : { pen: 1100, paint: 1500 }, P1 = T.pen, B1 = P1 + T.paint;
+    let t0 = 0, penAt = 0, brushAt = 0, sounded = false, stop = false;
+    const skip = () => { t0 = performance.now() - B1; };
+    addEventListener('keydown', skip, { once: true, capture: true });
+    el.addEventListener('pointerdown', skip);
+    (function frame(now) {
+      if (stop) return;
+      if (!t0) t0 = now;
+      const ms = now - t0;
+      ag.imageSmoothingEnabled = false;
+      const pk = smooth(0, P1, ms), n = Math.floor((sh.pen.length / 2) * pk), sweep = pk * sh.Wd;
+      ag.fillStyle = 'rgba(' + INK.join(',') + ',.85)';
+      for (; penAt < n; penAt++) { const x = sh.pen[penAt * 2], y = sh.pen[penAt * 2 + 1]; if (x <= sweep + 4 || pk >= 1) ag.fillRect(x, y, 1, 1); else break; }
+      const bk = smooth(P1 - 250, B1, ms), m = Math.floor(sh.strokes.length * bk);
+      for (; brushAt < m; brushAt++) dab(ag, sh.strokes[brushAt], sh.pic);
+      if (bk > 0.4 && !sounded) { sounded = true; S.play('traced'); }
+      if (ms >= B1) { ag.drawImage(sh.pic, 0, 0); stop = true; removeEventListener('keydown', skip, true); el.classList.add('gone'); setTimeout(() => { el.remove(); then && then(); }, 750); return; }
+      requestAnimationFrame(frame);
+    })(performance.now());
   };
 
   // ---- restarting and shutting down ---------------------------------------------------------------------------------

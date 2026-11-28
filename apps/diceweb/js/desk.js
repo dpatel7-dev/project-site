@@ -6,7 +6,7 @@
   'use strict';
   const D = window.Dice, G = D.G, S = D.S, M = D.M, $ = D.$, esc = D.esc, h = D.h;
   const Desk = D.desk = { on: false, wins: [], z: 10, world: null, last: 0, ws: 0 };
-  const SIZES = { files: [1040, 640], gaming: [1000, 680], browser: [1060, 690], music: [880, 580], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [1080, 700], pigeon: [1000, 680],
+  const SIZES = { files: [1040, 640], gaming: [1000, 680], browser: [1060, 690], hum: [380, 640], gossip: [900, 620], tidy: [860, 600], hey: [720, 560], magpie: [380, 600], den: [1120, 700], terminal: [740, 470], notes: [780, 520], settings: [960, 640], store: [1080, 700], pigeon: [1000, 680],
     calculator: [330, 500], calendar: [1000, 660], clock: [560, 520], monitor: [760, 540],
     channels: [960, 560], weather: [900, 660], photos: [980, 660], sketch: [920, 640], cloud: [900, 680], code: [1000, 660] };
 
@@ -23,12 +23,12 @@
     root.querySelector('.start').addEventListener('click', (e) => { if (e.target.classList.contains('start') || e.target.classList.contains('sscroll')) Desk.toggleStart(false); });
     root.querySelector('.dt-qam').onclick = () => (D.qam.isOpen() ? D.qam.close() : D.qam.open('quick'));
     root.querySelector('.dt-look').onclick = () => { D.set('look', D.night() ? 'day' : 'night'); D.applyLook(true); };
-    root.querySelector('.dt-music').onclick = () => Desk.open('music');
+    root.querySelector('.dt-music').onclick = () => Desk.open('hum');
     const input = root.querySelector('.start input');
     input.oninput = () => fillStart(input.value);
     input.onkeydown = (e) => { if (e.key === 'Enter') { const b = root.querySelector('.sgrid button'); if (b) b.click(); } if (e.key === 'Escape') Desk.toggleStart(false); };
     root.addEventListener('pointerdown', (e) => {
-      if (!e.target.closest('.start') && !e.target.closest('.launch')) Desk.toggleStart(false);
+      if (!e.target.closest('.start') && !e.target.closest('.launch') && !e.target.closest('#dicemenu') && !e.target.closest('[data-dicemenu]')) Desk.toggleStart(false);
       const w = e.target.closest('.win'); if (w) Desk.focus(w._win);
     });
     icons(); pins(); tray();
@@ -56,11 +56,19 @@
     b.onkeydown = (e) => { if (e.key === 'Enter') Desk.open('files'); };
     box.appendChild(b);
   }
-  Desk.PINS = ['files', 'browser', 'terminal', 'notes', 'music', 'store', 'settings'];
+  Desk.PINS = ['files', 'browser', 'terminal', 'notes', 'hum', 'gossip', 'store', 'settings'];
+  // the dock is yours to change: Keep in the dock / Take off the dock (and Make it yours, before you install)
+  Desk.pinsNow = () => (Array.isArray(D.state.dock) && D.state.dock.length ? D.state.dock : Desk.PINS).filter((id) => D.app(id));
+  Desk.setDock = function (ids) {
+    D.set('dock', ids.filter((id, i) => D.app(id) && ids.indexOf(id) === i));
+    if (root) { pins(); Desk.wins.forEach((w) => { if (w.task) w.task.hidden = Desk.pinsNow().includes(w.id); }); root.querySelector('.dsep').hidden = !Desk.wins.some((w) => !Desk.pinsNow().includes(w.id)); }
+    D.emit('dock');
+  };
+  Desk.root = () => root;
   function pins() {
     const box = root.querySelector('.pins');
     box.innerHTML = '';
-    Desk.PINS.filter((id) => D.app(id)).forEach((id) => {
+    Desk.pinsNow().forEach((id) => {
       const app = D.app(id);
       const b = h('<button class="pin" data-id="' + id + '" data-name="' + esc(app.name) + '" aria-label="' + esc(app.name) + '"></button>');
       b.appendChild(mini(app, 48));
@@ -159,8 +167,8 @@
       this.inst = def.mount(this.body, ctx) || {};
       this.task = h('<button class="task" data-name="' + esc(app.name) + '" aria-label="' + esc(app.name) + '"></button>');
       this.task.appendChild(mini(app, 48));
-      if (Desk.PINS.includes(id)) this.task.hidden = true; // pinned apps show a dot under their pin instead
-      root.querySelector('.dsep').hidden = !Desk.wins.concat([this]).some((w) => !Desk.PINS.includes(w.id));
+      if (Desk.pinsNow().includes(id)) this.task.hidden = true; // pinned apps show a dot under their pin instead
+      root.querySelector('.dsep').hidden = !Desk.wins.concat([this]).some((w) => !Desk.pinsNow().includes(w.id));
       this.task.onclick = () => { if (this.min || this !== Desk.top()) Desk.focus(this); else this.minimise(); };
       root.querySelector('.tasks').appendChild(this.task);
       this.since = performance.now();
@@ -222,7 +230,7 @@
       try { if (this.inst.unmount) this.inst.unmount(); } catch (e) { console.error(e); }
       this.el.remove(); this.task.remove();
       Desk.wins = Desk.wins.filter((w) => w !== this);
-      root.querySelector('.dsep').hidden = !Desk.wins.some((w) => !Desk.PINS.includes(w.id));
+      root.querySelector('.dsep').hidden = !Desk.wins.some((w) => !Desk.pinsNow().includes(w.id));
       S.play('close');
       const t = Desk.top(); if (t) Desk.focus(t); else dots();
     }
@@ -255,7 +263,7 @@
     if (id.startsWith('web:')) return D.launch(id);
     if (!app || (!D.apps[id] && !id.startsWith('web:'))) { if (app && app.suite) return Desk.open('store'); return; }
     // music, settings and the store: one window each
-    const one = ['music', 'settings', 'store'].includes(id) || id.startsWith('web:');
+    const one = ['hum', 'settings', 'store', 'gossip', 'magpie', 'tidy'].includes(id) || id.startsWith('web:');
     const have = one && Desk.wins.find((w) => w.id === id);
     if (have) { Desk.focus(have); if (opts.arg) D.emit(id + ':go', opts.arg); return; }
     const w = new Win(id, app, opts);

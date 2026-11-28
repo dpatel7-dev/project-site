@@ -59,6 +59,8 @@
     systrash: { icon: 'trash', undo(e) { return D.sys.post('/api/files', { op: 'restore', name: e.name }).then(sysDone); } },
     sysrename: { icon: 'library', undo(e) { return D.sys.post('/api/files', { op: 'rename', path: e.path, to: e.from }).then(sysDone); } },
   };
+  // other parts of DiceOS can teach Oops a kind of their own (tidy does)
+  O.kind = (name, def) => { KINDS[name] = def; };
   const sysDone = (r) => { if (!r || r.ok === false || r.error) throw new Error((r && r.error) || 'It couldn\'t be put back.'); D.emit('sysfiles'); };
   const base = (p) => String(p).replace(/\/+$/, '').split('/').pop(), dirOf = (p) => String(p).replace(/\/+$/, '').replace(/\/[^/]*$/, '') || '/';
   O.fileOp = function (b, r) {

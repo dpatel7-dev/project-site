@@ -348,7 +348,8 @@
     const key = id + size + dpr + (id === 'calendar' ? day : '') + (c || '');
     if (appIcons.has(key)) return appIcons.get(key);
     const S = size * dpr, cv = G.canvas(S, S), g = cv.getContext('2d');
-    const tile = TILES[id] || c || '#7c9cff';
+    const own = !TILES[id] && !c && typeof Dice !== 'undefined' && Dice.app ? Dice.app(id) : null; // an app of the suite's, as part of DiceOS
+    const tile = TILES[id] || c || (own && own.c) || '#7c9cff';
     // the tile: rounded, a gentle light-to-dark fall, a soft top edge
     const r = Math.round(S * 0.24);
     const path = () => { g.beginPath(); g.moveTo(r, 0); g.arcTo(S, 0, S, S, r); g.arcTo(S, S, 0, S, r); g.arcTo(0, S, 0, 0, r); g.arcTo(0, 0, S, 0, r); g.closePath(); };
@@ -371,6 +372,12 @@
     } else if (id === 'gaming') {
       const n = Math.round(S * 0.7), d = G.die(Math.max(16, Math.min(64, Math.round(n / dpr))), null, { key: 'appicon', outline: [70, 70, 82] });
       g.imageSmoothingEnabled = false; g.drawImage(d, Math.round((S - n) / 2), Math.round((S - n) / 2), n, n);
+    } else if (!TILES[id] && mascotOf(id)) {
+      // its animal on its colour, like the suite's own
+      const m = G.mascot(id), n = Math.round(S * 0.72), k = n / Math.max(m.width, m.height);
+      g.imageSmoothingEnabled = false;
+      g.fillStyle = 'rgba(0,0,0,.14)'; g.globalCompositeOperation = 'source-over';
+      g.drawImage(m, Math.round((S - m.width * k) / 2), Math.round((S - m.height * k) / 2 + S * 0.03), Math.round(m.width * k), Math.round(m.height * k));
     } else {
       const gl = glyph(id), cell = Math.max(1, Math.round((S * 0.6) / 16)), off = Math.round((S - cell * 16) / 2);
       const pal = { W: '#ffffff', w: 'rgba(255,255,255,.72)', A: mix(tile, '#000000', 0.12), D: '#1d2028', G: '#8fe07a', R: '#e5534b', O: '#f0a43a', P: '#4a4846', o: '#f0945a', q: '#c06a3a', K: '#34322f', k: '#211f1d' };

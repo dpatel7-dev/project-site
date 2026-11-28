@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.6.0
+
+- **It fits the screen.** The bar along the top and the dock size themselves to the screen: smaller on a laptop, a TV at 720p or a Pi's touch screen, a little bigger on a big monitor. The widgets shrink with them and never pile on top of each other.
+- **Widescreen monitors.** On an ultrawide (21:9 or 32:9), DiceTV keeps everything in the middle with your world filling the sides, and on the desktop, dragging a window to an edge fills a third of the screen (Super + the arrow keys steps through them).
+- **The Dice menu.** Press the Windows key, or the die at the start of the dock: your pinned apps, everything else from A to Z, search as you type, and power. Right-click an app to pin it or keep it in the dock. On DiceTV the Windows key opens the TV's menu, which has the die on it now.
+- **A cinematic start in Traced mode.** It starts like the usual DiceOS, only like a film: black bars, the die turning in the dark, the name and your greeting. Then the painting: a pen traces your world on paper, brushes paint it in, and the desktop comes up.
+- **Shield's icon** in the top bar is a proper shield now: green with a tick when it's on, grey when it's off, with how many it kept out.
+- **SereneTab, rebuilt to fit more.** Your tabs go down the side, so dozens fit (they fold down to little tiles on a small screen, or with Ctrl+\\). One slim bar holds back, forward, reload and the address bar, with Shield, zoom and Save for later inside it, and the page gets the rest. Right-click a tab to pin it, duplicate it, open it beside this one or close the others; Ctrl+Tab (or Ctrl+Shift+] and [) moves between tabs; typing in the address bar offers to switch to a tab that's already open. The new tab page fits more too: the weather with the next few hours, up to 24 shortcuts, Jump back in (tabs you closed and places you've been), Later (pages you saved with Ctrl+D), what's due today, and a note on warm paper.
+- **hum** takes Music's place: Dice Radio, your own songs and YouTube links, with playlists, in a panel at the side, while a bumblebee flies along the bar and the garden dances. Ctrl+Alt+M plays and pauses.
+- **The Terminal apps, built in.** tidy sorts your Downloads into folders by kind (with Undo), hey turns plain words into a command and explains each part and how risky it is, magpie keeps your clipboard's history (Ctrl+Alt+V), den is a little workshop for scripts (run one and see what each line did), and gossip is end-to-end encrypted chat with gossip on any computer, through gossip's own hub.
+- **Make it yours goes further** (on the DiceOS page). Pick apps to install from Flathub, and websites as apps. Open a version of DiceOS in a new tab and arrange the dock, DiceTV's Home, the Dice menu and the widgets; its Store and Settings work too, and everything comes back to the page. And copy files and folders from your computer: they're packed into dice-files.zip right there (nothing is uploaded) and DiceOS copies them into your home folder when it first starts.
+- Fixed: Deuce couldn't answer "what's the weather tomorrow?" (the forecast it got only had today in it).
+
 ## 2.5.0
 
 Three things no other computer does:

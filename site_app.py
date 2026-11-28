@@ -366,7 +366,9 @@ SETUP_KEYS = {'dice': int, 'name': str, 'computer': str, 'timezone': str, 'keybo
               'homeassistant': str, 'ssh': bool, 'updates': bool, 'suite': list, 'screen': dict, 'wifi': dict,
               # how DiceOS looks and behaves
               'looks': str, 'accent': str, 'text': str, 'clock': str, 'units': str, 'sounds': bool, 'nightlight': str, 'motion': str,
-              'ambient': dict, 'deuce': dict, 'tv': dict, 'desk': dict, 'shield': dict}
+              'ambient': dict, 'deuce': dict, 'tv': dict, 'desk': dict, 'shield': dict,
+              # apps to install from Flathub, websites as apps, and your home screens (Make it yours)
+              'apps': list, 'webapps': list, 'layout': dict}
 
 
 def _plain(d):
@@ -462,6 +464,19 @@ def clean_setup(data):
     for k in ('ambient', 'deuce', 'tv', 'desk', 'shield'):
         if k in out:
             out[k] = _plain(out[k])
+    if 'apps' in out:
+        out['apps'] = [a for a in out['apps'] if isinstance(a, str) and len(a) <= 120 and re.fullmatch(r'[A-Za-z][\w-]*(\.[\w-]+){2,}', a)][:40]
+    if 'webapps' in out:
+        out['webapps'] = [{'name': str(w.get('name') or '')[:40], 'url': w['url'][:300]} for w in out['webapps']
+                          if isinstance(w, dict) and isinstance(w.get('url'), str) and re.match(r'https?://[^\s]+$', w['url'])][:40]
+    if 'layout' in out:
+        lay, o = out['layout'], {}
+        for k, n in (('dock', 20), ('tv', 7), ('menu', 24)):
+            if isinstance(lay.get(k), list):
+                o[k] = [x for x in lay[k] if isinstance(x, str) and re.fullmatch(r'[a-z][a-z0-9-]{1,23}', x)][:n]
+        if isinstance(lay.get('widgets'), list):
+            o['widgets'] = [_plain(w) for w in lay['widgets'] if isinstance(w, dict) and isinstance(w.get('type'), str)][:16]
+        out['layout'] = o
     return out
 
 

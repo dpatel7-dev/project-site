@@ -71,7 +71,7 @@
         { label: 'Left half', icon: 'back', key: 'Super ←', run: () => w && w.snapTo('left') },
         { label: 'Right half', icon: 'forward', key: 'Super →', run: () => w && w.snapTo('right') },
         '-',
-        { label: 'Overview', icon: 'apps', key: 'Super', run: () => D.deskplus.overview() },
+        { label: 'Overview', icon: 'apps', key: 'Super Tab', run: () => D.deskplus.overview() },
         { label: 'Day or night', icon: D.night() ? 'sun' : 'moon', run: () => { D.set('look', D.night() ? 'day' : 'night'); D.applyLook(true); } },
       ];
     },
@@ -102,7 +102,7 @@
       ['File', 'Edit', 'View', 'Window', 'Help'].map((m) => '<button class="mb-m" data-m="' + m + '">' + m + '</button>').join('') +
       '</span><span class="mb-r">' +
         '<button class="mb-music" hidden aria-label="Now playing"><span class="eqmini"><i></i><i></i><i></i></span><span class="mb-np"></span></button>' +
-        '<button class="mb-shield" aria-label="Shield" title="Shield">' + D.glyph('shield', 2) + '</button>' +
+        '<button class="mb-shield" aria-label="Shield" title="Shield">' + MB.shieldSvg(true) + '</button>' +
         '<button class="mb-wifi" aria-label="Wi-Fi" title="Wi-Fi"></button>' +
         '<button class="mb-vol" aria-label="Sound" title="Sound"></button>' +
         '<button class="mb-search" aria-label="Search (Ctrl + Space)" title="Search">' + D.glyph('search', 2) + '</button>' +
@@ -124,7 +124,7 @@
     MB.el.querySelector('.mb-deuce').onclick = () => { const p = D.$('.dp-dock'); if (p) p.click(); else if (D.deuceAsk) D.deuceAsk(''); };
     MB.el.querySelector('.mb-cc').onclick = () => (D.qam.isOpen() ? D.qam.close() : D.qam.open('quick'));
     MB.el.querySelector('.mb-clock').onclick = () => Desk.open('calendar');
-    MB.el.querySelector('.mb-music').onclick = () => Desk.open('music');
+    MB.el.querySelector('.mb-music').onclick = () => Desk.open('hum');
     if (D.deuce && D.deuce.orbSvg) MB.el.querySelector('.mb-deuce').innerHTML = D.deuce.orbSvg(22);
     else MB.el.querySelector('.mb-deuce').innerHTML = D.glyph('spark', 2);
     MB.paint();
@@ -141,12 +141,36 @@
     const M = D.M, m = MB.el.querySelector('.mb-music');
     m.hidden = !(M && M.now);
     if (M && M.now) { m.querySelector('.mb-np').textContent = M.now.name; m.querySelector('.eqmini').classList.toggle('still', !M.now.playing); }
-    MB.el.querySelector('.mb-shield').hidden = !(D.shield && D.shield.available && D.shield.available());
+    const sh = MB.el.querySelector('.mb-shield');
+    sh.hidden = !(D.shield && D.shield.available && D.shield.available());
+    if (!sh.hidden && D.shield.get && !MB._shAsk) {
+      MB._shAsk = true;
+      D.shield.get().then((s) => {
+        MB._shAsk = false;
+        if (!s) return;
+        const on = s.on !== false;
+        if (sh.dataset.on !== String(on)) { sh.dataset.on = on; sh.innerHTML = MB.shieldSvg(on); }
+        sh.title = on ? 'Shield is on: ' + Number(s.today || 0).toLocaleString() + ' ads and trackers kept out today' : 'Shield is off';
+        sh.setAttribute('aria-label', sh.title);
+      }).catch(() => { MB._shAsk = false; });
+    }
+  };
+  // Shield's badge: glass in two blues with the die's three pips across it; grey, with a line through, when it's off
+  MB.shieldSvg = function (on) {
+    const id = 'shg' + (on ? 1 : 0);
+    return '<svg class="mb-sh ' + (on ? 'on' : 'off') + '" viewBox="0 0 20 22" width="19" height="21" aria-hidden="true"><defs><linearGradient id="' + id + '" x1="0" y1="0" x2="1" y2="1">' +
+      (on ? '<stop offset="0" stop-color="#43d6bd"/><stop offset=".55" stop-color="#2f9fe0"/><stop offset="1" stop-color="#4b6bec"/>' : '<stop offset="0" stop-color="#b9b9c2"/><stop offset="1" stop-color="#7d7d88"/>') + '</linearGradient></defs>' +
+      '<path d="M10 1.3 17.4 4.1C17.6 11.6 15.1 17.1 10 20.7 4.9 17.1 2.4 11.6 2.6 4.1Z" fill="url(#' + id + ')"/>' +
+      '<path d="M10 1.3 10 20.7C4.9 17.1 2.4 11.6 2.6 4.1Z" fill="#fff" opacity=".2"/>' +
+      '<path d="M10 1.3 17.4 4.1C17.6 11.6 15.1 17.1 10 20.7 4.9 17.1 2.4 11.6 2.6 4.1Z" fill="none" stroke="#fff" stroke-opacity=".75" stroke-width="1.1" stroke-linejoin="round"/>' +
+      '<g fill="#fff"><rect x="5.6" y="5.6" width="2.6" height="2.6" rx=".7"/><rect x="8.7" y="9.2" width="2.6" height="2.6" rx=".7"/><rect x="11.8" y="12.8" width="2.6" height="2.6" rx=".7"/></g>' +
+      (on ? '' : '<path d="M3.5 18.5 16.5 3.5" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="M3.5 18.5 16.5 3.5" stroke="#55555f" stroke-width="1.2" stroke-linecap="round"/>') + '</svg>';
   };
   // the desktop's look: the menu bar at the top, or the tray at the bottom
   MB.apply = function () {
     const desk = D.$('#desk');
     if (!desk) return;
+    MB.scale();
     desk.classList.toggle('mac', MB.on());
     desk.classList.toggle('mag', D.state.dockMag === true);
     document.documentElement.classList.toggle('desk-mac', MB.on());
@@ -158,6 +182,19 @@
   const area0 = Desk.area;
   Desk.area = () => { const a = area0(); return MB.on() ? { w: a.w, h: a.h - MB.TOP - (MB.DOCK - 62) } : a; };
   MB.TOP = 56; MB.DOCK = 92;
+  // sized to the screen: the bar and the dock shrink on a small screen (a laptop, a TV at 720p, a Pi's
+  // little touch screen) and grow a little on a big one. It goes by the shorter way round, so a very wide
+  // monitor doesn't make them huge.
+  MB.scale = function () {
+    const k = Math.max(0.66, Math.min(1.18, Math.min(innerWidth / 1640, innerHeight / 980)));
+    MB.k = Math.round(k * 100) / 100;
+    MB.TOP = Math.round(56 * MB.k); MB.DOCK = Math.round(92 * MB.k);
+    const desk = D.$('#desk');
+    if (desk) desk.style.setProperty('--k', MB.k);
+    document.documentElement.style.setProperty('--desk-k', MB.k);
+  };
+  MB.scale();
+  addEventListener('resize', () => { MB.scale(); if (Desk.on) Desk.wins.forEach((w) => { if (w.max || w.snap) w.place(); }); });
 
   // the dock grows under the pointer, if you'd like that (Settings, Desktop)
   function magnify(e) {

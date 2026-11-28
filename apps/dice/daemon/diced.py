@@ -742,6 +742,29 @@ def machine():
     return hw
 
 
+# gossip (the DiceOS app) talks to gossip's relay through here: the page runs at 127.0.0.1, and the relay
+# (a plain website, djp7.pythonanywhere.com/api) doesn't answer other websites' pages. Only sealed
+# envelopes and public keys pass through; diced doesn't keep any of it.
+GOSSIP_RELAY = os.environ.get('DICE_GOSSIP_RELAY', 'https://djp7.pythonanywhere.com/api')
+
+
+def gossip_relay(m, url=None):
+    if not isinstance(m, dict) or not isinstance(m.get('t'), str) or not re.fullmatch(r'[a-z]{2,12}', m['t']):
+        return {'t': 'err', 'code': 'bad_request', 'msg': 'Malformed request'}
+    data = json.dumps(m, separators=(',', ':')).encode()
+    req = urllib.request.Request(url or GOSSIP_RELAY, data=data, method='POST', headers={'Content-Type': 'application/json', 'User-Agent': 'DiceOS gossip'})
+    try:
+        with urllib.request.urlopen(req, timeout=25) as r:
+            return json.loads(r.read(4 * 1024 * 1024).decode('utf-8'))
+    except urllib.error.HTTPError as e:
+        try:
+            return json.loads(e.read(65536).decode('utf-8'))
+        except Exception:
+            return {'t': 'err', 'code': 'network', 'msg': 'gossip\'s relay answered %d.' % e.code}
+    except Exception:
+        return {'t': 'err', 'code': 'network', 'msg': 'gossip\'s relay can\'t be reached right now.'}
+
+
 def is_private_url(url):
     """True for an address on this computer or this network (Deuce reads the web, not your router)."""
     import ipaddress
@@ -3055,6 +3078,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, {'ok': bool(r[0].get('text')), 'url': r[0]['url'], 'text': (r[0].get('text') or '')[:12000]})
         if path == '/api/browse':
             return self.send(200, sysm.browse(b.get('url')))
+        if path == '/api/gossip':
+            return self.send(200, gossip_relay(b))
         if path == '/api/wifi':
             if 'on' in b:
                 return self.send(200, sysm.wifi_power(bool(b['on'])))

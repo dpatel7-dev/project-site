@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.6.0
+
+- DiceWeb 2.6.0: the top bar and dock fit the screen, widescreen monitors, the Dice menu on the Windows key, a cinematic Traced start-up, SereneTab rebuilt with its tabs down the side, hum instead of Music, and tidy, hey, magpie, den and gossip built in.
+- dice.json can bring more, from the website's Make it yours: `apps` (Flathub apps, installed in the background by `dice-boot --install-apps` once it's online, logged to /var/log/dice-apps.log), `webapps` and `layout` (your home screens, kept in settings for DiceWeb), and `files`, a dice-files.zip next to dice.json that's copied into your home folder at the first start. It's careful: never outside your home folder, never over a file that's there, never a link, no hidden files, and only if there's room. Then the zip is taken off the Pi's bootfs drive (or renamed on a USB stick).
+- gossip in DiceWeb talks to gossip's hub through diced (`/api/gossip`), since the hub doesn't let web pages reach it directly. It only passes gossip's own messages on, and they're end-to-end encrypted before they leave DiceWeb.
+
 ## 2.5.0
 
 - DiceWeb 2.5.0, with three things no other computer does: Oops (undo for the whole computer, your real files included: Super + Z, or "Deuce, undo that"), Lookouts (Deuce keeps watch for a game starting, the weather, a web page changing or saying something, the internet coming back, and tells you) and Show me how (ask how to do something, and Dice opens the place and puts a ring of light round the very switch). Also: reminders for "next time I open Netflix", Roll for it (the die picks something to watch), Float (a window on top in a corner, see-through until you point at it) and fridge notes on DiceTV for whoever's next.

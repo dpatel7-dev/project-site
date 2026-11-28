@@ -6,7 +6,11 @@ dice-boot: runs at every start-up, as root, before the desktop.
    drive, a PC's EFI partition, or a USB stick, it applies it: your name, the computer's name, password,
    Wi-Fi, time zone, keyboard, look, screen, apps, SSH and updates. Passwords
    are then wiped from the file and it's renamed dice-applied.json, so it
-   only happens once. Drop a new dice.json on the card to change things again,
+   only happens once. From the website's Make it yours it can also bring:
+   apps to install from Flathub (installed in the background once it's
+   online), your home screens arranged (DiceWeb takes those), and your own
+   files and folders, in a dice-files.zip next to dice.json, copied into
+   your home folder. Drop a new dice.json on the card to change things again,
    or use one in Settings, This computer (diced calls apply() with it, or
    `dice-boot --apply file.json` does the same from Terminal).
    Only USB sticks and other removable drives are looked at, never the
@@ -30,7 +34,11 @@ APPLIED = '/var/lib/dice/applied'  # fingerprints of files that couldn't be tidi
 SITE = os.environ.get('DICE_SITE', 'https://djp7.pythonanywhere.com')
 KEEP = ('name', 'look', 'world', 'buddy', 'boot', 'start', 'apps', 'homeassistant', 'suite', 'updates', 'keyboard', 'timezone', 'screen', 'computer', 'ssh',
         # how DiceOS looks and behaves (DiceWeb takes these; see DiceOS's README for each)
-        'looks', 'accent', 'text', 'clock', 'units', 'sounds', 'nightlight', 'motion', 'ambient', 'deuce', 'tv', 'desk', 'shield')
+        'looks', 'accent', 'text', 'clock', 'units', 'sounds', 'nightlight', 'motion', 'ambient', 'deuce', 'tv', 'desk', 'shield',
+        # your home screens and websites as apps, arranged on the website (DiceWeb takes these too)
+        'layout', 'webapps')
+APP_ID = r'[A-Za-z][\w-]*(\.[\w-]+){2,}'  # a Flathub app, like org.videolan.VLC
+FLATHUB = 'https://dl.flathub.org/repo/flathub.flatpakrepo'
 
 
 def log(msg):
@@ -158,8 +166,106 @@ def wait_for_networkmanager(seconds=40):
     return False
 
 
-def apply(cfg, quiet=False):
-    """quiet: from Settings (it shows what happened itself), so no welcome next start."""
+def online(host='dl.flathub.org'):
+    import socket
+    try:
+        socket.create_connection((host, 443), timeout=8).close()
+        return True
+    except OSError:
+        return False
+
+
+def install_apps(ids, tries=120, wait=30):
+    """In the background after the first start: the apps picked on the website, from Flathub.
+    It waits for the internet (up to an hour). One that Flathub doesn't have for this computer
+    (Steam on a Pi, say) is skipped."""
+    ids = [a for a in ids if re.fullmatch(APP_ID, a)]
+    for _ in range(tries):
+        if online():
+            break
+        time.sleep(wait)
+    else:
+        log('never got online, so no apps were installed')
+        return []
+    if not shutil.which('flatpak'):
+        sh(['apt-get', 'update'], timeout=900)
+        sh(['apt-get', 'install', '-y', 'flatpak', 'xwayland'], timeout=1800)
+    sh(['flatpak', 'remote-add', '--system', '--if-not-exists', 'flathub', FLATHUB], timeout=300)
+    got = []
+    for a in ids:
+        code, out = sh(['flatpak', 'install', '--system', '-y', '--noninteractive', 'flathub', a], timeout=3600)
+        log(('installed ' + a) if code == 0 else ('could not install %s: %s' % (a, out[-300:])))
+        if code == 0:
+            got.append(a)
+    return got
+
+
+def copy_files(path, who):
+    """Your files from the website (dice-files.zip, next to dice.json) into your home folder.
+    Never outside it, never over a file that's already there (that one gets a " (2)"), never a link,
+    and no hidden files (nothing can sneak into your settings). Returns (copied, skipped, problem)."""
+    import stat
+    import zipfile
+    try:
+        pw = pwd.getpwnam(who)
+    except KeyError:
+        return 0, 0, 'there was nobody to copy them for'
+    home, uid, gid = os.path.realpath(pw.pw_dir), pw.pw_uid, pw.pw_gid
+    copied = skipped = 0
+    try:
+        with zipfile.ZipFile(path) as z:
+            members = z.infolist()
+            if len(members) > 60000:
+                return 0, len(members), 'it has too many files in it'
+            total = sum(m.file_size for m in members)
+            if total > shutil.disk_usage(home).free - 512 * 2 ** 20:
+                return 0, len(members), 'there isn\'t room for them'
+            for m in members:
+                name = m.filename.replace('\\', '/')
+                parts = [p for p in name.split('/') if p not in ('', '.')]
+                kind = (m.external_attr >> 16) & 0o170000
+                if m.is_dir() or not parts:
+                    continue
+                if name.startswith('/') or '..' in parts or ':' in parts[0] or any(p.startswith('.') for p in parts) or kind == stat.S_IFLNK:
+                    skipped += 1
+                    continue
+                # the folders on the way, made for you (and never through a link)
+                d, ok = home, True
+                for p in parts[:-1]:
+                    d = os.path.join(d, p)
+                    if os.path.islink(d) or (os.path.exists(d) and not os.path.isdir(d)):
+                        ok = False
+                        break
+                    if not os.path.isdir(d):
+                        os.mkdir(d, 0o755)
+                        os.chown(d, uid, gid)
+                if not ok:
+                    skipped += 1
+                    continue
+                dest = os.path.join(d, parts[-1])
+                base, ext = os.path.splitext(dest)
+                n = 2
+                while os.path.lexists(dest):
+                    dest = '%s (%d)%s' % (base, n, ext)
+                    n += 1
+                fd = os.open(dest, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_NOFOLLOW', 0), 0o644)
+                with z.open(m) as src, os.fdopen(fd, 'wb') as out:
+                    shutil.copyfileobj(src, out, 1 << 20)
+                os.chown(dest, uid, gid)
+                try:
+                    t = time.mktime(m.date_time + (0, 0, -1))
+                    os.utime(dest, (t, t))
+                except (OverflowError, ValueError, OSError):
+                    pass
+                copied += 1
+    except (OSError, zipfile.BadZipFile, RuntimeError) as e:
+        return copied, skipped, 'it couldn\'t be read (%s)' % e
+    return copied, skipped, None
+
+
+def apply(cfg, quiet=False, src=None):
+    """quiet: from Settings (it shows what happened itself), so no welcome next start.
+    src: where the dice.json is, so a dice-files.zip next to it can be found."""
     done, problems = [], []
     who = user()
     settings = {k: cfg[k] for k in KEEP if k in cfg}
@@ -253,9 +359,33 @@ def apply(cfg, quiet=False):
         sh(['systemctl', 'enable' if cfg['updates'] else 'disable', '--now', 'dice-update.timer'])
         done.append('Turned automatic updates ' + ('on' if cfg['updates'] else 'off'))
 
+    # your files and folders, from dice-files.zip next to dice.json
+    zipname = os.path.basename(str(cfg.get('files') or ''))
+    if zipname and src and who:
+        zpath = os.path.join(os.path.dirname(src), zipname)
+        if not zipname.lower().endswith('.zip') or not os.path.isfile(zpath):
+            problems.append('Your files weren\'t copied: %s wasn\'t next to dice.json.' % zipname)
+        else:
+            n, skipped, why = copy_files(zpath, who)
+            if why:
+                problems.append('Your files weren\'t all copied: ' + why + '.')
+            if n:
+                done.append('Copied %d of your files into your home folder' % n + (' (%d left out)' % skipped if skipped else ''))
+
+    # apps from Flathub: picked on the website, installed in the background once it's online
+    apps = [a for a in (cfg.get('apps') or []) if isinstance(a, str) and re.fullmatch(APP_ID, a)][:40]
+    if apps:
+        done.append('Getting %d app%s ready to install once it\'s online' % (len(apps), '' if len(apps) == 1 else 's'))
+
     if not quiet:
         settings['welcome'] = {'name': cfg.get('name') or '', 'done': done, 'problems': problems, 'at': int(time.time())}
     save_settings(settings)
+    if apps:
+        try:
+            subprocess.Popen([sys.executable, os.path.abspath(__file__), '--install-apps'] + apps, stdout=open('/var/log/dice-apps.log', 'a'),
+                             stderr=subprocess.STDOUT, start_new_session=True)
+        except OSError as e:
+            log('could not start installing apps: %s' % e)
 
     # the Terminal apps, in the background once the internet is up
     suite = [a for a in (cfg.get('suite') or []) if re.fullmatch(r'[a-z]{2,10}', str(a))]
@@ -266,6 +396,17 @@ def apply(cfg, quiet=False):
 
 def scrub(path, cfg, mnt):
     """Wipe the passwords out of the file and rename it, so it only applies once."""
+    # dice-files.zip has been copied: off the Pi's small bootfs drive, or renamed on a USB stick
+    zipname = os.path.basename(str(cfg.get('files') or ''))
+    zpath = os.path.join(os.path.dirname(path), zipname) if zipname.lower().endswith('.zip') else ''
+    if zpath and os.path.isfile(zpath):
+        try:
+            if mnt:
+                os.replace(zpath, os.path.join(os.path.dirname(path), 'dice-files-copied.zip'))
+            else:
+                os.remove(zpath)
+        except OSError as e:
+            log('could not tidy up %s: %s' % (zpath, e))
     clean = dict(cfg)
     clean.pop('password', None)
     if isinstance(clean.get('wifi'), dict):
@@ -293,13 +434,17 @@ def scrub(path, cfg, mnt):
 def main():
     if os.geteuid() != 0:
         sys.exit('dice-boot needs to run as root (it runs by itself at start-up).')
+    # (started by apply(), in the background: the apps picked on the website)
+    if '--install-apps' in sys.argv:
+        install_apps(sys.argv[sys.argv.index('--install-apps') + 1:])
+        return
     # `dice-boot --apply file.json`: use a dice.json now, from anywhere (it isn't changed)
     if '--apply' in sys.argv:
         i = sys.argv.index('--apply')
         cfg = load(sys.argv[i + 1]) if i + 1 < len(sys.argv) else None
         if cfg is None:
             sys.exit('Give it a dice.json: dice-boot --apply /path/to/dice.json')
-        done, problems = apply(cfg)
+        done, problems = apply(cfg, src=os.path.abspath(sys.argv[i + 1]))
         print(json.dumps({'done': done, 'problems': problems}, indent=2))
         return
     path, mnt = find()
@@ -311,7 +456,7 @@ def main():
     if path:
         cfg = load(path)
         if cfg is not None:
-            done, problems = apply(cfg)
+            done, problems = apply(cfg, src=path)
             for d in done:
                 log('done: ' + d)
             for p in problems:

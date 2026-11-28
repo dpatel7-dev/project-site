@@ -623,6 +623,14 @@
   function edgeZone(x, y, area, edge) {
     edge = edge || 14;
     const corner = Math.min(120, area.h / 4), L = x <= edge, Rt = x >= area.w - edge, T = y <= edge;
+    // a very wide monitor (32:9, two screens' worth): the sides take a third each, and the middle of the
+    // top edge puts it in the middle third (Fill the screen is still the green button)
+    if (area.w / area.h >= 2.6) {
+      if (L) return 'l3';
+      if (Rt) return 'r3';
+      if (T) return x < area.w / 3 ? 'l3' : x > area.w * 2 / 3 ? 'r3' : 'c3';
+      return null;
+    }
     if (T && x < corner) return 'tl';
     if (T && x > area.w - corner) return 'tr';
     if (T) return 'top';

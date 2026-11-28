@@ -49,6 +49,8 @@
       if (res.exit) setTimeout(() => ctx.close(), 150);
     }
     root.querySelector('form').onsubmit = (e) => { e.preventDefault(); const v = input.value; input.value = ''; run(v); };
+    // hey (and den) type a command in for you; you press Enter
+    const offType = D.on('terminal-type', (cmd) => { input.value = String(cmd); input.focus(); });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'ArrowUp') { e.preventDefault(); if (hi > 0) { hi--; input.value = hist[hi] || ''; } }
       else if (e.key === 'ArrowDown') { e.preventDefault(); if (hi < hist.length) { hi++; input.value = hist[hi] || ''; } }
@@ -78,7 +80,7 @@
     return {
       resume() { setTimeout(() => input.focus(), 60); },
       onAction(a) { if (a === 'a' && document.activeElement !== input) { input.focus(); return true; } return false; },
-      unmount() {},
+      unmount() { offType(); },
     };
   } });
 })();

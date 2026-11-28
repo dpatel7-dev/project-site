@@ -106,7 +106,7 @@
     wxc.onclick = () => TV.askTown();
     due.onclick = () => D.launch('calendar');
     np.onclick = () => { if (M.now) M.toggle(); else M.play('radio', 0); setTimeout(paintToday, 60); };
-    np._x = () => D.launch('music');
+    np._x = () => D.launch('hum');
     sleep.onclick = () => D.tools.setSleep(L.nextSleep(D.tools.sleepMins()));
     const alarm = card('alarm', 't-alarm', 'Alarms');
     alarm.classList.remove('glass');
